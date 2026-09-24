@@ -5,22 +5,54 @@ running (started 23:31). The JVM had the mod jar open and had cached entry offse
 file, so 25 seconds later it threw ClassNotFoundException for a class the new file does contain,
 and the game crashed. Replacing a mod jar under a running game is not safe; this refuses instead.
 
+The jar name follows `mod_version`, so a version bump renames it. Anything else the instance already
+has under the same mod name is backed up and **removed**: two copies of one mod id in mods/ is a
+loading error, not a harmless leftover.
+
 Usage:
-    python tools/install_jar.py                      # install build/libs/scguns-0.5.5.jar
+    python tools/install_jar.py                      # install the newest build/libs/scguns-*.jar
     python tools/install_jar.py --check              # only report whether it is safe
     python tools/install_jar.py --force              # install anyway (you accept the crash risk)
 """
 import argparse
 import datetime
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
+import zipfile
 
 MODS = pathlib.Path(r"D:\MCJAVA\.minecraft\versions\1.21.1-NeoForge_21.1.250\mods")
-TARGET = MODS / "scguns-0.5.5.jar"
-SOURCE = pathlib.Path("build/libs/scguns-0.5.5.jar")
 GAME_DIR_MARKER = r"1.21.1-NeoForge_21.1.250"
+PROPERTIES = pathlib.Path("gradle.properties")
+
+
+def built_jars():
+    """Every scguns jar in build/libs, newest first (sources/javadoc excluded)."""
+    return sorted((p for p in pathlib.Path("build/libs").glob("scguns-*.jar")
+                   if not p.name.endswith(("-sources.jar", "-javadoc.jar"))),
+                  key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def installed_jars():
+    """Every scguns jar in the instance's mods folder, backups excluded."""
+    if not MODS.is_dir():
+        return []
+    return sorted(p for p in MODS.glob("scguns-*.jar") if ".bak-" not in p.name)
+
+
+def declared_version(jar):
+    """The `version="..."` of the first [[mods]] block inside the jar."""
+    with zipfile.ZipFile(jar) as z:
+        text = z.read("META-INF/neoforge.mods.toml").decode("utf-8", "replace")
+    match = re.search(r'^\s*version\s*=\s*"([^"]+)"', text, re.M)
+    return match.group(1) if match else None
+
+
+def expected_version():
+    match = re.search(r"^mod_version\s*=\s*(\S+)", PROPERTIES.read_text(encoding="utf-8"), re.M)
+    return match.group(1) if match else None
 
 
 def game_running():
@@ -65,16 +97,37 @@ def main():
         print("no game process found%s" % (" (forced)" if running else ""))
         return 0
 
-    if not SOURCE.exists():
-        print("MISSING: %s (run `gradlew build` first)" % SOURCE)
+    jars = built_jars()
+    if not jars:
+        print("MISSING: no build/libs/scguns-*.jar (run `gradlew build` first)")
         return 2
+    source = jars[0]
+    for older in jars[1:]:
+        print("note: %s is older than %s" % (older.name, source.name))
+
+    version = declared_version(source)
+    expected = expected_version()
+    if expected and version != expected:
+        print("REFUSING: %s declares version %s but gradle.properties says mod_version=%s"
+              % (source, version, expected))
+        return 3
+    print("installing %s (declared version %s)" % (source.name, version))
 
     stamp = datetime.datetime.now().strftime("%H%M%S")
-    backup = TARGET.with_name("%s.bak-%s" % (TARGET.name, stamp))
-    shutil.copy2(TARGET, backup)
-    shutil.copy2(SOURCE, TARGET)
-    print("installed %s (%d bytes) <- %s" % (TARGET.name, TARGET.stat().st_size, SOURCE))
-    print("previous jar kept as %s" % backup.name)
+    target = MODS / source.name
+    for existing in installed_jars():
+        backup = existing.with_name("%s.bak-%s" % (existing.name, stamp))
+        shutil.copy2(existing, backup)
+        existing.unlink()
+        if existing.name == target.name:
+            print("replaced %s (kept as %s)" % (existing.name, backup.name))
+        else:
+            print("removed the old copy %s (kept as %s) - two mod jars with one mod id would not load"
+                  % (existing.name, backup.name))
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(source, target)
+    print("installed %s (%d bytes)" % (target.name, target.stat().st_size))
     return 0
 
 

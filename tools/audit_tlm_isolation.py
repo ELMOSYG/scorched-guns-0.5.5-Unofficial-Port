@@ -19,7 +19,19 @@ import zipfile
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(REPO, 'src', 'main', 'java')
-JAR = os.path.join(REPO, 'build', 'libs', 'scguns-0.5.5.jar')
+
+
+def built_jar():
+    """The jar build/libs currently holds - its name follows mod_version, so never hardcode it."""
+    import glob
+    found = [p for p in glob.glob(os.path.join(REPO, 'build', 'libs', 'scguns-*.jar'))
+             if not p.endswith(('-sources.jar', '-javadoc.jar'))]
+    if found:
+        return max(found, key=os.path.getmtime)
+    return os.path.join(REPO, 'build', 'libs', 'scguns-none.jar')
+
+
+JAR = built_jar()
 
 # Any of these in the host's own code is a defect.
 NEEDLES = [

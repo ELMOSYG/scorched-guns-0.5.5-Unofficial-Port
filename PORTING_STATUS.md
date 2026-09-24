@@ -7,7 +7,7 @@
 | 代码基准 | **0.5.5 的 1.20.1 release jar** 反编译（`E:\mod\SG2-1.21\.sg055_deobf`，994 个外类，与 jar 1:1 一致）。**不使用** GitHub 上的 0.4.7 源码，也**不使用**现存的 0.4.7 底子 NeoForge 移植工程 |
 | 目标 | MC 1.21.1 + NeoForge 21.1.249（用户实测实例：NeoForge 21.1.250） |
 | **编译错误** | **0**（起始基线 3487 → 496 → 0），989 个源文件全部通过 |
-| **`gradlew build`** | ✅ **BUILD SUCCESSFUL**，产出 `build/libs/scguns-0.5.5.jar`（19.1 MB） |
+| **`gradlew build`** | ✅ **BUILD SUCCESSFUL**，产出 `build/libs/scguns-0.5.5.1.jar`（18.5 MB） |
 | **专用服务器加载** | ✅ **成功启动**（`Done (4.838s)!`），无 mod 相关 ERROR/FATAL |
 | **客户端实测** | ✅ **上一轮反馈的功能全部实测正常**（用户确认）。累计已修：崩溃 ×6 类、枪械渲染、物品 tooltip、枪手 AI/生物装备、界面背景模糊、配件界面枪械模型、后坐力速度、持枪姿势、**进度标签页、蓝图枪械描述、配件实时同步、外骨骼界面崩溃** |
 | **持枪姿势** | ✅ **根因已找到并修复**：`MixinPlugin.shouldApplyMixin` 探测的是 1.20.1 Forge 的类名 `FrameworkForge`（NeoForge 是 `FrameworkNeoForge`），于是**全部 15 个 mixin 从来没生效过** —— 生物的摆臂 mixin、玩家的 `ItemInHandLayerMixin`/`PlayerModelMixin` 全是死的。现在开关恒为 `true`（HANDOFF §15） |
@@ -136,7 +136,7 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 
 ## 现在最该做的三件事
 
-1. **继续客户端实测**：`build/libs/scguns-0.5.5.jar` 已复制到用户实例 mods 目录，上一轮反馈的项目
+1. **继续客户端实测**：`build/libs/scguns-0.5.5.1.jar` 已复制到用户实例 mods 目录，上一轮反馈的项目
    已全部实测正常（含持枪姿势，临时的 `PoseDiagnostics` 已按约定删除）。继续玩，遇到异常先看
    `logs/latest.log`——**编解码器里的异常表现为"掉线/崩溃"而不是报错**（HANDOFF §17.4）。
 2. 把 276 处 "erasure-only"（真覆写但缺 `@Override`）逐批补上 `@Override`，
@@ -379,7 +379,7 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 - **授权**：上游是 **GPL-3.0**（0.5.5 jar 元数据实测）⇒ 本移植沿用 GPL-3.0，`LICENSE` 放全文（gnu.org 下载）；
   `NOTICE` 写明上游、音效 CC0、汉化包来源、女仆兼容作者、第三方依赖不随仓库分发；README 重写（英/中）。
 - **CurseForge**：`CURSEFORGE.md` 备好可直接粘贴的描述、依赖关系表、更新日志与上传清单；
-  项目需玩家在网页创建（我无法代建），上传文件 `build/libs/scguns-0.5.5.jar`。
+  项目需玩家在网页创建（我无法代建），上传文件 `build/libs/scguns-0.5.5.1.jar`。
 - **待玩家**：`NOTICE` 里汉化包署名仍是占位文字。
 
 ---
@@ -410,5 +410,21 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 - **门禁**：`javac` 0 / `build` ✓ / **24 个审计 0** / `verify_installed_jar` **160/160** / 探针已删 / 已安装
   （备份 `.bak-213733`）。环境坑：上一轮 dev 服务器没停时下一次 `runServer` 会在启动阶段失败（§9 老坑）。
 - **待玩家确认**：客户端表现（拉弓音效、持枪动画、箭命中表现）。与 §65「充能枪不能开火」无关（那是 PULSE 枪）。
+
+---
+
+## §73 版本号改为 **0.5.5.1**（移植自己的发布号）
+
+- `gradle.properties` 的 `mod_version` 是唯一真相 ⇒ 决定 jar 名（`build/libs/scguns-0.5.5.1.jar`，
+  18.49 MB）与 `neoforge.mods.toml` 里的 `version`。**内容仍是上游 0.5.5**，`0.5.5.1` 是本移植的发布号。
+- 4 个工具原先硬编码旧文件名 ⇒ 改为**按 glob 发现最新产物**（`install_jar` / `verify_installed_jar` /
+  `audit_tlm_isolation` / `probe_tag_ids`），以后升版本不必再改工具；`install_jar` 还会校验
+  **包内声明的版本 == `mod_version`** 才安装。
+- **必须处理的坑**：版本号进文件名 ⇒ 新 jar 不覆盖旧 jar ⇒ `mods/` 里两份同 mod id = 加载报错。
+  `install_jar.py` 现在会备份并**删除所有旧的 `scguns-*.jar`** 再安装（实测：删除 `scguns-0.5.5.jar`，
+  备份 `.bak-214132`）⇒ 实例里只剩一份。
+- 验收：`clean build` ⇒ 产物只有 `scguns-0.5.5.1.jar`；`verify_installed_jar` **161/161**
+  （新增"包内版本 == mod_version"）；文档已同步（README / CURSEFORGE / HANDOFF §2+§9）。
+  ⚠️ §69 之前历史段落里的 `scguns-0.5.5.jar` 是当时的真实文件名，不要照它找文件。
 
 

@@ -20,7 +20,7 @@
 ## 2. 当前进度（最重要的一行）
 
 **编译错误 0 个**（初始结构性基线 3487 → 接手时 496 → 0），989 个源文件全部通过。
-**`gradlew clean build` 通过**，产出 `build/libs/scguns-0.5.5.jar`（18.19 MB / 8316 项）。
+**`gradlew clean build` 通过**，产出 `build/libs/scguns-0.5.5.1.jar`（18.5 MB；版本号见 §73）。
 **专用服务器实测加载成功**：`Done (3.947s)! For help, type "help"`，无 mod 相关 ERROR/FATAL，
 战利品表 0 解析失败。证据日志：`build-logs/server-final.txt`、`build-logs/build-final.txt`。
 
@@ -210,7 +210,7 @@ python tools\show_errors.py  build-logs\compile-109.txt "<正则>" 5 --file <文
 
 编译与加载这两关已经过了（见 §2）。按价值排序：
 
-1. **客户端启动冒烟测试**（唯一没做过的验证）：`build/libs/scguns-0.5.5.jar` 连同
+1. **客户端启动冒烟测试**（唯一没做过的验证）：`build/libs/scguns-0.5.5.1.jar` 连同
    `libs/` 里的三个必需依赖（`framework-neoforge-1.21.1-0.13.11`、`geckolib-neoforge-1.21.1-4.9.3`、
    `curios-neoforge-9.5.1+1.21.1`）放进客户端 `mods/`。重点看：mixin 是否注入、GeckoLib 模型是否加载、
    JEI 的 6 个分类是否出现、HUD 是否正常。**注意**：客户端与专用服务器的注册路径不同，
@@ -5569,7 +5569,7 @@ Caused by: java.lang.IllegalArgumentException: IModBusEvent events are not allow
 
 `CURSEFORGE.md` ✓ 备好可直接粘贴的：项目字段与建议 slug ✓ / **必需依赖关系表**（Framework、GeckoLib、
 Curios 设为 required ✓，其余可选 ✓）/ 描述全文 ✓ / 首版更新日志 ✓ / 上传前检查清单 ✓。
-上传文件用 `build/libs/scguns-0.5.5.jar`（≈19 MB ✓），游戏版本 1.21.1 + **NeoForge** ✓。
+上传文件用 `build/libs/scguns-0.5.5.1.jar`（≈18.5 MB ✓），游戏版本 1.21.1 + **NeoForge** ✓。
 **项目本身必须在网页上创建** ✗（我无法代建 ✓），玩家选择自己上传 ✓。
 
 ## 71.5 待玩家确认的一处
@@ -5669,6 +5669,55 @@ Arrow arrow = new Arrow(world, player, new ItemStack(Items.ARROW), null);
 * **边界**：**客户端表现仍要玩家确认** ✓ —— "能射出箭"是服务端实测 ✓；
   拉弓音效 / 持枪动画 / 箭的命中表现在客户端 ✓。另外这个 bug 与 §65 的"充能枪不能开火"**无关** ✗
   （那是 PULSE 枪 ✓，niami 是 `semi_automatic` ✓），§65.4 的问题依然待玩家给现象 ✓。
+
+# 73. 版本号从 `0.5.5` 改为 **`0.5.5.1`**（移植自己的版本号）
+
+玩家要求：产出的 jar 版本号改成 **0.5.5.1** ✓。
+
+## 73.1 改法与影响面
+
+`gradle.properties` 的 `mod_version` 是**一处真相** ✓：它同时决定
+① jar 文件名（`build.gradle` 的 `archivesName = mod_id` + `version` ⇒ `build/libs/scguns-<v>.jar` ✓）、
+② `neoforge.mods.toml` 里的 `version="..."` ✓（模组列表里显示的版本 ✓）。
+⇒ 只改一行 ✓，clean build 后产物为 **`build/libs/scguns-0.5.5.1.jar`**（18.49 MB ✓）。
+
+> 语义说明 ✓：**内容版本仍是上游的 0.5.5** ✓，`0.5.5.1` 是**本移植自己的发布号** ✓
+> （`gradle.properties` 里已写明这一点 ✓）。女仆兼容声明的 `scguns >= [0.5.0,)` 仍然满足 ✓，无需改动 ✓。
+
+## 73.2 工具里的硬编码文件名（这次一并改成"按版本发现"）
+
+之前有 4 个工具写死了 `build/libs/scguns-0.5.5.jar` ✗ —— 版本一动就全失效 ✓，所以这次不只是改名，
+而是**改成按 glob 找最新产物** ✓（以后升版本不用再改工具 ✓）：
+
+| 工具 | 现在的做法 |
+|---|---|
+| `tools/install_jar.py` | 取 `build/libs/scguns-*.jar` 里最新的那个 ✓，并**校验它声明的版本等于 `mod_version`** ✓ |
+| `tools/verify_installed_jar.py` | 按 `mods/scguns-*.jar`（排除 `.bak-*`）找已安装的 ✓、按 `build/libs/scguns-*.jar` 找产物 ✓；新增一项检查 **"包内版本 == mod_version"** ✓ |
+| `tools/audit_tlm_isolation.py` | 同上按 glob 取产物 ✓ |
+| `tools/probe_tag_ids.py` | 同上 ✓ |
+
+## 73.3 一个必须处理的坑：实例里不能同时有两份
+
+版本号进了文件名 ⇒ 新 jar 不会覆盖旧 jar ✗ ⇒ `mods/` 里会同时躺着 `scguns-0.5.5.jar` 与
+`scguns-0.5.5.1.jar` ✓ ⇒ **同一个 mod id 出现两次 = 加载报错** ✗。
+所以 `install_jar.py` 现在会：**把所有旧的 `scguns-*.jar` 备份成 `.bak-HHMMSS` 后删除** ✓，再放新的 ✓。实测输出：
+
+```
+installing scguns-0.5.5.1.jar (declared version 0.5.5.1)
+removed the old copy scguns-0.5.5.jar (kept as scguns-0.5.5.jar.bak-214132) - two mod jars with one mod id would not load
+installed scguns-0.5.5.1.jar (19392915 bytes)
+```
+
+## 73.4 验收
+
+* `gradlew clean build` ✓ ⇒ `build/libs/` 里**只有** `scguns-0.5.5.1.jar` ✓。
+* `install_jar.py` ✓ 装入实例 ✓，旧 jar 已备份并移除 ✓（实例里现在只有一份 ✓）。
+* `verify_installed_jar.py` **161/161** ✓（新增的第 33 项：包内版本 == `mod_version` ✓）。
+* **文档同步** ✓：README（安装与构建命令 ✓）、`CURSEFORGE.md`（上传文件与清单 ✓）、`PORTING_STATUS.md` ✓、
+  §2 与 §9 的可执行命令 ✓。
+  ⚠️ **§69 之前的历史段落里仍会看到 `scguns-0.5.5.jar`** ✓ —— 那是**当时的真实文件名** ✓（例如 §49 那次
+  "游戏运行中覆盖 jar"的事故 ✓），**不要按它去找文件** ✓。
+
 
 
 

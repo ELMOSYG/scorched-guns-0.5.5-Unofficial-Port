@@ -88,7 +88,11 @@ def main():
 
     print("")
     print("=== is scguns:anthralite_knife in the built jar? ===")
-    built = pathlib.Path("build/libs/scguns-0.5.5.jar")
+    jars = sorted((p for p in pathlib.Path("build/libs").glob("scguns-*.jar")
+                   if not p.name.endswith(("-sources.jar", "-javadoc.jar"))),
+                  key=lambda p: p.stat().st_mtime, reverse=True)
+    built = jars[0] if jars else pathlib.Path("build/libs/scguns-none.jar")
+    print("  jar: %s" % built.name)
     if built.exists():
         with zipfile.ZipFile(built) as zf:
             hits = [n for n in zf.namelist() if "anthralite_knife" in n]

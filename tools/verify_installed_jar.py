@@ -15,11 +15,28 @@ import pathlib
 import re
 import zipfile
 
-JAR = pathlib.Path(os.environ.get(
-    "SCGUNS_JAR",
-    r"D:\MCJAVA\.minecraft\versions\1.21.1-NeoForge_21.1.250\mods\scguns-0.5.5.jar",
-))
-BUILT = pathlib.Path("build/libs/scguns-0.5.5.jar")
+MODS = pathlib.Path(r"D:\MCJAVA\.minecraft\versions\1.21.1-NeoForge_21.1.250\mods")
+
+
+def _installed_jar():
+    """The instance's scguns jar, newest first; SCGUNS_JAR overrides it for older-build self-tests."""
+    override = os.environ.get("SCGUNS_JAR")
+    if override:
+        return pathlib.Path(override)
+    candidates = [p for p in MODS.glob("scguns-*.jar") if ".bak-" not in p.name]
+    return max(candidates, key=lambda p: p.stat().st_mtime) if candidates else MODS / "scguns-none.jar"
+
+
+def _built_jar():
+    """The jar build/libs currently holds (the name follows mod_version)."""
+    candidates = [p for p in pathlib.Path("build/libs").glob("scguns-*.jar")
+                  if not p.name.endswith(("-sources.jar", "-javadoc.jar"))]
+    return max(candidates, key=lambda p: p.stat().st_mtime) if candidates else \
+        pathlib.Path("build/libs/scguns-none.jar")
+
+
+JAR = _installed_jar()
+BUILT = _built_jar()
 DATA = "data/scguns/recipe/"
 
 
@@ -111,6 +128,19 @@ def _check_resource_contains(zf, entry, needle, label):
     return (label, needle in data)
 
 
+def _check_declared_version(zf):
+    """The packaged version is the one gradle.properties asks for (the jar name follows it too)."""
+    expected = re.search(r"^mod_version\s*=\s*(\S+)",
+                         pathlib.Path("gradle.properties").read_text(encoding="utf-8"), re.M)
+    if not expected:
+        return ("the packaged version matches mod_version [gradle.properties unreadable]", False)
+    wanted = expected.group(1)
+    text = zf.read("META-INF/neoforge.mods.toml").decode("utf-8", "replace")
+    found = re.search(r'^\s*version\s*=\s*"([^"]+)"', text, re.M)
+    return ("the packaged version is mod_version [%s]" % (found.group(1) if found else "?"),
+            bool(found) and found.group(1) == wanted)
+
+
 FINALIZE_4 = (
     b"(Lnet/minecraft/world/level/ServerLevelAccessor;Lnet/minecraft/world/DifficultyInstance;"
     b"Lnet/minecraft/world/entity/MobSpawnType;Lnet/minecraft/world/entity/SpawnGroupData;)"
@@ -158,9 +188,9 @@ def main():
         return 2
 
     if BUILT.exists() and BUILT.read_bytes() != JAR.read_bytes():
-        print("WARNING: installed jar differs from build/libs/scguns-0.5.5.jar")
+        print("WARNING: installed jar differs from %s" % BUILT)
     else:
-        print("installed jar is byte-identical to build/libs/scguns-0.5.5.jar")
+        print("installed jar is byte-identical to %s" % BUILT)
 
     checks = []
 
@@ -882,6 +912,9 @@ def main():
             zf, "top/ribs/scguns/init/ModCapabilities.class",
             b"Lnet/neoforged/fml/common/EventBusSubscriber$Bus;",
             "capability registration names the mod bus"))
+
+        # 33. the packaged version, which is also the jar name (HANDOFF section 73).
+        checks.append(_check_declared_version(zf))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:

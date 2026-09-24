@@ -17,11 +17,12 @@ Ready-to-paste fields for the project page, modelled on the layout of the existi
 | Slug (suggested) | `scorched-guns-0-5-5-neoforge-port` |
 | Game / Category | Minecraft → Mods |
 | Version / Loader | 1.21.1, NeoForge |
+| **Port version** | **0.5.5.1** (release/file version — the content is upstream 0.5.5) |
 | License | **GNU General Public License v3.0** (the upstream mod is GPL-3.0, so this port must be too) |
 | Source | https://github.com/ELMOSYG/scorched-guns-0.5.5-Unofficial-Port |
 | Summary | An unofficial NeoForge 1.21.1 port of Scorched Guns **0.5.5**, focused on preserving the original mod's firearms, attachments, ammunition, hostile mobs, structures, loot, machines, turrets and ExoSuit gameplay on a newer Minecraft version. |
 
-Upload `build/libs/scguns-0.5.5.jar` (≈19 MB) as the file.
+Upload `build/libs/scguns-0.5.5.1.jar` (≈18.5 MB) as the file, with **0.5.5.1** as its display name.
 
 ## Description — Markdown (paste into the editor's Markdown mode)
 
@@ -149,7 +150,7 @@ Minimum **NeoForge 21.1.150** (GeckoLib 4.9.3 itself requires that).
 ## Changelog for the first release (paste into "Changelog")
 
 ```markdown
-First public release of the unofficial 1.21.1 / NeoForge port of Scorched Guns 0.5.5.
+First public release of the unofficial 1.21.1 / NeoForge port of Scorched Guns 0.5.5 (port version 0.5.5.1).
 
 * Ported from the 0.5.5 1.20.1 release: 141 animated guns, attachments, grenades, turrets, exo-suits,
   raids, blueprints, gun bench, machines, mob factions.
@@ -166,7 +167,7 @@ First public release of the unofficial 1.21.1 / NeoForge port of Scorched Guns 0
 
 ## Before you press upload
 
-1. `gradlew build` passes and `build/libs/scguns-0.5.5.jar` is the file you want (≈19 MB).
+1. `gradlew build` passes and `build/libs/scguns-0.5.5.1.jar` is the file you want (≈18.5 MB).
 2. The GitHub repository is pushed — CurseForge asks for the source URL, and GPL-3.0 requires the
    source to be available for the binary you publish.
 3. Do **not** upload the dependency jars from `libs/` — they belong to their own authors; list them as
