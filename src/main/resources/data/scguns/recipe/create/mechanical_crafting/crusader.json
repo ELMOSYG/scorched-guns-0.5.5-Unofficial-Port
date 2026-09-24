@@ -1,0 +1,38 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "Q": {
+      "item": "scguns:gun_grip"
+    },
+    "L": {
+      "item": "minecraft:crossbow"
+    },
+    "R": {
+      "item": "scguns:gun_parts"
+    },
+    "V": {
+      "item": "scguns:iron_gun_frame"
+    },
+    "P": {
+      "item": "scguns:iron_blueprint"
+    },
+    "K": {
+      "tag": "minecraft:planks"
+    }
+  },
+  "pattern": [
+    " VP",
+    "LRK",
+    "Q  "
+  ],
+  "result": {
+    "id": "scguns:crusader"
+  }
+}

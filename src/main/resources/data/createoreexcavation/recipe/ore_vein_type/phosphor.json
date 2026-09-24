@@ -1,0 +1,24 @@
+{
+  "type": "createoreexcavation:vein",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "createoreexcavation"
+    }
+  ],
+  "amountMultiplierMax": 40.0,
+  "amountMultiplierMin": 15.0,
+  "biomeWhitelist": "minecraft:is_overworld",
+  "finite": "default",
+  "icon": {
+    "count": 1,
+    "id": "scguns:raw_phosphor"
+  },
+  "name": "{\"translate\":\"item.scguns.raw_phosphor\"}",
+  "placement": {
+    "salt": 1043129705,
+    "separation": 8,
+    "spacing": 128
+  },
+  "priority": 0
+}

@@ -1,0 +1,22 @@
+{
+  "type": "mekanism:injecting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "mekanism"
+    }
+  ],
+  "chemical_input": {
+    "amount": 1,
+    "chemical": "mekanism:hydrogen_chloride"
+  },
+  "item_input": {
+    "count": 3,
+    "item": "scguns:raw_anthralite"
+  },
+  "output": {
+    "count": 8,
+    "id": "scguns:shard_anthralite"
+  },
+  "per_tick_usage": true
+}

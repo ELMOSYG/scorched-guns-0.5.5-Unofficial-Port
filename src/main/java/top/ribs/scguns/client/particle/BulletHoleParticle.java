@@ -1,0 +1,153 @@
+package top.ribs.scguns.client.particle;
+
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.particle.ParticleRenderType;
+import net.minecraft.client.particle.TextureSheetParticle;
+import net.minecraft.client.renderer.texture.MissingTextureAtlasSprite;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.util.Mth;
+import net.minecraft.world.inventory.InventoryMenu;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec3;
+import org.joml.Quaternionf;
+import org.joml.Vector3f;
+import top.ribs.scguns.Config;
+
+public class BulletHoleParticle extends TextureSheetParticle {
+   private final Direction direction;
+   private final BlockPos pos;
+   private int uOffset;
+   private int vOffset;
+   private float textureDensity;
+
+   public BulletHoleParticle(ClientLevel world, double x, double y, double z, Direction direction, BlockPos pos) {
+      super(world, x, y, z);
+      this.setSprite(this.getSprite(pos));
+      this.direction = direction;
+      this.pos = pos;
+      this.lifetime = (int)(
+         (float)((Integer)Config.CLIENT.particle.bulletHoleLifeMin.get()).intValue()
+            + world.random.nextFloat()
+               * (float)((Integer)Config.CLIENT.particle.bulletHoleLifeMax.get() - (Integer)Config.CLIENT.particle.bulletHoleLifeMin.get())
+      );
+      this.hasPhysics = false;
+      this.gravity = 0.0F;
+      this.quadSize = 0.05F;
+      BlockState state = world.getBlockState(pos);
+      if (world.getBlockState(pos).isAir()) {
+         this.remove();
+      }
+
+      int color = this.getBlockColor(state, world, pos, direction);
+      this.rCol = (float)(color >> 16 & 0xFF) / 255.0F / 3.0F;
+      this.gCol = (float)(color >> 8 & 0xFF) / 255.0F / 3.0F;
+      this.bCol = (float)(color & 0xFF) / 255.0F / 3.0F;
+      this.alpha = 0.9F;
+   }
+
+   private int getBlockColor(BlockState state, Level world, BlockPos pos, Direction direction) {
+      return state.getBlock() == Blocks.GRASS_BLOCK ? Integer.MAX_VALUE : Minecraft.getInstance().getBlockColors().getColor(state, world, pos, 0);
+   }
+
+   protected void setSprite(TextureAtlasSprite sprite) {
+      super.setSprite(sprite);
+      this.uOffset = this.random.nextInt(16);
+      this.vOffset = this.random.nextInt(16);
+      this.textureDensity = (sprite.getU1() - sprite.getU0()) / 16.0F;
+   }
+
+   private TextureAtlasSprite getSprite(BlockPos pos) {
+      Minecraft minecraft = Minecraft.getInstance();
+      Level world = minecraft.level;
+      if (world != null) {
+         BlockState state = world.getBlockState(pos);
+         return Minecraft.getInstance().getBlockRenderer().getBlockModelShaper().getParticleIcon(state);
+      } else {
+         return (TextureAtlasSprite)Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(MissingTextureAtlasSprite.getLocation());
+      }
+   }
+
+   protected float getU0() {
+      return this.sprite.getU0() + (float)this.uOffset * this.textureDensity;
+   }
+
+   protected float getV0() {
+      return this.sprite.getV0() + (float)this.vOffset * this.textureDensity;
+   }
+
+   protected float getU1() {
+      return this.getU0() + this.textureDensity;
+   }
+
+   protected float getV1() {
+      return this.getV0() + this.textureDensity;
+   }
+
+   public void tick() {
+      super.tick();
+      if (this.level.getBlockState(this.pos).isAir()) {
+         this.remove();
+      }
+   }
+
+   public void render(VertexConsumer buffer, Camera renderInfo, float partialTicks) {
+      Vec3 view = renderInfo.getPosition();
+      float particleX = (float)(Mth.lerp((double)partialTicks, this.xo, this.x) - view.x());
+      float particleY = (float)(Mth.lerp((double)partialTicks, this.yo, this.y) - view.y());
+      float particleZ = (float)(Mth.lerp((double)partialTicks, this.zo, this.z) - view.z());
+      Quaternionf quaternion = this.direction.getRotation();
+      Vector3f[] points = new Vector3f[]{
+         new Vector3f(-1.0F, 0.0F, -1.0F), new Vector3f(-1.0F, 0.0F, 1.0F), new Vector3f(1.0F, 0.0F, 1.0F), new Vector3f(1.0F, 0.0F, -1.0F)
+      };
+      float scale = this.getQuadSize(partialTicks);
+
+      for (int i = 0; i < 4; i++) {
+         Vector3f vector3f = points[i];
+         vector3f.rotate(quaternion);
+         vector3f.mul(scale);
+         vector3f.add(particleX, particleY, particleZ);
+      }
+
+      float f7 = this.getU0();
+      float f8 = this.getU1();
+      float f5 = this.getV0();
+      float f6 = this.getV1();
+      int j = this.getLightColor(partialTicks);
+      float fade = Config.CLIENT.particle.bulletHoleFadeThreshold.get() >= 1.0
+         ? 1.0F
+         : 1.0F
+            - Math.max((float)this.age - (float)this.lifetime * ((Double)Config.CLIENT.particle.bulletHoleFadeThreshold.get()).floatValue(), 0.0F)
+               / ((float)this.lifetime - (float)this.lifetime * ((Double)Config.CLIENT.particle.bulletHoleFadeThreshold.get()).floatValue());
+      buffer.addVertex((float)points[0].x(), (float)points[0].y(), (float)points[0].z())
+         .setUv(f8, f6)
+         .setColor(this.rCol, this.gCol, this.bCol, this.alpha * fade)
+         .setLight(j)
+         ;
+      buffer.addVertex((float)points[1].x(), (float)points[1].y(), (float)points[1].z())
+         .setUv(f8, f5)
+         .setColor(this.rCol, this.gCol, this.bCol, this.alpha * fade)
+         .setLight(j)
+         ;
+      buffer.addVertex((float)points[2].x(), (float)points[2].y(), (float)points[2].z())
+         .setUv(f7, f5)
+         .setColor(this.rCol, this.gCol, this.bCol, this.alpha * fade)
+         .setLight(j)
+         ;
+      buffer.addVertex((float)points[3].x(), (float)points[3].y(), (float)points[3].z())
+         .setUv(f7, f6)
+         .setColor(this.rCol, this.gCol, this.bCol, this.alpha * fade)
+         .setLight(j)
+         ;
+   }
+
+   public ParticleRenderType getRenderType() {
+      return ParticleRenderType.TERRAIN_SHEET;
+   }
+}

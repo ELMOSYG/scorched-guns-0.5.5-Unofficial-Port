@@ -1,0 +1,34 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "Q": {
+      "item": "scguns:gun_grip"
+    },
+    "C": {
+      "tag": "minecraft:planks"
+    },
+    "L": {
+      "item": "scguns:energy_core"
+    },
+    "R": {
+      "item": "minecraft:smooth_stone"
+    },
+    "S": {
+      "item": "scguns:stone_gun_barrel"
+    }
+  },
+  "pattern": [
+    "LRSS ",
+    "Q C  "
+  ],
+  "result": {
+    "id": "scguns:laser_musket"
+  }
+}

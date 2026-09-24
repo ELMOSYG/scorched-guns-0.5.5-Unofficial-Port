@@ -1,0 +1,23 @@
+{
+  "type": "scguns:powered_macerating",
+  "processingTime": 50,
+  "energyUse": 1000,
+  "ingredients": [
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:buckshot"
+    },
+    {
+      "item": "scguns:buckshot"
+    }
+  ],
+  "result": {
+    "id": "scguns:nitro_buckshot",
+    "count": 3
+  }
+}

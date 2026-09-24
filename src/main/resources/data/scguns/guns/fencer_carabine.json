@@ -1,0 +1,75 @@
+{
+  "display": {
+    "flash": {
+      "size": 1.0,
+      "yOffset": 3.8,
+      "zOffset": -8.5,
+      "textureLocation": "muzzle_flash_1",
+      "spawnParticles": true,
+      "particleType": "minecraft:campfire_cosy_smoke",
+      "particleCount": 10,
+      "particleSpread": 0.5,
+      "particleRingRadius": 0.5
+    }
+  },
+  "general": {
+    "weaponType": "rifle",
+    "fireMode": "scguns:semi_automatic",
+    "gripType": "scguns:two_handed",
+    "baseGripType": "scguns:two_handed",
+    "rate": 19,
+    "meleeDamage": 2.5,
+    "meleeCooldownTicks": 20,
+    "hotBarrelRate": 30
+  },
+  "modules": {
+    "attachments": {
+      "scope": {
+        "yOffset": 4.9,
+        "zOffset": 4.0
+      },
+      "underBarrel": {
+        "yOffset": 1.0,
+        "zOffset": 1.0
+      }
+    },
+    "zoom": {
+      "fovModifier": 0.6,
+      "yOffset": 5.4,
+      "zOffset": 1.2
+    }
+  },
+  "projectile": {
+    "alwaysSpread": true,
+    "recoilAngle": 4.0,
+    "recoilKick": 1.0,
+    "spread": 1.0,
+    "criticalChance": 0.03,
+    "advantage": "scguns:none",
+    "damage": 9.0,
+    "damageFalloffStart": 22.0,
+    "damageFalloffEnd": 55.0,
+    "damageFalloffMinMultiplier": 0.7,
+    "ejectsCasing": false,
+    "gravity": false,
+    "item": "scguns:powder_and_ball",
+    "life": 35,
+    "size": 1.0,
+    "speed": 5.0,
+    "trailLengthMultiplier": 2.0
+  },
+  "reloads": {
+    "emptyMagTimer": 50,
+    "maxAmmo": 7,
+    "reloadTimer": 22,
+    "reloadType": "scguns:manual"
+  },
+  "sounds": {
+    "cock": "scguns:item.pistol.cock",
+    "enchantedFire": "scguns:item.carabine.fire",
+    "fire": "scguns:item.carabine.fire",
+    "silencedFire": "scguns:item.bruiser.silenced_fire",
+    "reload": "scguns:item.gauss.reload",
+    "flyby": "scguns:bullet.flyby1"
+  }
+}

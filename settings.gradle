@@ -1,0 +1,15 @@
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+    }
+}
+
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '1.0.0'
+}
+
+// The Scorched Guns maid compat (a Touhou Little Maid integration ported from 1.20.1). It is built
+// as its own mod jar and nested into the host jar by the root build's jarJar configuration, so a
+// single download contains both while the compat keeps its own mod id, mixin config and class
+// loader.
+include 'maid-compat'

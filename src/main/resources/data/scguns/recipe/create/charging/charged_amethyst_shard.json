@@ -1,0 +1,19 @@
+{
+  "type": "createaddition:charging",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "createaddition"
+    }
+  ],
+  "input": {
+    "item": "minecraft:amethyst_shard",
+    "count": 1
+  },
+  "result": {
+    "id": "scguns:charged_amethyst_shard",
+    "count": 1
+  },
+  "energy": 3200,
+  "maxChargeRate": 400
+}

@@ -1,0 +1,30 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:vehement_coal"
+    }
+  ],
+  "processingTime": 250,
+  "results": [
+    {
+      "id": "scguns:nitro_powder_dust",
+      "chance": 0.2
+    },
+    {
+      "id": "minecraft:blaze_powder",
+      "count": 2,
+      "chance": 0.75
+    },
+    {
+      "id": "minecraft:blaze_powder",
+      "chance": 0.5
+    }
+  ]
+}

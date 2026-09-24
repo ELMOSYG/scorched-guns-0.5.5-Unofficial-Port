@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "group": "sulfur_chunk",
+  "ingredients": [
+    {
+      "item": "scguns:sulfur_block"
+    }
+  ],
+  "result": {
+    "id": "scguns:sulfur_chunk",
+    "count": 9
+  }
+}

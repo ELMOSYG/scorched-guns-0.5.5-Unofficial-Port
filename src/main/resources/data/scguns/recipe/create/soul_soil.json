@@ -1,0 +1,24 @@
+{
+  "type": "create:splashing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "minecraft:soul_soil"
+    }
+  ],
+  "results": [
+    {
+      "id": "scguns:anthralite_nugget",
+      "chance": 0.5
+    },
+    {
+      "id": "minecraft:quartz",
+      "chance": 0.25
+    }
+  ]
+}

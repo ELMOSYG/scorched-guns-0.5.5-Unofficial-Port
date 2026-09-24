@@ -1,0 +1,74 @@
+{
+  "display": {
+    "flash": {
+      "size": 1.2,
+      "yOffset": 3.5,
+      "zOffset": -6.2,
+      "textureLocation": "muzzle_flash_1",
+      "spawnParticles": true,
+      "particleType": "minecraft:campfire_cosy_smoke",
+      "particleCount": 12,
+      "particleSpread": 0.5,
+      "particleRingRadius": 0.5
+    }
+  },
+  "general": {
+    "weaponType": "shotgun",
+    "fireMode": "scguns:semi_automatic",
+    "gripType": "scguns:one_handed",
+    "rate": 6,
+    "meleeDamage": 2.5,
+    "meleeCooldownTicks": 15,
+    "meleeReach": 2.5,
+    "hotBarrelRate": 100
+  },
+  "modules": {
+    "attachments": {
+      "stock": {
+        "scale": 0.0
+      }
+    },
+    "zoom": {
+      "fovModifier": 0.6,
+      "yOffset": 5.1,
+      "zOffset": 0.75
+    }
+  },
+  "projectile": {
+    "alwaysSpread": true,
+    "projectileAmount": 18,
+    "recoilAngle": 25.0,
+    "recoilKick": 3.0,
+    "spread": 10.0,
+    "criticalChance": 0.18,
+    "playerKnockBack": true,
+    "playerKnockBackStrength": 0.35,
+    "knockbackStrength": 0.8,
+    "advantage": "scguns:none",
+    "damage": 16.5,
+    "damageFalloffStart": 4.0,
+    "damageFalloffEnd": 12.0,
+    "damageFalloffMinMultiplier": 0.2,
+    "ejectsCasing": false,
+    "gravity": false,
+    "item": "scguns:grapeshot",
+    "life": 28,
+    "size": 1.0,
+    "speed": 5.0,
+    "trailLengthMultiplier": 2.0,
+    "trailThickness": 0.5
+  },
+  "reloads": {
+    "emptyMagTimer": 45,
+    "maxAmmo": 1,
+    "reloadItem": "scguns:grapeshot",
+    "reloadTimer": 45,
+    "reloadType": "scguns:mag_fed"
+  },
+  "sounds": {
+    "cock": "scguns:item.pistol.cock",
+    "enchantedFire": "scguns:item.blackpowder.fire",
+    "fire": "scguns:item.blackpowder.fire",
+    "reload": "scguns:item.gauss.reload"
+  }
+}

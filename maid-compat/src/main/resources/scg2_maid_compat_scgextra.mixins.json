@@ -1,0 +1,10 @@
+{
+  "required": false,
+  "minVersion": "0.8",
+  "package": "com.scg2tlm.elmomod.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.scg2tlm.elmomod.MaidMixinPlugin",
+  "mixins": [
+    "FactionPlayerToggleMixin"
+  ]
+}

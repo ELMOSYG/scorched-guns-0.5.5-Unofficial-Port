@@ -1,0 +1,19 @@
+{
+  "type": "scguns:mechanical_pressing",
+  "processingTime": 15,
+  "ingredients": [
+    {
+      "item": "scguns:small_copper_casing"
+    },
+    {
+      "item": "minecraft:paper"
+    },
+    {
+      "item": "scguns:buckshot"
+    }
+  ],
+  "result": {
+    "id": "scguns:shotgun_shell",
+    "count": 1
+  }
+}

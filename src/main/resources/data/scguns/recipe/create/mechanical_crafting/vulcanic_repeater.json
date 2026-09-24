@@ -1,0 +1,47 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "J": {
+      "item": "scguns:firing_unit"
+    },
+    "I": {
+      "item": "scguns:anthralite_ingot"
+    },
+    "C": {
+      "item": "scguns:gun_magazine"
+    },
+    "Q": {
+      "item": "scguns:gun_grip"
+    },
+    "A": {
+      "item": "scguns:piglin_blueprint"
+    },
+    "P": {
+      "item": "scguns:vehement_coal"
+    },
+    "G": {
+      "item": "scguns:heavy_gun_parts"
+    },
+    "S": {
+      "item": "scguns:gun_barrel"
+    },
+    "B": {
+      "item": "minecraft:crimson_planks"
+    }
+  },
+  "pattern": [
+    "JIBA",
+    "PGSS",
+    "Q C "
+  ],
+  "result": {
+    "id": "scguns:vulcanic_repeater"
+  }
+}

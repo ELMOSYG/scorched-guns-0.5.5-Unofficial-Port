@@ -1,0 +1,20 @@
+{
+  "replace": false,
+  "values": [
+    "scguns:flintlock_pistol",
+    "scguns:handcannon",
+    "scguns:musket",
+    "scguns:repeating_musket",
+    "scguns:blunderbuss",
+    "scguns:doublet",
+    "scguns:longarm",
+    "scguns:fencer_thumper",
+    "scguns:fencer_carabine",
+    "scguns:nervepinch",
+    "scguns:venturi",
+    "scguns:umax_pistol",
+    "scguns:gale",
+    "scguns:scratches",
+    "scguns:niami"
+  ]
+}

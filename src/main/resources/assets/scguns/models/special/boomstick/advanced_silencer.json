@@ -1,0 +1,68 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"1": "scguns:item/boomstick",
+		"particle": "scguns:item/boomstick"
+	},
+	"elements": [
+		{
+			"name": "Barrel",
+			"from": [6, 3.175, -1.09375],
+			"to": [10, 5.175, -0.09375],
+			"rotation": {"angle": 0, "axis": "y", "origin": [9.25, 3.425, 8.41875]},
+			"faces": {
+				"north": {"uv": [6.25, 7, 7.25, 7.5], "texture": "#1"},
+				"east": {"uv": [1.5, 4.5, 1.75, 5], "texture": "#1"},
+				"south": {"uv": [0, 7.25, 1, 7.75], "texture": "#1", "cullface": "south"},
+				"west": {"uv": [2.75, 5, 3, 5.5], "texture": "#1"},
+				"up": {"uv": [9.5, 1.25, 8.5, 1], "texture": "#1"},
+				"down": {"uv": [9.5, 1.25, 8.5, 1.5], "texture": "#1"}
+			}
+		},
+		{
+			"name": "Barrel",
+			"from": [5.75, 2.925, -0.09375],
+			"to": [10.25, 5.425, 5.90625],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8.75, 3.175, 12.41875]},
+			"faces": {
+				"north": {"uv": [2.75, 5.5, 3.875, 6.125], "texture": "#1"},
+				"east": {"uv": [3, 4.75, 4.5, 5.375], "texture": "#1"},
+				"south": {"uv": [4, 5.5, 5.125, 6.125], "texture": "#1", "cullface": "south"},
+				"west": {"uv": [4.5, 4.75, 6, 5.375], "texture": "#1"},
+				"up": {"uv": [4.125, 4.5, 3, 3], "texture": "#1"},
+				"down": {"uv": [1.125, 3.25, 0, 4.75], "texture": "#1"}
+			}
+		}
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"translation": [0.25, 6, -6.25],
+			"scale": [1.2, 1.2, 1.2]
+		},
+		"thirdperson_lefthand": {
+			"translation": [0.25, 6, -6.25],
+			"scale": [1.2, 1.2, 1.2]
+		},
+		"firstperson_righthand": {
+			"translation": [-4.25, 9, -2]
+		},
+		"firstperson_lefthand": {
+			"translation": [-4.25, 9, -2]
+		},
+		"ground": {
+			"translation": [0, 9.5, -1.75],
+			"scale": [1.3, 1.3, 1.3]
+		},
+		"gui": {
+			"rotation": [74.02, -53.34, 70.48],
+			"translation": [-1.75, 5, 0],
+			"scale": [1.1, 1.1, 1.1]
+		},
+		"fixed": {
+			"rotation": [-90, 90, 90],
+			"translation": [-3, 10.25, -1.5],
+			"scale": [2, 2, 2]
+		}
+	}
+}

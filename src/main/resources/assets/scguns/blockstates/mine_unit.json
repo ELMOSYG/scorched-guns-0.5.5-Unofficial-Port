@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "primed=false": {
+      "model": "scguns:block/mine_unit"
+    },
+    "primed=true": {
+      "model": "scguns:block/mine_unit_primed"
+    }
+  }
+}

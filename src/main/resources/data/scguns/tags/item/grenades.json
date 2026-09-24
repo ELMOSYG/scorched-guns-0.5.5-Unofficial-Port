@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "scguns:grenade",
+    "scguns:stun_grenade",
+    "scguns:molotov_cocktail",
+    "scguns:hellfire_bomb",
+    "scguns:choke_bomb",
+    "scguns:swarm_bomb",
+    "scguns:nail_bomb",
+    "scguns:gas_grenade",
+    "scguns:beacon_grenade"
+
+  ]
+}

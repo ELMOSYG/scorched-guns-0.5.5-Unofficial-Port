@@ -1,0 +1,19 @@
+{
+  "replace": false,
+  "values": [
+    "scguns:accelerator",
+    "scguns:banzai",
+    "scguns:collateral",
+    "scguns:corroded",
+    "scguns:elemental_pop",
+    "scguns:heavy_shot",
+    "scguns:hot_barrel",
+    "scguns:lightweight",
+    "scguns:puncturing",
+    "scguns:quick_hands",
+    "scguns:reclaimed",
+    "scguns:shell_catcher",
+    "scguns:trigger_finger",
+    "scguns:waterproof"
+  ]
+}

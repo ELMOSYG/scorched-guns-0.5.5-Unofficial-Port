@@ -1,0 +1,19 @@
+{
+  "type": "createaddition:charging",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "createaddition"
+    }
+  ],
+  "input": {
+    "item": "minecraft:redstone_block",
+    "count": 1
+  },
+  "result": {
+    "id": "scguns:plasma_block",
+    "count": 1
+  },
+  "energy": 26000,
+  "maxChargeRate": 2400
+}

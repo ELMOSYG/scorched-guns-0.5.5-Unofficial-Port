@@ -1,0 +1,36 @@
+{
+  "type": "immersiveengineering:crusher",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "immersiveengineering"
+    }
+  ],
+  "energy": 6000,
+  "input": {
+    "item": "scguns:anthralite_ore"
+  },
+  "result": {
+    "basePredicate": {
+      "item": "scguns:anthralite_dust"
+    },
+    "count": 2
+  },
+  "secondaries": [
+    {
+      "chance": 0.1,
+      "conditions": [
+        {
+          "type": "neoforge:not",
+          "value": {
+            "type": "neoforge:tag_empty",
+            "tag": "c:dusts/nickel"
+          }
+        }
+      ],
+      "output": {
+        "tag": "c:dusts/nickel"
+      }
+    }
+  ]
+}

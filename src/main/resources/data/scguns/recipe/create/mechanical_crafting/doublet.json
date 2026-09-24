@@ -1,0 +1,35 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "C": {
+      "tag": "minecraft:planks"
+    },
+    "L": {
+      "item": "minecraft:flint"
+    },
+    "R": {
+      "item": "minecraft:cobblestone"
+    },
+    "S": {
+      "item": "scguns:stone_gun_barrel"
+    },
+    "O": {
+      "item": "minecraft:stone"
+    }
+  },
+  "pattern": [
+    "  OS",
+    "LROS",
+    "C C "
+  ],
+  "result": {
+    "id": "scguns:doublet"
+  }
+}

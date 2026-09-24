@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "scguns:raw_anthralite_block"
+    }
+  ],
+  "result": {
+    "id": "scguns:raw_anthralite",
+    "count": 9
+  }
+}

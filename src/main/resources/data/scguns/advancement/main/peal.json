@@ -1,0 +1,39 @@
+{
+  "parent": "scguns:main/craft_macerator",
+  "criteria": {
+    "peal": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "scguns:peal"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "scguns.advancement.peal.desc"
+    },
+    "frame": "task",
+    "hidden": false,
+    "icon": {
+      "count": 1,
+      "id": "scguns:peal"
+    },
+    "show_toast": true,
+    "title": {
+      "translate": "scguns.advancement.peal"
+    }
+  },
+  "requirements": [
+    [
+      "peal"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

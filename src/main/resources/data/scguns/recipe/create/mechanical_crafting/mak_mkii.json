@@ -1,0 +1,44 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "Q": {
+      "item": "scguns:gun_grip"
+    },
+    "C": {
+      "item": "minecraft:iron_ingot"
+    },
+    "L": {
+      "item": "scguns:rapid_firing_unit"
+    },
+    "R": {
+      "item": "scguns:gun_parts"
+    },
+    "S": {
+      "item": "scguns:gun_barrel"
+    },
+    "X": {
+      "item": "scguns:gun_magazine"
+    },
+    "V": {
+      "item": "scguns:treated_iron_gun_frame"
+    },
+    "P": {
+      "item": "scguns:wrecker_blueprint"
+    }
+  },
+  "pattern": [
+    "CVP",
+    "LRS",
+    "Q X"
+  ],
+  "result": {
+    "id": "scguns:mak_mkii"
+  }
+}

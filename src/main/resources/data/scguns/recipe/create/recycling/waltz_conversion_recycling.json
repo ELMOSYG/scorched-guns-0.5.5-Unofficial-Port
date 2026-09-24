@@ -1,0 +1,45 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:waltz_conversion"
+    }
+  ],
+  "processingTime": 250,
+  "results": [
+    {
+      "id": "scguns:treated_brass_ingot",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:treated_brass_ingot",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:firing_unit",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:heavy_gun_parts",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:gun_barrel",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:energy_core",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:gun_magazine",
+      "chance": 0.3
+    }
+  ]
+}

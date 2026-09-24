@@ -1,0 +1,22 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "ammo",
+  "ingredients": [
+    {
+      "item": "scguns:pebbles"
+    },
+    {
+      "item": "scguns:pebbles"
+    },
+    {
+      "item": "scguns:pebbles"
+    },
+    {
+      "item": "scguns:pebbles"
+    }
+  ],
+  "result": {
+    "id": "minecraft:gravel",
+    "count": 1
+  }
+}

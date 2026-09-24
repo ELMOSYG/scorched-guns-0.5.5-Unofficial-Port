@@ -1,0 +1,162 @@
+package com.scg2tlm.elmomod.mixin;
+
+import com.github.tartaricacid.touhoulittlemaid.api.entity.IMaid;
+import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.AnimationManager;
+import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.condition.ConditionManager;
+import com.github.tartaricacid.touhoulittlemaid.client.animation.gecko.condition.ConditionTAC;
+import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.github.tartaricacid.touhoulittlemaid.client.entity.GeckoMaidEntity;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.PlayState;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.AnimationBuilder;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.builder.ILoopType;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.core.event.predicate.AnimationEvent;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.file.AnimationFile;
+import com.github.tartaricacid.touhoulittlemaid.geckolib3.resource.GeckoLibCache;
+import com.scg2tlm.elmomod.compat.SC2GunCompat;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.item.ItemStack;
+import top.ribs.scguns.item.GunItem;
+import org.apache.commons.lang3.StringUtils;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+@Mixin(AnimationManager.class)
+public class AnimationManagerMixin {
+
+    @Inject(method = "predicateUse", at = @At("HEAD"), cancellable = true, remap = false)
+    private void onPredicateUse(AnimationEvent<GeckoMaidEntity<?>> event, CallbackInfoReturnable<PlayState> cir) {
+        GeckoMaidEntity<?> animatable = event.getAnimatableEntity();
+        if (animatable == null) return;
+        IMaid maid = animatable.getMaid();
+        if (maid == null) return;
+        if (maid.asEntity().isUsingItem() && maid.asEntity().getUseItem().getItem() instanceof GunItem) {
+            cir.setReturnValue(PlayState.STOP);
+        }
+    }
+
+    @Inject(method = "predicateMain", at = @At("HEAD"), cancellable = true, remap = false)
+    private void onPredicateMain(AnimationEvent<GeckoMaidEntity<?>> event, CallbackInfoReturnable<PlayState> cir) {
+        GeckoMaidEntity<?> animatable = event.getAnimatableEntity();
+        if (animatable == null) return;
+        IMaid maid = animatable.getMaid();
+        if (maid == null) return;
+        Mob entity = maid.asEntity();
+        if (entity == null) return;
+
+        ItemStack stack = entity.getMainHandItem();
+        if (!SC2GunCompat.isSC2Gun(stack) || !(stack.getItem() instanceof GunItem)) return;
+
+        if (entity.isSleeping() || (entity instanceof EntityMaid maidEntity && maidEntity.isMaidInSittingPose()) || entity.isPassenger() || entity.isSwimming()) {
+            return;
+        }
+
+        ResourceLocation modelId = animatable.getAnimationFileLocation();
+        AnimationFile animationFile = GeckoLibCache.getInstance().getAnimations().get(modelId);
+        if (animationFile == null) return;
+
+        boolean isMoving = entity.onGround() && Math.abs(event.getLimbSwingAmount()) > 0.05f;
+        String animName = isMoving ? "tac:walk" : "tac:idle";
+        if (animationFile.animations().containsKey(animName)) {
+            event.getController().setAnimation(new AnimationBuilder().addAnimation(animName, ILoopType.EDefaultLoopTypes.LOOP));
+            cir.setReturnValue(PlayState.CONTINUE);
+        }
+    }
+
+    @Inject(method = "predicateMainhandHold", at = @At("HEAD"), cancellable = true, remap = false)
+    private void onPredicateMainhandHold(AnimationEvent<GeckoMaidEntity<?>> event, CallbackInfoReturnable<PlayState> cir) {
+        GeckoMaidEntity<?> animatable = event.getAnimatableEntity();
+        if (animatable == null) return;
+        IMaid maid = animatable.getMaid();
+        if (maid == null) return;
+
+        Mob entity = maid.asEntity();
+        ItemStack stack = entity.getMainHandItem();
+
+        if (!SC2GunCompat.isSC2Gun(stack) || !(stack.getItem() instanceof GunItem)) return;
+
+        // ★ 正在「使用物品」时让位给使用动画 —— 但举盾格挡除外。
+        //
+        // TLM 自己的 predicateMainhandHold 用 `!isUsingItem()` 跳过整段枪持动画；
+        // 我们没有这条守卫时，吃东西会出现「use 控制器播吃东西 + hold 控制器播 tac:hold:rifle」叠加。
+        // 但照搬这条守卫又会把「举盾」一起让掉（举盾同样是 startUsingItem(OFF_HAND)），
+        // 表现就是女仆一挡子弹，持枪姿势就没了。
+        //
+        // 判据统一放在 SC2GunCompat#isBusyUsingItem（吃东西/用治疗品 = 忙；举盾 = 不忙），
+        // 攻击任务用的是同一套，避免两处逻辑分叉。
+        if (SC2GunCompat.isBusyUsingItem(entity)) return;
+
+        String animType = SC2GunCompat.getAnimationGunType(stack);
+        boolean isInCombat = ((EntityMaid) entity).isSwingingArms();
+
+        boolean isFiring = false;
+        boolean isReloading = false;
+        boolean isMelee = false;
+        if (entity instanceof EntityMaid maidEntity) {
+            CompoundTag syncData = ((EntityMaidTaskDataInvoker) maidEntity).invokeGetSyncTaskData();
+            if (syncData != null) {
+                isFiring = syncData.getBoolean("scg2tlm:firing");
+                isReloading = syncData.getBoolean("scg2tlm:reloading");
+                isMelee = syncData.getBoolean("scg2tlm:melee");
+            }
+        }
+
+        if (entity.isSleeping() || entity.isPassenger() || entity.isSwimming()) {
+            return;
+        }
+
+        ResourceLocation modelId = animatable.getAnimationFileLocation();
+        AnimationFile animationFile = GeckoLibCache.getInstance().getAnimations().get(modelId);
+
+        String prefix;
+        if (isReloading && !SC2GunCompat.isMinigunGun(stack)) {
+            prefix = "tac:reload:";
+            String reloadAnim = prefix + animType;
+            if (animationFile == null || !animationFile.animations().containsKey(reloadAnim)) {
+                prefix = "tac:hold:";
+            }
+        } else if (isMelee) {
+            prefix = "tac:melee:";
+            String meleeAnim = prefix + animType;
+            if (animationFile == null || !animationFile.animations().containsKey(meleeAnim)) {
+                prefix = "tac:hold:";
+            }
+        } else if (isFiring) {
+            prefix = isInCombat ? "tac:aim:fire:" : "tac:hold:fire:";
+        } else if (entity.onGround() && entity.isSprinting()) {
+            prefix = "tac:run:";
+        } else if (entity.onGround() && isInCombat && !isFiring) {
+            prefix = "tac:aim:";
+        } else {
+            prefix = "tac:hold:";
+        }
+
+        ILoopType loopType = ILoopType.EDefaultLoopTypes.LOOP;
+
+        ConditionTAC conditionTAC = ConditionManager.getTAC(modelId);
+        if (conditionTAC != null) {
+            String name = conditionTAC.doTest(stack, prefix);
+            if (StringUtils.isNoneBlank(name)) {
+                SC2GunCompat.setAnimOnce(event.getController(), name, loopType);
+                cir.setReturnValue(PlayState.CONTINUE);
+                return;
+            }
+        }
+
+        String animName;
+        if (SC2GunCompat.isMinigunGun(stack)) {
+            animName = prefix.substring(0, prefix.length() - 1) + "$tacz:minigun";
+            if (animationFile != null && animationFile.animations().containsKey(animName)) {
+                SC2GunCompat.setAnimOnce(event.getController(), animName, loopType);
+                cir.setReturnValue(PlayState.CONTINUE);
+                return;
+            }
+        }
+        animName = prefix + animType;
+        SC2GunCompat.setAnimOnce(event.getController(), animName, loopType);
+        cir.setReturnValue(PlayState.CONTINUE);
+    }
+}

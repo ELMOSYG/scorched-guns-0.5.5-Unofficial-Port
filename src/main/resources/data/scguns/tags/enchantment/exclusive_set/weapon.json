@@ -1,0 +1,9 @@
+{
+  "replace": false,
+  "values": [
+    "scguns:banzai",
+    "scguns:elemental_pop",
+    "scguns:gun_rust",
+    "scguns:lightweight"
+  ]
+}

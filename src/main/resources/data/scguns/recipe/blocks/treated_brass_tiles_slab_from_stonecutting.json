@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "scguns:treated_brass_tiles"
+  },
+  "result": {
+    "id": "scguns:treated_brass_tiles_slab",
+    "count": 2
+  }
+}

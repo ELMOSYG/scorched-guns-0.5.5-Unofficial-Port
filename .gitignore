@@ -1,0 +1,65 @@
+### Gradle ###
+.gradle
+build/
+!gradle/wrapper/gradle-wrapper.jar
+!**/src/**/build/
+
+### IntelliJ IDEA ###
+.idea/
+*.iws
+*.iml
+*.ipr
+out/
+!**/src/**/out/
+
+.run/
+
+### Eclipse ###
+.apt_generated
+.classpath
+.eclipse/
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+bin/
+!**/src/**/bin/
+
+### VS Code ###
+.vscode/
+
+### Mac OS ###
+.DS_Store
+
+### Minecraft Modding ###
+run/
+!**/src/**/run/
+**/src/generated/**/.cache/
+repo/
+!**/src/**/repo/
+
+### Local reference sources (regenerable, see HANDOFF.md section 9) ###
+.refs/
+
+### Python tooling ###
+__pycache__/
+*.pyc
+
+### Third-party jars - belong to their own authors, never published ###
+### (see NOTICE section 5 and libs/README.md for where to get them)      ###
+libs/*.jar
+maid-compat/libs/*.jar
+libs-compile/*.jar
+准备的前置/
+需要移植的mod/
+
+### Build logs: only the curated evidence logs are published (see HANDOFF.md section 2) ###
+build-logs/*
+!build-logs/WORKER_BRIEF.md
+!build-logs/JEI19_NOTES.md
+!build-logs/build-final.txt
+!build-logs/server-final.txt
+!build-logs/floor-compile.txt
+!build-logs/floor-server.txt
+

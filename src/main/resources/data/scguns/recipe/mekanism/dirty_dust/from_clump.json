@@ -1,0 +1,17 @@
+{
+  "type": "mekanism:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "mekanism"
+    }
+  ],
+  "input": {
+    "count": 1,
+    "item": "scguns:clump_anthralite"
+  },
+  "output": {
+    "count": 1,
+    "id": "scguns:dirty_dust_anthralite"
+  }
+}

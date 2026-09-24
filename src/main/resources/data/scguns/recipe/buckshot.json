@@ -1,0 +1,25 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "tag": "c:gunpowder"
+    },
+    {
+      "tag": "scguns:stan_bullet_tips"
+    },
+    {
+      "tag": "scguns:stan_bullet_tips"
+    },
+    {
+      "tag": "scguns:stan_bullet_tips"
+    },
+    {
+      "tag": "scguns:stan_bullet_tips"
+    }
+  ],
+  "result": {
+    "id": "scguns:buckshot",
+    "count": 6
+  }
+}

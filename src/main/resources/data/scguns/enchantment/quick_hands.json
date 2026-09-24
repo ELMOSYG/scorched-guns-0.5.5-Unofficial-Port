@@ -1,0 +1,23 @@
+{
+  "description": {
+    "translate": "enchantment.scguns.quick_hands"
+  },
+  "supported_items": "#scguns:enchantable/guns",
+  "primary_items": "#scguns:enchantable/guns",
+  "weight": 5,
+  "max_level": 2,
+  "min_cost": {
+    "base": 1,
+    "per_level_above_first": 10
+  },
+  "max_cost": {
+    "base": 51,
+    "per_level_above_first": 10
+  },
+  "anvil_cost": 2,
+  "slots": [
+    "mainhand"
+  ],
+  "effects": {},
+  "exclusive_set": "#scguns:exclusive_set/reload"
+}

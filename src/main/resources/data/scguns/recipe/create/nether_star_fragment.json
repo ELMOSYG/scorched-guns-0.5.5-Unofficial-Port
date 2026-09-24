@@ -1,0 +1,26 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "minecraft:nether_star"
+    }
+  ],
+  "processingTime": 100,
+  "results": [
+    {
+      "id": "scguns:nether_star_fragment",
+      "count": 4
+    },
+    {
+      "id": "scguns:nether_star_fragment",
+      "count": 1,
+      "chance": 0.15
+    }
+  ]
+}

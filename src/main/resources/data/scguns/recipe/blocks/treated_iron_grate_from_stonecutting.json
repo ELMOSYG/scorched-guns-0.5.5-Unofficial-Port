@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "scguns:treated_iron_block"
+  },
+  "result": {
+    "id": "scguns:treated_iron_grate",
+    "count": 16
+  }
+}

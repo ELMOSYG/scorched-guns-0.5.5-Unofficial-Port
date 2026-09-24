@@ -1,0 +1,24 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "throwable",
+  "key": {
+    "X": {
+      "item": "scguns:flechette"
+    },
+    "Q": {
+      "tag": "c:glass"
+    },
+    "S": {
+      "item": "minecraft:gunpowder"
+    }
+  },
+  "pattern": [
+    " X ",
+    "XSX",
+    " Q "
+  ],
+  "result": {
+    "id": "scguns:nail_bomb",
+    "count": 2
+  }
+}

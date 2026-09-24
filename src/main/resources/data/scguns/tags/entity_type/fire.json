@@ -1,0 +1,16 @@
+{
+  "values": [
+    "minecraft:blaze",
+    "minecraft:ghast",
+    "minecraft:hoglin",
+    "minecraft:husk",
+    "minecraft:magma_cube",
+    "minecraft:piglin",
+    "minecraft:piglin_brute",
+    "scguns:hornlin",
+    "scguns:zombified_hornlin",
+    "scguns:mother_ghast",
+    "minecraft:strider",
+    "minecraft:wither_skeleton"
+  ]
+}

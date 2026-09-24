@@ -1,0 +1,29 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.scg2tlm.elmomod.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "plugin": "com.scg2tlm.elmomod.MaidMixinPlugin",
+  "client": [
+    "AnimationManagerMixin",
+    "AttachmentScreenRateMixin",
+    "GeckoModelLoaderMixin",
+    "GunBaseAnimationMixin",
+    "TacCompatMixin",
+    "HealingBandageAccessor"
+  ],
+  "mixins": [
+    "AIGunEventLeadMixin",
+    "EntityMaidShieldAccessor",
+    "EntityMaidShieldMixin",
+    "EntityMaidTaskDataInvoker",
+    "GunAttackGoalMixin",
+    "GunnerMobSpawnerMixin",
+    "MaidAttackStrafingTaskMixin",
+    "MaidPickupEntitiesTaskMixin",
+    "PolarGeneratorBlockEntityMixin",
+    "ProjectileEntityMixin",
+    "ProjectileFactionFriendlyFireMixin",
+    "LightningProjectileEntityMixin"
+  ]
+}

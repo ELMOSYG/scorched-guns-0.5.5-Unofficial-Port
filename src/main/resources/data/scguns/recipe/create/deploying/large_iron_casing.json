@@ -1,0 +1,23 @@
+{
+  "type": "create:deploying",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "tag": "c:ingots/iron"
+    },
+    {
+      "item": "scguns:large_casing_mold"
+    }
+  ],
+  "results": [
+    {
+      "id": "scguns:large_iron_casing",
+      "count": 6
+    }
+  ]
+}

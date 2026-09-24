@@ -1,0 +1,80 @@
+plugins {
+    id 'java-library'
+    // The ModDevGradle plugin and its version are already declared by the root build.
+    id 'net.neoforged.moddev'
+}
+
+version = '1.0.8'
+group = 'com.scg2tlm'
+
+base {
+    archivesName = "scg2_maid_compat-neoforge-${minecraft_version}"
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+
+neoForge {
+    version = project.neo_version
+
+    parchment {
+        mappingsVersion = project.parchment_mappings_version
+        minecraftVersion = project.parchment_minecraft_version
+    }
+
+    // No run configurations on purpose: this mod is only ever launched as part of the host mod's
+    // runServer/runClient, which load it from the nested jar the host build produces.
+    mods {
+        scg2_maid_compat {
+            sourceSet(sourceSets.main)
+        }
+    }
+}
+
+repositories {
+    flatDir {
+        dir 'libs'
+    }
+}
+
+dependencies {
+    // The host port's compiled classes. Deliberately the classes directory and not the host jar:
+    // the host jar contains this mod as a nested jar, so depending on that jar would be circular.
+    compileOnly files(rootProject.layout.buildDirectory.dir('classes/java/main'))
+    // Touhou Little Maid (the mod this compat exists for) and GeckoLib (referenced from TLM's own
+    // class signatures). Both are compile-time only - the runtime copies come from the host.
+    compileOnly fileTree('libs') { include '*.jar' }
+    compileOnly files(rootProject.file('libs/geckolib-neoforge-1.21.1-4.9.3.jar'))
+}
+
+// Expand neoforge.mods.toml, exactly like the root build does for the host mod. The identity
+// fields are literals on purpose: the shared gradle.properties ones belong to the host mod.
+var generateModMetadata = tasks.register("generateModMetadata", ProcessResources) {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : 'scg2_maid_compat',
+            mod_name               : 'Scorched Guns: Maid Compat',
+            mod_authors            : 'ELMO_SYG',
+            mod_credits            : 'ELMO_SYG',
+            mod_license            : 'GNU GPLv3',
+            mod_version            : project.version,
+            mod_description        : 'Scorched Guns maid compatibility: maids can use Scorched Guns firearms, grenades and medkits. Ported to MC 1.21.1 / NeoForge and shipped inside the Scorched Guns port.',
+    ]
+    inputs.properties replaceProperties
+    expand replaceProperties
+    from "src/main/templates"
+    into "build/generated/sources/modMetadata"
+}
+sourceSets.main.resources.srcDir generateModMetadata
+neoForge.ideSyncTask generateModMetadata
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.compilerArgs += ['-Xmaxerrs', '20000', '-nowarn']
+    // This mod compiles against the host port's compiled classes, so the host has to be compiled
+    // first. (':compileJava' is the root project's compile task; the root's jarJar configuration
+    // then nests this project's jar into the host jar.)
+    dependsOn ':compileJava'
+}

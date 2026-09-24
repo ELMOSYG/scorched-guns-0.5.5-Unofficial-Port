@@ -1,0 +1,21 @@
+{
+  "replace": false,
+  "values": [
+    "minecraft:experience_orb",
+    "minecraft:item",
+    "minecraft:area_effect_cloud",
+    "minecraft:falling_block",
+    "minecraft:tnt",
+    "minecraft:firework_rocket",
+    "minecraft:arrow",
+    "minecraft:spectral_arrow",
+    "minecraft:trident",
+    "minecraft:experience_bottle",
+    "minecraft:potion",
+    "minecraft:small_fireball",
+    "minecraft:fireball",
+    "minecraft:wither_skull",
+    "minecraft:dragon_fireball",
+    "scguns:sulfur_gas_cloud"
+  ]
+}

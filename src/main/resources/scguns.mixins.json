@@ -1,0 +1,28 @@
+{
+  "required": true,
+  "package": "top.ribs.scguns.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "plugin": "top.ribs.scguns.mixin.MixinPlugin",
+  "mixins": [
+    "common.EndPortalBlockMixin",
+    "common.ItemRarityMixin",
+    "common.LivingEntityMixin",
+    "common.SittingPhaseMixin"
+  ],
+  "client": [
+    "client.ItemInHandLayerMixin",
+    "client.LevelRendererMixin",
+    "client.MinecraftMixin",
+    "client.MixinAbstractZombieModel",
+    "client.MixinHumanoidModel",
+    "client.MixinIllagerModel",
+    "client.MixinVindicatorRenderer",
+    "client.MouseHandlerMixin",
+    "client.PlayerModelMixin",
+    "client.VehiclePoseMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

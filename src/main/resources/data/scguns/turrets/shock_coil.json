@@ -1,0 +1,17 @@
+{
+  "maxEnergy": 16000,
+  "energyPerZap": 1000,
+  "zapRange": 8.0,
+  "zapCooldown": 40,
+  "maxTargetsPerZap": 4,
+  "baseDamage": 6.0,
+  "zapSound": "scguns:item.shock.fire",
+  "statusEffects": [
+    {
+      "effect": "minecraft:slowness",
+      "duration": 60,
+      "amplifier": 1,
+      "chance": 0.35
+    }
+  ]
+}

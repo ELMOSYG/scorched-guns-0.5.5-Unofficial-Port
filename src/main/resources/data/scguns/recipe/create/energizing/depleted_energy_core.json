@@ -1,0 +1,20 @@
+{
+  "type": "create_new_age:energising",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create_new_age"
+    }
+  ],
+  "energy_needed": 6000,
+  "ingredients": [
+    {
+      "item": "scguns:depleted_energy_core"
+    }
+  ],
+  "results": [
+    {
+      "id": "scguns:energy_core"
+    }
+  ]
+}

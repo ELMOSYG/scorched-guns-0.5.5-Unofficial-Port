@@ -1,0 +1,33 @@
+{
+  "type": "create:milling",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:raw_phosphor"
+    }
+  ],
+  "processingTime": 100,
+  "results": [
+    {
+      "id": "scguns:phosphor_dust",
+      "count": 3
+    },
+    {
+      "id": "scguns:phosphor_dust",
+      "chance": 0.05
+    },
+    {
+      "id": "minecraft:blue_dye",
+      "chance": 0.03
+    },
+    {
+      "id": "scguns:sulfur_dust",
+      "chance": 0.03
+    }
+  ]
+}

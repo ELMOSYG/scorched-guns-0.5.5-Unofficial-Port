@@ -1,0 +1,14 @@
+{
+  "type": "scguns:lightning_battery",
+  "processingTime": 600,
+  "requiredEnergy": 16000,
+  "ingredients": [
+    {
+      "item": "scguns:energy_core"
+    }
+  ],
+  "result": {
+    "id": "scguns:plasma_core",
+    "count": 1
+  }
+}

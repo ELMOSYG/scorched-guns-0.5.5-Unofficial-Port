@@ -1,0 +1,51 @@
+/* Kept for reference: this temporary command is how HANDOFF 26.3 measured the spin limit without
+ * a player. It was deleted from the build (a dedicated server must not carry a debug command), so
+ * to reproduce the measurement, copy this file into
+ * src/main/java/top/ribs/scguns/event/PhysicsDebugCommand.java, add the [SCGUNS-PHYS] log line to
+ * PhysicsStructureHelper, build, and run tools/rcon_sable_spin_check.py.
+ */
+package top.ribs.scguns.event;
+
+import com.mojang.brigadier.arguments.DoubleArgumentType;
+import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.RegisterCommandsEvent;
+import top.ribs.scguns.util.PhysicsStructureHelper;
+
+@EventBusSubscriber(modid = "scguns", bus = EventBusSubscriber.Bus.GAME)
+public final class PhysicsDebugCommand {
+    private PhysicsDebugCommand() {
+    }
+
+    @SubscribeEvent
+    public static void register(RegisterCommandsEvent event) {
+        event.getDispatcher().register(
+            Commands.literal("scgunsphysdebug")
+                .requires(source -> source.hasPermission(2))
+                .then(Commands.argument("hitX", DoubleArgumentType.doubleArg())
+                    .then(Commands.argument("hitY", DoubleArgumentType.doubleArg())
+                        .then(Commands.argument("hitZ", DoubleArgumentType.doubleArg())
+                            .then(Commands.argument("forceX", DoubleArgumentType.doubleArg())
+                                .then(Commands.argument("forceY", DoubleArgumentType.doubleArg())
+                                    .then(Commands.argument("forceZ", DoubleArgumentType.doubleArg())
+                                        .executes(context -> {
+                                            Vec3 hit = new Vec3(
+                                                DoubleArgumentType.getDouble(context, "hitX"),
+                                                DoubleArgumentType.getDouble(context, "hitY"),
+                                                DoubleArgumentType.getDouble(context, "hitZ"));
+                                            Vec3 force = new Vec3(
+                                                DoubleArgumentType.getDouble(context, "forceX"),
+                                                DoubleArgumentType.getDouble(context, "forceY"),
+                                                DoubleArgumentType.getDouble(context, "forceZ"));
+                                            boolean moved = PhysicsStructureHelper.applyShotImpulse(
+                                                context.getSource().getLevel(), hit, force,
+                                                force.subtract(hit).normalize(), 1.0);
+                                            context.getSource().sendSuccess(
+                                                () -> Component.literal("impulse applied: " + moved), false);
+                                            return moved ? 1 : 0;
+                                        }))))))));
+    }
+}

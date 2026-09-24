@@ -1,0 +1,17 @@
+{
+  "type": "mekanism:enriching",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "mekanism"
+    }
+  ],
+  "input": {
+    "count": 1,
+    "item": "scguns:raw_anthralite_block"
+  },
+  "output": {
+    "count": 12,
+    "id": "scguns:anthralite_dust"
+  }
+}

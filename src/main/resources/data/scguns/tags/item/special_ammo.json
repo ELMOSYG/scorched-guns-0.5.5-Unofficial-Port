@@ -1,0 +1,13 @@
+{
+  "replace": false,
+  "values": [
+    "scguns:powder_and_ball",
+    "scguns:grapeshot",
+    "scguns:shotball",
+    "minecraft:blaze_rod",
+    "minecraft:arrow",
+    "scguns:syringe",
+    "scguns:needle",
+    "scguns:flechette"
+  ]
+}

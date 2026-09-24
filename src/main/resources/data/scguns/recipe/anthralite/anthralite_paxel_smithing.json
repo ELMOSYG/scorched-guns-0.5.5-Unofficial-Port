@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:smithing_transform",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create_ironworks"
+    }
+  ],
+  "addition": {
+    "item": "scguns:anthralite_ingot"
+  },
+  "base": {
+    "item": "create_ironworks:iron_paxel"
+  },
+  "result": {
+    "id": "scguns:anthralite_paxel"
+  },
+  "template": {
+    "item": "minecraft:leather"
+  }
+}

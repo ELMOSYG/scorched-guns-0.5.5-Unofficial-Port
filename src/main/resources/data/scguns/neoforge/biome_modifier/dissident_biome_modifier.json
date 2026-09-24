@@ -1,0 +1,10 @@
+{
+  "type": "neoforge:add_spawns",
+  "biomes": "#c:is_general",
+  "spawners": {
+    "type": "scguns:dissident",
+    "weight": 13,
+    "minCount": 1,
+    "maxCount": 1
+  }
+}

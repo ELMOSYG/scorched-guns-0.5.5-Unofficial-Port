@@ -1,0 +1,25 @@
+{
+  "type": "create:milling",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "minecraft:glowstone_dust"
+    }
+  ],
+  "processingTime": 100,
+  "results": [
+    {
+      "id": "scguns:phosphor_dust",
+      "count": 1
+    },
+    {
+      "id": "scguns:phosphor_dust",
+      "chance": 0.3
+    }
+  ]
+}

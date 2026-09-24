@@ -1,0 +1,21 @@
+{
+  "type": "create:milling",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "minecraft:gunpowder"
+    }
+  ],
+  "processingTime": 20,
+  "results": [
+    {
+      "id": "scguns:gunpowder_dust",
+      "count": 6
+    }
+  ]
+}

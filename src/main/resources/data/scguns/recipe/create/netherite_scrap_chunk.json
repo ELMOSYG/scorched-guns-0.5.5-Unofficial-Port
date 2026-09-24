@@ -1,0 +1,26 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "minecraft:netherite_scrap"
+    }
+  ],
+  "processingTime": 100,
+  "results": [
+    {
+      "id": "scguns:netherite_scrap_chunk",
+      "count": 9
+    },
+    {
+      "id": "scguns:netherite_scrap_chunk",
+      "count": 1,
+      "chance": 0.15
+    }
+  ]
+}

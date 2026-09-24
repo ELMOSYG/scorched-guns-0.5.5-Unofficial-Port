@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "Q": {
+      "item": "minecraft:blaze_powder"
+    },
+    "X": {
+      "item": "scguns:empty_tank"
+    }
+  },
+  "pattern": [
+    "   ",
+    "QXQ",
+    " Q "
+  ],
+  "result": {
+    "id": "scguns:blaze_fuel"
+  }
+}

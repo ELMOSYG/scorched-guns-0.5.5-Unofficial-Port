@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:entity",
+  "pools": [
+    {
+      "bonus_rolls": 0.0,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "functions": [
+            {
+              "function": "minecraft:enchanted_count_increase",
+              "enchantment": "minecraft:looting",
+              "count": {
+                "type": "minecraft:uniform",
+                "max": 1.0,
+                "min": 1.0
+              }
+            }
+          ],
+          "name": "scguns:ribs_glory"
+        }
+      ],
+      "rolls": 1.0
+    }
+  ],
+  "random_sequence": "scguns:entities/the_merchant"
+}

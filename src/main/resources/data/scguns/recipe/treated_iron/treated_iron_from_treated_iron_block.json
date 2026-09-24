@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "group": "treated_iron",
+  "ingredients": [
+    {
+      "item": "scguns:treated_iron_block"
+    }
+  ],
+  "result": {
+    "id": "scguns:treated_iron_ingot",
+    "count": 9
+  }
+}

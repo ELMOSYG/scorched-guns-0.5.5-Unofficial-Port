@@ -1,0 +1,45 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:earths_corpse"
+    }
+  ],
+  "processingTime": 250,
+  "results": [
+    {
+      "id": "scguns:scorched_ingot",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:scorched_ingot",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:rapid_firing_unit",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:heavy_gun_parts",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:heavy_gun_barrel",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:gun_barrel",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:gun_magazine",
+      "chance": 0.3
+    }
+  ]
+}

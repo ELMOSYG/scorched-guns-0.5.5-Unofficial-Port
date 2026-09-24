@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "scguns:cut_treated_iron"
+  },
+  "result": {
+    "id": "scguns:cut_treated_iron_stairs",
+    "count": 1
+  }
+}

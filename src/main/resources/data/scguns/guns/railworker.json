@@ -1,0 +1,75 @@
+{
+  "display": {
+
+  },
+  "general": {
+    "weaponType": "pistol",
+    "fireMode": "scguns:semi_automatic",
+    "gripType": "scguns:one_handed",
+    "rate": 4,
+    "meleeDamage": 3.0,
+    "meleeCooldownTicks": 10,
+    "meleeReach": 2.5,
+    "hotBarrelRate": 10,
+    "isSilenced": true,
+    "enableGunLight": false
+  },
+  "modules": {
+    "attachments": {
+      "scope": {
+        "size": 0.7,
+        "yOffset": 6.5,
+        "zOffset": 3.5
+      },
+      "magazine": {
+        "scale": 0.0
+      },
+      "stock": {
+        "scale": 0.0
+      }
+    },
+    "zoom": {
+      "fovModifier": 0.6,
+      "yOffset": 6.7,
+      "zOffset": -1.25
+    }
+  },
+  "projectile": {
+    "advantage": "scguns:bot",
+    "energyUse": 20.0,
+    "recoilAngle": 1.0,
+    "recoilKick": 1.2,
+    "spread": 2.0,
+    "criticalChance": 0.05,
+    "damage": 6.5,
+    "damageFalloffStart": 12.0,
+    "damageFalloffEnd": 30.0,
+    "damageFalloffMinMultiplier": 0.45,
+    "armorPen": 0.0,
+    "gravity": true,
+    "item": "scguns:needle",
+    "ejectsCasing": false,
+    "life": 45,
+    "size": 0.05,
+    "speed": 6.0,
+    "trailLengthMultiplier": 2.0,
+    "impactEffect": "scguns:lacerated",
+    "impactEffectDuration": 300,
+    "impactEffectChance": 0.6,
+    "impactEffectAmplifier": 0
+  },
+  "reloads": {
+    "emptyMagTimer": 10,
+    "maxAmmo": 12,
+    "reloadItem": "scguns:needle",
+    "reloadTimer": 20,
+    "reloadType": "scguns:mag_fed"
+  },
+  "sounds": {
+    "cock": "scguns:item.pistol.cock",
+    "enchantedFire": "scguns:item.rail.fire",
+    "fire": "scguns:item.rail.fire",
+    "reload": "scguns:item.gauss.reload",
+    "flyby": "scguns:bullet.flyby1"
+  }
+}

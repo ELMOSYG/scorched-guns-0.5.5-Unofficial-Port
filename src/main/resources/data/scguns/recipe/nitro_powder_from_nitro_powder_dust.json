@@ -1,0 +1,37 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "ammo",
+  "ingredients": [
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    }
+  ],
+  "result": {
+    "id": "scguns:nitro_powder",
+    "count": 1
+  }
+}

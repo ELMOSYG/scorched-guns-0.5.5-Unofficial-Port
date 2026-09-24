@@ -1,0 +1,46 @@
+{
+  "entries": [
+    {
+      "enum": "net/minecraft/world/inventory/RecipeBookType",
+      "name": "SCGUNS_GUN_BENCH",
+      "constructor": "()V",
+      "parameters": []
+    },
+    {
+      "enum": "net/minecraft/client/RecipeBookCategories",
+      "name": "SCGUNS_GUN_BENCH_SEARCH",
+      "constructor": "(Ljava/util/function/Supplier;)V",
+      "parameters": {
+        "class": "top/ribs/scguns/common/recipe/ScgunsRecipeBookEnumParameters",
+        "field": "PROXY_SEARCH"
+      }
+    },
+    {
+      "enum": "net/minecraft/client/RecipeBookCategories",
+      "name": "SCGUNS_GUN_BENCH_MISC",
+      "constructor": "(Ljava/util/function/Supplier;)V",
+      "parameters": {
+        "class": "top/ribs/scguns/common/recipe/ScgunsRecipeBookEnumParameters",
+        "field": "PROXY_MISC"
+      }
+    },
+    {
+      "enum": "net/minecraft/client/RecipeBookCategories",
+      "name": "SCGUNS_GUN_BENCH_TURRET",
+      "constructor": "(Ljava/util/function/Supplier;)V",
+      "parameters": {
+        "class": "top/ribs/scguns/common/recipe/ScgunsRecipeBookEnumParameters",
+        "field": "PROXY_TURRET"
+      }
+    },
+    {
+      "enum": "net/minecraft/client/RecipeBookCategories",
+      "name": "SCGUNS_GUN_BENCH_EXO_SUIT",
+      "constructor": "(Ljava/util/function/Supplier;)V",
+      "parameters": {
+        "class": "top/ribs/scguns/common/recipe/ScgunsRecipeBookEnumParameters",
+        "field": "PROXY_EXO_SUIT"
+      }
+    }
+  ]
+}

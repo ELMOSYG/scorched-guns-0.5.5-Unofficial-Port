@@ -1,0 +1,21 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:phosphorite"
+    }
+  ],
+  "processingTime": 250,
+  "results": [
+    {
+      "id": "scguns:phosphor_dust",
+      "chance": 0.5
+    }
+  ]
+}

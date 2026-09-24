@@ -1,0 +1,39 @@
+{
+  "type": "create:mixing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "heatRequirement": "heated",
+  "ingredients": [
+    [
+      {
+        "item": "minecraft:iron_ingot"
+      },
+      {
+        "item": "minecraft:raw_iron"
+      }
+    ],
+    {
+      "tag": "c:dusts/saltpeter"
+    },
+    {
+      "item": "minecraft:charcoal"
+    },
+    {
+      "item": "minecraft:flint"
+    }
+  ],
+  "results": [
+    {
+      "id": "scguns:treated_iron_blend",
+      "count": 3
+    },
+    {
+      "id": "scguns:treated_iron_blend",
+      "chance": 0.1
+    }
+  ]
+}

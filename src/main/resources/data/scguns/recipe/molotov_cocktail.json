@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "throwable",
+  "key": {
+    "#": {
+      "item": "minecraft:glass_bottle"
+    },
+    "X": {
+      "item": "minecraft:iron_nugget"
+    },
+    "Q": {
+      "item": "minecraft:blaze_powder"
+    },
+    "M": {
+      "item": "minecraft:string"
+    }
+  },
+  "pattern": [
+    "   ",
+    " MX",
+    " Q#"
+  ],
+  "result": {
+    "id": "scguns:molotov_cocktail",
+    "count": 2
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "C": {
+      "item": "scguns:gun_grip"
+    },
+    "L": {
+      "item": "scguns:firing_unit"
+    },
+    "R": {
+      "item": "scguns:gun_magazine"
+    },
+    "S": {
+      "item": "scguns:stone_gun_barrel"
+    },
+    "M": {
+      "tag": "minecraft:planks"
+    },
+    "T": {
+      "item": "scguns:gun_parts"
+    }
+  },
+  "pattern": [
+    "T   ",
+    "LRSS",
+    "C M "
+  ],
+  "result": {
+    "id": "scguns:fencer_thumper"
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "Q": {
+      "item": "scguns:gun_grip"
+    },
+    "L": {
+      "item": "scguns:firing_unit"
+    },
+    "R": {
+      "item": "scguns:gun_magazine"
+    },
+    "S": {
+      "item": "scguns:stone_gun_barrel"
+    },
+    "I": {
+      "item": "scguns:gun_parts"
+    }
+  },
+  "pattern": [
+    " I   ",
+    "LRS  ",
+    "Q    "
+  ],
+  "result": {
+    "id": "scguns:longarm"
+  }
+}

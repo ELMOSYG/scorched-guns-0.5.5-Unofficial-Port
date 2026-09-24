@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "throwable",
+  "key": {
+    "#": {
+      "item": "scguns:treated_iron_ingot"
+    },
+    "X": {
+      "item": "minecraft:glass_bottle"
+    },
+    "Q": {
+      "tag": "c:dusts/sulfur"
+    },
+    "T": {
+      "tag": "c:dusts/phosphorus"
+    }
+  },
+  "pattern": [
+    " T ",
+    "QXQ",
+    " # "
+  ],
+  "result": {
+    "id": "scguns:gas_grenade",
+    "count": 2
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "immersiveengineering:metal_press",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "immersiveengineering"
+    }
+  ],
+  "energy": 2400,
+  "input": {
+    "item": "minecraft:shulker_shell"
+  },
+  "mold": "scguns:medium_casing_mold",
+  "result": {
+    "id": "scguns:shulker_casing",
+    "count": 12
+  }
+}

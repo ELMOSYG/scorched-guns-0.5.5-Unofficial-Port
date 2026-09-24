@@ -1,0 +1,10 @@
+{
+  "variants": {
+    "powered=false": {
+      "model": "scguns:block/shock_coil_unpowered"
+    },
+    "powered=true": {
+      "model": "scguns:block/shock_coil_powered"
+    }
+  }
+}

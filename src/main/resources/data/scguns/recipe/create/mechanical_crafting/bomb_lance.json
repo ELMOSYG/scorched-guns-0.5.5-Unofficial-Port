@@ -1,0 +1,38 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "Q": {
+      "tag": "minecraft:planks"
+    },
+    "X": {
+      "item": "scguns:iron_gun_frame"
+    },
+    "R": {
+      "item": "scguns:iron_bayonet"
+    },
+    "P": {
+      "item": "scguns:ocean_blueprint"
+    },
+    "K": {
+      "item": "scguns:gun_barrel"
+    },
+    "O": {
+      "item": "scguns:firing_unit"
+    }
+  },
+  "pattern": [
+    "PXRR",
+    "XQOK",
+    "Q R "
+  ],
+  "result": {
+    "id": "scguns:bomb_lance"
+  }
+}

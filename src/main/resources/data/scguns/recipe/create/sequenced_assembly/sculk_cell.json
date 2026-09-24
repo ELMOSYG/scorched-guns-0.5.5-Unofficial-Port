@@ -1,0 +1,72 @@
+{
+  "type": "create:sequenced_assembly",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredient": {
+    "item": "scguns:empty_cell"
+  },
+  "loops": 1,
+  "results": [
+    {
+      "id": "scguns:sculk_cell"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_sculk_cell"
+        },
+        [
+          {
+            "item": "scguns:peal_dust"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_sculk_cell"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_sculk_cell"
+        },
+        [
+          {
+            "tag": "scguns:stan_bullet_tips"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_sculk_cell"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_sculk_cell"
+        }
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_sculk_cell"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "scguns:unfinished_sculk_cell"
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "type": "create:sequenced_assembly",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredient": {
+    "item": "scguns:small_copper_casing"
+  },
+  "loops": 1,
+  "results": [
+    {
+      "id": "scguns:shotgun_shell"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_shotgun_shell"
+        },
+        [
+          {
+            "item": "minecraft:paper"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_shotgun_shell"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_shotgun_shell"
+        },
+        [
+          {
+            "item": "scguns:buckshot"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_shotgun_shell"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_shotgun_shell"
+        }
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_shotgun_shell"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "scguns:unfinished_shotgun_shell"
+  }
+}

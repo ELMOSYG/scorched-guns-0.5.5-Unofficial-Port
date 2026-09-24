@@ -1,0 +1,34 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "scguns:guns/grandle_og_from_gun_bench"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_blueprint": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "scguns:treated_brass_blueprint"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_blueprint"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "scguns:guns/grandle_og_from_gun_bench"
+    ]
+  }
+}

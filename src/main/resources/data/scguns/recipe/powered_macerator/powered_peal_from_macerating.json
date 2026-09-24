@@ -1,0 +1,33 @@
+{
+  "type": "scguns:powered_macerating",
+  "processingTime": 50,
+  "energyUse": 1000,
+  "ingredients": [
+    [
+      {
+        "item": "scguns:sulfur_chunk"
+      },
+      {
+        "tag": "c:dusts/sulfur"
+      }
+    ],
+    {
+      "item": "minecraft:sculk"
+    },
+    [
+      {
+        "item": "scguns:raw_phosphor"
+      },
+      {
+        "tag": "c:dusts/phosphorus"
+      }
+    ],
+    {
+      "item": "minecraft:charcoal"
+    }
+  ],
+  "result": {
+    "id": "scguns:peal",
+    "count": 10
+  }
+}

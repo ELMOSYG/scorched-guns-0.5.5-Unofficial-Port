@@ -1,0 +1,19 @@
+{
+  "type": "minecraft:smelting",
+  "category": "misc",
+  "group": "anthralite_ingot",
+  "cookingtime": 200,
+  "experience": 0.7,
+  "ingredient": {
+    "item": "scguns:crushed_raw_anthralite"
+  },
+  "result": {
+    "id": "scguns:anthralite_ingot"
+  },
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ]
+}

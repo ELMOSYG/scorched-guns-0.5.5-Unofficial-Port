@@ -1,0 +1,26 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "X": {
+      "item": "scguns:beacon_grenade"
+    },
+    "L": {
+      "item": "scguns:treated_iron_ingot"
+    },
+    "R": {
+      "item": "scguns:treated_brass_block"
+    },
+    "M": {
+      "item": "scguns:anthralite_ingot"
+    }
+  },
+  "pattern": [
+    "LXL",
+    "MRM"
+  ],
+  "result": {
+    "id": "scguns:scamp_package",
+    "count": 1
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "type": "create:sequenced_assembly",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredient": {
+    "item": "scguns:small_iron_casing"
+  },
+  "loops": 1,
+  "results": [
+    {
+      "id": "scguns:microjet"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_microjet"
+        },
+        [
+          {
+            "item": "minecraft:gunpowder"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_microjet"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_microjet"
+        },
+        [
+          {
+            "tag": "scguns:stan_bullet_tips"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_microjet"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_microjet"
+        }
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_microjet"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "scguns:unfinished_microjet"
+  }
+}

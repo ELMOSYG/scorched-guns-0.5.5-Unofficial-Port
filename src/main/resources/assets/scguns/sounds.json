@@ -1,0 +1,841 @@
+{
+  "entity.praetor.hurt": {
+    "subtitle": "subtitle.scguns.praetor.hurt",
+    "sounds": [
+      {
+        "name": "scguns:entity/praetor/hurt"
+      }
+    ]
+  },
+  "entity.praetor.die": {
+    "subtitle": "subtitle.scguns.praetor.die",
+    "sounds": [
+      {
+        "name": "scguns:entity/praetor/die"
+      }
+    ]
+  },
+  "entity.praetor.idle": {
+    "subtitle": "subtitle.scguns.praetor.idle",
+    "sounds": [
+      {
+        "name": "scguns:entity/praetor/idle"
+      }
+    ]
+  },
+  "entity.praetor.roar": {
+    "subtitle": "subtitle.scguns.praetor.roar",
+    "sounds": [
+      {
+        "name": "scguns:entity/praetor/roar"
+      }
+    ]
+  },
+  "entity.scamp.hurt": {
+    "subtitle": "subtitle.scguns.scamp.hurt",
+    "sounds": [
+      {
+        "name": "scguns:entity/scamp/hurt"
+      }
+    ]
+  },
+    "entity.scamp.die": {
+        "subtitle": "subtitle.scguns.scamp.die",
+        "sounds": [
+        {
+            "name": "scguns:entity/scamp/die"
+        }
+        ]
+    },
+  "entity.dissident.hurt": {
+    "subtitle": "subtitle.scguns.dissident.hurt",
+    "sounds": [
+      {
+        "name": "scguns:entity/dissident/hurt"
+      }
+    ]
+  },
+    "entity.dissident.die": {
+        "subtitle": "subtitle.scguns.dissident.die",
+        "sounds": [
+        {
+            "name": "scguns:entity/dissident/die"
+        }
+        ]
+    },
+  "entity.dissident.idle": {
+    "subtitle": "subtitle.scguns.dissident.idle",
+    "sounds": [
+      {
+        "name": "scguns:entity/dissident/idle"
+      }
+    ]
+  },
+  "entity.sulfurhead.hurt": {
+    "subtitle": "subtitle.scguns.sulfurhead.hurt",
+    "sounds": [
+      {
+        "name": "scguns:entity/sulfurhead/hurt"
+      }
+    ]
+  },
+    "entity.sulfurhead.die": {
+        "subtitle": "subtitle.scguns.sulfurhead.die",
+        "sounds": [
+        {
+            "name": "scguns:entity/sulfurhead/die"
+        }
+        ]
+    },
+  "entity.sulfurhead.idle": {
+    "subtitle": "subtitle.scguns.sulfurhead.idle",
+    "sounds": [
+      {
+        "name": "scguns:entity/sulfurhead/idle"
+      }
+    ]
+  },
+
+
+
+  "item.slap.slap": {
+    "subtitle": "subtitle.scguns.mag_in",
+    "sounds": [
+      {
+        "name": "scguns:item/slap/slap"
+      }
+    ]
+  },
+
+  "item.lever.lever": {
+    "subtitle": "subtitle.scguns.mag_in",
+    "sounds": [
+      {
+        "name": "scguns:item/lever/lever"
+      }
+    ]
+  },
+  "item.gun_sounds.metal": {
+    "subtitle": "subtitle.scguns.mag_in",
+    "sounds": [
+      {
+        "name": "scguns:item/gun_sounds/metal"
+      }
+    ]
+  },
+  "item.gun_sounds.pump": {
+    "subtitle": "subtitle.scguns.mag_in",
+    "sounds": [
+      {
+        "name": "scguns:item/gun_sounds/pump"
+      }
+    ]
+  },
+  "item.gun_sounds.pump_half": {
+    "subtitle": "subtitle.scguns.mag_in",
+    "sounds": [
+      {
+        "name": "scguns:item/gun_sounds/pump_half"
+      }
+    ]
+  },
+  "item.gun_sounds.hiss": {
+    "subtitle": "subtitle.scguns.mag_in",
+    "sounds": [
+      {
+        "name": "scguns:item/gun_sounds/hiss"
+      }
+    ]
+  },
+  "item.gun_sounds.insert": {
+    "subtitle": "subtitle.scguns.mag_in",
+    "sounds": [
+      {
+        "name": "scguns:item/gun_sounds/insert"
+      }
+    ]
+  },
+  "item.mag_in.mag_in": {
+    "subtitle": "subtitle.scguns.mag_in",
+    "sounds": [
+      {
+        "name": "scguns:item/mag_in/mag_in"
+      }
+    ]
+  },
+    "item.mag_out.mag_out": {
+        "subtitle": "subtitle.scguns.mag_out",
+        "sounds": [
+        {
+            "name": "scguns:item/mag_out/mag_out"
+        }
+        ]
+    },
+    "item.reload_end.reload_end": {
+        "subtitle": "subtitle.scguns.reload_end",
+        "sounds": [
+        {
+            "name": "scguns:item/reload_end/reload_end"
+        }
+        ]
+    },
+  "item.gun_rustle.gun_rustle": {
+    "subtitle": "subtitle.scguns.gun_rustle",
+    "sounds": [
+      {
+        "name": "scguns:item/gun_rustle/gun_rustle"
+      }
+    ]
+  },
+  "item.bolt_pull.bolt_pull": {
+    "subtitle": "subtitle.scguns.bolt_pull",
+    "sounds": [
+      {
+        "name": "scguns:item/bolt_pull/bolt_pull"
+      }
+    ]
+  },
+  "item.bolt_release.bolt_release": {
+    "subtitle": "subtitle.scguns.bolt_release",
+    "sounds": [
+      {
+        "name": "scguns:item/bolt_release/bolt_release"
+      }
+    ]
+  },
+  "item.bolt.bolt": {
+    "subtitle": "subtitle.scguns.bolt",
+    "sounds": [
+      {
+        "name": "scguns:item/bolt/bolt"
+      }
+    ]
+  },
+  "item.rack.rack": {
+    "subtitle": "subtitle.scguns.rack",
+    "sounds": [
+      {
+        "name": "scguns:item/rack/rack"
+      }
+    ]
+  },
+  "item.rusty_gnat.copper_jam": {
+    "subtitle": "subtitle.scguns.jam",
+    "sounds": [
+      {
+        "name": "scguns:item/rusty_gnat/copper_jam"
+      }
+    ]
+  },
+  "item.rail.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/rail/fire"
+      }
+    ]
+  },
+  "item.ping.ping": {
+    "subtitle": "subtitle.scguns.ping",
+    "sounds": [
+      {
+        "name": "scguns:item/ping/ping"
+      }
+    ]
+  },
+  "item.wither.wither": {
+    "subtitle": "subtitle.scguns.wither",
+    "sounds": [
+      {
+        "name": "scguns:item/wither/wither"
+      }
+    ]
+  },
+  "item.jetpack.fire": {
+    "subtitle": "subtitle.scguns.jetpack",
+    "sounds": [
+      {
+        "name": "scguns:item/jetpack/fire"
+      }
+    ]
+  },
+  "item.jetpack.loop": {
+    "subtitle": "subtitle.scguns.loop",
+    "sounds": [
+      {
+        "name": "scguns:item/jetpack/loop"
+      }
+    ]
+  },
+  "item.airgun.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/airgun/fire"
+      }
+    ]
+  },
+  "item.airgun.fire_2": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/airgun/fire_2"
+      }
+    ]
+  },
+  "item.carabine.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/carabine/fire"
+      }
+    ]
+  },
+  "item.new_rifle.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/new_rifle/fire"
+      }
+    ]
+  },
+  "item.new_rifle.fire_2": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/new_rifle/fire_2"
+      }
+    ]
+  },
+  "item.old_rifle.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/old_rifle/fire"
+      }
+    ]
+  },
+  "item.machine_gun.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/machine_gun/fire"
+      }
+    ]
+  },
+  "item.revolver.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/revolver/fire"
+      }
+    ]
+  },
+  "item.heavy_rifle_2.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/heavy_rifle_2/fire"
+      }
+    ]
+  },
+  "item.cowboy.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/cowboy/fire"
+      }
+    ]
+  },
+  "mass_production": {
+    "sounds": [
+      {
+        "name": "scguns:mass_production",
+        "stream": true
+      }
+    ]
+  },
+  "mass_destruction": {
+    "sounds": [
+      {
+        "name": "scguns:mass_destruction",
+        "stream": true
+      }
+    ]
+  },
+  "mass_destruction_extended": {
+    "sounds": [
+      {
+        "name": "scguns:mass_destruction_extended",
+        "stream": true
+      }
+    ]
+  },
+  "item.sculk.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/sculk/fire"
+      }
+    ]
+  },
+  "item.cannon.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/cannon/fire"
+      }
+    ]
+  },
+  "item.cannon.reload": {
+    "subtitle": "subtitle.scguns.reload",
+    "sounds": [
+      {
+        "name": "scguns:item/cannon/reload"
+      }
+    ]
+  },
+  "item.shulker.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/shulker/fire"
+      }
+    ]
+  },
+  "item.rusty_gnat.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/rusty_gnat/fire"
+      }
+    ]
+  },
+  "item.scorched_sniper.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/scorched_sniper/fire"
+      }
+    ]
+  },
+  "item.shock.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/shock/fire"
+      }
+    ]
+  },
+    "item.scorched_rifle.fire": {
+        "subtitle": "subtitle.scguns.fire",
+        "sounds": [
+        {
+            "name": "scguns:item/scorched_rifle/fire"
+        }
+        ]
+    },
+  "item.rusty_gnat.silenced_fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/rusty_gnat/silenced_fire"
+      }
+    ]
+  },
+
+  "item.boomstick.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/boomstick/fire"
+      }
+    ]
+  },
+  "item.boomstick.silenced_fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/boomstick/silenced_fire"
+      }
+    ]
+  },
+
+  "item.makeshift_rifle.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/makeshift_rifle/fire"
+      }
+    ]
+  },
+  "item.makeshift_rifle.silenced_fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/makeshift_rifle/silenced_fire"
+      }
+    ]
+  },
+
+
+  "item.makeshift_rifle.cock": {
+    "subtitle": "subtitle.scguns.cock",
+    "sounds": [
+      {
+        "name": "scguns:item/makeshift_rifle/cock"
+      }
+    ]
+  },
+  "item.bruiser.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/bruiser/fire"
+      }
+    ]
+  },
+  "item.bruiser.silenced_fire": {
+    "subtitle": "subtitle.scguns.silenced_fire",
+    "sounds": [
+      {
+        "name": "scguns:item/bruiser/silenced_fire"
+      }
+    ]
+  },
+  "item.rocket.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/rocket/fire"
+      }
+    ]
+  },
+  "item.rocket_rifle.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/rocket_rifle/fire"
+      }
+    ]
+  },
+  "item.rocket_rifle.fire_2": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/rocket_rifle/fire_2"
+      }
+    ]
+  },
+  "item.brass_revolver.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/brass_revolver/fire"
+      }
+    ]
+  },
+  "item.iron_pistol.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/iron_pistol/fire"
+      }
+    ]
+  },
+  "item.scrapper.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/scrapper/fire"
+      }
+    ]
+  },
+  "item.greaser_smg.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/greaser_smg/fire"
+      }
+    ]
+  },
+  "item.gyrojet.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/gyrojet/fire"
+      }
+    ]
+  },
+  "item.iron_rifle.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/iron_rifle/fire"
+      }
+    ]
+  },
+
+  "item.blackpowder.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/blackpowder/fire"
+      }
+    ]
+  },
+
+  "item.plasma.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/plasma/fire"
+      }
+    ]
+  },
+  "item.plasma_shotgun.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/plasma_shotgun/fire"
+      }
+    ]
+  },
+  "item.plasma.fire_2": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/plasma/fire_2"
+      }
+    ]
+  },
+  "item.raygun.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/raygun/fire"
+      }
+    ]
+  },
+
+  "item.flamethrower.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/flamethrower/fire"
+      }
+    ]
+  },
+  "item.flamethrower.fire_2": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/flamethrower/fire_2"
+      }
+    ]
+  },
+  "item.flamethrower.pre_fire": {
+    "subtitle": "subtitle.scguns.pre_fire",
+    "sounds": [
+      {
+        "name": "scguns:item/flamethrower/pre_fire"
+      }
+    ]
+  },
+  "item.flamethrower.reload": {
+    "subtitle": "subtitle.scguns.reload",
+    "sounds": [
+      {
+        "name": "scguns:item/flamethrower/reload"
+      }
+    ]
+  },
+  "item.laser.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/laser/fire"
+      }
+    ]
+  },
+  "item.laser.fire_2": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/laser/fire_2"
+      }
+    ]
+  },
+  "item.heavier_rifle.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/heavier_rifle/fire"
+      }
+    ]
+  },
+  "item.brass_shotgun.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/brass_shotgun/fire"
+      }
+    ]
+  },
+  "item.gauss.reload": {
+    "subtitle": "subtitle.scguns.reload",
+    "sounds": [
+      {
+        "name": "scguns:item/gauss/reload"
+      }
+    ]
+  },
+  "item.gauss.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/gauss/fire"
+      }
+    ]
+  },
+  "item.gauss.pre_fire": {
+    "subtitle": "subtitle.scguns.pre_fire",
+    "sounds": [
+      {
+        "name": "scguns:item/gauss/pre_fire"
+      }
+    ]
+  },
+  "item.brass_pistol.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/brass_pistol/fire"
+      }
+    ]
+  },
+  "item.heavy_rifle.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/heavy_rifle/fire"
+      }
+    ]
+  },
+  "item.combat_shotgun.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/combat_shotgun/fire"
+      }
+    ]
+  },
+  "item.combat_shotgun.silenced_fire": {
+    "subtitle": "subtitle.scguns.silenced_fire",
+    "sounds": [
+      {
+        "name": "scguns:item/combat_shotgun/silenced_fire"
+      }
+    ]
+  },
+  "item.pistol.silenced_fire": {
+    "subtitle": "subtitle.scguns.fire.silenced",
+    "sounds": [
+      {
+        "name": "scguns:item/pistol/silenced_fire"
+      }
+    ]
+  },
+  "item.pistol.enchanted_fire": {
+    "subtitle": "subtitle.scguns.fire.enchanted",
+    "sounds": [
+      {
+        "name": "scguns:item/pistol/enchanted_fire"
+      }
+    ]
+  },
+  "item.pistol.reload": {
+    "subtitle": "subtitle.scguns.reload",
+    "sounds": [
+      {
+        "name": "scguns:item/pistol/reload"
+      }
+    ]
+  },
+  "item.pistol.cock": {
+    "subtitle": "subtitle.scguns.cock",
+    "sounds": [
+      {
+        "name": "scguns:item/pistol/cock"
+      }
+    ]
+  },
+  "item.beam.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/beam/fire"
+      }
+    ]
+  },
+  "item.grenade_launcher.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/grenade_launcher/fire"
+      }
+    ]
+  },
+  "item.bazooka.fire": {
+    "subtitle": "subtitle.scguns.fire",
+    "sounds": [
+      {
+        "name": "scguns:item/bazooka/fire",
+        "stream": true
+      }
+    ]
+  },
+  "item.grenade.pin": {
+    "subtitle": "subtitle.scguns.grenade.pin",
+    "sounds": [
+      {
+        "name": "scguns:item/grenade/pin"
+      }
+    ]
+  },
+  "entity.stun_grenade.explosion": {
+    "subtitle": "subtitle.scguns.stun.explosion",
+    "sounds": [
+      {
+        "name": "scguns:entity/stun_grenade/explosion",
+        "stream": true
+      }
+    ]
+  },
+  "entity.stun_grenade.ring": {
+    "subtitle": "subtitle.scguns.stun.ring",
+    "sounds": [
+      {
+        "name": "scguns:entity/stun_grenade/ring",
+        "stream": true
+      }
+    ]
+  },
+
+  "ui.weapon.attach": {
+    "subtitle": "subtitle.scguns.attach",
+    "sounds": [
+      {
+        "name": "scguns:ui/weapon/attach"
+      }
+    ]
+  },
+  "bullet.flyby1": {
+    "subtitle": "subtitle.scguns.flyby",
+    "sounds": [
+      {
+        "name": "scguns:bullet/flyby1"
+      }
+    ]
+  }
+}

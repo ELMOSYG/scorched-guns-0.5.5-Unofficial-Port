@@ -1,0 +1,37 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:repeating_musket"
+    }
+  ],
+  "processingTime": 250,
+  "results": [
+    {
+      "id": "minecraft:flint_and_steel",
+      "chance": 0.3
+    },
+    {
+      "id": "minecraft:cobblestone",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:stone_gun_barrel",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:gun_parts",
+      "chance": 0.3
+    },
+    {
+      "id": "scguns:firing_unit",
+      "chance": 0.3
+    }
+  ]
+}

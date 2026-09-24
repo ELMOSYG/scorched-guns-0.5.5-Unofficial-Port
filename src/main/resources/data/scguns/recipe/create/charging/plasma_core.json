@@ -1,0 +1,19 @@
+{
+  "type": "createaddition:charging",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "createaddition"
+    }
+  ],
+  "input": {
+    "item": "scguns:energy_core",
+    "count": 1
+  },
+  "result": {
+    "id": "scguns:plasma_core",
+    "count": 1
+  },
+  "energy": 16000,
+  "maxChargeRate": 400
+}

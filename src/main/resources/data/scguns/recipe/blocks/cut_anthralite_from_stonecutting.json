@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "scguns:anthralite_block"
+  },
+  "result": {
+    "id": "scguns:cut_anthralite",
+    "count": 16
+  }
+}

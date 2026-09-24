@@ -1,0 +1,77 @@
+{
+  "type": "create:sequenced_assembly",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredient": {
+    "item": "scguns:anthralite_block"
+  },
+  "loops": 1,
+  "results": [
+    {
+      "id": "scguns:heavy_gun_parts",
+      "count": 2
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:cutting",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_heavy_gun_parts"
+        }
+      ],
+      "processingTime": 50,
+      "results": [
+        {
+          "id": "scguns:unfinished_heavy_gun_parts"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_heavy_gun_parts"
+        }
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_heavy_gun_parts"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_heavy_gun_parts"
+        }
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_heavy_gun_parts"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_heavy_gun_parts"
+        }
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_heavy_gun_parts"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "scguns:unfinished_heavy_gun_parts"
+  }
+}

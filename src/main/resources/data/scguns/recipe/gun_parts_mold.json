@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "scguns:blank_mold"
+  },
+  "result": {
+    "id": "scguns:gun_parts_mold",
+    "count": 1
+  }
+}

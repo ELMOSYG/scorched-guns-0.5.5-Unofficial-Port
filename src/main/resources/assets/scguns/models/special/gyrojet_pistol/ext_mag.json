@@ -1,0 +1,104 @@
+{
+	"credit": "Made with Blockbench",
+	"texture_size": [64, 64],
+	"textures": {
+		"4": "scguns:item/gyrojet_pistol",
+		"particle": "scguns:item/gyrojet_pistol"
+	},
+	"elements": [
+		{
+			"name": "octagon",
+			"from": [7.33726, -1.65, 8.7],
+			"to": [8.66274, 1.55, 11.025],
+			"rotation": {"angle": 45, "axis": "z", "origin": [8, -0.05, 10.4]},
+			"faces": {
+				"north": {"uv": [5.5, 0, 5.875, 0.75], "texture": "#4"},
+				"east": {"uv": [1.75, 0.5, 2.375, 1.25], "texture": "#4"},
+				"south": {"uv": [5.5, 2, 5.875, 2.75], "texture": "#4"},
+				"west": {"uv": [1, 2, 1.625, 2.75], "texture": "#4"},
+				"up": {"uv": [0.375, 6.875, 0, 6.25], "texture": "#4"},
+				"down": {"uv": [6.625, 3, 6.25, 3.625], "texture": "#4"}
+			}
+		},
+		{
+			"name": "octagon",
+			"from": [7.33726, -1.65, 8.69],
+			"to": [8.66274, 1.55, 11.035],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, -0.05, 10.39]},
+			"faces": {
+				"north": {"uv": [5.5, 3.75, 5.875, 4.5], "texture": "#4"},
+				"east": {"uv": [1.75, 2, 2.375, 2.75], "texture": "#4"},
+				"south": {"uv": [4.5, 5.5, 4.875, 6.25], "texture": "#4"},
+				"west": {"uv": [2.5, 0.5, 3.125, 1.25], "texture": "#4"},
+				"up": {"uv": [4.125, 6.875, 3.75, 6.25], "texture": "#4"},
+				"down": {"uv": [4.625, 6.25, 4.25, 6.875], "texture": "#4"}
+			}
+		},
+		{
+			"name": "octagon",
+			"from": [6.4, -0.71274, 8.7],
+			"to": [9.6, 0.61274, 11.025],
+			"rotation": {"angle": 45, "axis": "z", "origin": [8, -0.05, 10.4]},
+			"faces": {
+				"north": {"uv": [5.5, 4.5, 6.25, 4.875], "texture": "#4"},
+				"east": {"uv": [6.25, 4.25, 6.875, 4.625], "texture": "#4"},
+				"south": {"uv": [5, 5.5, 5.75, 5.875], "texture": "#4"},
+				"west": {"uv": [6.5, 0, 7.125, 0.375], "texture": "#4"},
+				"up": {"uv": [3.25, 1.875, 2.5, 1.25], "texture": "#4"},
+				"down": {"uv": [3.25, 2, 2.5, 2.625], "texture": "#4"}
+			}
+		},
+		{
+			"name": "octagon",
+			"from": [6.4, -0.71274, 8.689],
+			"to": [9.6, 0.61274, 11.036],
+			"rotation": {"angle": 0, "axis": "y", "origin": [8, -0.05, 10.389]},
+			"faces": {
+				"north": {"uv": [5.75, 5, 6.5, 5.375], "texture": "#4"},
+				"east": {"uv": [6.5, 1, 7.125, 1.375], "texture": "#4"},
+				"south": {"uv": [5.75, 5.5, 6.5, 5.875], "texture": "#4"},
+				"west": {"uv": [6.5, 1.5, 7.125, 1.875], "texture": "#4"},
+				"up": {"uv": [1.75, 3.375, 1, 2.75], "texture": "#4"},
+				"down": {"uv": [2.5, 2.75, 1.75, 3.375], "texture": "#4"}
+			}
+		}
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"translation": [0, 6, -5.25],
+			"scale": [1.3, 1.3, 1.3]
+		},
+		"thirdperson_lefthand": {
+			"translation": [0, 6, -5.25],
+			"scale": [1.3, 1.3, 1.3]
+		},
+		"firstperson_righthand": {
+			"translation": [-4.25, 8.75, -1.5]
+		},
+		"firstperson_lefthand": {
+			"translation": [-4.25, 8.75, -1.5]
+		},
+		"ground": {
+			"translation": [0, 9.5, -3.75],
+			"scale": [1.3, 1.3, 1.3]
+		},
+		"gui": {
+			"rotation": [74.02, -53.34, 70.48],
+			"translation": [0.5, 7.75, 0],
+			"scale": [1.3, 1.3, 1.3]
+		},
+		"fixed": {
+			"rotation": [90, 55, -90],
+			"translation": [0.25, 9, 0],
+			"scale": [1.5, 1.5, 1.5]
+		}
+	},
+	"groups": [
+		{
+			"name": "ExtMag",
+			"origin": [8, 1.7, 11.339],
+			"color": 0,
+			"children": [0, 1, 2, 3]
+		}
+	]
+}

@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "X": {
+      "tag": "c:dusts/saltpeter"
+    },
+    "Q": {
+      "item": "minecraft:orange_stained_glass"
+    }
+  },
+  "pattern": [
+    "QQQ",
+    "QXQ",
+    "QQQ"
+  ],
+  "result": {
+    "id": "scguns:orange_niter_glass",
+    "count": 8
+  }
+}

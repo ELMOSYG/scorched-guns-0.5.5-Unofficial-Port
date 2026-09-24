@@ -1,0 +1,16 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "building",
+  "key": {
+    "#": {
+      "item": "scguns:cut_diamond_steel"
+    }
+  },
+  "pattern": [
+    "###"
+  ],
+  "result": {
+    "id": "scguns:cut_diamond_steel_slab",
+    "count": 6
+  }
+}

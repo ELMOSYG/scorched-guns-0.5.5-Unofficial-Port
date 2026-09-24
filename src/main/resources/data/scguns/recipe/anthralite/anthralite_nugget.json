@@ -1,0 +1,13 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "scguns:anthralite_ingot"
+    }
+  ],
+  "result": {
+    "id": "scguns:anthralite_nugget",
+    "count": 9
+  }
+}

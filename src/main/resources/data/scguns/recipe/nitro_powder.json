@@ -1,0 +1,37 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "ingredients": [
+    {
+      "item": "scguns:netherite_scrap_chunk"
+    },
+    {
+      "item": "scguns:netherite_scrap_chunk"
+    },
+    {
+      "item": "scguns:netherite_scrap_chunk"
+    },
+    {
+      "item": "scguns:netherite_scrap_chunk"
+    },
+    {
+      "tag": "c:dusts/saltpeter"
+    },
+    {
+      "tag": "c:dusts/phosphorus"
+    },
+    {
+      "item": "minecraft:gunpowder"
+    },
+    {
+      "item": "scguns:peal"
+    },
+    {
+      "item": "scguns:sheol"
+    }
+  ],
+  "result": {
+    "id": "scguns:nitro_powder",
+    "count": 9
+  }
+}

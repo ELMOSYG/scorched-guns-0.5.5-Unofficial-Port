@@ -1,0 +1,29 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "key": {
+    "Q": {
+      "tag": "minecraft:wooden_slabs"
+    },
+    "L": {
+      "tag": "c:dusts/saltpeter"
+    },
+    "R": {
+      "item": "minecraft:tnt"
+    },
+    "X": {
+      "tag": "c:dusts/phosphorus"
+    },
+    "P": {
+      "item": "scguns:buckshot"
+    }
+  },
+  "pattern": [
+    "QXQ",
+    "PRP",
+    "QLQ"
+  ],
+  "result": {
+    "id": "scguns:powder_keg",
+    "count": 2
+  }
+}

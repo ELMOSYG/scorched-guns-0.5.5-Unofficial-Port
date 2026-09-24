@@ -1,0 +1,72 @@
+{
+  "type": "create:sequenced_assembly",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredient": {
+    "item": "scguns:small_iron_casing"
+  },
+  "loops": 1,
+  "results": [
+    {
+      "id": "scguns:ramrod_round"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_ramrod_round"
+        },
+        [
+          {
+            "item": "scguns:peal_dust"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_ramrod_round"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_ramrod_round"
+        },
+        [
+          {
+            "tag": "scguns:advanced_bullet_tips"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_ramrod_round"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_ramrod_round"
+        }
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_ramrod_round"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "scguns:unfinished_ramrod_round"
+  }
+}

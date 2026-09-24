@@ -1,0 +1,76 @@
+NOTICE — third-party content, credits and licenses
+==================================================
+
+This repository is an UNOFFICIAL port of Scorched Guns to Minecraft 1.21.1 / NeoForge. It is not
+affiliated with, endorsed by, or supported by the original author. Do not report bugs of this port to
+the original author.
+
+
+1. Scorched Guns (upstream)
+---------------------------
+
+    Mod:      Scorched Guns 0.5.5 for Minecraft 1.20.1 (Forge 47.x)
+    Author:   ribs
+    Credits:  MrCrayfish, Ribs
+    License:  GNU GPLv3 (as declared in the upstream jar: META-INF/mods.toml, license="GNU GPLv3")
+
+All game content in this repository — code, models, textures, animations, sounds, lang files, data
+(recipes, loot tables, tags, structures), advancement trees, gun definitions and every asset under
+src/main/resources — originates from that release. The port modifies the code for 1.21.1 / NeoForge
+and adds new files (compatibility layers, data generation output, audits, tooling and documentation).
+
+Because the upstream mod is GPL-3.0, this port is licensed under the same terms (see LICENSE) and its
+complete corresponding source is this repository. Modifications are documented file by file in
+HANDOFF.md.
+
+2. Sounds
+---------
+
+    assets/scguns/sounds/**  —  Creative Commons 0 (public domain)
+    See the upstream notice: assets/scguns/sounds/SOUND-LICENSE.txt
+                               https://creativecommons.org/publicdomain/zero/1.0/
+
+3. Simplified Chinese translation
+---------------------------------
+
+    assets/scguns/lang/zh_cn.json
+
+The Chinese translation was supplied by a community translation resource pack (author of the pack:
+see the "Scorched Guns 汉化" pack the port's author uses). If you are the translator and want a
+different credit line, or want the file removed, open an issue and it will be changed or dropped.
+The port's English strings match the upstream en_us.json key set exactly, so nothing was reworded.
+
+4. Maid compatibility (nested mod)
+----------------------------------
+
+    maid-compat/  —  mod id "scg2_maid_compat", "Scorched Guns: Maid Compat"
+    Author:   ELMO_SYG (author of this port)
+    Origin:   ported from a Minecraft 1.20.1 addon of the same name, recompiled against this port
+
+It is built and shipped as a nested jar inside scguns-0.5.5.jar (META-INF/jarjar/). It stays inactive
+unless Touhou Little Maid is installed.
+
+5. Dependencies — NOT redistributed in this repository
+------------------------------------------------------
+
+The jars in libs/, maid-compat/libs/ and libs-compile/ belong to their respective authors and are
+deliberately excluded from version control. To build this port you must obtain them yourself; see
+libs/README.md. Required at runtime:
+
+    Framework           MrCrayfish        license: see its own project
+    GeckoLib            GeckoLib team     license: see its own project (MIT at the time of writing)
+    Curios API          TheIllusiveC4     license: see its own project (LGPL-3.0 at the time of writing)
+
+Optional integrations, used only when the player has them installed:
+
+    Just Enough Items, Create, Create: New Age, Create Ore Excavation, Create Aeronautics,
+    Immersive Engineering, Mekanism, Sable, Prometheus, Soul Fire'd, Cobweb, Farmer's Delight
+
+Every one of them keeps its own license and its own authors; this mod merely talks to them through
+public APIs and skips the integration when they are absent.
+
+6. Mojang mappings
+------------------
+
+This project uses the official Mojang mappings, which are covered by their own license:
+https://github.com/NeoForged/NeoForm/blob/main/Mojang.md

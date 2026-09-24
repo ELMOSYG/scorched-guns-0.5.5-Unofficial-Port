@@ -1,0 +1,26 @@
+{
+  "type": "scguns:powered_mechanical_pressing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:not",
+      "value": {
+        "type": "neoforge:tag_empty",
+        "tag": "c:ingots/steel"
+      }
+    }
+  ],
+  "processingTime": 15,
+  "energyUse": 500,
+  "ingredients": [
+    {
+      "tag": "c:ingots/steel"
+    }
+  ],
+  "mold": {
+    "item": "scguns:bullet_mold"
+  },
+  "result": {
+    "id": "scguns:hardened_bullet",
+    "count": 12
+  }
+}

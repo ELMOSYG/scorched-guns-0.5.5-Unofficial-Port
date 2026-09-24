@@ -1,0 +1,74 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+credits="${mod_credits}"
+description='''${mod_description}'''
+# Points at the enum extensions (the gun bench recipe book type and its categories). NeoForge does NOT
+# look for this file on its own: without this line META-INF/enumextensions.json is ignored silently -
+# no warning, not even for a corrupted file - which is how the recipe book ended up unregistered
+# (HANDOFF section 39.5).
+enumExtensions="META-INF/enumextensions.json"
+
+[[mixins]]
+config="${mod_id}.mixins.json"
+
+[[accessTransformers]]
+file="META-INF/accesstransformer.cfg"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="${neo_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="framework"
+    type="required"
+    reason="Required for Scorched Guns networking and synced data."
+    versionRange="[0.13.11,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="geckolib"
+    type="required"
+    reason="Required for animated weapon and armor models."
+    versionRange="[4.9.3,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="curios"
+    type="required"
+    reason="Required for attachment and exo-suit slots."
+    versionRange="[9.5.1,)"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="controllable"
+    type="optional"
+    versionRange="[0.16.3,)"
+    ordering="AFTER"
+    side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="backpacked"
+    type="optional"
+    versionRange="[2.1.9,)"
+    ordering="AFTER"
+    side="CLIENT"

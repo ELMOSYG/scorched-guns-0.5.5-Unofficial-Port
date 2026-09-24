@@ -1,0 +1,71 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="${mod_license}"
+
+[[mods]]
+modId="${mod_id}"
+version="${mod_version}"
+displayName="${mod_name}"
+authors="${mod_authors}"
+credits="${mod_credits}"
+description='''${mod_description}'''
+
+[[mixins]]
+config="scg2_maid_compat.mixins.json"
+
+[[dependencies.${mod_id}]]
+    modId="neoforge"
+    type="required"
+    versionRange="${neo_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="minecraft"
+    type="required"
+    versionRange="${minecraft_version_range}"
+    ordering="NONE"
+    side="BOTH"
+
+# Scorched Guns itself. [0.5.0,) is what the 1.20.1 build of this compat asked for, and the port
+# this ships inside reports 0.5.5, so it is satisfied. (The abandoned 1.21 attempt asked for
+# [1.2.0,), which no 0.5.5-based port can ever satisfy - that is why it never loaded.)
+[[dependencies.${mod_id}]]
+    modId="scguns"
+    type="required"
+    versionRange="[0.5.0,)"
+    ordering="AFTER"
+    side="BOTH"
+
+# Touhou Little Maid: OPTIONAL on purpose. Marking it required would stop the whole game from
+# starting for anyone who does not have TLM, and this compat is shipped inside the host jar.
+# Everything TLM-facing is guarded instead: ExampleMod returns before registering anything, and
+# MaidMixinPlugin switches the entire mixin configuration off.
+[[dependencies.${mod_id}]]
+    modId="touhou_little_maid"
+    type="optional"
+    ordering="AFTER"
+    side="BOTH"
+
+# Optional integrations the compat degrades without (see ExampleMod / SCGExtraCompatHelper).
+[[dependencies.${mod_id}]]
+    modId="scgextra"
+    type="optional"
+    ordering="AFTER"
+    side="BOTH"
+
+[[dependencies.${mod_id}]]
+    modId="bettercombat"
+    type="optional"
+    ordering="AFTER"
+    side="BOTH"
+
+# Cloth Config: OPTIONAL, client side only, used for the config screen TLM lets addons add entries to
+# (its AddClothConfigEvent). Without it everything still works - the options live in
+# config/scg2_maid_compat-common.toml - so requiring it would be wrong. TLM does not depend on it
+# either; it only uses it when it is present.
+[[dependencies.${mod_id}]]
+    modId="cloth_config"
+    type="optional"
+    ordering="AFTER"
+    side="CLIENT"

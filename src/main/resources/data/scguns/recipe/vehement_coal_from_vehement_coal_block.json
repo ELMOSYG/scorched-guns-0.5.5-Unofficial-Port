@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:crafting_shapeless",
+  "category": "misc",
+  "group": "sulfur_chunk",
+  "ingredients": [
+    {
+      "item": "scguns:vehement_coal_block"
+    }
+  ],
+  "result": {
+    "id": "scguns:vehement_coal",
+    "count": 9
+  }
+}

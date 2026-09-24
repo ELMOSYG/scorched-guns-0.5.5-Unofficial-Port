@@ -1,0 +1,39 @@
+{
+  "parent": "scguns:main/iron/brawler",
+  "criteria": {
+    "rocket_rifle": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "scguns:rocket_rifle"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "scguns.advancement.rocket_rifle.desc"
+    },
+    "frame": "task",
+    "hidden": false,
+    "icon": {
+      "count": 1,
+      "id": "scguns:rocket_rifle"
+    },
+    "show_toast": true,
+    "title": {
+      "translate": "scguns.advancement.rocket_rifle"
+    }
+  },
+  "requirements": [
+    [
+      "rocket_rifle"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

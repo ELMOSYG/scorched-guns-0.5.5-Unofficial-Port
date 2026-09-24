@@ -1,0 +1,25 @@
+{
+  "type": "mekanism:enriching",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "mekanism"
+    }
+  ],
+  "input": {
+    "children": [
+      {
+        "item": "scguns:anthralite_ore"
+      },
+      {
+        "item": "scguns:deepslate_anthralite_ore"
+      }
+    ],
+    "count": 1,
+    "type": "neoforge:compound"
+  },
+  "output": {
+    "count": 2,
+    "id": "scguns:anthralite_dust"
+  }
+}

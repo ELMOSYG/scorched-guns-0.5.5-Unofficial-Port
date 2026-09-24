@@ -1,0 +1,47 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "Q": {
+      "item": "scguns:gun_grip"
+    },
+    "C": {
+      "item": "minecraft:iron_ingot"
+    },
+    "L": {
+      "item": "scguns:firing_unit"
+    },
+    "R": {
+      "item": "scguns:heavy_gun_parts"
+    },
+    "S": {
+      "item": "scguns:gun_barrel"
+    },
+    "N": {
+      "item": "scguns:heavy_gun_barrel"
+    },
+    "V": {
+      "item": "scguns:iron_gun_frame"
+    },
+    "P": {
+      "item": "scguns:iron_blueprint"
+    },
+    "K": {
+      "tag": "minecraft:planks"
+    }
+  },
+  "pattern": [
+    "CVKP ",
+    "LRNS ",
+    "Q K  "
+  ],
+  "result": {
+    "id": "scguns:iron_spear"
+  }
+}

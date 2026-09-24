@@ -1,0 +1,72 @@
+{
+  "type": "create:sequenced_assembly",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredient": {
+    "item": "scguns:empty_core"
+  },
+  "loops": 1,
+  "results": [
+    {
+      "id": "scguns:energy_core"
+    }
+  ],
+  "sequence": [
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_plasma_core"
+        },
+        [
+          {
+            "item": "minecraft:redstone_block"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_plasma_core"
+        }
+      ]
+    },
+    {
+      "type": "create:deploying",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_plasma_core"
+        },
+        [
+          {
+            "item": "scguns:charged_amethyst_shard"
+          }
+        ]
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_plasma_core"
+        }
+      ]
+    },
+    {
+      "type": "create:pressing",
+      "ingredients": [
+        {
+          "item": "scguns:unfinished_plasma_core"
+        }
+      ],
+      "results": [
+        {
+          "id": "scguns:unfinished_plasma_core"
+        }
+      ]
+    }
+  ],
+  "transitional_item": {
+    "id": "scguns:unfinished_plasma_core"
+  }
+}

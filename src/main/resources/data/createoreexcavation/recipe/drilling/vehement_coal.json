@@ -1,0 +1,40 @@
+{
+  "type": "createoreexcavation:drilling",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "createoreexcavation"
+    }
+  ],
+  "drill": {
+    "item": "createoreexcavation:netherite_drill"
+  },
+  "fluid": {
+    "amount": 1000,
+    "ingredient": {
+      "fluid": "minecraft:lava"
+    }
+  },
+  "output": [
+    {
+      "chance": 0.4,
+      "id": "scguns:vehement_coal"
+    },
+    {
+      "chance": 0.6,
+      "id": "scguns:sulfur_chunk"
+    },
+    {
+      "chance": 0.8,
+      "id": "minecraft:netherrack"
+    },
+    {
+      "chance": 0.5,
+      "id": "minecraft:magma_block"
+    }
+  ],
+  "priority": 0,
+  "stress": 2048,
+  "ticks": 4000,
+  "veinId": "createoreexcavation:ore_vein_type/vehement_coal"
+}

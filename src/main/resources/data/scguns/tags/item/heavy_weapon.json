@@ -1,0 +1,15 @@
+{
+  "replace": false,
+  "values": [
+    "scguns:gattaler",
+    "scguns:thunderhead",
+    "scguns:spitfire",
+    "scguns:cyclone",
+    "scguns:flayed_god",
+    "scguns:shard_culler",
+    "scguns:weevil",
+    "scguns:terra_incognita",
+    "scguns:hullbreaker",
+    "scguns:scratches"
+  ]
+}

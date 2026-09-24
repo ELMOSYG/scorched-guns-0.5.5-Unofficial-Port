@@ -1,0 +1,31 @@
+{
+  "replace": false,
+  "values": [
+    "scguns:anthralite_ore",
+    "scguns:deepslate_anthralite_ore",
+    "scguns:anthralite_block",
+    "scguns:raw_anthralite_block",
+    "scguns:lightning_battery",
+    "scguns:treated_iron_block",
+    "scguns:treated_brass_block",
+    "scguns:diamond_steel_block",
+    "scguns:felix_memorial",
+    "scguns:plasma_block",
+    "scguns:reinforced_asgharian_tiles",
+
+    "scguns:diamond_steel_panel",
+    "scguns:chiseled_diamond_steel_block",
+    "scguns:cut_diamond_steel",
+    "scguns:cut_diamond_steel_stairs",
+    "scguns:cut_diamond_steel_slab",
+    "scguns:diamond_steel_tiles",
+    "scguns:diamond_steel_tiles_stairs",
+    "scguns:diamond_steel_tiles_slab",
+    "scguns:diamond_steel_lamp",
+    "scguns:diamond_steel_grate",
+    "scguns:diamond_steel_bars",
+    "scguns:diamond_steel_pillar",
+    "scguns:diamond_steel_grate_pane",
+    "scguns:shock_coil"
+  ]
+}

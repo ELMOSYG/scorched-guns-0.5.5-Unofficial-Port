@@ -1,0 +1,39 @@
+{
+  "parent": "scguns:main/treated_brass/m22_waltz",
+  "criteria": {
+    "waltz_conversion": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "scguns:waltz_conversion"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "display": {
+    "announce_to_chat": false,
+    "description": {
+      "translate": "scguns.advancement.waltz_conversion.desc"
+    },
+    "frame": "task",
+    "hidden": false,
+    "icon": {
+      "count": 1,
+      "id": "scguns:waltz_conversion"
+    },
+    "show_toast": true,
+    "title": {
+      "translate": "scguns.advancement.waltz_conversion"
+    }
+  },
+  "requirements": [
+    [
+      "waltz_conversion"
+    ]
+  ],
+  "sends_telemetry_event": true
+}

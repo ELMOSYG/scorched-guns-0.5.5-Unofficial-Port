@@ -1,0 +1,14 @@
+
+{
+  "replace": false,
+  "values": [
+    "scguns:bomb_lance",
+    "scguns:locust",
+    "scguns:earths_corpse",
+    "scguns:super_shotgun",
+    "scguns:flayed_god",
+    "scguns:nervepinch",
+    "scguns:terra_incognita",
+    "scguns:sterilizer"
+  ]
+}

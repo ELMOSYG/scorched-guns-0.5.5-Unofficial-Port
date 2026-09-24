@@ -1,0 +1,50 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "Q": {
+      "item": "scguns:gun_grip"
+    },
+    "C": {
+      "item": "scguns:treated_brass_gun_frame"
+    },
+    "L": {
+      "item": "scguns:firing_unit"
+    },
+    "R": {
+      "item": "scguns:gun_parts"
+    },
+    "S": {
+      "item": "scguns:copper_disc"
+    },
+    "X": {
+      "item": "scguns:gun_magazine"
+    },
+    "V": {
+      "item": "scguns:copper_gun_frame"
+    },
+    "P": {
+      "item": "scguns:copper_blueprint"
+    },
+    "I": {
+      "item": "minecraft:redstone"
+    },
+    "B": {
+      "item": "scguns:anthralite_ingot"
+    }
+  },
+  "pattern": [
+    "CVIP ",
+    "LRSB ",
+    "Q X  "
+  ],
+  "result": {
+    "id": "scguns:arc_worker"
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "type": "scguns:mechanical_pressing",
+  "processingTime": 50,
+  "ingredients": [
+    [
+      {
+        "tag": "c:ingots/brass"
+      },
+      {
+        "item": "scguns:ancient_brass"
+      }
+    ]
+  ],
+  "mold": {
+    "item": "scguns:large_casing_mold"
+  },
+  "result": {
+    "id": "scguns:large_brass_casing",
+    "count": 6
+  }
+}

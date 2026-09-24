@@ -1,0 +1,34 @@
+{
+  "type": "create:mixing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:nitro_powder_dust"
+    },
+    {
+      "item": "scguns:buckshot"
+    },
+    {
+      "item": "scguns:buckshot"
+    }
+  ],
+  "results": [
+    {
+      "id": "scguns:nitro_buckshot",
+      "count": 3
+    },
+    {
+      "id": "scguns:nitro_buckshot",
+      "count": 1,
+      "chance": 0.35
+    }
+  ]
+}

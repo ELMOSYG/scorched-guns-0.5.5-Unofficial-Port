@@ -1,0 +1,27 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "key": {
+    "H": {
+      "item": "scguns:anthralite_ingot"
+    },
+    "Q": {
+      "item": "scguns:copper_disc"
+    },
+    "Z": {
+      "item": "scguns:turret_platform"
+    },
+    "X": {
+      "item": "minecraft:redstone"
+    }
+  },
+  "pattern": [
+    " X ",
+    "QQQ",
+    "HZH"
+  ],
+  "result": {
+    "id": "scguns:shock_coil",
+    "count": 1
+  }
+}

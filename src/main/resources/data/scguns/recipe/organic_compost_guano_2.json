@@ -1,0 +1,32 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "farmersdelight"
+    }
+  ],
+  "category": "misc",
+  "key": {
+    "M": {
+      "item": "minecraft:dirt"
+    },
+    "L": {
+      "item": "scguns:bat_guano"
+    },
+    "X": {
+      "item": "farmersdelight:tree_bark"
+    },
+    "Q": {
+      "item": "minecraft:bone_meal"
+    }
+  },
+  "pattern": [
+    "MLL",
+    "XXQ",
+    "QQQ"
+  ],
+  "result": {
+    "id": "farmersdelight:organic_compost"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:blasting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "mekanism"
+    }
+  ],
+  "cookingtime": 100,
+  "experience": 0.35,
+  "ingredient": {
+    "item": "scguns:anthralite_dust"
+  },
+  "result": {
+    "id": "scguns:anthralite_ingot"
+  }
+}

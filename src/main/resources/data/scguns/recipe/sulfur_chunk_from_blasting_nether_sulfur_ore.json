@@ -1,0 +1,14 @@
+{
+  "type": "minecraft:blasting",
+  "category": "misc",
+  "group": "sulfur_chunk",
+  "cookingtime": 100,
+  "experience": 0.7,
+  "ingredient": {
+    "item": "scguns:nether_sulfur_ore"
+  },
+  "result": {
+    "id": "scguns:sulfur_chunk",
+    "count": 2
+  }
+}

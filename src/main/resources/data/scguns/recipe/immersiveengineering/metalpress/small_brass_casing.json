@@ -1,0 +1,18 @@
+{
+  "type": "immersiveengineering:metal_press",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "immersiveengineering"
+    }
+  ],
+  "energy": 2400,
+  "input": {
+    "tag": "c:ingots/brass"
+  },
+  "mold": "scguns:small_casing_mold",
+  "result": {
+    "id": "scguns:small_brass_casing",
+    "count": 12
+  }
+}

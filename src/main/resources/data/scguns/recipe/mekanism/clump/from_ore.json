@@ -1,0 +1,30 @@
+{
+  "type": "mekanism:purifying",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "mekanism"
+    }
+  ],
+  "chemical_input": {
+    "amount": 1,
+    "chemical": "mekanism:oxygen"
+  },
+  "item_input": {
+    "children": [
+      {
+        "item": "scguns:anthralite_ore"
+      },
+      {
+        "item": "scguns:deepslate_anthralite_ore"
+      }
+    ],
+    "count": 1,
+    "type": "neoforge:compound"
+  },
+  "output": {
+    "count": 3,
+    "id": "scguns:clump_anthralite"
+  },
+  "per_tick_usage": true
+}

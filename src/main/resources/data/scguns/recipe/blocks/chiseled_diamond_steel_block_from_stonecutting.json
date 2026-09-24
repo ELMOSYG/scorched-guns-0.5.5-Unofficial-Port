@@ -1,0 +1,10 @@
+{
+  "type": "minecraft:stonecutting",
+  "ingredient": {
+    "item": "scguns:diamond_steel_block"
+  },
+  "result": {
+    "id": "scguns:chiseled_diamond_steel_block",
+    "count": 16
+  }
+}

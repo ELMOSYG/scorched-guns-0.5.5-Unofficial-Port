@@ -1,0 +1,47 @@
+{
+  "type": "create:mechanical_crafting",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "accept_mirrored": true,
+  "key": {
+    "Q": {
+      "item": "scguns:gun_grip"
+    },
+    "C": {
+      "tag": "minecraft:planks"
+    },
+    "L": {
+      "item": "scguns:rapid_firing_unit"
+    },
+    "R": {
+      "item": "scguns:gun_magazine"
+    },
+    "S": {
+      "item": "scguns:gun_barrel"
+    },
+    "I": {
+      "item": "scguns:diamond_steel_gun_frame"
+    },
+    "X": {
+      "item": "minecraft:shulker_shell"
+    },
+    "O": {
+      "item": "scguns:end_blueprint"
+    },
+    "P": {
+      "item": "minecraft:shulker_shell"
+    }
+  },
+  "pattern": [
+    "XICO",
+    "LRSS",
+    "Q P "
+  ],
+  "result": {
+    "id": "scguns:dark_matter"
+  }
+}

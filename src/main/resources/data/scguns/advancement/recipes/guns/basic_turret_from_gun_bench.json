@@ -1,0 +1,34 @@
+{
+  "parent": "minecraft:recipes/root",
+  "criteria": {
+    "has_the_recipe": {
+      "conditions": {
+        "recipe": "scguns:guns/basic_turret_from_gun_bench"
+      },
+      "trigger": "minecraft:recipe_unlocked"
+    },
+    "has_turret_platform": {
+      "conditions": {
+        "items": [
+          {
+            "items": [
+              "scguns:turret_platform"
+            ]
+          }
+        ]
+      },
+      "trigger": "minecraft:inventory_changed"
+    }
+  },
+  "requirements": [
+    [
+      "has_the_recipe",
+      "has_turret_platform"
+    ]
+  ],
+  "rewards": {
+    "recipes": [
+      "scguns:guns/basic_turret_from_gun_bench"
+    ]
+  }
+}
