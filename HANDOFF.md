@@ -5518,6 +5518,56 @@ Caused by: java.lang.IllegalArgumentException: IModBusEvent events are not allow
 * 顺带把范围写清楚 ✓：如果玩家的 NeoForge **低于 21.1.150** ✓，游戏会在加载 GeckoLib 时就停下 ✓，
   这不是我们能绕过的 ✗（除非改用更老的 GeckoLib ✓，而那会丢掉本移植依赖的 4.6+ API ✓）。
 
+# 71. 公开发布：GitHub（已推送）+ CurseForge（文案已备好）
+
+目标仓库 `https://github.com/ELMOSYG/scorched-guns-0.5.5-Unofficial-Port`（玩家已创建、初始为空）✓。
+
+## 71.1 公开前查出来的三件事（新工具 `tools/prepublish_audit.py`）
+
+| 问题 | 实测 | 处理 |
+|---|---|---|
+| **第三方 jar 被 git 跟踪** ✗ | `libs/` **97.1 MB**（Create Aeronautics 31.6 / Create 18.2 / IE 13.6 / Sable 12.4 / Mekanism 11.4 / JEI …）、`maid-compat/libs/` **24.4 MB**（TLM 23.3 / Cloth Config）、`libs-compile/` 35 KB，**另加上游的 `ScorchedGuns-0.5.5-1.20.1.jar`** | 全部排除 ✓（它们是别人的作品、多数 ARR，公开分发会踩线 ✗） |
+| `build-logs/` **559 个文件 / 115 MB** | 其中绝大多数是逐轮编译日志 | 只公开 **6 个**（`WORKER_BRIEF.md`、`JEI19_NOTES.md`、`build-final.txt`、`server-final.txt`、`floor-compile.txt`、`floor-server.txt`，共 **1.8 MB** ✓） |
+| `tools/rcon_*.py` **13 处硬编码 RCON 密码** | 那只是本地 dev 世界的密码（`run/server.properties` 不入库） | 改成 `os.environ.get("SCGUNS_RCON_PASSWORD", …)` ✓（`tools/harden_rcon_password.py` ✓，`--selftest` 对 `git show HEAD:` 实测命中、且**幂等** ✓） |
+
+公开树审计复跑 ⇒ **只剩 gradle-wrapper 一个 jar、无凭据、无 >5 MB 文件** ✓。
+
+## 71.2 授权与署名（`LICENSE` + `NOTICE`）
+
+* **上游是 GPL-3.0** ✓（0.5.5 jar 的 `mods.toml` 里 `license="GNU GPLv3"` ✓，authors=`ribs` ✓，
+  credits=`MrCrayfish, Ribs` ✓）⇒ 本移植**沿用同一许可** ✓：`LICENSE` 放 GPLv3 全文（35,149 字节，
+  取自 gnu.org ✓）。
+* `NOTICE` 逐条写明 ✓：上游内容与其许可 ✓；**音效 CC0**（上游 jar 内
+  `assets/scguns/sounds/SOUND-LICENSE.txt` ✓）；`zh_cn.json` 来自社区汉化包（**署名待玩家填** ✗）；
+  女仆兼容（`scg2_maid_compat`）作者 ✓；第三方依赖**不随仓库分发** ✓ 及其各自的许可与获取方式 ✓；
+  Mojang mappings 的许可 ✓。
+* `README.md` 重写 ✓（英文为主 + 中文简版）：这是什么 ✓ / 要求（MC 1.21.1、**NeoForge ≥21.1.150**、
+  Framework 0.13.11+、GeckoLib 4.9.3+、Curios 9.5.1+ ✓）/ 安装 ✓ / 从源码构建 ✓ /
+  移植文档指引 ✓ / 已知限制 ✓ / 授权与"非官方、与原作者无关"免责 ✓。
+
+## 71.3 分支与推送
+
+* 玩家选择**单一初始提交** ✓：`git checkout --orphan main` → 按新 `.gitignore` 重新 `add` ✓
+  （排除 `libs/*.jar`、`maid-compat/libs/*.jar`、`libs-compile/*.jar`、`准备的前置/`、`需要移植的mod/` ✓，
+  `build-logs` 用白名单只留 6 个 ✓）⇒ **7827 个文件 / 41.2 MB** ✓（原 8406 个 / 275.9 MB ✓）。
+* 已推送 ✓ `origin/main` = **`dbf4beb`** ✓（`git push -u origin main` ✓，`credential.helper=manager` ✓）。
+* **本地 `master` 保留全部历史** ✓ —— HANDOFF 里引用的提交哈希（如 §42.7 的 `86a2d1f` ✓）仍然可在本地查 ✓；
+  公开的 `main` 是单提交 ✓。**以后开发走 `main`** ✓（jar 已被 ignore ✓，构建不受影响 ✓）。
+* 三个"要自己放哪些 jar"的说明 ✓：`libs/README.md`、`maid-compat/libs/README.md`、`libs-compile/README.md` ✓。
+
+## 71.4 CurseForge
+
+`CURSEFORGE.md` ✓ 备好可直接粘贴的：项目字段与建议 slug ✓ / **必需依赖关系表**（Framework、GeckoLib、
+Curios 设为 required ✓，其余可选 ✓）/ 描述全文 ✓ / 首版更新日志 ✓ / 上传前检查清单 ✓。
+上传文件用 `build/libs/scguns-0.5.5.jar`（≈19 MB ✓），游戏版本 1.21.1 + **NeoForge** ✓。
+**项目本身必须在网页上创建** ✗（我无法代建 ✓），玩家选择自己上传 ✓。
+
+## 71.5 待玩家确认的一处
+
+`NOTICE` 里汉化包的署名目前是占位文字 ✓ —— 给一个**译者名字或资源包链接**即可替换 ✓
+（或明确说"就写社区汉化"也行 ✓）。
+
+
 
 
 

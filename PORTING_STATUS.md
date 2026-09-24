@@ -366,4 +366,20 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   ② `mech_press/depleted_diamond_steel` 引用 `create:experience_nugget` 却没有条件 —— **0.5.5 原版就是如此**，
   只有未装 Create 的玩家会看到两行 ERROR，未擅自改（要改需同时写进 `convert_resources.py` 之后的修复脚本）。
 
+---
+
+## §71 公开发布：GitHub 已推送 + CurseForge 文案已备
+
+- **公开仓库**：<https://github.com/ELMOSYG/scorched-guns-0.5.5-Unofficial-Port>（`origin/main` = `dbf4beb`，
+  单一初始提交，7827 个文件 / 41.2 MB）。本地 `master` **保留全部历史**，以后开发走 `main`。
+- **公开前剔除**（`tools/prepublish_audit.py` 新工具实测）：**121.5 MB 第三方 jar 被跟踪**
+  （`libs/` 97 MB、`maid-compat/libs/` 24 MB、`libs-compile/`）+ **上游 0.5.5 jar** ⇒ 全部排除；
+  `build-logs/` 559 个 / 115 MB ⇒ 只留 6 个（1.8 MB）；`tools/rcon_*.py` 13 处硬编码 RCON 密码 ⇒
+  改为环境变量（`tools/harden_rcon_password.py`，`--selftest` 实测命中且幂等）。
+- **授权**：上游是 **GPL-3.0**（0.5.5 jar 元数据实测）⇒ 本移植沿用 GPL-3.0，`LICENSE` 放全文（gnu.org 下载）；
+  `NOTICE` 写明上游、音效 CC0、汉化包来源、女仆兼容作者、第三方依赖不随仓库分发；README 重写（英/中）。
+- **CurseForge**：`CURSEFORGE.md` 备好可直接粘贴的描述、依赖关系表、更新日志与上传清单；
+  项目需玩家在网页创建（我无法代建），上传文件 `build/libs/scguns-0.5.5.jar`。
+- **待玩家**：`NOTICE` 里汉化包署名仍是占位文字。
+
 

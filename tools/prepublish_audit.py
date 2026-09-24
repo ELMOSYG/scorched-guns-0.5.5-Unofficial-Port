@@ -19,6 +19,9 @@ KEY_PATTERNS = [
 BINARY_DIRS = ("libs/", "maid-compat/libs/", "libs-compile/", "准备的前置/", "需要移植的mod/")
 TEXT_EXT = {".java", ".gradle", ".properties", ".md", ".json", ".toml", ".py", ".txt", ".json5",
             ".cfg", ".yml", ".yaml", ".ps1", ".cmd", ".bat", ".gitignore"}
+# Files that describe the patterns themselves (this scanner) or hold them as a replacement target
+# (the RCON hardening script). Everything else is a genuine hit.
+SCANNER_SELF = {"tools/prepublish_audit.py", "tools/harden_rcon_password.py"}
 
 
 def main():
@@ -66,6 +69,8 @@ def main():
     hits = 0
     for name in files:
         p = pathlib.Path(name)
+        if name.replace("\\", "/") in SCANNER_SELF:
+            continue
         if p.suffix not in TEXT_EXT or not p.is_file() or sizes.get(name, 0) > 2_000_000:
             continue
         try:
