@@ -1,0 +1,54 @@
+name: Static checks
+
+# The MDK's default workflow (a plain `./gradlew build`) cannot run here: the build compiles against
+# the other mods' jars, and those are deliberately not redistributed in this repository
+# (see NOTICE section 5 and libs/README.md). What runs instead is the part of the port's tooling that
+# only needs the sources and resources that ARE in the tree - the same audits the port was developed
+# against. Audits that need the built classes, the NeoForge sources or the dependency jars are run
+# locally; see HANDOFF.md section 6.5 and 70.3 for the full list.
+
+on: [push, pull_request, workflow_dispatch]
+
+jobs:
+  audits:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Static audits (source and resources only)
+        run: |
+          set -e
+          for tool in \
+            audit_gun_animation_identity \
+            audit_bus_registrations \
+            audit_subscribers \
+            audit_dist_safety \
+            audit_unsafe_casts \
+            audit_duplicate_registrations \
+            audit_item_stream_codec \
+            audit_item_attributes \
+            audit_model_vertex_color \
+            audit_nbt_write_alias \
+            audit_physics_impulse_frame \
+            audit_time_delta \
+            audit_gun_render_paths \
+            audit_lang_keys \
+            audit_lang_values ; do
+            echo "::group::$tool"
+            python "tools/$tool.py"
+            echo "::endgroup::"
+          done
+
+      - name: Data and packaging sanity
+        run: |
+          set -e
+          python tools/survey_conditions.py
+          python tools/fix_loot_functions.py
+          python tools/analyze_advancements.py
+          python tools/prepublish_audit.py

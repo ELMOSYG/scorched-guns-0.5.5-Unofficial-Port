@@ -55,6 +55,10 @@ This repository ships the complete working notebook of the port, including every
 * [`PORTING_STATUS.md`](PORTING_STATUS.md) — the status board (short form).
 * `tools/` — 24 static audits plus the rewrite/generator scripts, each of them able to fail on the build it was written for.
 
+The **Static checks** workflow runs the subset of those audits that needs nothing but this repository
+(sources and resources). The rest — the audits that read compiled classes, the NeoForge sources or the
+dependency jars — are documented in `HANDOFF.md` §6.5 and §70.3 and are meant to be run locally.
+
 Highlights of the mechanical part of the port (1.21 / NeoForge changed all of it):
 
 * NBT → `DataComponents.CUSTOM_DATA` (`NbtHelper`), keeping every original NBT key name.

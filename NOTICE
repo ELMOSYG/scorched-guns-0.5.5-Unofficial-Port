@@ -69,8 +69,19 @@ Optional integrations, used only when the player has them installed:
 Every one of them keeps its own license and its own authors; this mod merely talks to them through
 public APIs and skips the integration when they are absent.
 
-6. Mojang mappings
+6. Build skeleton (NeoForged MDK)
+----------------------------------
+
+    build.gradle, settings.gradle, gradle wrapper, .gitattributes, TEMPLATE_LICENSE.txt
+
+The project skeleton comes from the NeoForged Mod Development Kit template
+(https://github.com/NeoForged/MDK), which is licensed under the MIT License — Copyright (c) 2023
+NeoForged project. That licence applies to the template files as supplied; the full text is in
+TEMPLATE_LICENSE.txt. It covers nothing else in this repository.
+
+7. Mojang mappings
 ------------------
 
 This project uses the official Mojang mappings, which are covered by their own license:
 https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
+
