@@ -379,7 +379,12 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 - **授权**：上游是 **GPL-3.0**（0.5.5 jar 元数据实测）⇒ 本移植沿用 GPL-3.0，`LICENSE` 放全文（gnu.org 下载）；
   `NOTICE` 写明上游、音效 CC0、汉化包来源、女仆兼容作者、第三方依赖不随仓库分发；README 重写（英/中）。
 - **CurseForge**：`CURSEFORGE.md` 备好可直接粘贴的描述、依赖关系表、更新日志与上传清单；
-  项目需玩家在网页创建（我无法代建），上传文件 `build/libs/scguns-0.5.5.1.jar`。
+  项目已由玩家创建：**Scorched Guns 2 0.5.5 Unofficial port**（id 1709719，
+  <https://www.curseforge.com/minecraft/mc-mods/scorched-guns-2-0-5-5-unofficial-port>），
+  标题/简介/描述已填好（描述 = 我给的 HTML 块，经公共 API 复核逐字符一致）。
+  ⚠️ 页面上现有文件 `scguns-0.5.5.jar`（19,393,354 字节）**早于 §72/§73 的修复**，需用
+  `build/libs/scguns-0.5.5.1.jar`（19,392,915 字节）作为新文件替换；另需确认许可 = GPL-3.0、
+  Framework/GeckoLib/Curios 设为 Required。
 - **待玩家**：`NOTICE` 里汉化包署名仍是占位文字。
 
 ---

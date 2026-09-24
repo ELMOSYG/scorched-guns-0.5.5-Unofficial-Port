@@ -5567,10 +5567,23 @@ Caused by: java.lang.IllegalArgumentException: IModBusEvent events are not allow
 
 ## 71.4 CurseForge
 
-`CURSEFORGE.md` ✓ 备好可直接粘贴的：项目字段与建议 slug ✓ / **必需依赖关系表**（Framework、GeckoLib、
-Curios 设为 required ✓，其余可选 ✓）/ 描述全文 ✓ / 首版更新日志 ✓ / 上传前检查清单 ✓。
-上传文件用 `build/libs/scguns-0.5.5.1.jar`（≈18.5 MB ✓），游戏版本 1.21.1 + **NeoForge** ✓。
-**项目本身必须在网页上创建** ✗（我无法代建 ✓），玩家选择自己上传 ✓。
+**项目已由玩家创建** ✓：**Scorched Guns 2 0.5.5 Unofficial port** ✓
+（<https://www.curseforge.com/minecraft/mc-mods/scorched-guns-2-0-5-5-unofficial-port> ✓，slug
+`scorched-guns-2-0-5-5-unofficial-port` ✓，项目 id **1709719** ✓，建于 2026-09-24 ✓）。
+页面上的标题 / 简介 / 描述**都已填好** ✓ —— 描述就是 `CURSEFORGE.md` 里那份 **HTML 块**（逐字符一致 ✓，
+用公共 API `api.cfwidget.com` 复核过 ✓）。
+`CURSEFORGE.md` ✓ 里保留着可再次粘贴的：字段表 ✓ / **必需依赖关系表**（Framework、GeckoLib、Curios 设为
+required ✓，其余可选 ✓）/ 描述全文（Markdown 与 HTML 两版 ✓）/ 首版更新日志 ✓ / 上传前检查清单 ✓，
+以及一节**"页面现状"** ✓（记录已做与待做 ✓）。
+
+⚠️ **待玩家补两件事** ✓：
+1. **换掉那个文件** ✗ —— 页面上现在是 `scguns-0.5.5.jar`（**19,393,354 字节** ✓），那是**在 §72（niami 射击）
+   与 §73（版本号 0.5.5.1）之前**构建的 ✓ ⇒ 要用 `build/libs/scguns-0.5.5.1.jar`（**19,392,915 字节** ✓，
+   版本 `0.5.5.1` ✓）作为**新文件**上传 ✓（CurseForge 的文件不可覆盖 ✓，字节数是最快的区分办法 ✓），
+   再把旧文件退下/删除 ✓。
+2. **确认许可设成 GPL-3.0** ✓（公共 API 看不到该字段 ✓，上游是 GPL-3.0 ✓ ⇒ 必须一致 ✓），
+   并把 Framework / GeckoLib / Curios 设为 **Required** 关系 ✓（同样无法从 API 侧确认 ✓）。
+
 
 ## 71.5 待玩家确认的一处
 

@@ -13,16 +13,32 @@ Ready-to-paste fields for the project page, modelled on the layout of the existi
 
 | Field | Value |
 |---|---|
-| Project name | **Scorched Guns 0.5.5: NeoForge Port** |
-| Slug (suggested) | `scorched-guns-0-5-5-neoforge-port` |
+| Project name | **Scorched Guns 2 0.5.5 Unofficial port** ← created, live |
+| Project URL | <https://www.curseforge.com/minecraft/mc-mods/scorched-guns-2-0-5-5-unofficial-port> |
+| Slug | `scorched-guns-2-0-5-5-unofficial-port` |
+| Project id | 1709719 |
 | Game / Category | Minecraft → Mods |
 | Version / Loader | 1.21.1, NeoForge |
 | **Port version** | **0.5.5.1** (release/file version — the content is upstream 0.5.5) |
 | License | **GNU General Public License v3.0** (the upstream mod is GPL-3.0, so this port must be too) |
 | Source | https://github.com/ELMOSYG/scorched-guns-0.5.5-Unofficial-Port |
-| Summary | An unofficial NeoForge 1.21.1 port of Scorched Guns **0.5.5**, focused on preserving the original mod's firearms, attachments, ammunition, hostile mobs, structures, loot, machines, turrets and ExoSuit gameplay on a newer Minecraft version. |
+| Summary | An unofficial port of Scorched Guns 0.5.5 (Minecraft 1.20.1 / Forge 47.x) to Minecraft 1.21.1 / NeoForge. |
 
 Upload `build/libs/scguns-0.5.5.1.jar` (≈18.5 MB) as the file, with **0.5.5.1** as its display name.
+
+## State of the live page (checked after it was created)
+
+| Item | State |
+|---|---|
+| Title / summary / description | ✅ set — the description on the page is the **HTML block below**, character for character |
+| Categories | ✅ Armor/Tools and Weapons, Ores and Resources, Mobs, Technology, Redstone |
+| Relations (required deps) | ❓ not visible through the public API — set Framework / GeckoLib / Curios as **Required** |
+| License | ❓ not visible through the public API — it must be **GPL-3.0**, the upstream licence |
+| First file | ⚠️ **`scguns-0.5.5.jar` (19,393,354 bytes)** — that build predates the fixes for `scguns:niami` (HANDOFF §72) and the 0.5.5.1 version bump (§73) |
+
+**Replace that file**: upload `build/libs/scguns-0.5.5.1.jar` (**19,392,915 bytes**, version `0.5.5.1`) as a
+new release file, then retire/delete the old one. CurseForge files are immutable, so a re-upload of the same
+name is not possible anyway — and the byte size is the quickest way to tell them apart.
 
 ## Description — Markdown (paste into the editor's Markdown mode)
 

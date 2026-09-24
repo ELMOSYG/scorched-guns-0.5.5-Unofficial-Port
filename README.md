@@ -2,6 +2,8 @@
 
 **Port version: 0.5.5.1** — the content is the upstream 0.5.5 release, and `0.5.5.1` is this port's own release number (it is what the mod reports in the mod list and what the jar is named).
 
+**Download:** [CurseForge — Scorched Guns 2 0.5.5 Unofficial port](https://www.curseforge.com/minecraft/mc-mods/scorched-guns-2-0-5-5-unofficial-port) · [GitHub releases](https://github.com/ELMOSYG/scorched-guns-0.5.5-Unofficial-Port/releases)
+
 An **unofficial** port of [Scorched Guns](https://www.curseforge.com/minecraft/mc-mods/scorched-guns) **0.5.5** (Minecraft 1.20.1 / Forge 47.x) to **Minecraft 1.21.1 / NeoForge**.
 
 The port was built from the **0.5.5 release jar** (decompiled and remapped), not from any GitHub source tree, so the gameplay content is the one you know from 0.5.5 — all 141 guns, attachments, grenades, turrets, exo-suits, raids, blueprints, the gun bench, machines and the mob factions.
