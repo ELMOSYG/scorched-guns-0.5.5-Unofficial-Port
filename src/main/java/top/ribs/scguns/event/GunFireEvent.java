@@ -39,11 +39,18 @@ public class GunFireEvent extends PlayerEvent implements ICancellableEvent {
                .getManagerForId(id)
                .getAnimationControllers()
                .get("controller");
-            animationController.forceAnimationReset();
-            if ((Boolean)ModSyncedDataKeys.AIMING.getValue(player)) {
-               animationController.tryTriggerAnimation("aim_shoot");
-            } else {
-               animationController.tryTriggerAnimation("shoot");
+            // A dedicated server never registers animation controllers - AnimatedGunItem's
+            // registerControllers only runs on the client - so this is null there. Calling it anyway
+            // threw an NPE out of ServerPlayHandler.handleShoot, which meant the Post event was never
+            // posted and every post-shot effect on a dedicated server was lost (knockback, hot barrel,
+            // gun light, casing ejection, the jam sound).
+            if (animationController != null) {
+               animationController.forceAnimationReset();
+               if ((Boolean)ModSyncedDataKeys.AIMING.getValue(player)) {
+                  animationController.tryTriggerAnimation("aim_shoot");
+               } else {
+                  animationController.tryTriggerAnimation("shoot");
+               }
             }
          }
       }

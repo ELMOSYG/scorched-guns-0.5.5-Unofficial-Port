@@ -5577,6 +5577,100 @@ Curios 设为 required ✓，其余可选 ✓）/ 描述全文 ✓ / 首版更�
 `NOTICE` 里汉化包的署名目前是占位文字 ✓ —— 给一个**译者名字或资源包链接**即可替换 ✓
 （或明确说"就写社区汉化"也行 ✓）。
 
+# 72. `scguns:niami` 打不出去 —— 1.21 的箭要求"发射它的那把武器"，而移植传了**空物品**
+
+玩家报告："**scguns:niami 无法正常射击**" ✓。
+
+## 72.1 复现（FakePlayer + `ServerPlayHandler.handleShoot`，专用服务器）
+
+先核对数据 ✓：`data/scguns/guns/niami.json` 与 0.5.5 **逐字一致** ✓（41 个字段全同 ✓）；
+它是那把**射箭的枪** ✓（`"firesArrows": true`、`projectile.item = minecraft:arrow`、弹药也是箭 ✓、
+`weaponType: special`、`fireMode: semi_automatic` ✓）⇒ 问题在代码 ✓。
+
+于是按项目的"复现优先"写探针 ✓（临时类 + `FakePlayer` ✓，`NbtHelper` 塞 `AmmoCount=6` ✓，
+直接调 `ServerPlayHandler.handleShoot(new C2SMessageShoot(player), player)` ✓）：
+
+```
+[SCGUNS-NIAMI] scguns:niami fireMode=semi_automatic reloadType=mag_fed firesArrows=true ammo=6 hasAmmo=true
+[SCGUNS-NIAMI] scguns:niami THREW java.lang.IllegalArgumentException: Invalid weapon firing an arrow
+```
+
+## 72.2 根因：`AbstractArrow` 的 weapon 参数不能是空栈
+
+1.21 的 `AbstractArrow`（源码实测 `.refs/nf-src/.../AbstractArrow.java:97-100` ✓）：
+
+```java
+if (firedFromWeapon != null && level instanceof ServerLevel serverlevel) {
+   if (firedFromWeapon.isEmpty()) {
+      throw new IllegalArgumentException("Invalid weapon firing an arrow");
+   }
+```
+
+0.5.5 调的是 **`new Arrow(world, player)`** ✓（1.20.1 那个"没有 weapon"的构造器 ✓），
+移植为适配 1.21 改成了 `new Arrow(world, player, new ItemStack(Items.ARROW), ItemStack.EMPTY)` ✗
+—— 第 4 个参数正是 weapon ✓，**空栈在服务端直接抛异常** ✗。而它抛在 `getArrow` 里 ✓
+⇒ `handleShoot` 从 `for (i < count)` 循环那里就断了 ✗ ⇒ **这一发什么都不会发生** ✓
+（没有箭、不扣弹药、没有枪声 ✓）⇒ 玩家看到的正是"无法正常射击" ✓✓。
+（**单人同样中招** ✓：集成服的 level 也是 `ServerLevel` ✓。）
+
+## 72.3 修法：传 **`null`**（这才是 0.5.5 的语义）
+
+该参数是 **`@Nullable ItemStack firedFromWeapon`** ✓（`Arrow` 的两个构造器都标了 ✓），
+传 null 时整段校验与附魔钩子都被跳过 ✓ —— 与 0.5.5"没有 weapon"完全一致 ✓。
+
+```java
+Arrow arrow = new Arrow(world, player, new ItemStack(Items.ARROW), null);
+```
+
+> **改了又改的一次（记下来）** ✓：我第一版传的是**枪本身**（"发射它的就是这把枪"，听起来更对 ✓），
+> 并且已经实测通过 ✓。但顺手核源码时发现 **`AbstractArrow` 会把 weapon 存进箭的存档** ✓
+> （`compound.put("weapon", this.firedFromWeapon.save(...))` ✓）⇒ 每支箭都会**带一份整枪（含配件）的拷贝** ✗
+> ⇒ 改成 `null` ✓ 并**重新实跑验证** ✓。教训：**"参数能不能传"和"传了会存下来什么"是两件事** ✓。
+
+## 72.4 同一探针顺带暴露：服务端**根本没有 animation controller**（3 处 NPE）
+
+`AnimatedGunItem.registerControllers` 只在客户端执行 ✓（`FMLEnvironment.dist == Dist.CLIENT` ✓）
+⇒ 服务端 `getManagerForId(id).getAnimationControllers().get("controller")` **恒为 null** ✗，
+而三处**服务端可达**的代码直接调用它 ✓（对照用的 `mk43_rifle` 就是这么暴露出来的 ✓）：
+
+| 位置 | 后果 |
+|---|---|
+| **`GunFireEvent$Post` 的构造函数** | 它在 `handleShoot` 末尾 `new GunFireEvent.Post(...)` ✓ ⇒ **事件还没投递就抛** ✗ ⇒ `Post` 的**所有监听器都不执行** ✗ ⇒ 服务端每开一枪都少掉击退 / 热管 / 枪灯 / 抛壳 / 卡壳音效 ✓，异常还会从 `handleShoot` 逃出去 ✓ |
+| `GunEventBus.postShoot` | 同样没有 dist 守卫 ✗（它后半段的玩法逻辑因此永远跑不到 ✓） |
+| `ReloadTracker` 装填完成分支 | 它是 `!isClientSide` 的**服务端** tick 处理器 ✓ ⇒ 专用服务器上"装填完成"会 NPE ✓ |
+
+三处都补了 `!= null` 守卫 ✓（客户端行为一字不变 ✓）：动画只在有 controller 时触发 ✓，
+玩法部分照常执行 ✓。
+
+## 72.5 防复发 + 验证
+
+* 新增审计 **`tools/audit_server_fire_paths.py`** ✓（含 `--selftest` ✓）：
+  ① `new Arrow(...)` 参数不足 4 个、或第 4 个是 `ItemStack.EMPTY` ⇒ 报错 ✓；
+  ② 除 `client/**` 与 `@OnlyIn(Dist.CLIENT)` 方法外 ✓，任何取 controller 的地方必须在后面的代码里
+  **守卫同名变量** ✓（要求 `if (x != null)` / `if (x == null) return` ✓）。
+  **自测** ✓：对 `git show HEAD:` 的修复前源码跑 ⇒ **4 处全部命中**（1 个空 weapon + 3 个未守卫 ✓）；
+  当前源码 **0** ✓。已加入 CI 的静态检查列表 ✓。
+  > 这条审计的第一版**误报了刚修好的三处** ✗：我把"守卫窗口"设成 300 字符，而守卫前有一段注释 ✓
+  > 正好把它挤出去 ✓（差 5 个字符 ✓）⇒ 改成**先剥注释 + 按变量名精确匹配** ✓。
+  > 教训：**启发式审计也要先在自己刚改过的代码上跑一遍** ✓。
+* 实测（专用服务器 + FakePlayer，探针读完即删 ✓）：
+
+```
+修复前  scguns:niami THREW IllegalArgumentException: Invalid weapon firing an arrow
+        scguns:mk43_rifle(对照) THREW NullPointerException: animationController is null
+修复后  scguns:niami            -> arrows spawned=1   ammo 6 -> 5   （Arrow@x,y,z ✓）
+        scguns:mk43_rifle(对照)  -> 开枪成功、弹药 6 -> 5、**无异常** ✓
+```
+
+* 门禁：`javac` 0 错误 ✓、`gradlew build` ✓、**24 个审计全 0** ✓、`verify_installed_jar` **160/160** ✓、
+  探针已删除 ✓（`tmpprobe` 包整个移除 ✓）、已安装 ✓（上一版备份 `.bak-213733` ✓）。
+  - 又踩一次 §9 的坑 ✓：**上一轮 dev 服务器还在跑时，下一次 `runServer` 会在启动阶段失败**
+    （`Unable to delete file run\logs\latest.log` ✓）⇒ 跑完必须按 `devlaunch` 精确杀 java 进程 ✓。
+* **边界**：**客户端表现仍要玩家确认** ✓ —— "能射出箭"是服务端实测 ✓；
+  拉弓音效 / 持枪动画 / 箭的命中表现在客户端 ✓。另外这个 bug 与 §65 的"充能枪不能开火"**无关** ✗
+  （那是 PULSE 枪 ✓，niami 是 `semi_automatic` ✓），§65.4 的问题依然待玩家给现象 ✓。
+
+
 
 
 

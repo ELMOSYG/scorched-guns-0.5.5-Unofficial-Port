@@ -382,4 +382,33 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   项目需玩家在网页创建（我无法代建），上传文件 `build/libs/scguns-0.5.5.jar`。
 - **待玩家**：`NOTICE` 里汉化包署名仍是占位文字。
 
+---
+
+## §72 `scguns:niami` 无法射击 —— 1.21 的箭要求"发射它的武器"，移植传了空物品
+
+> 玩家："scguns:niami 无法正常射击"。
+
+- **数据无问题**：`data/scguns/guns/niami.json` 与 0.5.5 **逐字一致**（41 字段全同）；它是那把**射箭的枪**
+  （`firesArrows: true`、projectile/弹药都是 `minecraft:arrow`、`weaponType: special`、`semi_automatic`）。
+- **复现**（FakePlayer + `ServerPlayHandler.handleShoot`，专用服务器）：
+  `THREW java.lang.IllegalArgumentException: Invalid weapon firing an arrow`。
+- **根因**：1.21 的 `AbstractArrow` 在**服务端**且 weapon 非 null 时，**空栈直接抛异常**
+  （`.refs/nf-src/.../AbstractArrow.java:97-100`）。0.5.5 调的是 1.20.1 的 `new Arrow(world, player)`
+  （没有 weapon），移植改成传 `ItemStack.EMPTY` ⇒ 每次都在 `getArrow` 里抛 ⇒ **整发子弹被丢弃**
+  （无箭、不扣弹药、无枪声）。单人同样中招（集成服 level 也是 ServerLevel）。
+- **修法**：传 **`null`**（参数本就是 `@Nullable`，与 0.5.5"没有 weapon"语义一致）。
+  ⚠️ 我第一版传**枪本身**（已实测通过），但查源码发现 `AbstractArrow` 会把 weapon **存进箭的存档**
+  ⇒ 每支箭都会带一份整枪拷贝 ⇒ 改成 null 并重新实跑验证。
+- **顺带修掉 3 处服务端 NPE**：`AnimatedGunItem.registerControllers` 只在客户端跑 ⇒ 服务端 controller 恒 null，
+  而 `GunFireEvent$Post`（**构造函数**里，事件还没投递 ⇒ Post 的所有监听器都不执行 ⇒ 服务端每枪都少掉
+  击退/热管/枪灯/抛壳/卡壳音效）、`GunEventBus.postShoot`、`ReloadTracker` 装填完成分支（服务端 tick）
+  都直接调用它。三处补 `!= null` 守卫。
+- **防复发**：新增 `tools/audit_server_fire_paths.py`（`--selftest` 对修复前源码实测命中 **4 处**：
+  1 个空 weapon + 3 个未守卫 controller；已加入 CI 静态检查）。第一版审计因"守卫窗口 300 字符被注释挤爆"
+  **误报了刚修好的三处**，改成剥注释 + 按变量名精确匹配后归零。
+- **实测**：修复后 `niami -> arrows spawned=1，ammo 6→5`；对照枪开枪成功且**无异常**。
+- **门禁**：`javac` 0 / `build` ✓ / **24 个审计 0** / `verify_installed_jar` **160/160** / 探针已删 / 已安装
+  （备份 `.bak-213733`）。环境坑：上一轮 dev 服务器没停时下一次 `runServer` 会在启动阶段失败（§9 老坑）。
+- **待玩家确认**：客户端表现（拉弓音效、持枪动画、箭命中表现）。与 §65「充能枪不能开火」无关（那是 PULSE 枪）。
+
 

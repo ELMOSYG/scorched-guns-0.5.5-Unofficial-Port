@@ -631,8 +631,14 @@ public class ReloadTracker {
                            .getManagerForId(id)
                            .getAnimationControllers()
                            .get("controller");
-                        animationController.setAnimationSpeed(1.0);
-                        animationController.forceAnimationReset();
+                        // Null on a dedicated server: animation controllers are registered client-side
+                        // only, and this tick handler runs on the server. The reload itself still has to
+                        // finish, so only the animation is skipped.
+                        if (animationController != null) {
+                           animationController.setAnimationSpeed(1.0);
+                           animationController.forceAnimationReset();
+                        }
+
                         if (reloadType == ReloadType.MANUAL) {
                            ReloadHandler.loaded(player);
                         }

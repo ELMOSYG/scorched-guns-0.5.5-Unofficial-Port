@@ -26,6 +26,7 @@ jobs:
           set -e
           for tool in \
             audit_gun_animation_identity \
+            audit_server_fire_paths \
             audit_bus_registrations \
             audit_subscribers \
             audit_dist_safety \

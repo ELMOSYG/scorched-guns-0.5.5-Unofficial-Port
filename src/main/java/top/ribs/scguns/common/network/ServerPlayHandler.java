@@ -182,7 +182,15 @@ public class ServerPlayHandler {
 
    @NotNull
    private static Arrow getArrow(ServerPlayer player, Level world, ItemStack heldItem, Gun modifiedGun) {
-      Arrow arrow = new Arrow(world, player, new ItemStack(Items.ARROW), ItemStack.EMPTY);
+      // 1.21's AbstractArrow rejects an *empty* weapon on the server side: its
+      // (EntityType, owner, level, pickup, firedFromWeapon) constructor throws
+      // IllegalArgumentException("Invalid weapon firing an arrow") when the weapon stack is empty.
+      // 0.5.5 called Arrow(Level, LivingEntity), which passed no weapon at all - so this arrow-firing gun
+      // (scguns:niami) fired nothing, the exception aborted the whole shot, and the player saw a gun that
+      // simply would not shoot. The parameter is @Nullable and null is what vanilla does when there is no
+      // weapon: passing the gun instead would work, but 1.21 persists the weapon inside the arrow, so
+      // every niami arrow would carry a copy of the gun (attachments and all).
+      Arrow arrow = new Arrow(world, player, new ItemStack(Items.ARROW), null);
       float speed = (float)modifiedGun.getProjectile(heldItem).getSpeed() * 0.35F;
       float pitch = player.getXRot();
       float yaw = player.getYRot();

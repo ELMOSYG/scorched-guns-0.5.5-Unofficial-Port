@@ -291,20 +291,24 @@ public class GunEventBus {
             .getManagerForId(id)
             .getAnimationControllers()
             .get("controller");
-         controller.forceAnimationReset();
-         boolean isCarbine = gunItem.isInCarbineMode(heldItem);
-         if (gunItem instanceof AnimatedDualWieldGunItem) {
-            ServerPlayHandler.RatKingAndQueenModel.GunFireEventRatHandler.incrementShotCount();
-            boolean useAlternate = ServerPlayHandler.RatKingAndQueenModel.GunFireEventRatHandler.shouldUseAlternateAnimation();
-            if ((Boolean)ModSyncedDataKeys.AIMING.getValue(player)) {
-               controller.tryTriggerAnimation(useAlternate ? "aim_shoot1" : "aim_shoot");
+         // Null on a dedicated server (animation controllers are client-side) and before the client has
+         // registered them; the gameplay work further down this listener must still run either way.
+         if (controller != null) {
+            controller.forceAnimationReset();
+            boolean isCarbine = gunItem.isInCarbineMode(heldItem);
+            if (gunItem instanceof AnimatedDualWieldGunItem) {
+               ServerPlayHandler.RatKingAndQueenModel.GunFireEventRatHandler.incrementShotCount();
+               boolean useAlternate = ServerPlayHandler.RatKingAndQueenModel.GunFireEventRatHandler.shouldUseAlternateAnimation();
+               if ((Boolean)ModSyncedDataKeys.AIMING.getValue(player)) {
+                  controller.tryTriggerAnimation(useAlternate ? "aim_shoot1" : "aim_shoot");
+               } else {
+                  controller.tryTriggerAnimation(useAlternate ? "shoot1" : "shoot");
+               }
+            } else if ((Boolean)ModSyncedDataKeys.AIMING.getValue(player)) {
+               controller.tryTriggerAnimation(isCarbine ? "carbine_aim_shoot" : "aim_shoot");
             } else {
-               controller.tryTriggerAnimation(useAlternate ? "shoot1" : "shoot");
+               controller.tryTriggerAnimation(isCarbine ? "carbine_shoot" : "shoot");
             }
-         } else if ((Boolean)ModSyncedDataKeys.AIMING.getValue(player)) {
-            controller.tryTriggerAnimation(isCarbine ? "carbine_aim_shoot" : "aim_shoot");
-         } else {
-            controller.tryTriggerAnimation(isCarbine ? "carbine_shoot" : "shoot");
          }
       }
 
