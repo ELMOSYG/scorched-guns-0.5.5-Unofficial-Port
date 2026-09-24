@@ -53,7 +53,7 @@ This repository ships the complete working notebook of the port, including every
 
 * [`HANDOFF.md`](HANDOFF.md) — **the handover document** (Chinese, ~5500 lines, 70 sections): what the port does, why, every trap, and the evidence for each claim.
 * [`PORTING_STATUS.md`](PORTING_STATUS.md) — the status board (short form).
-* `tools/` — 24 static audits plus the rewrite/generator scripts, each of them able to fail on the build it was written for.
+* `tools/` — 23 static audits plus the rewrite/generator scripts, each of them able to fail on the build it was written for.
 
 The **Static checks** workflow runs the subset of those audits that needs nothing but this repository
 (sources and resources). The rest — the audits that read compiled classes, the NeoForge sources or the
