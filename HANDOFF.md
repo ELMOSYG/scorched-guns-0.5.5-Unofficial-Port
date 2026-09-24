@@ -5554,6 +5554,16 @@ Caused by: java.lang.IllegalArgumentException: IModBusEvent events are not allow
 * **本地 `master` 保留全部历史** ✓ —— HANDOFF 里引用的提交哈希（如 §42.7 的 `86a2d1f` ✓）仍然可在本地查 ✓；
   公开的 `main` 是单提交 ✓。**以后开发走 `main`** ✓（jar 已被 ignore ✓，构建不受影响 ✓）。
 * 三个"要自己放哪些 jar"的说明 ✓：`libs/README.md`、`maid-compat/libs/README.md`、`libs-compile/README.md` ✓。
+* **MDK 残留清理** ✓（推送后在公开树里发现的 ✓）：删掉 `MDK-1.21.1-ModDevGradle-main.zip`（模板压缩包 ✓）；
+  `TEMPLATE_LICENSE.txt` **保留** ✓ 并写进 `NOTICE` 第 6 节 —— 它讲的是 MDK 骨架的 **MIT 许可**
+  （Copyright (c) 2023 NeoForged project ✓，只覆盖模板文件本身 ✓）；
+  **`build.yml` 换掉** ✗ —— MDK 自带的 CI 是 `./gradlew build` ✓，而公开仓库里**没有依赖 jar** ✗
+  ⇒ 每次推送必然是红叉 ✗。新增 `.github/workflows/checks.yml` ✓ 只跑**不需要 jar/编译产物/`.refs`** 的那 19 个工具 ✓
+  （实测本地全过 ✓）：15 个审计 + `survey_conditions` + `fix_loot_functions` + `analyze_advancements` +
+  `prepublish_audit` ✓。需要 `build/classes`、`.refs/` 或依赖 jar 的审计（`audit_stale_overrides`、
+  `audit_subscriber_bus`、`audit_mixins`、`audit_override_drift`、`audit_mixin_plugin_gate`、
+  `audit_tlm_isolation`、`audit_abstract_events`、`audit_double_background`）**只在本地跑** ✓ ——
+  这一点在 workflow 文件头和 README 里都写明了 ✓。
 
 ## 71.4 CurseForge
 
