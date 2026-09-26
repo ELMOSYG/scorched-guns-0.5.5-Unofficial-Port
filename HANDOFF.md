@@ -6426,7 +6426,19 @@ wild gunner: tags=[GunAttackAssigned, AI_SMART, ThematicGunner, MobGunner] item=
   （**于是这个类也不依赖 GV 任何东西** ✓）。
 * **`compat/guardvillagers/GuardVillagersEvents`** ✓：`LivingIncomingDamageEvent` ✓
   （NeoForge 把 Forge 的 `LivingHurtEvent` 换成了它 ✓）+ `LivingKnockBackEvent` ✓
-  ⇒ 警卫对村民/铁傀儡/其他警卫的**伤害与击退一并取消** ✓。
+  ⇒ 警卫对村民/铁傀儡/其他警卫的**伤害与击退一并取消** ✓。**这只是兜底** ✓ —— 真正拦子弹的是下面那条 ✓。
+* **`mixin/common/compat/guardvillagers/GuardProjectileHitMixin`** ✓：**友伤防护的真正开关** ✓ ——
+  注入 `ProjectileEntity.getHitResult` 的 `HEAD` ✓，命中放行判定为友军就 `setReturnValue(null)` ✓
+  ⇒ 子弹**直接穿过去** ✓，伤害 ✓、破盾 ✓、`impactEffect` ✓、元素爆裂**一并跳过** ✓。
+  **为什么必须挂在这里**（玩家指出原兼容 mod 的友伤机制没用之后，对着女仆兼容的注释 + 本仓代码逐条核对 ✓）：
+  | 层 | 为什么在**本 mod** 的子弹上无效 |
+  |---|---|
+  | 原版 `Projectile.canHitEntity` ✓（原 1.20.1 兼容 mod 用的就是这个 ✓）| 本 mod 的 `ProjectileEntity` **不是**原版 `Projectile` ✓，它用自己的 `PROJECTILE_TARGETS` 谓词找目标 ✓ ⇒ 那个 mixin 一辈子看不到它的一发子弹 ✗ |
+  | 基类 `onHitEntity` ✓ | **二十多个子类覆盖了它且不调 `super`** ✓（高级弹/火箭/等离子/FireRound/OsborneSlug/Beowulf/BrassBolt/Gibbs/Krahg/MicroJet/Ramrod/SculkCell/Shotball/BearPackShell/Lightning… ✓）⇒ 挂基类等于漏掉几乎所有特殊弹 ✗ |
+  | `findEntityOnPath` / `findEntitiesOnPath` ✓ | 多数子弹走基类版本 ✓，但 **`LightningProjectileEntity`（覆盖了两个 ✓）与 `ShotballProjectileEntity`（自己调 `getHitResult` ✓）** 走自己的路 ✗ —— 本轮第一版就是这么写的 ✓，正是漏了这两类 ✓ |
+  | **`getHitResult`** ✓ | 上面**所有**路径最终都调它 ✓（全仓 6 处调用点：基类 2 ✓、`LightningProjectileEntity` 3 ✓、`Shotball` 1 ✓），且**没有任何子弹类覆盖它** ✓ ⇒ 唯一真正的漏斗 ✓ |
+  这个 mixin 打的是**本 mod 自己的类** ✓ 且只问 `GuardVillagersCompat` ✓（非警卫恒 false ✓）
+  ⇒ **不需要任何 mixin 门禁** ✓、没装 GV 时也安全 ✓、也仍然不提及 GV 的任何类 ✓（审计里的"唯一提及 GV 类"规则依旧成立 ✓）。
 * **三个钩子**（都在 `GunnerMobSpawner` ✓，**没有 mixin** ✓）：`onEntityJoinWorld` ✓、
   `onLivingUpdate`（`tickCount < 2` ✓）、`onLivingEquipmentChange` ✓。
 * **数据** ✓：`gunner_mobs.json` 新增 **`guardvillagers:guard`** 条目 ✓（`spawn_chance` 1.0 ✓、
@@ -6461,6 +6473,17 @@ wild gunner: tags=[GunAttackAssigned, AI_SMART, ThematicGunner, MobGunner] item=
   ```
   * 15 发 / **7 次补弹** ✓（这把 `callwell` 弹匣只有 2 发 ✓ ⇒ 打空→换弹→补满的循环真的在转 ✓）；
   * 村民**全程 20 血** ✓，而且当时它就在"警卫—目标"的连线上 ✓（警卫停在 x=6 ✓，村民 x=5.5 ✓，目标 x=0.5 ✓）。
+* **友伤机制单独验了（A/B，决定性 ✓）**：玩家指出"原兼容 mod 那个友伤消除机制其实没用 ✓，
+  能用的是女仆兼容那套 ✓" ⇒ 改完机制后专门写探针**直接测那个漏斗** ✓，而不是"看村民掉不掉血" ✓
+  （后者可能是**空转**：子弹根本没打到那条线上时也显示 20 血 ✓）：
+  ```
+  ray from (10.5, 71.6, 0.5) to (0.5, 72.0, 0.5), villager at (4.69, 71.0, 0.5)
+  guard's shot -> villager: null                （预期：不命中）✓
+  guard's shot -> target:   hit at (0.8, 71.99, 0.5)   （预期：命中 ⇒ 没有一刀切 ✓）
+  other's shot -> villager: hit at (4.99, 71.83, 0.5)  （预期：命中 ⇒ 拦截是"警卫专属" ✓）
+  ```
+  **同一条射线、同一个村民，只换弹体主人** ✓ ⇒ 三条结论同时成立：拦得住 ✓、不误拦 ✓、只拦警卫 ✓；
+  日志里也能看到 `GuardProjectileHitMixin` 确实被 Mixin 应用到了 `ProjectileEntity` ✓。
 * **不装 Guard Villagers 也验了** ✓：`gradlew runServer -PnoIntegrationRuntime=true` ⇒
   `guardvillagers loaded=false` ✓、**没有 `NoClassDefFoundError`** ✓、服务器正常起 ✓、而且普通枪手照常 ✓
   （`wild gunner: hand=scguns:winnie_millend ammo=2 tags=[GunAttackAssigned, AI_COWARD, ThematicGunner,

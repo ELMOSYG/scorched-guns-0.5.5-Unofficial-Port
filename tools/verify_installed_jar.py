@@ -976,10 +976,17 @@ def main():
         # and fire the mod's guns, and the four classes must ship - the data entry alone would arm nobody,
         # and the compat class alone would have no weapon list. GuardFriendlyRules is the only class that
         # may name a Guard Villagers type, and it must be there for the friendly-fire check to work.
+        #
+        # The friendly-fire gate itself lives on the projectile funnel: the layers the reference
+        # implementations tried first - vanilla Projectile.canHitEntity, the base onHitEntity, the two
+        # entity searches - all miss projectiles this mod actually fires, which is why the standalone
+        # 1.20.1 compat's protection did nothing. getHitResult is the funnel every path goes through, and
+        # the mixin that hooks it has to be both in the jar and listed in the packaged mixin config.
         for entry in ("compat/guardvillagers/GuardVillagersCompat.class",
                       "compat/guardvillagers/GuardFriendlyRules.class",
                       "compat/guardvillagers/GuardGunAttackGoal.class",
-                      "compat/guardvillagers/GuardVillagersEvents.class"):
+                      "compat/guardvillagers/GuardVillagersEvents.class",
+                      "mixin/common/compat/guardvillagers/GuardProjectileHitMixin.class"):
             checks.append(("the guard compat ships (%s)" % entry.rsplit("/", 1)[-1],
                            "top/ribs/scguns/" + entry in names))
         checks.append(_check_resource_contains(
@@ -989,8 +996,11 @@ def main():
             zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"equipGuardGun",
             "the guard equip hook ships"))
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/entity/projectile/ProjectileEntity.class", b"isFriendlyShot",
-            "a guard's shots skip the village"))
+            zf, "top/ribs/scguns/mixin/common/compat/guardvillagers/GuardProjectileHitMixin.class",
+            b"isFriendlyShot", "the guard friendly-fire gate calls the shared ally test"))
+        checks.append((
+            "the mixin is listed in the packaged mixin config",
+            "common.compat.guardvillagers.GuardProjectileHitMixin" in (read("scguns.mixins.json") or "")))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:

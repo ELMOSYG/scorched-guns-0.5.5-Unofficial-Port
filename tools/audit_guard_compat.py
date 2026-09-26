@@ -36,6 +36,7 @@ PROJECTILE = PACKAGE / "entity/projectile/ProjectileEntity.java"
 CONFIG = PACKAGE / "Config.java"
 GUNNER_JSON = pathlib.Path("src/main/resources/data/scguns/entity/gunner_mobs.json")
 MODS_TOML = pathlib.Path("src/main/templates/META-INF/neoforge.mods.toml")
+MIXIN_CONFIG = pathlib.Path("src/main/resources/scguns.mixins.json")
 
 RELATIVE_PACKAGE = "src/main/java/top/ribs/scguns"
 GUARD_PACKAGE = "tallestegg.guardvillagers"
@@ -56,7 +57,7 @@ def guard_class_files(files):
                   if GUARD_PACKAGE in strip_comments(text))
 
 
-def check(files, gunner_json, mods_toml):
+def check(files, gunner_json, mods_toml, mixin_config_text=""):
     problems = []
     for required in ("compat/guardvillagers/GuardVillagersCompat.java",
                      "compat/guardvillagers/GuardFriendlyRules.java",
@@ -104,13 +105,49 @@ def check(files, gunner_json, mods_toml):
 
     for relative, needles in (
         ("config/GunnerMobSpawner.java", ["GuardVillagersCompat.equipGuardGun", "GuardGunAttackGoal"]),
-        ("entity/projectile/ProjectileEntity.java", ["GuardVillagersCompat.isFriendlyShot"]),
     ):
         text = strip_comments(files.get(relative) or "")
         for needle in needles:
             if needle not in text:
                 problems.append("%s never reaches %s, so part of the compat is dead code"
                                 % (relative, needle))
+
+    # The friendly-fire gate has to sit on the projectile funnel (HANDOFF section 82). The layers that do
+    # NOT work on this mod's projectiles, in the order the reference implementations tried them:
+    #   * vanilla Projectile.canHitEntity - SCG's ProjectileEntity is not a vanilla Projectile;
+    #   * the base onHitEntity - ~25 subclasses override it without calling super;
+    #   * findEntityOnPath/findEntitiesOnPath - LightningProjectileEntity and ShotballProjectileEntity
+    #     run their own searches, so a filter there misses them.
+    # getHitResult is the funnel every path goes through and nothing overrides.
+    mixin = "mixin/common/compat/guardvillagers/GuardProjectileHitMixin.java"
+    text = strip_comments(files.get(mixin) or "")
+    if not text:
+        problems.append("%s is missing, so a guard's shots hit whatever is behind the target" % mixin)
+    else:
+        if "getHitResult" not in text:
+            problems.append("%s no longer hooks getHitResult, the one funnel every projectile path uses"
+                            % mixin)
+        if "GuardVillagersCompat.isFriendlyShot" not in text:
+            problems.append("%s does not ask GuardVillagersCompat, so the gate can disagree with the "
+                            "equip path" % mixin)
+        if GUARD_PACKAGE in text:
+            problems.append("%s names a Guard Villagers class; it targets the mod's own projectile and "
+                            "must stay loadable without the mod" % mixin)
+
+    mixin_config = {}
+    try:
+        mixin_config = json.loads(mixin_config_text) if mixin_config_text else {}
+    except ValueError as error:
+        problems.append("%s is not readable as JSON (%s)" % (MIXIN_CONFIG.name, error))
+    if "common.compat.guardvillagers.GuardProjectileHitMixin" not in mixin_config.get("mixins", []):
+        problems.append("scguns.mixins.json does not list GuardProjectileHitMixin, so the gate is never "
+                        "applied")
+
+    projectile = strip_comments(files.get("entity/projectile/ProjectileEntity.java") or "")
+    if "isFriendlyShot" in projectile:
+        problems.append("ProjectileEntity filters friendly shots again - that layer misses the projectiles "
+                        "with their own entity search and reads as coverage it does not provide; the "
+                        "mixin's getHitResult hook is the one that covers every path")
 
     spawner = strip_comments(files.get("config/GunnerMobSpawner.java") or "")
     has_goal = re.search(r"hasGunAttackGoal.*?instanceof GuardGunAttackGoal", spawner, re.S)
@@ -180,11 +217,12 @@ def selftest():
         files = git_files(PRE_FIX_REVISION)
         gunner_json = git_text(PRE_FIX_REVISION, GUNNER_JSON.as_posix())
         mods_toml = git_text(PRE_FIX_REVISION, MODS_TOML.as_posix())
+        mixin_config_text = git_text(PRE_FIX_REVISION, MIXIN_CONFIG.as_posix())
     except (subprocess.CalledProcessError, FileNotFoundError) as error:
         print("selftest: cannot read revision %s (%s)" % (PRE_FIX_REVISION, error))
         return 1
 
-    found = check(files, gunner_json, mods_toml)
+    found = check(files, gunner_json, mods_toml, mixin_config_text)
     expected = [
         "GuardVillagersCompat.java is missing",       # the compat does not exist yet
         "no guardvillagers:guard entry",
@@ -213,7 +251,8 @@ def main():
         print("FAIL: %s is missing" % COMPAT)
         return 1
     problems = check(current_files(), GUNNER_JSON.read_text(encoding="utf-8"),
-                     MODS_TOML.read_text(encoding="utf-8") if MODS_TOML.is_file() else "")
+                     MODS_TOML.read_text(encoding="utf-8") if MODS_TOML.is_file() else "",
+                     MIXIN_CONFIG.read_text(encoding="utf-8") if MIXIN_CONFIG.is_file() else "")
     for problem in problems:
         print("  %s" % problem)
     if problems:

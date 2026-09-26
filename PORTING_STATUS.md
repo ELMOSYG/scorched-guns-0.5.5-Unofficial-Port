@@ -628,7 +628,17 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   等于原版默认），现已在 `equipThematicGun` 接上（精英仍 0.0 不掉）。
 - **门禁**：新增 `audit_guard_compat.py`（只有 `GuardFriendlyRules` 可提及 GV 类、常量与 JSON key 必须一致、
   三个钩子必须在、`hasGunAttackGoal` 必须算上警卫目标、**必须加在优先级 2**、友伤两层在、精度可配置、
-  `mods.toml` 声明 optional），`--selftest`（`8863bb4`）命中 **13 条**；`verify_installed_jar` 新增 7 条
-  ⇒ **179/179**；`javac` 0（1003 文件）/ `build` ✓ / **30 个审计 0** / 已安装（19409981 字节，备份 `.bak-221646`）。
+  `mods.toml` 声明 optional），`--selftest`（`8863bb4`）命中 **13 条**；`verify_installed_jar` 新增 9 条
+  ⇒ **181/181**；`javac` 0（1003 文件）/ `build` ✓ / **30 个审计 0**。
+
+**友伤机制的更正（玩家指出原兼容 mod 那套其实没用）**：原来的 `Projectile.canHitEntity`、
+基类 `onHitEntity`、`findEntityOnPath/findEntitiesOnPath` 三层在**本 mod 的子弹上全部无效**
+（`ProjectileEntity` 不是原版 `Projectile`；二十多个子类覆盖 `onHitEntity` 不调 super；
+`LightningProjectileEntity`/`ShotballProjectileEntity` 走自己的搜索）。改成女仆兼容那套：
+注入 **`ProjectileEntity.getHitResult`**（全仓 6 处调用点、无任何子类覆盖 ⇒ 唯一漏斗），
+返回 `null` 让子弹**穿过**友军（伤害/破盾/impactEffect/元素爆裂一并跳过）。
+**A/B 实测**：同一条射线、同一个村民，只换弹体主人 ⇒ 警卫弹对村民 `null`、对目标命中、
+非警卫弹对村民照常命中 ⇒ 拦得住、不误拦、且是警卫专属。事件层（`LivingIncomingDamageEvent` +
+`LivingKnockBackEvent`）保留作兜底。
 
 
