@@ -432,4 +432,26 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   （新增"包内版本 == mod_version"）；文档已同步（README / CURSEFORGE / HANDOFF §2+§9）。
   ⚠️ §69 之前历史段落里的 `scguns-0.5.5.jar` 是当时的真实文件名，不要照它找文件。
 
+---
+
+## §74 袭击系统"不抗卸载"：玩家一死血条消失、战利品拿不到（**上游 0.5.5 就有的缺陷，按玩家要求修掉**）
+
+- **根因**：`ActiveRaid` 用 `level.getEntity(uuid)` 找 boss —— 它对**区块未加载**的实体返回 **null**，
+  与"已死"同值。而 `tick()` 写的是 `else { this.endRaid(this.bossConfirmed); }`，`bossConfirmed` 一旦确认
+  就永久为 true ⇒ **"看不见 boss" 被当成 "boss 已被击败"**：血条对所有人隐藏、袭击被从 `activeRaids`
+  与存档移除，而专属战利品只在 `onEntityDeath` 里、且袭击仍被跟踪时才掉落 ⇒ **玩家回来杀掉 boss 只剩普通掉落**。
+  触发条件正是"卸载"：玩家死亡后重生到远处 / 被传送 / 走开 ⇒ boss 区块卸载 ⇒ 立刻误判。
+- **顺带两处**：① `validateBoss()` 对"解析不到"只等 30 秒就判失败（恢复存档的袭击尤其容易中招）；
+  ② 那条等待路径 `setChunkForced` 之后**从不解除** ⇒ 区块永久加载。
+- **修法**：把三种状态分开 —— 已加载存活（正常）/ 已加载已死（`endRaid(true)`）/ **解析不到（不是失败：
+  计数 + 强制加载 boss 上次所在区块 + 袭击继续，含血条与战利品表）**，只有连续 5 分钟仍找不到才
+  `endRaid(false)` 并提示新语言键 `raid.scguns.boss_lost`；`endRaid()` 一定释放强制区块。
+- **实测**（临时探针，已删）：模拟卸载用 `setRemoved(UNLOADED_TO_CHUNK)`（= 引擎在区块卸载时所做的），
+  200 tick 后 **`active=true tracked=true barVisible=true`（SURVIVED THE UNLOAD）**；另一组让 boss
+  `kill()` ⇒ `active=false` 且**专属战利品照掉**（grapeshot ×28 / powder_and_ball ×30 / antique_flare ×1）。
+- **防复发**：新增 `tools/audit_raid_unload_safety.py`（`--selftest` 对修复前源码实测命中 **8 条**；已入 CI）；
+  语言文件 EN/ZH 各加 1 键（1807/1807 对齐）。
+- **门禁**：`javac` 0 / `build` ✓ / **25 个审计 0** / `verify_installed_jar` **161/161** / 探针已删 / 已安装
+  （备份 `.bak-201801`）。
+
 

@@ -36,6 +36,7 @@
   "raid.scguns.defeated": "Raid Defeated!",
   "raid.scguns.failed": "Raid Failed!",
   "raid.scguns.timeout": "Raid Failed: Time's up!",
+  "raid.scguns.boss_lost": "Raid Failed: The boss could not be found.",
   "raid.scguns.surrendered": "Raid Surrendered! The boss has spared you.",
 
   "raid.scguns.antique": "Antique Raid",

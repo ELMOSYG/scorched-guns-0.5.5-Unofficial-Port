@@ -5731,6 +5731,98 @@ installed scguns-0.5.5.1.jar (19392915 bytes)
   ⚠️ **§69 之前的历史段落里仍会看到 `scguns-0.5.5.jar`** ✓ —— 那是**当时的真实文件名** ✓（例如 §49 那次
   "游戏运行中覆盖 jar"的事故 ✓），**不要按它去找文件** ✓。
 
+# 74. 袭击系统"不抗卸载"：玩家一死，血条消失、战利品也拿不到
+
+玩家报告：**"scgun 自带的袭击系统不抗卸载，只要玩家死了袭击 boss 的血条自动消失，也拿不到战利品"** ✓。
+
+## 74.1 根因：**"看不见 boss" 被当成了 "boss 已死"**
+
+`ActiveRaid` 找 boss 用的是 `level.getEntity(uuid)` ✓ —— 它对**区块未加载**的实体返回 **null** ✓，
+与"实体已死"**是同一个返回值** ✗。而 0.5.5（以及本移植到这一轮之前 ✓）在 `tick()` 里写的是：
+
+```java
+LivingEntity boss = this.getBoss();
+if (boss != null && boss.isAlive()) { ...更新血条 / 刷小怪... }
+else { this.endRaid(this.bossConfirmed); }     // ← bossConfirmed 此时通常已经是 true
+```
+
+`validateBoss()` 一旦确认过 boss，`bossConfirmed` 就**永久为 true** ✓ ⇒ 这个 `else` 实际走的是
+**`endRaid(true)` = "袭击已被击败"** ✗。触发条件正好就是"卸载" ✓：玩家死亡后重生到远处 / 被传送 /
+单纯走开 ⇒ boss 所在区块卸载 ⇒ `getBoss()` 返回 null ⇒ **下一 tick 袭击被判定为胜利结束** ✗✓。
+
+一条链解释两个症状 ✓：
+
+1. `endRaid(true)` 第一件事就是 `bossBar.setVisible(false)` + `removeAllPlayers()` ✓ ⇒ **血条消失** ✓；
+2. 它只对**附近 64 格**广播 "Raid Defeated!" ✓ ⇒ 玩家在远处 ⇒ **什么都没看到** ✓；
+3. `RaidManager.tickActiveRaids` 会把 `isActive()==false` 的袭击从 `activeRaids` **和存档**里移除 ✓；
+4. 而**袭击专属战利品**只在 `RaidManager.onEntityDeath` 里、**且该袭击仍在 `activeRaids` 中**时才掉落 ✓
+   （`bossData.specialLootTable()` ✓）⇒ 玩家回来杀掉 boss **只剩普通掉落** ⇒ **拿不到战利品** ✓✓。
+
+即：**boss 还活着、还在世上**（`setPersistenceRequired()` ✓，`endRaid(true)` 也不会 discard 它 ✓），
+但袭击已经被"提前结算" ✗ —— 这就是玩家说的"不抗卸载" ✓。
+
+## 74.2 顺带发现的第二处同类问题 + 一个泄漏
+
+* `validateBoss()`（**确认 boss 之前**的阶段 ✓）用 `ticksSinceLoad >= 600`（30 秒 ✓）⇒ 袭击若是
+  **从存档恢复**的（`restore()` 把 `bossConfirmed` 置回 false ✓）而玩家当时在远处 ✓，boss 同样解析不到
+  ⇒ **30 秒后袭击被判失败** ✗ —— 同一个"卸载即失败"的错误 ✓。
+* 那条等待路径**强制加载了区块却从不解除** ✗（`setChunkForced(x, z, true)` 之后没人 unforce ✓）
+  ⇒ 袭击结束后该区块**永久保持加载** ✓。
+
+## 74.3 修法（把三种状态分开）
+
+| 状态 | 判定 | 处理 |
+|---|---|---|
+| 已加载且存活 ✓ | `boss != null && boss.isAlive()` | 正常：更新血条 / 刷小怪 ✓；记录 `lastKnownBossPos` ✓、**解除强制区块** ✓、清零"看不见"计数 ✓ |
+| 已加载但已死 ✓ | `boss != null`（`!isAlive`） | **真的**被击败（漏了死亡事件的极端情况 ✓）⇒ `endRaid(true)` ✓ |
+| **解析不到** ✓ | `boss == null` | **不是失败** ✗ ⇒ 计数 +1、**把 boss 上次所在区块强制加载**回来 ✓、袭击（含血条与战利品表）**继续存在** ✓；只有连续 `BOSS_LOST_GRACE_TICKS = 6000`（**5 分钟** ✓）仍找不到才 `endRaid(false)` 并广播新键 `raid.scguns.boss_lost` ✓ |
+
+配套 ✓：`endRaid()` 现在**一定** `releaseForcedChunk()` ✓（消灭永久强制加载的泄漏 ✓）；
+`validateBoss()` 的等待改用同一个 5 分钟上限 ✓（恢复存档的袭击不再 30 秒被丢 ✓）；
+`restore()` 显式清空 `lastKnownBossPos` / `forcedChunkPos`（运行期状态，不入存档 ✓）。
+
+> 依据 ✓：这是**上游 0.5.5 就有的设计缺陷** ✓（0.5.5 的 `ActiveRaid.java:162` 逐字相同 ✓，
+> 已用反编译源核对 ✓），不是移植引入 ✓；但它直接把玩法毁掉（打完拿不到东西 ✓），
+> 所以按玩家报告修掉 ✓，并记为**有意偏离 0.5.5** ✓。
+
+## 74.4 实测（调度型探针：起袭击 → 模拟卸载 → 再让 boss 真死）
+
+临时探针 ✓（`ServerTickEvent.Post` 驱动的状态机 ✓，跑完已删 ✓）在专用服务器上做了两件事：
+
+```
+[SCGUNS-RAID] A started: active=true confirmed=true boss=Sheriff Tibias barVisible=true
+[SCGUNS-RAID] A: boss made unresolvable (simulated unload) -> unresolvable
+[SCGUNS-RAID] A after 200 ticks unloaded: active=true tracked=true barVisible=true
+                 -> SURVIVED THE UNLOAD          ← 修复后 ✓（修复前这里会是 active=false、tracked=false）
+[SCGUNS-RAID] B started: active=true boss=Colonel Jil
+[SCGUNS-RAID] B: items near boss before the kill = 0
+[SCGUNS-RAID] B after the boss died: active=false tracked=false itemsNear=3
+                 -> RAID ENDED AS DEFEATED       ← 真死仍然正常结算 ✓
+[SCGUNS-RAID]    dropped: 28x scguns:grapeshot
+[SCGUNS-RAID]    dropped: 30x scguns:powder_and_ball
+[SCGUNS-RAID]    dropped: 1x scguns:antique_flare   ← 专属战利品表仍然掉 ✓
+```
+
+**"卸载"是怎么模拟的** ✓：`boss.setRemoved(Entity.RemovalReason.UNLOADED_TO_CHUNK)` ✓ ——
+这正是**区块卸载时引擎对实体做的事** ✓（不是 kill ✓、不是 discard ✓），所以 `level.getEntity` 立刻返回
+null ✓ 而 boss 并没有死 ✓，与玩家遇到的场景等价 ✓。
+
+## 74.5 防复发 + 验收
+
+* 新增审计 **`tools/audit_raid_unload_safety.py`** ✓（含 `--selftest` ✓）：禁止
+  `endRaid(this.bossConfirmed)` ✓；要求"解析不到"分支里有 `keepBossChunkLoaded` ✓ 与
+  `BOSS_LOST_GRACE_TICKS` ✓；要求 `tick()` 能区分"已加载但已死" ✓；要求 `endRaid()` 释放强制区块 ✓、
+  `onBossResolved()` 清理丢失状态 ✓。
+  **自测** ✓：对 `git show HEAD:` 的修复前源码跑 ⇒ **8 条全部命中** ✓；当前源码 **0** ✓；已加入 CI ✓。
+* 语言文件 ✓：新增 `raid.scguns.boss_lost`（EN/ZH 两边都加 ✓，`audit_lang_keys` 实测
+  **1807/1807、missing/extra 全 0** ✓）。
+* 门禁 ✓：`javac` 0 错误 ✓、`gradlew build` ✓、**25 个审计全 0** ✓、`verify_installed_jar` **161/161** ✓、
+  探针已删除 ✓、已安装 ✓（上一版备份 `.bak-201801` ✓）。
+* **边界**：这是**服务端**行为，已实测 ✓；血条在**客户端**的显示时机 ✓ 建议玩家实机再确认一次 ✓
+  （现在应当是：玩家死了血条**留在屏幕上** ✓，回来继续打，或 5 分钟后才提示找不到首领 ✓）。
+  另注 ✓：**B 组**用 `boss.kill()` 验证的是"真死仍结算战利品" ✓，而玩家那次"拿不到战利品"是 A 种情况
+  （袭击被提前结束 ✓）—— 两条路径现在都正确 ✓。
+
 
 
 

@@ -29,6 +29,14 @@ public class ActiveRaid {
    private static final int BOSS_REVALIDATION_INTERVAL = 100;
    private static final int TARGET_UPDATE_INTERVAL = 40;
    private static final int BOSS_VALIDATION_TICKS = 600;
+   /**
+    * How long the raid survives the boss being **not resolvable** (its chunk is unloaded) before it is
+    * given up as failed. This is deliberately generous and separate from the pre-confirmation wait:
+    * "the boss is unloaded" is not "the boss is dead", and treating it as a defeat is what made a raid
+    * vanish - boss bar and loot table included - the moment the player died and respawned away from it
+    * (HANDOFF section 74).
+    */
+   private static final int BOSS_LOST_GRACE_TICKS = 6000;
    private final UUID raidId;
    private final Integer raidLevel;
    private final RaidConfig.RaidData config;
@@ -44,7 +52,12 @@ public class ActiveRaid {
    private boolean isActive;
    private boolean bossConfirmed;
    private ServerBossEvent bossBar;
+   /** Ticks since the boss could last be resolved at all (unloaded counts, dead does not). */
    private int ticksSinceLoad = 0;
+   /** Where the boss was last seen, so an unloaded boss can be brought back into view. */
+   private BlockPos lastKnownBossPos;
+   /** The chunk this raid forced loaded, so it can be released again. */
+   private ChunkPos forcedChunkPos;
    private int ticksSinceLastValidation = 0;
    private int ticksSinceTargetUpdate = 0;
    private int ticksSinceStart = 0;
@@ -82,6 +95,10 @@ public class ActiveRaid {
       raid.isActive = data.isActive();
       raid.bossConfirmed = false;
       raid.ticksSinceLoad = 0;
+      // The boss's position and any forced chunk are runtime state: after a reload the chunk is simply
+      // re-forced around the spawn centre until the boss is seen again.
+      raid.lastKnownBossPos = null;
+      raid.forcedChunkPos = null;
       long elapsedTime = level.getGameTime() - data.startTime();
       raid.ticksSinceStart = (int)Math.min(elapsedTime, 2147483647L);
       return raid;
@@ -113,7 +130,9 @@ public class ActiveRaid {
 
    public void tick() {
       if (this.isActive) {
-         this.ticksSinceLoad++;
+         // ticksSinceLoad counts "ticks since the boss could last be resolved", so it is incremented
+         // exactly where the boss turns out to be unresolvable (validateBoss and the branch below),
+         // never here - otherwise the grace would expire twice as fast.
          this.ticksSinceLastValidation++;
          this.ticksSinceTargetUpdate++;
          this.ticksSinceStart++;
@@ -143,6 +162,7 @@ public class ActiveRaid {
 
             LivingEntity boss = this.getBoss();
             if (boss != null && boss.isAlive()) {
+               this.onBossResolved(boss);
                if (this.mountUUID != null) {
                   Entity mount = this.getMount();
                   if (mount == null || !mount.isAlive()) {
@@ -158,10 +178,61 @@ public class ActiveRaid {
                if (this.bossConfirmed && this.spawnTimer > 0) {
                   this.spawnTimer--;
                }
+            } else if (boss != null) {
+               // Resolved and not alive: the boss really is dead (a kill whose death event the raid
+               // never saw, or one from a session that ended). That is a defeat.
+               this.endRaid(true);
             } else {
-               this.endRaid(this.bossConfirmed);
+               // Not resolvable at all: its chunk is unloaded - the player died and respawned away
+               // from it, was teleported, or simply walked off. 0.5.5 (and this port until now) treated
+               // that as "boss defeated", which hid the boss bar for everyone, dropped the raid out of
+               // the manager and made the raid's special loot table impossible to obtain. Keep the raid
+               // alive instead, pull the boss's chunk back in, and only give up after a long grace.
+               this.ticksSinceLoad++;
+               this.keepBossChunkLoaded();
+               if (this.ticksSinceLoad >= BOSS_LOST_GRACE_TICKS) {
+                  this.announceToNearbyPlayers(
+                     Component.translatable("raid.scguns.boss_lost").withStyle(ChatFormatting.RED),
+                     Math.max(256.0, (double)this.config.spawnConditions().searchRadius()));
+                  this.endRaid(false);
+               }
             }
          }
+      }
+   }
+
+   /**
+    * The boss is loaded and alive: remember where it is, release the chunk this raid forced open and
+    * clear the "boss not resolvable" counter (HANDOFF section 74).
+    */
+   private void onBossResolved(LivingEntity boss) {
+      this.ticksSinceLoad = 0;
+      this.lastKnownBossPos = boss.blockPosition();
+      this.releaseForcedChunk();
+   }
+
+   /**
+    * Force the chunk the boss was last seen in, so an unloaded boss comes back and can be validated.
+    * Bounded: the caller gives up after {@link #BOSS_LOST_GRACE_TICKS} and {@link #releaseForcedChunk}
+    * runs when the raid ends, so no chunk stays forced forever (0.5.5 never released the one it took
+    * while waiting for the boss to appear).
+    */
+   private void keepBossChunkLoaded() {
+      BlockPos target = this.lastKnownBossPos != null
+         ? this.lastKnownBossPos
+         : BlockPos.containing(this.spawnCenter.x, this.spawnCenter.y, this.spawnCenter.z);
+      ChunkPos chunkPos = new ChunkPos(target);
+      if (this.forcedChunkPos == null || !this.forcedChunkPos.equals(chunkPos)) {
+         this.releaseForcedChunk();
+         this.level.setChunkForced(chunkPos.x, chunkPos.z, true);
+         this.forcedChunkPos = chunkPos;
+      }
+   }
+
+   private void releaseForcedChunk() {
+      if (this.forcedChunkPos != null) {
+         this.level.setChunkForced(this.forcedChunkPos.x, this.forcedChunkPos.z, false);
+         this.forcedChunkPos = null;
       }
    }
 
@@ -259,16 +330,22 @@ public class ActiveRaid {
          LivingEntity boss = this.getBoss();
          if (boss != null && boss.isAlive()) {
             this.bossConfirmed = true;
-            this.ticksSinceLoad = 0;
+            this.onBossResolved(boss);
             boss.setPos(this.spawnCenter.x, this.spawnCenter.y, this.spawnCenter.z);
             return true;
-         } else if (this.ticksSinceLoad >= 600) {
+         } else if (boss != null) {
+            // Resolved, and dead: there is nothing left to fight, so this raid is over as a failure.
             this.endRaid(false);
             return false;
          } else {
-            if (this.ticksSinceLoad % 20 == 0) {
-               ChunkPos chunkPos = new ChunkPos(new BlockPos((int)this.spawnCenter.x, (int)this.spawnCenter.y, (int)this.spawnCenter.z));
-               this.level.setChunkForced(chunkPos.x, chunkPos.z, true);
+            // Not resolvable: an unloaded boss is not a lost raid. Wait for it with its chunk pulled
+            // back in, and only give up after the same long grace the confirmed path uses - a raid that
+            // starts while its boss is still out of view (restored from the save, player far away) must
+            // not be thrown away after half a minute any more.
+            this.ticksSinceLoad++;
+            this.keepBossChunkLoaded();
+            if (this.ticksSinceLoad >= BOSS_LOST_GRACE_TICKS) {
+               this.endRaid(false);
             }
 
             return false;
@@ -442,6 +519,8 @@ public class ActiveRaid {
    public void endRaid(boolean bossDefeated) {
       if (this.isActive) {
          this.isActive = false;
+         // Never leave a chunk forced open after the raid is over.
+         this.releaseForcedChunk();
          if (bossDefeated) {
             this.announceToNearbyPlayers(Component.translatable("raid.scguns.defeated"), 64.0);
          } else {
