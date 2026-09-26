@@ -995,6 +995,12 @@ def main():
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"equipGuardGun",
             "the guard equip hook ships"))
+        # The gun goal must not reserve goal flags: while it runs, flags would stop the goal selector from
+        # starting any of Guard Villagers' own goals that need them - the gun AI taking over the guard AI
+        # (HANDOFF section 82.7).
+        checks.append(_check_class_lacks(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"setFlags",
+            "the guard gun goal reserves no goal flags"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/mixin/common/compat/guardvillagers/GuardProjectileHitMixin.class",
             b"isFriendlyShot", "the guard friendly-fire gate calls the shared ally test"))

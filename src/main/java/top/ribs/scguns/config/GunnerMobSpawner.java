@@ -341,16 +341,20 @@ public class GunnerMobSpawner {
       mob.setItemSlot(EquipmentSlot.MAINHAND, modifiedGun);
       mob.setDropChance(EquipmentSlot.MAINHAND, gunnerData.weaponDropChance());
       if (!hasGunAttackGoal(mob)) {
-         // Priority 2, not 3: Guard Villagers runs its own melee goal at 3 with the same MOVE|LOOK
-         // flags, so a goal at 3 never starts - the first probe for this showed GuardMeleeGoal
-         // running=true and the gun goal running=false for 500 ticks. Outranking it is also what the
-         // standalone 1.20.1 compat did with a melee-suppressing mixin, without needing one here.
+         // Priority 2 keeps the gun goal's aiming and firing ticks ahead of Guard Villagers' own combat
+         // goals. It does NOT need to outrank them: the goal holds no MOVE|LOOK flags (see
+         // GuardGunAttackGoal), so it never blocks them - unlike the first version here, which reserved
+         // both flags and thereby disabled the guard's own patrol, return-to-village, door and stroll
+         // goals for as long as it had a target (HANDOFF section 82.7).
          // The goal takes the same difficulty the mod's own gunners use for their cadence.
          mob.goalSelector.addGoal(2, new GuardGunAttackGoal(mob, accuracy, gunnerData.aiDifficulty()));
       }
 
       mob.addTag("GunAttackAssigned");
-      extendFollowRange(mob);
+      // A guard keeps its own follow range. Giving it the raider's 64 blocks (what the thematic gunners
+      // get) sent armed guards chasing across the countryside and away from the village they exist to
+      // defend; resetFollowRange also undoes the modifier a previous version left on an armed guard.
+      resetFollowRange(mob);
       return true;
    }
 

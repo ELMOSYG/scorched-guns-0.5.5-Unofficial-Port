@@ -1,6 +1,5 @@
 package top.ribs.scguns.compat.guardvillagers;
 
-import java.util.EnumSet;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
@@ -9,7 +8,6 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Mob;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
-import net.minecraft.world.entity.ai.util.LandRandomPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import top.ribs.scguns.Config;
@@ -35,8 +33,6 @@ import top.ribs.scguns.util.NbtHelper;
 public class GuardGunAttackGoal extends Goal {
    private final PathfinderMob mob;
    private final float accuracy;
-   private int seeTime;
-   private int repathTime;
    private boolean isReloading;
    private long reloadEndGameTime;
    /** Ticks to wait before the next shot: the gun's rate scaled by {@code mobFireRateMultiplier}. */
@@ -52,7 +48,12 @@ public class GuardGunAttackGoal extends Goal {
    public GuardGunAttackGoal(PathfinderMob mob, float accuracy, int difficulty) {
       this.mob = mob;
       this.accuracy = accuracy;
-      this.setFlags(EnumSet.of(Goal.Flag.LOOK, Goal.Flag.MOVE));
+      // Deliberately NO setFlags(MOVE|LOOK) - the same as the mod's own GunAttackGoal. Reserving those
+      // flags is what made this goal "take over" a guard (HANDOFF section 82.7): while it ran - which is
+      // whenever the guard had a target and a gun - the goal selector could not start any other goal
+      // needing MOVE or LOOK, so Guard Villagers' melee, patrol, walk-back-to-checkpoint, return-to-
+      // village, door and stroll goals were all dead, and an armed guard stopped behaving like a guard.
+      // Without flags it only competes on priority for the tick order, and those goals keep running.
       this.burstAmount = 2 + difficulty / 2;
       float difficultyMultiplier = switch (mob.level().getDifficulty()) {
          case PEACEFUL -> 2.0F;
@@ -73,34 +74,33 @@ public class GuardGunAttackGoal extends Goal {
    }
 
    public boolean canContinueToUse() {
-      // A target is required, not just a gun: otherwise the goal keeps holding MOVE|LOOK while the guard
-      // has nothing to fight and the guard stands still instead of going home or strolling.
+      // A target is required, not just a gun: a guard that has nothing to fight should get on with its
+      // own business (patrol, go home, stroll) instead of standing there holding a gun.
       return this.mob.getTarget() != null && this.mob.getMainHandItem().getItem() instanceof GunItem;
    }
 
    public void start() {
-      this.repathTime = 0;
       this.isReloading = false;
-      this.remainingBursts = 0;
-      this.burstResetTimer = 0;
-      this.burstIntervalTimer = 0;
+      // The cadence counters are NOT reset here. A guard's target flickers: Guard Villagers' own goals
+      // keep running now, and any of them clearing the target stops this goal for a tick and starts it
+      // again - which, when start() reset the cadence, meant attackTime restarted its countdown over and
+      // over and the guard never got a shot off (HANDOFF section 82.7). They live on the goal instance,
+      // which the goal selector reuses, so leaving them alone lets the cadence continue across restarts.
       ItemStack gunStack = this.mob.getMainHandItem();
       if (gunStack.getItem() instanceof GunItem gunItem) {
          Gun modifiedGun = gunItem.getModifiedGun(gunStack);
-         this.attackTime = modifiedGun == null ? 0 : this.fireInterval(modifiedGun);
          if (modifiedGun != null && modifiedGun.getReloads() != null
             && NbtHelper.getOrCreateTag(gunStack).getInt("AmmoCount") <= 0) {
-            // A guard has no ammo pouch: an empty gun is topped up once when the goal starts, rather
-            // than left useless because the loot table handed it over unloaded.
+            // A guard has no ammo pouch: an empty gun is topped up when the goal starts, rather than left
+            // useless because the loot table handed it over unloaded.
             NbtHelper.getOrCreateTag(gunStack).putInt("AmmoCount", modifiedGun.getReloads().getMaxAmmo());
          }
-      } else {
-         this.attackTime = 0;
       }
    }
 
    public void stop() {
-      this.mob.getNavigation().stop();
+      // No getNavigation().stop() here: this goal does not steer the guard at all (see tick), and telling
+      // the navigation to stop on every target flicker fought Guard Villagers' own movement goals.
       this.mob.setAggressive(false);
    }
 
@@ -136,41 +136,16 @@ public class GuardGunAttackGoal extends Goal {
       }
 
       double distance = this.mob.distanceTo(target);
-      double idealRange = modifiedGun.getIdealAttackRange();
-      double fireRange = idealRange * 1.5;
+      double fireRange = modifiedGun.getIdealAttackRange() * 1.5;
 
+      // Aim only. Movement belongs to Guard Villagers here: this goal reserves no flags and steers no
+      // navigation, so a guard walks, patrols, goes home, opens doors and closes into melee exactly as it
+      // did before it was ever handed a gun (HANDOFF section 82.7). An earlier version wanted to keep the
+      // gun's ideal range and back away when the target got close - that is a raider's behaviour, and two
+      // goals steering the navigation at once only made the guard stutter.
       this.mob.getLookControl().setLookAt(target, 30.0F, 30.0F);
       this.mob.setAggressive(true);
-
       boolean canSee = this.mob.hasLineOfSight(target);
-      this.seeTime = canSee ? Math.min(this.seeTime + 1, 40) : 0;
-
-      // Too close for a gun: back away instead of standing in melee range. The guard's own melee goal
-      // can still take over there, which is intended - this only stops the shooting from happening at
-      // point-blank range with an ally behind the target.
-      if (distance <= 4.0) {
-         this.mob.getMoveControl().strafe(this.mob.isUsingItem() ? -0.5F : -3.0F, 0.0F);
-      }
-
-      if (distance * distance > fireRange * fireRange || this.seeTime < 5) {
-         if (--this.repathTime <= 0) {
-            this.repathTime = 1 + this.mob.getRandom().nextInt(2);
-            this.mob.getNavigation().moveTo(target, 1.0D);
-         }
-      } else {
-         this.mob.getNavigation().stop();
-      }
-
-      // An ally in the firing line: step aside rather than shoot through them, and end the burst so the
-      // guard is not firing again the moment it has moved.
-      if (this.friendlyInLineOfSight() && distance * distance <= fireRange * fireRange) {
-         Vec3 reposition = LandRandomPos.getPosTowards(this.mob, 5, 7, target.position());
-         if (reposition != null && this.mob.getNavigation().isDone()) {
-            this.mob.getNavigation().moveTo(reposition.x, reposition.y, reposition.z, 0.9D);
-            this.remainingBursts = 0;
-            this.attackTime = this.fireInterval(modifiedGun);
-         }
-      }
 
       int ammo = NbtHelper.getOrCreateTag(gunStack).getInt("AmmoCount");
       if (ammo <= 0 || !canSee || distance > fireRange) {
@@ -261,35 +236,6 @@ public class GuardGunAttackGoal extends Goal {
                1.0F
             );
       }
-   }
-
-   /**
-    * An ally standing in the firing line - a villager, an iron golem, or another guard. Replaces the
-    * 1.20.1 version's call into {@code RangedCrossbowAttackPassiveGoal.friendlyInLineOfSight}, which no
-    * longer exists under that name, so this compat does not depend on Guard Villagers' internals at all.
-    */
-   private boolean friendlyInLineOfSight() {
-      Vec3 look = this.mob.getViewVector(1.0F);
-      Vec3 reach = look.scale(6.0);
-      for (var entity : this.mob.level().getEntities(this.mob, this.mob.getBoundingBox().expandTowards(reach).inflate(1.0))) {
-         if (entity == this.mob.getTarget() || entity == this.mob) {
-            continue;
-         }
-
-         boolean friendly = entity instanceof net.minecraft.world.entity.npc.AbstractVillager
-            || entity.getType() == EntityType.IRON_GOLEM
-            || GuardVillagersCompat.isGuard(entity);
-         if (!friendly) {
-            continue;
-         }
-
-         Vec3 toEntity = entity.position().vectorTo(this.mob.position()).normalize();
-         if (toEntity.dot(look) < 0.0 && this.mob.hasLineOfSight(entity)) {
-            return true;
-         }
-      }
-
-      return false;
    }
 
    private void rotateToFace(LivingEntity target) {

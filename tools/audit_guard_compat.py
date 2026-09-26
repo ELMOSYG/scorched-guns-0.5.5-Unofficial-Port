@@ -51,6 +51,23 @@ def strip_comments(text):
     return re.sub(r"//[^\n]*", "", text)
 
 
+def method_body(text, name):
+    """The body of a method, by brace matching - for asking what a specific method does or does not call."""
+    match = re.search(r"\b%s\s*\([^)]*\)\s*\{" % re.escape(name), text, re.S)
+    if not match:
+        return ""
+    depth, i = 0, match.end() - 1
+    while i < len(text):
+        if text[i] == "{":
+            depth += 1
+        elif text[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return text[match.end():i]
+        i += 1
+    return ""
+
+
 def guard_class_files(files):
     """Files that name a Guard Villagers class, relative to the scguns package."""
     return sorted(name for name, text in files.items()
@@ -150,25 +167,38 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
                         "mixin's getHitResult hook is the one that covers every path")
 
     spawner = strip_comments(files.get("config/GunnerMobSpawner.java") or "")
+    goal = strip_comments(files.get("compat/guardvillagers/GuardGunAttackGoal.java") or "")
     has_goal = re.search(r"hasGunAttackGoal.*?instanceof GuardGunAttackGoal", spawner, re.S)
     if not has_goal:
         problems.append("hasGunAttackGoal does not count GuardGunAttackGoal, so a guard would also be "
                         "given the hostile raider AI")
     if "GuardVillagersCompat.isGuard(mob)" not in spawner:
         problems.append("the equip path no longer checks the guard id")
-    # Guard Villagers' own melee goal sits at priority 3 with the same MOVE|LOOK flags, so a gun goal at
-    # 3 is never selected - the probe showed GuardMeleeGoal running and the gun goal permanently not
-    # running. Priority 2 is what makes a guard shoot instead of closing in with a gun in hand.
-    if "addGoal(2, new GuardGunAttackGoal" not in spawner:
-        problems.append("the guard gun goal is not added at priority 2, so Guard Villagers' melee goal "
-                        "(priority 3, same flags) keeps it from ever running")
+    # A guard must keep its own follow range: extending it to a raider's 64 blocks sends armed guards
+    # chasing away from the village they defend (HANDOFF section 82.7).
+    guard_equip = method_body(spawner, "equipGuardGun")
+    if "resetFollowRange(" not in guard_equip:
+        problems.append("arming a guard does not reset its follow range, so it keeps (or gains) the "
+                        "raider range and wanders off")
+    # The gun goal must not reserve MOVE|LOOK: while it runs, the goal selector cannot start any other
+    # goal needing those flags, which silently disabled Guard Villagers' melee, patrol, checkpoint,
+    # return-to-village, door and stroll goals - the gun AI "taking over" the guard's AI.
+    if "setFlags(" in goal:
+        problems.append("the guard gun goal reserves goal flags again, which blocks Guard Villagers' own "
+                        "movement goals for as long as the guard has a target")
+    # Movement belongs to Guard Villagers: this goal aims and fires, nothing else. Steering the navigation
+    # (approach, back away, step aside) fights the guard's own goals and is what made an armed guard behave
+    # like a raider in the first place.
+    for needle in ("getNavigation(", "getMoveControl("):
+        if needle in goal:
+            problems.append("the guard gun goal steers movement again (%s); Guard Villagers' own goals own "
+                            "the guard's movement" % needle)
 
     events = strip_comments(files.get("compat/guardvillagers/GuardVillagersEvents.java") or "")
     for needle in ("LivingIncomingDamageEvent", "LivingKnockBackEvent", "GuardVillagersCompat.isFriendlyShot"):
         if needle not in events:
             problems.append("the friendly-fire handler no longer covers %s" % needle)
 
-    goal = strip_comments(files.get("compat/guardvillagers/GuardGunAttackGoal.java") or "")
     if "AIGunEvent.performGunAttack" not in goal:
         problems.append("the guard gun goal does not fire through AIGunEvent, so a guard's shots would "
                         "not use the mod's projectile path")

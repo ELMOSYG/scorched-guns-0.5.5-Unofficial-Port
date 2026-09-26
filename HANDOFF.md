@@ -6585,6 +6585,57 @@ wild gunner: tags=[GunAttackAssigned, AI_SMART, ThematicGunner, MobGunner] item=
   1.21.1 要用 `minecraft:generic.max_health` ✓）；③ `String.formatted` 绑到了 `+` 的右半段 ✓
   ⇒ 命令带着 `%d` 发给服务器 ⇒ 目标压根没生成 ✓；④ 只剩 1 只警卫 + 1 只厚血掠夺者之后才量到真数字 ✓。
 
+## 82.7 玩家指出：**SCG 的枪手 AI 接替了警卫自己的 AI**（已修 + 实测 ✓）
+
+玩家反馈 ✓：**"问题可能在于 scgun 的枪手 ai 接替了警卫的 ai"** ✓ —— 完全正确 ✓，而且有两处：
+
+1. **枪手目标 `setFlags(MOVE|LOOK)` 把警卫自己的目标全锁死了** ✓。`GoalSelector` 的规则是：
+   正在运行的目标若占用了某个旗标 ✓，**别的需要该旗标的目标就无法启动** ✓。所以只要警卫"有目标 + 手上有枪"，
+   我们这个目标就一直占着 MOVE 与 LOOK ✓ ⇒ Guard Villagers 自己的 **近战 ✓ / 巡逻回检查点 ✓ / 回村 ✓ /
+   跟进英雄 ✓ / 开门 ✓ / 闲逛 ✓ / 看玩家** 全部**永远不会运行** ✓ —— 第一版探针的目标列表正好拍下了这一幕 ✓：
+   `GuardGunAttackGoal(p=2,RUNNING)` 而 `GuardMeleeGoal(p=3,-)`、`WalkBackToCheckPointGoal(p=3,-)`、
+   `MoveBackToVillageGoal(p=4,-)`、`GolemRandomStrollInVillageGoal(p=5,-)`、`WaterAvoidingRandomStrollGoal(p=8,-)`
+   全是 `-` ✓✗。
+2. **`extendFollowRange()` 把警卫的跟随范围从 ~20 拉到了 64 格** ✓（那是给主题枪手/袭击怪用的 ✗）⇒
+   持枪警卫会**追出村子半个地图** ✗ —— 而警卫的职责是守村 ✓。
+
+### 82.7.1 修法：枪手目标只负责"瞄和打"，**移动全部还给警卫**
+* `GuardGunAttackGoal` **不再 `setFlags(...)`** ✓ —— 与 mod 自己的 `GunAttackGoal` 一样 ✓（它也不占旗标 ✓）；
+  既不需要抢占优先级 ✓（第一版之所以要 p=2 是因为要压住同旗标的近战目标 ✓，现在不占旗标就没有冲突 ✓）。
+* **目标里不再碰导航/移动** ✓：删掉了"逼近/保持理想射程/太近后退/给友军让位"这些**侵略者式走位** ✓
+  （它们会和警卫自己的目标抢 navigation ✓，实测表现为原地抖动 ✓）；也去掉了 `stop()` 里的 `getNavigation().stop()` ✓。
+  现在它只做三件事：**瞄准 ✓（`setLookControl`）、按 mob 节奏开火 ✓、打空后换弹 ✓**。
+* **`equipGuardGun` 不再 `extendFollowRange`，改为 `resetFollowRange`** ✓（顺带把旧版本留在警卫身上的修饰符清掉 ✓）。
+* **节奏状态不再在 `start()` 里清零** ✓ —— 这是本轮实测抓到的第二个坑 ✓：警卫自己的目标现在会跑 ✓，
+  它们有时会短暂清掉/切换目标 ⇒ 我们的目标被停一下再启 ✓；而 `start()` 一重置 `attackTime`，
+  倒计时就永远走不完 ✓ ⇒ **一枪都打不出来** ✓（实测：`dist=1.1`、`ammo=8`、`shots=0` 持续 400 刻 ✓✗）。
+  这些计数属于目标实例本身 ✓（`GoalSelector` 复用同一个实例 ✓）⇒ 不清零就能跨重启继续 ✓。
+* 顺带删掉了不再被调用的 `friendlyInLineOfSight()` 与 `seeTime`/`repathTime` ✓（友军保护由弹道漏斗负责 ✓，
+  不需要走位 ✓）。
+
+### 82.7.2 实测（专用服务器 ✓，靶子用 §9.1 的"无限抗性提升 5"掠夺者 ✓）
+```
+armed guard at (5,71,2), follow range=19              ← 警卫自己的范围（不再是 64）✓
+t=80  hand=scguns:callwell ammo=1 dist=11.1
+RUNNING goals: RaiseShieldGoal(p=0) GuardMeleeGoal(p=3) FollowShieldGuards(p=6) GuardGunAttackGoal(p=2)
+t=200 ammo=0 dist=3.6 shots=1                          ← 边走边打 ✓
+t=320 ammo=0 dist=3.3 shots=3                          ← 打空→换弹(30 刻)→再打 ✓
+SUMMARY fired 3 times in 400 ticks; gaps: 115 5
+```
+* **`GuardMeleeGoal` 与 `GuardGunAttackGoal` 同时 RUNNING** ✓ —— 这就是"没有接替"的直接证据 ✓
+  （修复前这一对不可能同时出现 ✓，目标列表里那条 `-` 就是证据 ✓）。
+* `follow range` 三次采样 19/20/22 ✓，**再也没有 64** ✓。
+* 开枪照旧 ✓（3 发 / 400 刻 ✓；那发间隔 115 刻是它自己的目标短暂切换所致 ✓，现在不会因此卡死 ✓）。
+
+### 82.7.3 防复发 + 验收
+* 审计 `tools/audit_guard_compat.py` ✓ 新增两条硬规则：**警卫枪手目标不得 `setFlags(`** ✓、
+  **不得出现 `getNavigation(`/`getMoveControl(`** ✓（"移动归警卫" ✓）；另加
+  "`equipGuardGun` 必须 `resetFollowRange`" ✓（防止又给它 64 格 ✓）。`--selftest` 仍然 ✓ 通过 ✓。
+* `verify_installed_jar` ✓ 新增 1 条：打包后的 `GuardGunAttackGoal.class` **不得含 `setFlags`** ✓ ⇒ **182/182** ✓。
+* 门禁 ✓：`javac` 0 ✓（1004 文件 ✓，探针已删 ✓）、`build` ✓、**30 个审计全 0** ✓、
+  已安装 ✓（`19411416` 字节 ✓，上一版备份 `.bak-233508` ✓）。
+* **未验证** ✗：真人在游戏里看"持枪警卫是否还会正常巡逻/回村/开门" ✓（目标共生已在专用服务器上直接读到 ✓）。
+
 * **未验证** ✓：真人存档里警卫的自然刷新与手感 ✓（装备/AI/友伤/节奏都已在专用服务器上实测 ✓）；
   以及"**警卫该不该近战**" ✓ —— 本轮选择"持枪时由枪手目标压住近战" ✓（上游是 mixin 禁掉 ✓）；
   玩家若想要枪托近战 ✓，把优先级 2 改回 3 并去掉压制即可 ✓。
