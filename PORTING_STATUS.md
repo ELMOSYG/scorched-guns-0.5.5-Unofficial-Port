@@ -562,4 +562,23 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   命中 **3 条**；`verify_installed_jar` 新增 5 条（含"探针不得随包发出"）⇒ **166/166**；
   `javac` 0（999 文件）/ `build` ✓ / **27 个审计 0** / 已安装（19397734 字节，备份 `.bak-211833`）。
 
+## §80 补上 `minDaysBetweenRaids`（玩家发现"配置根本没被调用"）
+
+- **事实**：`minDaysBetweenRaids` 自 0.5.5 起只在 `Config.java` 出现，`RaidSaveData.canScheduleRaid/
+  setLastRaidDay/getLastRaidDay` **无任何调用点** ⇒ 选项对行为零影响（同组另外三个选项都有人读）。
+- **语义按配置自己的注释实现**：`0 = 每晚`、`1 = 隔一晚`、`2+ = 更稀` ⇒ 严格 `>`，
+  而非死代码里的 `>=`（那会让 0 与 1 完全一样，与注释矛盾——正是它从没被跑过的证据）。
+  第 7 天刷过之后：0 ⇒ 下次 8，1 ⇒ 9，2 ⇒ 10。
+- **接线两处**：① 黄昏抽签**之前**判冷却（冷却中连抽签都不发生）；② 自然袭击**真正开始**时才记录当天
+  （必须 `hasActiveRaid()` 为真，故"门不过/没落点/播种失败"的那晚不算数）。**手动（信号弹/指令）不受影响**。
+- **实测**（专用服务器探针，一次性实例，不动存档，探针已删）：真值表逐格吻合（0/1/2 ⇒ 8/9/10，
+  `never` 哨兵始终允许）；**NBT 往返** `saved=42 reloaded=42`、day43/44 false、day45 true ⇒ 冷却能挺过重启。
+  连测两晚需把该值设为 0（已写进游戏内提示）。
+- **门禁**：新增 `audit_raid_cooldown.py`（黄昏必须调 `canScheduleRaid` 且由该选项驱动；必须"真正开始才记当天"
+  且有 `hasActiveRaid()` 守卫；算术必须严格 `>`；手动路径不得碰冷却；诊断必须用同一个 helper；
+  另加通用防呆：`Config.Raids` 每个选项都必须被真正作用于它的代码读到，`Config.java`/`ModCommands.java` 不算），
+  `--selftest`（`c6519dc`）命中 **6 条**；`/scguns raid check` 换成三条真实冷却状态；
+  `verify_installed_jar` 新增 2 条 ⇒ **168/168**；语言键 **1825/1825**；
+  `javac` 0 / `build` ✓ / **28 个审计 0** / 已安装（19398550 字节，备份 `.bak-213047`）。
+
 

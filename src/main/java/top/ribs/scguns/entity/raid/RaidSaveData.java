@@ -163,9 +163,35 @@ public class RaidSaveData extends SavedData {
       return this.lastRaidDayByDimension.getOrDefault(dimension, -1000L);
    }
 
+   /**
+    * Whether the nightly raid is out of its cooldown, following the meaning `Config` has documented for
+    * `minDaysBetweenRaids` since 0.5.5 (HANDOFF section 80).
+    *
+    * <p>The config says: <i>0 to allow raids every night, 1 to allow raids every other night, 2 or higher
+    * to space out raids further</i>. That is this test, not {@code >=} - the comparison this method
+    * shipped with until it was wired up, which would have made 0 and 1 behave identically ("every night")
+    * and contradicted its own comment. Nothing called it before, so nobody ever noticed.</p>
+    *
+    * <table>
+    * <tr><th>minDaysBetween</th><th>raid on day 7</th><th>next allowed</th><th>effect</th></tr>
+    * <tr><td>0</td><td>7</td><td>8</td><td>every night</td></tr>
+    * <tr><td>1</td><td>7</td><td>9</td><td>every other night</td></tr>
+    * <tr><td>2</td><td>7</td><td>10</td><td>two nights skipped</td></tr>
+    * </table>
+    */
    public boolean canScheduleRaid(ResourceLocation dimension, long currentDay, int minDaysBetween) {
       long lastRaidDay = this.getLastRaidDay(dimension);
-      return currentDay - lastRaidDay >= (long)minDaysBetween;
+      return currentDay - lastRaidDay > (long)minDaysBetween;
+   }
+
+   /** The day the cooldown lifts, for the diagnostic in HANDOFF section 80. {@code -1000} (never) is
+    * reported as-is; callers check {@link #hasLastRaidDay} first. */
+   public long getNextAllowedRaidDay(ResourceLocation dimension, int minDaysBetween) {
+      return this.getLastRaidDay(dimension) + (long)minDaysBetween + 1L;
+   }
+
+   public boolean hasLastRaidDay(ResourceLocation dimension) {
+      return this.lastRaidDayByDimension.containsKey(dimension);
    }
 
    public void cleanupInvalidRaids(ServerLevel level) {

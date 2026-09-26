@@ -6137,6 +6137,8 @@ exactly at sea level    y=63  naturalRaid=true   ✓   （与原版一致，用 
   全是死代码 ✓（`setLastRaidDay` 无任何调用点 ✓），所以"最少间隔 N 天"目前**完全无效** ✓，
   实际只有概率抽取 + 海平面门在起作用 ✓。（上游 0.5.5 即如此 ✓，不是移植引入的 ✗。）
   已直接写进报告 ✓，免得玩家以为是自己配置写错 ✓。**是否要按玩家意愿把它接上，留给玩家决定** ✓。
+  > **§80 已按玩家要求接上** ✓ ⇒ 本节这句"从未生效 ✓ / 完全无效 ✓"的描述**被 §80 取代** ✗；
+  > 本节保留原样只为记录"当时查出的事实" ✓。
 
 ## 79.4 快速测试流程（正式收录 ✓）
 
@@ -6211,6 +6213,85 @@ Scheduled for tonight: antique, target 41c82c87-7afb-4024-ba57-13d2c99cae77, day
   语言键 **1823/1823** ✓、已安装 ✓（`19397734` 字节 ✓，上一版备份 `.bak-211833` ✓，与 `build/libs` 逐字节一致 ✓）。
 * **未验证** ✓：真人在客户端里敲 `/scguns raid check` 看到的样子（颜色/排版 ✓）—— 文本内容已由上面的
   实测逐行确认 ✓，剩下的只是玩家自己的观感 ✓。
+
+# 80. 补上 `minDaysBetweenRaids` —— 一个 0.5.5 以来就是"装饰品"的配置
+
+玩家反馈 ✓：**"minDaysBetweenRaids 居然没有被调用吗，那就补上这个配置"** ✓。
+这正是 §79 顺带查出、当时只记录未改的那一条 ✓ —— **§79 里"从未生效/完全无效"的说法在本节被取代** ✓。
+
+## 80.1 事实复核（先把"是不是真的没人读"钉死）
+
+`grep` 全仓 ✓：`minDaysBetweenRaids` 只在 `Config.java` 出现 ✓；
+`RaidSaveData.canScheduleRaid / setLastRaidDay / getLastRaidDay` **没有任何调用点** ✓
+⇒ 自 0.5.5 起这个选项对行为**没有任何影响** ✓（`/scguns raid check` 当时还把它打印成"未生效" ✓）。
+顺带确认同组的另外三个选项**都有人读** ✓：`raidsEnabled` / `nightlyRaidChance` 在 `RaidManager` ✓、
+`raidTimeoutMinutes` 在 `ActiveRaid` ✓ ⇒ **只有它一个是死的** ✓。
+
+## 80.2 语义：按配置**自己的注释**实现，而不是按那行死代码
+
+配置里写的是 ✓：`0 = 每晚都行` ✓、`1 = 隔一晚` ✓、`2 及以上 = 更稀` ✓。
+而死代码用的是 `>=` ✓ ⇒ `0` 与 `1` 会**完全一样**（都是每晚 ✓），与它自己的注释直接矛盾 ✓ ——
+**这本身就证明它从来没被跑过** ✓。现在按注释实现（严格 `>` ✓），方法上直接写了这张表 ✓：
+
+| `minDaysBetweenRaids` | 第 7 天刷过之后 | 下次允许 | 效果 |
+|---|---|---|---|
+| 0 | 7 | 8 | 每晚 |
+| 1 | 7 | 9 | 隔一晚 |
+| 2（默认） | 7 | 10 | 空两晚 |
+
+## 80.3 接线（只有两处）
+
+1. **黄昏抽签之前判定** ✓（`checkForNightlyRaidSpawn`，`raidsEnabled` 之后 ✓）：冷却中直接 `return` ✓
+   ⇒ 连抽签都不发生 ✓，自然也不会发警告 ✓。
+2. **自然袭击**真正开始**时记录当天** ✓（18000 分支里 `startRaid` 之后 ✓，且**必须** `hasActiveRaid()` 为真 ✓）：
+   这样"门不过 / 找不到落点 / 播种失败"的那一晚**不算数** ✓ —— 否则玩家会莫名其妙多等两晚 ✗。
+3. **手动不受影响** ✓（`startRaid` 里**没有**任何冷却判断 ✓）：信号弹与 `/scguns raid start` 是玩家主动要的 ✓，
+   审计里专门有一条守着这点 ✓。
+
+## 80.4 实测（专用服务器探针，读完即删 ✓）
+
+真值表走**真方法 + 真配置值** ✓，且用**一次性实例** ✓，不碰开发存档 ✓：
+
+```
+config minDaysBetweenRaids = 2
+minDays=0 lastRaid=never            currentDay=7 -> allowed=true  nextAllowed=-999
+minDays=0 lastRaid=7                currentDay=7 -> allowed=false nextAllowed=8     ← 每晚
+minDays=0 lastRaid=6                currentDay=7 -> allowed=true  nextAllowed=7
+minDays=1 lastRaid=7                currentDay=7 -> allowed=false nextAllowed=9     ← 隔一晚
+minDays=1 lastRaid=6                currentDay=7 -> allowed=false nextAllowed=8
+minDays=2 lastRaid=7                currentDay=7 -> allowed=false nextAllowed=10    ← 空两晚（默认值）
+minDays=2 lastRaid=6                currentDay=7 -> allowed=false nextAllowed=9
+minDays=2 lastRaid=5                currentDay=7 -> allowed=false nextAllowed=8
+minDays=2 lastRaid=4                currentDay=7 -> allowed=true  nextAllowed=7
+nbt round trip: saved=42 reloaded=42 hasLastRaidDay=true
+                allowedOnDay43=false allowedOnDay44=false allowedOnDay45=true
+```
+
+* 表与配置注释**逐格吻合** ✓（0/1/2 ⇒ 8/9/10 ✓）；`never`（`-1000` 哨兵）始终允许 ✓。
+* **存档往返也测了** ✓：冷却**能挺过重启** ✓ —— 这条很关键 ✓，读不回来的话冷却等于没有 ✗。
+* 整条"真实夜晚链路"仍需真人玩家 ✓（`scheduleRaidForTonight` 只从 `level.players()` 里挑人 ✓，
+  专用服务器上的假玩家不算 ✓，同 §77/§78 的说明 ✓）。
+* 想连测两晚：把 `minDaysBetweenRaids` 设为 `0` ✓（已写进 `raid check` 的快速测试文案 ✓）。
+
+## 80.5 防复发 + 验收
+
+* 审计 **`tools/audit_raid_cooldown.py`** ✓（新增）：要求黄昏路径调 `canScheduleRaid` ✓ 且由
+  `minDaysBetweenRaids` 驱动 ✓；要求"真正开始才记当天"且**必须有 `hasActiveRaid()` 守卫** ✓；
+  要求算术是严格 `>`（出现 `>=` 直接失败 ✓）；要求手动路径 `startRaid` **不得**碰冷却 ✓；
+  要求诊断命令用**同一个** `canScheduleRaid` ✓（否则报告会说"可以抽签"而调度器还在冷却 ✓）；
+  再加一条**通用防呆** ✓：`Config.Raids` 的每个选项都必须被"真正会作用于它"的代码读到 ✓
+  —— `Config.java`（只声明）与 `ModCommands.java`（只打印）**不算** ✓。
+  **自测** ✓：对固定提交 `c6519dc`（§79）跑 ⇒ 命中 **6 条** ✓（黄昏不查冷却 ✓ / 不由该选项驱动 ✓ /
+  不记当天 ✓ / 用了 `>=` ✓ / 报告没调 `canScheduleRaid` ✓ / 该选项没有任何"真正读它"的地方 ✓）；
+  当前源码 **0** ✓；已加入 CI ✓。
+* `/scguns raid check` ✓：`cooldown_unused`（"从未生效"）换成三条真实状态 ✓
+  （`cooldown_never` / `cooldown_allowed` / `cooldown_waiting` ✓，都带"上次第几天、下次第几天" ✓）；
+  `not_scheduled` 补上"或仍在冷却中" ✓；`howto` 补上"想每晚都测就把 `minDaysBetweenRaids` 设 0" ✓。
+* 门禁 ✓：`javac` 0 错误 ✓（999 文件 ✓，探针已删 ✓）、`gradlew build` ✓、**28 个审计全 0** ✓、
+  `verify_installed_jar` **168/168** ✓（新增 2 条：`RaidManager.class` 里必须有 `canScheduleRaid` ✓ 与
+  `setLastRaidDay` ✓ —— 存档往返与接线因此也只剩"字节码里有没有"这一层可查 ✓）、
+  语言键 **1825/1825** ✓、已安装 ✓（`19398550` 字节 ✓，上一版备份 `.bak-213047` ✓）。
+
 
 
 

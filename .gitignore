@@ -63,3 +63,6 @@ build-logs/*
 !build-logs/floor-compile.txt
 !build-logs/floor-server.txt
 
+
+### Dev run logs (log4j writes these relative to the project root) ###
+logs/

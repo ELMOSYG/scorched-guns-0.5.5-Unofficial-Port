@@ -410,12 +410,14 @@ public class ModCommands {
       ServerLevel level = source.getLevel();
       ResourceLocation dimension = level.dimension().location();
       RaidManager manager = RaidManager.get(level);
-      RaidSaveData.ScheduledRaidData scheduled = RaidSaveData.get(level).getScheduledRaid(dimension);
+      RaidSaveData saveData = RaidSaveData.get(level);
+      RaidSaveData.ScheduledRaidData scheduled = saveData.getScheduledRaid(dimension);
       ServerPlayer scheduledTarget = scheduled == null
          ? null
          : source.getServer().getPlayerList().getPlayer(scheduled.targetPlayerUUID());
       ServerPlayer gate = scheduledTarget != null ? scheduledTarget : player;
       Vec3 gatePos = gate.position();
+      long currentDay = level.getDayTime() / 24000L;
 
       source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.header", dimension.toString())
          .withStyle(ChatFormatting.GOLD), false);
@@ -427,8 +429,21 @@ public class ModCommands {
          .withStyle(ChatFormatting.GRAY), false);
       source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.time",
          level.getDayTime() / 24000L, level.getDayTime() % 24000L).withStyle(ChatFormatting.GRAY), false);
-      source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.cooldown_unused",
-         Config.COMMON.raids.minDaysBetweenRaids.get()).withStyle(ChatFormatting.DARK_GRAY), false);
+
+      // The cooldown (HANDOFF section 80), reported through the same helper the scheduler consults.
+      int cooldownDays = (Integer)Config.COMMON.raids.minDaysBetweenRaids.get();
+      if (!saveData.hasLastRaidDay(dimension)) {
+         source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.cooldown_never", cooldownDays)
+            .withStyle(ChatFormatting.GRAY), false);
+      } else {
+         long lastRaidDay = saveData.getLastRaidDay(dimension);
+         long nextAllowedDay = saveData.getNextAllowedRaidDay(dimension, cooldownDays);
+         boolean allowed = saveData.canScheduleRaid(dimension, currentDay, cooldownDays);
+         source.sendSuccess(() -> Component.translatable(
+               allowed ? "commands.scguns.raid.check.cooldown_allowed" : "commands.scguns.raid.check.cooldown_waiting",
+               cooldownDays, lastRaidDay, nextAllowedDay)
+            .withStyle(allowed ? ChatFormatting.GRAY : ChatFormatting.YELLOW), false);
+      }
 
       int raidLevel = PlayerGunProgression.get(gate).getCurrentRaidLevel();
       Component gateName = gate.getDisplayName();

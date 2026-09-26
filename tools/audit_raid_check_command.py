@@ -50,6 +50,7 @@ REQUIRED_CALLS = {
     "findRaidSpawnLocation": "the surface placement search the scheduler uses",
     "getScheduledRaid": "tonight's schedule, the record that decides whether a raid is coming",
     "getCurrentRaidLevel": "the progression level the scheduler picks a raid from",
+    "canScheduleRaid": "the minDaysBetweenRaids cooldown the scheduler applies before it rolls (section 80)",
 }
 
 # Starting, scheduling or ending a raid from a report would make it a second trigger.
@@ -144,7 +145,7 @@ def lang_check(problems):
             continue
         data = json.loads(path.read_text(encoding="utf-8"))
         keys = [k for k in data if k.startswith(PREFIX)]
-        if len(keys) < 15:
+        if len(keys) < 17:
             problems.append("%s has only %d %s* key(s)" % (path.name, len(keys), PREFIX))
     if not (EN.exists() and ZH.exists()):
         return {}

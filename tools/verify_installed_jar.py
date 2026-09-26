@@ -940,6 +940,18 @@ def main():
             "top/ribs/scguns/entity/raid/RaidCheckProbe.class" not in names,
         ))
 
+        # 35. the raid cooldown actually runs (HANDOFF section 80). minDaysBetweenRaids shipped from
+        # 0.5.5 as a config option that nothing read - RaidSaveData.canScheduleRaid and setLastRaidDay
+        # had no caller at all - so a raid came every night the roll succeeded. Both halves have to be in
+        # the packaged bytecode: the nightly scheduler consulting the cooldown, and the day being
+        # recorded when a raid really starts.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/entity/raid/RaidManager.class", b"canScheduleRaid",
+            "the nightly raid consults the minDaysBetweenRaids cooldown"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/entity/raid/RaidManager.class", b"setLastRaidDay",
+            "a natural raid records the day it started"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

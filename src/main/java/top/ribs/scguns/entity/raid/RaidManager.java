@@ -266,6 +266,16 @@ public class RaidManager {
                return;
             }
 
+            // The cooldown the config has documented since 0.5.5 (HANDOFF section 80). Until now nothing
+            // read minDaysBetweenRaids - RaidSaveData.canScheduleRaid and setLastRaidDay were dead code,
+            // so a raid came every night the roll succeeded. The day is recorded when a natural raid
+            // actually starts, not when it is scheduled, so a night that the sea-level gate or the
+            // placement search refused does not push the next raid back.
+            if (!saveData.canScheduleRaid(dimension, currentDay,
+               (Integer)Config.COMMON.raids.minDaysBetweenRaids.get())) {
+               return;
+            }
+
             if (dayTime == 13000L) {
                float raidChance = ((Double)Config.COMMON.raids.nightlyRaidChance.get()).floatValue();
                float roll = level.random.nextFloat();
@@ -319,6 +329,11 @@ public class RaidManager {
 
             this.startRaid(config, level, spawnPos);
             saveData.removeScheduledRaid(dimension);
+            // Only a raid that really started starts the cooldown (HANDOFF section 80): startRaid
+            // registers nothing when its boss cannot be created, and that night should not count.
+            if (this.hasActiveRaid()) {
+               saveData.setLastRaidDay(dimension, currentDay);
+            }
          }
       }
    }
