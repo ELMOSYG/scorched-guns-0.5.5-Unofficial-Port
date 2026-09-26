@@ -475,4 +475,22 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 - **待玩家定**：是否要"袭击永不上地下"（哪怕玩家在挖矿）—— 这是玩法选择，可在 `Config.COMMON.raids`
   加开关，默认保持"跟着玩家"。
 
+---
+
+## §76 袭击**只在地表刷**（玩家拍板：洞穴层 = 刷在玩家找不到的地方）
+
+- **规则**：`boolean surfaceOnly = !level.dimensionType().hasCeiling();` ⇒ 主世界/末地一律取该列
+  **自己的地面高度**（`getHeightmapPos(MOTION_BLOCKING_NO_LEAVES)`）并要求 `isStandableSpawn && canSeeSky`
+  ⇒ **玩家在洞里挖矿时，袭击仍落在他正上方的地表**（他上去就能找到），树冠/悬垂/屋顶遮挡的候选点一律拒绝；
+  **下界例外**（那里 `hasCeiling()` 为真，"地表"是基岩顶 ⇒ 改按玩家自己那层 = 下界地面）。
+- **为什么高度图不会指进洞穴**：洞穴天花板本身就是阻挡移动的方块 ⇒ 该列"最高阻挡方块"在洞穴之上
+  ⇒ 高度图必然在地表之上（旧代码是**人为**往下找才进洞的）。
+- **实测**（探针已删）：玩家 y=71 ⇒ 落点 y=70（canSeeSky=true、脚下草方块）；玩家 **y=30 地下** ⇒
+  落点**仍是 y=70 地表**（ON THE SURFACE）✓。
+- **顺带修掉门禁隐患**：`--selftest` 若拿 `HEAD` 当"修复前源码"，**修复一提交自测就自动空转**
+  （`audit_server_fire_paths --selftest` 已实测 FAIL）。4 个 selftest 改为**固定提交**：
+  `cdab0ec` / `a70bcb3` / `9ce181e` / `e9d8e03`，复跑全部命中。
+- **门禁**：`javac` 0 / `build` ✓ / **26 个审计 0** / `verify_installed_jar` **161/161** / 探针已删 / 已安装
+  （备份 `.bak-203422`）。
+
 

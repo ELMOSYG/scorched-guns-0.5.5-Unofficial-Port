@@ -35,6 +35,9 @@ import sys
 
 SOURCE = pathlib.Path("src/main/java/top/ribs/scguns/entity/raid/ActiveRaid.java")
 RELATIVE = "src/main/java/top/ribs/scguns/entity/raid/ActiveRaid.java"
+# The revision these checks were written against - it still had the bug. A fixed id, not HEAD:
+# comparing against HEAD makes the selftest pass as soon as the fix is committed.
+PRE_FIX_REVISION = "9ce181e"
 
 
 def method_body(text, name):
@@ -89,10 +92,10 @@ def check(text):
 
 def selftest():
     try:
-        before = subprocess.run(["git", "show", "HEAD:%s" % RELATIVE],
+        before = subprocess.run(["git", "show", "%s:%s" % (PRE_FIX_REVISION, RELATIVE)],
                                 capture_output=True, text=True, check=True).stdout
     except (subprocess.CalledProcessError, FileNotFoundError) as error:
-        print("selftest: cannot read HEAD:%s (%s)" % (RELATIVE, error))
+        print("selftest: cannot read %s:%s (%s)" % (PRE_FIX_REVISION, RELATIVE, error))
         return 1
 
     expected = [
@@ -102,7 +105,7 @@ def selftest():
         "endRaid() does not release the chunk this raid forced open",
     ]
     found = check(before)
-    print("selftest: pre-fix source reports %d problem(s)" % len(found))
+    print("selftest: revision %s reports %d problem(s)" % (PRE_FIX_REVISION, len(found)))
     for problem in found:
         print("   %s" % problem)
     missing = [e for e in expected if not any(e in f for f in found)]

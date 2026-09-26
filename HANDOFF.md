@@ -5901,6 +5901,76 @@ private BlockPos findSpawnAtPlayerLevel(ServerLevel level, BlockPos column, int 
   那是一次**玩法选择** ✓：可以在 `Config.COMMON.raids` 加一个开关 ✓（例如 `raidsForceSurfaceSpawn` ✓），
   默认仍保持"跟着玩家" ✓ —— 等玩家拍板 ✓。
 
+# 76. 袭击**只在地表刷**（玩家拍板：洞穴层 = 刷在玩家找不到的地方，必须去掉）
+
+玩家补充说明 ✓：**"scgun 的袭击机制问题就是他会到处乱刷，洞穴层的问题就是他会刷在玩家找不到的地方，
+所以应该只在地表层刷新"** ✓。
+
+## 76.1 规则（§75 的"跟着玩家"改成"只在地表"）
+
+| 情形 | 现在的落点 |
+|---|---|
+| 玩家在地表 ✓ | 附近**地表** ✓ |
+| 玩家在峡谷底 / 露天低处 ✓ | 该列自己的地面（= 峡谷底）✓ |
+| **玩家在洞穴里挖矿** ✓ | **仍然刷在地表** ✓（就在他上方 25–40 格处 ✓，他上去就能找到 ✓✓）|
+| 玩家在浅层洞穴（y&gt;50）✓ | **地表** ✓（不再跟着他进洞 ✓）|
+| **下界**（有天花板 ✓）| 例外：那里 `hasCeiling()` 为真 ✓ ⇒ 该维度的"地表"是**基岩顶** ✗ ⇒ 仍然按**玩家自己那层**（= 下界地面）✓ |
+| 候选点被**树冠/悬垂/屋顶**遮住 ✓ | **拒绝** ✓（`canSeeSky` ✓ —— 玩家看不见的地方不刷 ✓）|
+
+实现要点 ✓（`findRaidSpawnLocation`）：
+
+```java
+boolean surfaceOnly = !level.dimensionType().hasCeiling();      // 下界例外
+BlockPos candidate = surfaceOnly ? this.findSurfaceSpawn(level, column)
+                                : this.findSpawnAtPlayerLevel(level, column, playerY);
+
+private BlockPos findSurfaceSpawn(ServerLevel level, BlockPos column) {
+   BlockPos ground = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, column);
+   return this.isStandableSpawn(level, ground) && level.canSeeSky(ground) ? ground : null;
+}
+```
+
+**为什么高度图不会指进洞穴** ✓：洞穴的**天花板本身就是阻挡移动的方块** ✓ ⇒ 该列的"最高阻挡方块"在洞穴之上 ✓
+⇒ 高度图给出的位置一定在**地表之上** ✓ —— 这正是"只在地表"能一行代码做到的原因 ✓
+（旧的洞穴搜索是在**人为地**往下找 ✓，删掉它即可 ✓）。
+
+## 76.2 实测（专用服务器 + FakePlayer，探针读完即删）
+
+```
+[SCGUNS-SURFACE] reference surface spot 0,71,0 (heightmap=71)
+case 1: player on the surface (y=71):  spawn y=70.0  heightmap=70  canSeeSky=true  below=grass_block  -> ON THE SURFACE ✓
+case 2: player deep underground (y=30): spawn y=70.0  heightmap=70  canSeeSky=true  below=grass_block  -> ON THE SURFACE ✓
+```
+
+⇒ **玩家在 y=30 挖矿时，袭击落在 y=70 的地表** ✓（他那一列的高度图是 71 ✓）—— 不再是洞穴里的某个角落 ✓✓。
+
+## 76.3 顺带修掉门禁自身的一个隐患：`--selftest` 用 `HEAD` 作对照会"随提交失效"
+
+这一轮跑 `audit_server_fire_paths --selftest` 时发现它**报 FAIL** ✗ —— 因为它拿 `HEAD` 当"修复前源码" ✓，
+而 §72 的修复**已经提交** ✓ ⇒ 它在新源码里当然找不到旧 bug ✓ ⇒ 自测自动变成空转 ✗
+（更糟的是：它此前**通过**过 ✓，所以没人会注意到它坏了 ✓）。
+**规矩（已写进各个 selftest 的注释 ✓）**：**`--selftest` 必须对着"曾经有该 bug 的那个固定提交"跑** ✓，
+不能用 `HEAD` ✓。4 个 selftest 已按此钉死 ✓：
+
+| 审计 | 对照提交 |
+|---|---|
+| `audit_gun_animation_identity` | `cdab0ec`（§68） |
+| `audit_server_fire_paths` | `a70bcb3`（§72 之前） |
+| `audit_raid_unload_safety` | `9ce181e`（§74 之前） |
+| `audit_raid_spawn_level` | `e9d8e03`（§75，仍按玩家那层） |
+
+四个复跑 ✓：`--selftest` 全部命中 ✓、正式检查全部 0 ✓。
+
+## 76.4 验收
+
+* `javac` 0 错误 ✓、`gradlew build` ✓、**26 个审计全 0** ✓、`verify_installed_jar` **161/161** ✓、
+  探针已删除 ✓、已安装 ✓（上一版备份 `.bak-203422` ✓）。
+* `audit_raid_spawn_level.py` 已改为检查"**只在地表**"（要求 `findSurfaceSpawn` + `canSeeSky` +
+  `dimensionType().hasCeiling()` 例外 ✓；仍禁止 `playerY < 50` / `findNearestValidCaveSpawn` / `yOffset = -5` ✓）。
+* **边界** ✓：玩家在**很深的地下**时，袭击会出现在他正上方的地表 ✓ —— 他需要爬上去打 ✓
+  （这正是玩家要的"能找到" ✓）；`raidTimeoutMinutes` 仍然兜底 ✓（打不完会超时结束 ✓）。
+  若还想更贴脸，可以把候选半径从 25–40 格调小 ✓，说一声即可 ✓。
+
 
 
 

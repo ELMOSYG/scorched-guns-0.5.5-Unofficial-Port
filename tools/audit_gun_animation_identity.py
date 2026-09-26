@@ -32,6 +32,9 @@ import sys
 
 SOURCE = pathlib.Path("src/main/java/top/ribs/scguns/item/animated/AnimatedGunItem.java")
 RELATIVE = "src/main/java/top/ribs/scguns/item/animated/AnimatedGunItem.java"
+# The revision these checks were written against - it still had the bug. A fixed id, not HEAD:
+# comparing against HEAD makes the selftest pass as soon as the fix is committed.
+PRE_FIX_REVISION = "cdab0ec"
 PREFIX = "top/ribs/scguns/"
 
 # GeckoLib 4.6's own accessor, which assigns the component when it is missing.
@@ -112,10 +115,10 @@ def scan_tree(root=pathlib.Path("src/main/java")):
 def selftest():
     """The pre-fix file (git HEAD) must fail every check that guards this bug."""
     try:
-        before = subprocess.run(["git", "show", "HEAD:%s" % RELATIVE],
+        before = subprocess.run(["git", "show", "%s:%s" % (PRE_FIX_REVISION, RELATIVE)],
                                 capture_output=True, text=True, check=True).stdout
     except (subprocess.CalledProcessError, FileNotFoundError) as error:
-        print("selftest: cannot read HEAD:%s (%s)" % (RELATIVE, error))
+        print("selftest: cannot read %s:%s (%s)" % (PRE_FIX_REVISION, RELATIVE, error))
         return 1
 
     expected = [
@@ -128,7 +131,7 @@ def selftest():
     ]
     found = check(before)
     missing = [e for e in expected if not any(e in f for f in found)]
-    print("selftest: pre-fix source reports %d problem(s)" % len(found))
+    print("selftest: revision %s reports %d problem(s)" % (PRE_FIX_REVISION, len(found)))
     for problem in found:
         print("   %s" % problem)
     if missing:

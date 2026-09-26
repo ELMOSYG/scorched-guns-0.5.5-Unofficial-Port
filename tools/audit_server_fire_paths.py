@@ -30,6 +30,9 @@ import sys
 
 SRC = pathlib.Path("src/main/java")
 CLIENT_DIR = "client"
+# The revision these checks were written against - it still had both bugs. A fixed id, not HEAD:
+# comparing against HEAD makes the selftest pass as soon as the fix is committed.
+PRE_FIX_REVISION = "a70bcb3"
 ARROW = re.compile(r"new Arrow\s*\(([^;]*)\)")
 CONTROLLER = re.compile(r'\.get\(\s*"controller"\s*\)')
 GUARD = re.compile(r"!=\s*null|null\s*!=")
@@ -124,10 +127,10 @@ def selftest():
     missing = []
     for name, needle in files.items():
         try:
-            before = subprocess.run(["git", "show", "HEAD:src/main/java/%s" % name],
+            before = subprocess.run(["git", "show", "%s:src/main/java/%s" % (PRE_FIX_REVISION, name)],
                                     capture_output=True, text=True, check=True).stdout
         except (subprocess.CalledProcessError, FileNotFoundError) as error:
-            print("selftest: cannot read HEAD:%s (%s)" % (name, error))
+            print("selftest: cannot read %s:%s (%s)" % (PRE_FIX_REVISION, name, error))
             return 1
         found = check(before, name)
         if not any(needle in problem for problem in found):

@@ -352,36 +352,43 @@ public class RaidManager {
 
    @Nullable
    /**
-    * How far above/below the player the raid may be placed. Everything in this window is "where the
-    * player is" - a cave, a canyon floor, a surface plateau or the Nether floor.
+    * How far above/below the player a raid may be placed **in a dimension without a surface** (see
+    * {@link #findRaidSpawnLocation}). Everything in this window is "where the player is".
     */
    private static final int SPAWN_Y_WINDOW = 8;
 
    /**
-    * Where the raid spawns: near the player, on the player's own level (HANDOFF section 75).
+    * Where a raid spawns: **on the surface**, near the player (HANDOFF sections 75 and 76).
     *
-    * <p>0.5.5 decided "surface or cave" with {@code playerY < 50} and, when that said underground,
-    * searched a cave pocket around the player's Y. Both halves of that guess are wrong in practice:</p>
-    * <ul>
-    *   <li>a player standing in the open at y&lt;50 - a canyon floor, a deep valley, diving in an ocean -
-    *       got a raid placed in a **cave** instead of where they are (the reported bug);</li>
-    *   <li>a player in a shallow cave at y&gt;50 got a raid on the **surface** far above them.</li>
-    * </ul>
-    * <p>The fix is to stop guessing: search each candidate column around the player's own Y first, and
-    * fall back to the column's ground level only when it is within the same window (which is what happens
-    * for a player standing on the surface, where the two coincide). A boss is therefore always placed on
-    * the level the player occupies, and never behind a cave wall when they are standing outside.</p>
+    * <p>0.5.5 decided "surface or cave" with {@code playerY < 50} and, when that said underground, walked
+    * a cave search from -5 upwards - so a player standing in the open at y&lt;50 (a canyon floor, a deep
+    * valley, diving in an ocean) got the raid placed in a cave below them, and a raid aimed at a player
+    * who was mining turned up in a cave pocket they could not find. Both are the same complaint: the
+    * raid has to appear somewhere the player can walk to and see.</p>
+    *
+    * <p>So the rule is now the surface, full stop: each candidate column is asked for its own ground
+    * level (the heightmap, which can never point into a cave - a cave ceiling is itself motion blocking)
+    * and that has to be standable and open to the sky. A raid therefore never starts underground, no
+    * matter where the player is standing.</p>
+    *
+    * <p>The one exception is a dimension that has a roof - the Nether. Its heightmap is the bedrock
+    * ceiling, which is the last place a boss should appear, so there the raid follows the player's own
+    * level instead ({@link #findSpawnAtPlayerLevel}), which is the local floor.</p>
     */
    private Vec3 findRaidSpawnLocation(ServerLevel level, Vec3 center) {
       RandomSource random = level.getRandom();
       int playerY = (int)center.y;
+      boolean surfaceOnly = !level.dimensionType().hasCeiling();
 
       for (int attempt = 0; attempt < 15; attempt++) {
          double angle = random.nextDouble() * Math.PI * 2.0;
          double distance = 25.0 + random.nextDouble() * 15.0;
          int x = (int)(center.x + Math.cos(angle) * distance);
          int z = (int)(center.z + Math.sin(angle) * distance);
-         BlockPos candidate = this.findSpawnAtPlayerLevel(level, new BlockPos(x, playerY, z), playerY);
+         BlockPos column = new BlockPos(x, playerY, z);
+         BlockPos candidate = surfaceOnly
+            ? this.findSurfaceSpawn(level, column)
+            : this.findSpawnAtPlayerLevel(level, column, playerY);
          if (candidate != null) {
             return new Vec3((double)candidate.getX() + 0.5, (double)candidate.getY(), (double)candidate.getZ() + 0.5);
          }
@@ -391,8 +398,18 @@ public class RaidManager {
    }
 
    /**
+    * The column's own ground level, which has to be standable and open to the sky. A covered spot (under
+    * a leaf canopy, an overhang or a roof) is rejected because the player would not see the raid there.
+    */
+   @Nullable
+   private BlockPos findSurfaceSpawn(ServerLevel level, BlockPos column) {
+      BlockPos ground = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, column);
+      return this.isStandableSpawn(level, ground) && level.canSeeSky(ground) ? ground : null;
+   }
+
+   /**
     * The closest standable position to the player's own Y in this column, then the column's own ground
-    * if it is close enough to be the same place.
+    * if it is close enough to be the same place. Used in dimensions whose "surface" is a roof.
     */
    @Nullable
    private BlockPos findSpawnAtPlayerLevel(ServerLevel level, BlockPos column, int playerY) {
