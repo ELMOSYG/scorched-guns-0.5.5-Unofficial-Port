@@ -142,6 +142,7 @@ public class Config {
       public final Config.Gunsmith Gunsmith;
       public final Config.ExoSuitCores exoSuitCores;
       public final Config.Raids raids;
+      public final Config.Compat compat;
 
       public Common(Builder builder) {
          super();
@@ -157,6 +158,29 @@ public class Config {
          this.Gunsmith = new Config.Gunsmith(builder);
          this.exoSuitCores = new Config.ExoSuitCores(builder);
          this.raids = new Config.Raids(builder);
+         this.compat = new Config.Compat(builder);
+         builder.pop();
+      }
+   }
+
+   /**
+    * Options for the optional integrations (HANDOFF section 82). They only do anything when the other
+    * mod is installed - the values are plain before that, which is why they are not hidden behind a
+    * separate config file.
+    */
+   public static class Compat {
+      public final DoubleValue guardGunAccuracy;
+
+      public Compat(Builder builder) {
+         builder.comment("Options for the optional mod integrations").push("compat");
+         this.guardGunAccuracy = builder.comment(
+               new String[]{
+                  "How accurate a Guard Villagers guard is with a scorched gun (higher is more accurate).",
+                  "The mod's own gunner mobs use 1.2 (TACTICAL) to 2.5; a guard is a trained shot, so 3.5",
+                  "matches the standalone 1.20.1 guard compat this replaces."
+               }
+            )
+            .defineInRange("guard_gun_accuracy", 3.5, 0.1, 10.0);
          builder.pop();
       }
    }

@@ -190,6 +190,22 @@
           "chance": 0.5
         }
       ]
+    },
+    "guardvillagers:guard": {
+      "spawn_chance": 1.0,
+      "ai_difficulty": 1,
+      "weapon_drop_chance": 0.03,
+      "weapons": [
+        "scguns:pax",
+        "scguns:winnie",
+        "scguns:winnie_millend",
+        "scguns:callwell",
+        "scguns:callwell_conversion",
+        "scguns:callwell_terminal",
+        "scguns:saketini",
+        "scguns:saketini_ironport"
+      ],
+      "armor": []
     }
   }
 }

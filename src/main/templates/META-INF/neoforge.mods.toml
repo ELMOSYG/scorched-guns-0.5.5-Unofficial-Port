@@ -72,3 +72,11 @@ file="META-INF/accesstransformer.cfg"
     versionRange="[2.1.9,)"
     ordering="AFTER"
     side="CLIENT"
+
+[[dependencies.${mod_id}]]
+    modId="guardvillagers"
+    type="optional"
+    reason="Optional: villagers' guards can carry and fire the mod's guns."
+    versionRange="[2.4.10,)"
+    ordering="AFTER"
+    side="BOTH"

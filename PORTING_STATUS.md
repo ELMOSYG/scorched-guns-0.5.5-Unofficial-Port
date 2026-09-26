@@ -607,4 +607,28 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   `verify_installed_jar` 新增 4 条（枪手枪必须装弹、恒假守卫不得回归、`clientOr` 必须存在且被 `AIGunEvent` 使用）
   ⇒ **172/172**；`javac` 0 / `build` ✓ / **29 个审计 0** / 已安装（19398807 字节，备份 `.bak-214429`）。
 
+## §82 警卫村民（Guard Villagers）兼容：警卫持枪开火，且不打自己人（可选前置，不装也照跑）
+
+- **参考**：玩家 1.20.1 的独立兼容 mod `guard_guns`（战利品表塞枪 + mixin 进 SCG 自己的
+  `hasGunAttackGoal` + 友伤两层）与新版上游 1.21.1（`gunner_mobs.json` 加 `guardvillagers:guard` +
+  按实体 id 识别 + 一堆 mixin）。本轮**采纳数据驱动与警卫专用 AI**，但**零 mixin**：持枪/开火/友伤
+  三件事全部用主机代码 + 实体 id 判断完成（实测证明"优先级"可完全替代上游的 `GuardMeleeGoalMixin`）。
+- **实现**：`compat/guardvillagers/` 四个类（`GuardVillagersCompat` 只用实体 id、**不引用 Guard 类**；
+  `GuardFriendlyRules` 是全仓**唯一**提到 GV 类的文件，只在确认是警卫后才被调用；`GuardGunAttackGoal`
+  搬 1.20.1 那份 AI 且不依赖 GV；`GuardVillagersEvents` 用 `LivingIncomingDamageEvent` +
+  `LivingKnockBackEvent`）；三个钩子（join / tick<2 / 装备变更，抽签只记一次）；`gunner_mobs.json`
+  新增 `guardvillagers:guard`（spawn_chance 1.0、8 把枪、armor 空）；配置 `common.compat.guard_gun_accuracy`
+  （默认 3.5，取自玩家 1.20.1 那份配置）；`mods.toml` 声明 optional。
+- **实测（四轮，过程即证据）**：① 只挂 join 钩子 ⇒ 枪 20 刻后被 GV 自己的铁剑覆盖；② 三处重试 ⇒ 枪保住了
+  但 `shots=0`；③ 打印目标列表 ⇒ `GuardMeleeGoal p=3 running=true` 压死同优先级的枪手目标；
+  ④ 改优先级 2 ⇒ `GuardGunAttackGoal p=2 running=true`、`shots=15 refills=7`（弹匣 2 发的枪打空→换弹→补满）、
+  村民全程 20 血（且就在连线上）。**不装 GV** 用 `-PnoIntegrationRuntime=true` 实跑：`loaded=false`、
+  无 `NoClassDefFoundError`、普通枪手照常。
+- **顺带修掉一条死配置**：`gunner_mobs.json` 的 `weapon_drop_chance` 一直被解析却从未使用（主题枪手掉枪率
+  等于原版默认），现已在 `equipThematicGun` 接上（精英仍 0.0 不掉）。
+- **门禁**：新增 `audit_guard_compat.py`（只有 `GuardFriendlyRules` 可提及 GV 类、常量与 JSON key 必须一致、
+  三个钩子必须在、`hasGunAttackGoal` 必须算上警卫目标、**必须加在优先级 2**、友伤两层在、精度可配置、
+  `mods.toml` 声明 optional），`--selftest`（`8863bb4`）命中 **13 条**；`verify_installed_jar` 新增 7 条
+  ⇒ **179/179**；`javac` 0（1003 文件）/ `build` ✓ / **30 个审计 0** / 已安装（19409981 字节，备份 `.bak-221646`）。
+
 

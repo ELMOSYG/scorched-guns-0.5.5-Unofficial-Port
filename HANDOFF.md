@@ -6393,6 +6393,105 @@ wild gunner: tags=[GunAttackAssigned, AI_SMART, ThematicGunner, MobGunner] item=
   语言键 **1825/1825** ✓、已安装 ✓（`19398807` 字节 ✓，上一版备份 `.bak-214429` ✓）。
 * **未验证** ✓：玩家在自己存档里看到的枪手换弹观感 ✓（换弹链路本身已在专用服务器上实测闭合 ✓）。
 
+# 82. 警卫村民（Guard Villagers）兼容：警卫持枪、会打、**不打自己人**（可选前置，**不装也照跑**）
+
+玩家要求 ✓：**"可以做下警卫村民的兼容"** ✓，并给了 1.20.1 的独立兼容 mod
+`E:\mod\SCG2_TLM\guard_guns` ✓（同作者 ✓），还提示"其他 1.21.1 的 scgun 移植也有" ✓。
+
+## 82.1 两份参考（都读了，各自取长）
+
+| 参考 | 做法 | 本轮取舍 |
+|---|---|---|
+| 玩家 1.20.1 的 `guard_guns`（**独立 mod** ✓，modid `guard_scg_guns` ✓）| **覆盖 GV 的战利品表** `guardvillagers:entities/guard_armor` ✓ 给 25% 概率塞 SCG 枪 ✓；mixin 进 **SCG 自己的** `GunnerMobSpawner.hasGunAttackGoal` ✓ 加警卫专用 AI ✓；`LivingHurtEvent`/`LivingKnockBackEvent` + `Projectile.canHitEntity` mixin ✓ 防友伤 ✓ | "警卫专用 AI" ✓ 与"两层防友伤"✓ 全采纳 ✓ |
+| 新版上游 1.21.1（`ScorchedGunsNeoforge-main` ✓）| `gunner_mobs.json` 加 `guardvillagers:guard` ✓ + `GunnerMobSpawner` **按实体 id** 识别警卫 ✓；`GuardGunAIMixin`/`GuardMeleeGoalMixin`/`GuardKickGoalMixin`/`GuardGunnerEquipmentMixin` ✓ 等一堆 mixin ✓ | **数据驱动**这条采纳 ✓（枪种/概率/掉率都在玩家已经会改的那张 JSON 里 ✓），**mixin 一律不要** ✓ |
+
+> **本轮最大的设计决定：零 mixin** ✓。mixins 进别的 mod 的类要 `@Pseudo` + `remap=false` + 门禁 ✓，
+> 对方一改类名/方法名就崩 ✗；而"持枪、会打、不打自己人"这三件事**主机自己的代码 + 实体 id 判断**都能做到 ✓
+> （§82.3 的第四轮实测证明：**优先级**可以完全替代上游那个 `GuardMeleeGoalMixin` ✓）。
+
+## 82.2 实现（4 个新类 + 3 个钩子 + 1 条数据 + 1 个配置）
+
+* **`compat/guardvillagers/GuardVillagersCompat`** ✓：主机**唯一**随便调用的那个类 ✓，判断方式只有
+  `BuiltInRegistries.ENTITY_TYPE.getKey(...)` 与 `guardvillagers:guard` 比字符串 ✓ ——
+  **不引用任何 Guard 类** ✓。Java 的类解析发生在指令**首次执行**时 ✓，所以没装 GV 的服务器
+  **加载它、调用它都安全** ✓。它另外负责"**每只警卫只抽一次签**"的记忆 ✓（`WeakHashMap` ✓，
+  否则"join + 前 2 刻 + 装备变更"三处重试会把 30% 的概率变成必然 ✗）。
+* **`compat/guardvillagers/GuardFriendlyRules`** ✓：**全仓唯一**提到 `tallestegg.guardvillagers` 类的文件 ✓
+  （`guard.isOwner(...)` / `instanceof Guard` ✓），且只在**确认是警卫之后**才被调用 ✓
+  ⇒ 没装 GV 时它永远不会被加载 ✓（审计把这条钉死了 ✓）。
+* **`compat/guardvillagers/GuardGunAttackGoal`** ✓：搬玩家 1.20.1 那份 AI ✓（按枪的 `idealRange` 走位 ✓、
+  太近就后退 ✓、按 `rate` 节流 ✓、打空后换弹但**上限 40 刻** ✓、开枪前先看**射线里有没有自己人** ✓，
+  有就让位 ✓）。落地改动：4 处 1.20.1 的 NBT 访问换成 `NbtHelper` ✓；上游那个
+  `RangedCrossbowAttackPassiveGoal.friendlyInLineOfSight` 在 2.4.10 里已不在原处 ✓ ⇒ 换成自己实现 ✓
+  （**于是这个类也不依赖 GV 任何东西** ✓）。
+* **`compat/guardvillagers/GuardVillagersEvents`** ✓：`LivingIncomingDamageEvent` ✓
+  （NeoForge 把 Forge 的 `LivingHurtEvent` 换成了它 ✓）+ `LivingKnockBackEvent` ✓
+  ⇒ 警卫对村民/铁傀儡/其他警卫的**伤害与击退一并取消** ✓。
+* **三个钩子**（都在 `GunnerMobSpawner` ✓，**没有 mixin** ✓）：`onEntityJoinWorld` ✓、
+  `onLivingUpdate`（`tickCount < 2` ✓）、`onLivingEquipmentChange` ✓。
+* **数据** ✓：`gunner_mobs.json` 新增 **`guardvillagers:guard`** 条目 ✓（`spawn_chance` 1.0 ✓、
+  `weapon_drop_chance` 0.03 ✓、8 把枪 ✓、`armor: []` —— 警卫的甲由 GV 自己给 ✓）。
+* **配置** ✓：`common.compat.guard_gun_accuracy`（默认 **3.5** ✓，取自玩家 1.20.1 那份配置 ✓）。
+* **`neoforge.mods.toml`** ✓：`guardvillagers` 声明为 **optional** ✓（这条是审计逼出来的 ✓ —— 第一版没写 ✓）。
+
+> **为什么不用"覆盖战利品表塞枪"** ✓：那是**整表替换** GV 自己的装备表 ✓，GV 以后改装备逻辑就悄悄失效 ✗，
+> 而且绕过本 mod 自己的枪手配置 ✓；走 `gunner_mobs.json` 则是玩家**已经在改**的那张表 ✓。
+
+## 82.3 实测（专用服务器 + 假玩家/村民探针，读完即删 ✓）——四轮才走通，过程本身就是证据 ✓
+
+* **第一轮 ✗**：警卫**拿到了枪** ✓（`hand=scguns:winnie ammo=1` ✓），但 **20 刻后变成铁剑** ✗
+  ⇒ **GV 是在实体 join 之后才装自己的武器** ✓ ⇒ 只挂 join 钩子必然被覆盖 ✓。
+* **第二轮 ✗**：改成"join + 前 2 刻 + 装备变更"三处重试 ✓（抽签只记一次 ✓）⇒ 枪**保住了** ✓
+  （`t=1 HAND -> scguns:callwell` ✓），但 **`shots=0`，500 刻一枪没开** ✗。
+* **第三轮 ✓（把目标列表打出来，这一步是关键 ✓）**：
+  ```
+  goal p=3 running=true  GuardMeleeGoal        ← GV 自己的近战目标在跑
+  goal p=3 running=false GuardGunAttackGoal    ← 同优先级 + 同 MOVE|LOOK 旗标 ⇒ 永远起不来
+  ```
+  ⇒ 上游那个 `GuardMeleeGoalMixin` 就是为此存在的 ✓；而**改成优先级 2 就能完全替代它** ✓（数字越小越优先 ✓）。
+* **第四轮 ✓（最终，同一探针 ✓）**：
+  ```
+  t=1 HAND -> scguns:callwell                      ← 枪保住了（join 之后被 GV 覆盖，又抢回来）
+  after 40 ticks: hasGuardGunGoal=true
+  gun: maxAmmo=2 reloadTimer=30 rate=2 idealRange=12.0
+  goal p=2 running=true   GuardGunAttackGoal       ← 起来了
+  goal p=3 running=false  GuardMeleeGoal           ← 被压住（持枪不近战，正是想要的）
+  friendly-shot: guard->villager=true  guard->player=false
+  SUMMARY shots=15 refills=7 villagerHealth=20.0 (started 20.0)
+  ```
+  * 15 发 / **7 次补弹** ✓（这把 `callwell` 弹匣只有 2 发 ✓ ⇒ 打空→换弹→补满的循环真的在转 ✓）；
+  * 村民**全程 20 血** ✓，而且当时它就在"警卫—目标"的连线上 ✓（警卫停在 x=6 ✓，村民 x=5.5 ✓，目标 x=0.5 ✓）。
+* **不装 Guard Villagers 也验了** ✓：`gradlew runServer -PnoIntegrationRuntime=true` ⇒
+  `guardvillagers loaded=false` ✓、**没有 `NoClassDefFoundError`** ✓、服务器正常起 ✓、而且普通枪手照常 ✓
+  （`wild gunner: hand=scguns:winnie_millend ammo=2 tags=[GunAttackAssigned, AI_COWARD, ThematicGunner,
+  MobGunner]` ✓ —— 顺带复验了 §81 的修复 ✓）。
+
+## 82.4 顺带修掉的一条死配置（同 §80 那种 ✓）
+
+`gunner_mobs.json` 的 **`weapon_drop_chance` 一直被解析、从来没被用过** ✓（全仓只有解析处 + record 字段 ✓）
+⇒ 主题枪手掉枪率一直等于原版 mob 默认值 ✓，配置里写多少都一样 ✗。现在在 `equipThematicGun` 里接上 ✓
+（**精英仍固定 0.0 不掉落** ✓，与 `EliteGunner` 的原意一致 ✓）。
+
+## 82.5 防复发 + 验收
+
+* 审计 **`tools/audit_guard_compat.py`** ✓（新增）：**只有 `GuardFriendlyRules` 可以出现
+  `tallestegg.guardvillagers`** ✓（这条就是"没装 GV 也能跑"的核心保证 ✓）；4 个 compat 类必须在 ✓；
+  `GuardVillagersCompat` 必须继续用**实体 id** 判断 ✓、必须有 `isFriendlyShot` ✓ 与守卫式间接调用 ✓；
+  `gunner_mobs.json` 必须有 `guardvillagers:guard` ✓ 且**常量与 JSON key 必须一致** ✓（不一致 = 静默不生效 ✓）；
+  三个钩子必须真的调到位 ✓；`hasGunAttackGoal` 必须把 `GuardGunAttackGoal` 算进去 ✓（否则警卫会被塞上敌对 AI ✓）；
+  **枪手目标必须加在优先级 2** ✓（加在 3 就被 GV 的近战目标压死 ✓ —— 这条正是实测逼出来的 ✓）；
+  友伤两层必须在 ✓；精度必须可配置 ✓；`mods.toml` 必须声明 optional ✓。
+  **自测** ✓：对固定提交 `8863bb4`（§81）跑 ⇒ 命中 **13 条** ✓；当前源码 **0** ✓；已加入 CI ✓。
+* `verify_installed_jar` ✓：新增 **7 条** ✓（4 个类随包 ✓、`guardvillagers:guard` 在数据文件里 ✓、
+  装备钩子在字节码里 ✓、弹道过滤在字节码里 ✓）⇒ **179/179** ✓。
+* 门禁 ✓：`javac` 0 错误 ✓（1003 文件 ✓，探针已删 ✓）、`gradlew build` ✓、**30 个审计全 0** ✓、
+  语言键 **1825/1825** ✓、已安装 ✓（`19409981` 字节 ✓，上一版备份 `.bak-221646` ✓）。
+* `libs/README.md` 已把 `guardvillagers-1.21.1-*.jar` 记进"可选集成"✓（**只编译不随包** ✓，
+  与其它前置一致 ✓）；dev 环境里"不装 GV"用 `-PnoIntegrationRuntime=true` 就能复现 ✓。
+* **未验证** ✓：真人存档里警卫的自然刷新与手感 ✓（装备/AI/友伤三维都已在专用服务器上实测 ✓）；
+  以及"**警卫该不该近战**" ✓ —— 本轮选择"持枪时由枪手目标压住近战" ✓（上游是 mixin 禁掉 ✓）；
+  玩家若想要枪托近战 ✓，把优先级 2 改回 3 并去掉压制即可 ✓。
+
 
 
 

@@ -28,7 +28,13 @@ create-aeronautics-bundled-*.jar          ImmersiveEngineering-*.jar
 Mekanism-*.jar                            sable-neoforge-*.jar
 prometheus-*.jar                          soul-fire-d-*.jar
 cobweb-neoforge-*.jar                     FarmersDelight-*.jar
+guardvillagers-1.21.1-*.jar
 ```
+
+`guardvillagers` is the one that is also integrated (HANDOFF section 82): villagers' guards can carry and
+fire the mod's guns, and a guard's shots pass through villagers, iron golems and other guards. The
+integration is inert without the mod - `tools/audit_guard_compat.py` keeps it that way - and the jar is only
+compiled against here, never redistributed.
 
 Two of them are used in the dev environment only and demand a newer NeoForge than the floor, which is
 why `gradlew runServer` has a switch to leave them out:

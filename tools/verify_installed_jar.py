@@ -972,6 +972,26 @@ def main():
             zf, "top/ribs/scguns/entity/ai/AIGunEvent.class", b"clientOr",
             "the mob firing path reads fireLights through it"))
 
+        # 37. the Guard Villagers integration (HANDOFF section 82). Optional mod, single jar: guards carry
+        # and fire the mod's guns, and the four classes must ship - the data entry alone would arm nobody,
+        # and the compat class alone would have no weapon list. GuardFriendlyRules is the only class that
+        # may name a Guard Villagers type, and it must be there for the friendly-fire check to work.
+        for entry in ("compat/guardvillagers/GuardVillagersCompat.class",
+                      "compat/guardvillagers/GuardFriendlyRules.class",
+                      "compat/guardvillagers/GuardGunAttackGoal.class",
+                      "compat/guardvillagers/GuardVillagersEvents.class"):
+            checks.append(("the guard compat ships (%s)" % entry.rsplit("/", 1)[-1],
+                           "top/ribs/scguns/" + entry in names))
+        checks.append(_check_resource_contains(
+            zf, "data/scguns/entity/gunner_mobs.json", b'"guardvillagers:guard"',
+            "guards are configured as gunners"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"equipGuardGun",
+            "the guard equip hook ships"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/entity/projectile/ProjectileEntity.class", b"isFriendlyShot",
+            "a guard's shots skip the village"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

@@ -97,6 +97,7 @@ import top.ribs.scguns.common.ChargeHandler;
 import top.ribs.scguns.common.FireMode;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.common.SpreadTracker;
+import top.ribs.scguns.compat.guardvillagers.GuardVillagersCompat;
 import top.ribs.scguns.config.ProjectileAdvantageConfig;
 import top.ribs.scguns.effect.RocketExplosion;
 import top.ribs.scguns.event.GunProjectileHitEvent;
@@ -518,7 +519,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       double closestDistance = Double.MAX_VALUE;
 
       for (Entity entity : entities) {
-         if (!entity.equals(this.shooter)) {
+         if (!entity.equals(this.shooter) && !GuardVillagersCompat.isFriendlyShot(this.shooter, entity)) {
             ProjectileEntity.EntityResult result = this.getHitResult(entity, startVec, endVec);
             if (result != null) {
                Vec3 hitPos = result.getHitPos();
@@ -540,6 +541,12 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       List<ProjectileEntity.EntityResult> hitEntities = new ArrayList<>();
 
       for (Entity entity : this.level().getEntities(this, this.getBoundingBox().expandTowards(this.getDeltaMovement()).inflate(1.0), PROJECTILE_TARGETS)) {
+         if (GuardVillagersCompat.isFriendlyShot(this.shooter, entity)) {
+            // A Guard Villagers guard's shot passes through the village (HANDOFF section 82): no impact,
+            // no damage, no knockback on a villager, an iron golem or another guard.
+            continue;
+         }
+
          ProjectileEntity.EntityResult result = this.getHitResult(entity, startVec, endVec);
          if (result != null) {
             hitEntities.add(result);

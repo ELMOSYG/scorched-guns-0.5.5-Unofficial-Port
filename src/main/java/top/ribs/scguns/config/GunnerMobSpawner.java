@@ -31,6 +31,8 @@ import top.ribs.scguns.entity.ai.GunAttackGoal;
 import top.ribs.scguns.entity.player.GunTier;
 import top.ribs.scguns.entity.player.PlayerGunProgression;
 import top.ribs.scguns.init.ModTags;
+import top.ribs.scguns.compat.guardvillagers.GuardGunAttackGoal;
+import top.ribs.scguns.compat.guardvillagers.GuardVillagersCompat;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.util.GunCurseUtil;
 
@@ -89,6 +91,11 @@ public class GunnerMobSpawner {
          ItemStack heldItem = mob.getMainHandItem();
          if (heldItem.getItem() instanceof GunItem) {
             reassessWeaponGoal(mob);
+         } else if (event.getSlot() == EquipmentSlot.MAINHAND) {
+            // Guard Villagers refills a guard's main hand with its own sword or crossbow, sometimes well
+            // after the guard spawned - this is what puts the gun back (HANDOFF section 82). The compat
+            // remembers the guard's roll, so a guard that never won one stays armed with a sword.
+            GuardVillagersCompat.equipGuardGun(mob);
          }
       }
    }
@@ -116,7 +123,13 @@ public class GunnerMobSpawner {
                   }
                }
 
-               if (heldItem.getItem() instanceof GunItem) {
+               // A guard's own equipment arrives after the join event, so this is the hook that really
+               // arms one (HANDOFF section 82). Non-guards fall straight through.
+               if (!(heldItem.getItem() instanceof GunItem)) {
+                  GuardVillagersCompat.equipGuardGun(mob);
+               }
+
+               if (mob.getMainHandItem().getItem() instanceof GunItem) {
                   reassessWeaponGoal(mob);
                }
             }
@@ -138,6 +151,11 @@ public class GunnerMobSpawner {
          if (elite) {
             mob.addTag("EliteGunner");
             mob.setDropChance(EquipmentSlot.MAINHAND, 0.0F);
+         } else {
+            // weapon_drop_chance was parsed out of gunner_mobs.json and then never applied (HANDOFF
+            // section 82): every thematic gunner dropped its gun at the vanilla mob rate instead of the
+            // configured one. Elites above keep 0.0 on purpose - their gun never drops.
+            mob.setDropChance(EquipmentSlot.MAINHAND, gunnerData.weaponDropChance());
          }
 
          for (GunnerMobConfig.ArmorPiece armorPiece : gunnerData.allowedArmor()) {
@@ -276,15 +294,63 @@ public class GunnerMobSpawner {
             ItemStack heldItem = mob.getMainHandItem();
             if (heldItem.getItem() instanceof GunItem) {
                reassessWeaponGoal(mob);
-            } else {
+            } else if (!GuardVillagersCompat.equipGuardGun(mob)) {
+               // Guard Villagers compat (HANDOFF section 82): a guard spawns holding a sword or a
+               // crossbow like any other guard, and is equipped from this config's
+               // "guardvillagers:guard" entry instead. Every other mob falls through to the reset.
                resetFollowRange(mob);
             }
          }
       }
    }
 
+   /**
+    * Whether the mob already has gun AI. The Guard Villagers compat adds
+    * {@link GuardGunAttackGoal} instead of {@link GunAttackGoal}, so it has to count here - otherwise
+    * {@link #reassessWeaponGoal} would add the hostile raider AI to a guard that already has its own.
+    */
    public static boolean hasGunAttackGoal(PathfinderMob mob) {
-      return mob.goalSelector.getAvailableGoals().stream().anyMatch(goal -> goal.getGoal() instanceof GunAttackGoal);
+      return mob.goalSelector.getAvailableGoals().stream().anyMatch(goal -> {
+         return goal.getGoal() instanceof GunAttackGoal || goal.getGoal() instanceof GuardGunAttackGoal;
+      });
+   }
+
+   /**
+    * Equips a Guard Villagers guard from this config's {@code guardvillagers:guard} entry, with the
+    * guard's own gun AI (HANDOFF section 82). The caller decides <i>whether</i> to arm the guard (see
+    * {@code GuardVillagersCompat.equipGuardGun}, which owns the spawn-chance roll); this method just does
+    * it, and is also the re-arm path for a guard whose slot Guard Villagers has refilled with a sword.
+    */
+   public static boolean equipGuardGun(PathfinderMob mob, float accuracy) {
+      if (!GuardVillagersCompat.isGuard(mob)) {
+         return false;
+      }
+
+      GunnerMobConfig.MobGunnerData gunnerData = GunnerMobConfig.getGunnerData(mob.getType());
+      if (gunnerData == null) {
+         return false;
+      }
+
+      Item gun = gunnerData.getRandomWeapon(mob.getRandom());
+      if (gun == null) {
+         return false;
+      }
+
+      ItemStack modifiedGun = createModifiedGun(mob, gun);
+      GunCurseUtil.applyCurseIfRoll(modifiedGun, mob.getRandom());
+      mob.setItemSlot(EquipmentSlot.MAINHAND, modifiedGun);
+      mob.setDropChance(EquipmentSlot.MAINHAND, gunnerData.weaponDropChance());
+      if (!hasGunAttackGoal(mob)) {
+         // Priority 2, not 3: Guard Villagers runs its own melee goal at 3 with the same MOVE|LOOK
+         // flags, so a goal at 3 never starts - the first probe for this showed GuardMeleeGoal
+         // running=true and the gun goal running=false for 500 ticks. Outranking it is also what the
+         // standalone 1.20.1 compat did with a melee-suppressing mixin, without needing one here.
+         mob.goalSelector.addGoal(2, new GuardGunAttackGoal(mob, accuracy));
+      }
+
+      mob.addTag("GunAttackAssigned");
+      extendFollowRange(mob);
+      return true;
    }
 
    public static void reassessWeaponGoal(PathfinderMob mob) {
