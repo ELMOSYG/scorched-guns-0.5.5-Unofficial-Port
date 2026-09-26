@@ -170,9 +170,13 @@ public class GunProgressionEventHandler {
     * with:", "These Raids will now target you:"). The player asked for the consequence to be spelled
     * out in the sentence itself, so the second line now reads "【X】等级的敌人和袭击现在可能出现！"
     * and a level-up sound marks the moment, since chat alone scrolled past unnoticed.</p>
+    * <p>HANDOFF section 81: the showProgressionMessages option is client-side, and this runs on the
+    * server - a dedicated server would throw "Cannot get config value before config is loaded" and kill
+    * the tier-up message (and, being inside an event handler, possibly more than that), so it reads
+    * through {@code Config.clientOr}.</p>
     */
    public static void sendTierUnlockedMessage(Player player, GunTier tier) {
-      if ((Boolean)Config.CLIENT.display.showProgressionMessages.get()) {
+      if ((Boolean)Config.clientOr(Config.CLIENT.display.showProgressionMessages)) {
          if (tier != null && tier.getLevel() != 0) {
             Component tierName = Component.translatable("gun_tier.scguns." + tier.getId())
                .withStyle(new ChatFormatting[]{ChatFormatting.GOLD, ChatFormatting.BOLD});

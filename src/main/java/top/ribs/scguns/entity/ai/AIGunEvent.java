@@ -119,7 +119,7 @@ public class AIGunEvent {
             }
          }
 
-         if ((Boolean)Config.CLIENT.display.fireLights.get()) {
+         if ((Boolean)Config.clientOr(Config.CLIENT.display.fireLights)) {
             BlockState targetState = shooter.level().getBlockState(BlockPos.containing(shooter.getEyePosition()));
             if (targetState.getBlock() == ModBlocks.TEMPORARY_LIGHT.get()) {
                if (getValue(shooter.level(), BlockPos.containing(shooter.getEyePosition()), "Delay") < 1.0) {

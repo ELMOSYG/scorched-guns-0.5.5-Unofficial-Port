@@ -22,22 +22,15 @@ public class TemporaryLightManager {
 
    public static void addTemporaryLight(Level level, BlockPos pos, boolean isBeamWeapon) {
       if (!level.isClientSide) {
+         // HANDOFF section 81: the fireLights option lives in the client config, which a dedicated
+         // server never loads - NeoForge throws for that, and this used to catch the throw and silently
+         // disable the feature. Config.clientOr asks the option for its default instead, which is what
+         // Forge 1.20.1 returned, so a server behaves like a default-config client.
+         if (!(Boolean)Config.clientOr(Config.CLIENT.display.fireLights)) {
+            return;
+         }
+
          try {
-            if (Config.CLIENT == null || Config.CLIENT.display == null) {
-               return;
-            }
-
-            boolean fireLightsEnabled;
-            try {
-               fireLightsEnabled = (Boolean)Config.CLIENT.display.fireLights.get();
-            } catch (IllegalStateException var9) {
-               return;
-            }
-
-            if (!fireLightsEnabled) {
-               return;
-            }
-
             BlockState currentState = level.getBlockState(pos);
             if (!canPlaceLightAt(level, pos, currentState)) {
                return;

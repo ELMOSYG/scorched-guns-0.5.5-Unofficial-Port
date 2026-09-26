@@ -56,7 +56,7 @@ public class SulfurGasCloud {
    }
 
    public static void spawnCloudParticlesForced(ServerLevel serverLevel, Vec3 center, double radius, int particleCount, RandomSource random, int tickCount) {
-      if ((Boolean)Config.CLIENT.display.enablePerformanceSulfurCloud.get()) {
+      if ((Boolean)Config.clientOr(Config.CLIENT.display.enablePerformanceSulfurCloud)) {
          particleCount = Math.min(particleCount, 15);
       }
 
@@ -179,7 +179,7 @@ public class SulfurGasCloud {
    }
 
    public static void spawnDustParticlesForced(ServerLevel serverLevel, Vec3 center, double radius, int particleCount, RandomSource random, int tickCount) {
-      if ((Boolean)Config.CLIENT.display.enablePerformanceSulfurCloud.get()) {
+      if ((Boolean)Config.clientOr(Config.CLIENT.display.enablePerformanceSulfurCloud)) {
          particleCount = Math.min(particleCount, 10);
       }
 
@@ -329,7 +329,7 @@ public class SulfurGasCloud {
 
             int baseCloudParticles;
             int baseDustParticles;
-            if ((Boolean)Config.CLIENT.display.enablePerformanceSulfurCloud.get()) {
+            if ((Boolean)Config.clientOr(Config.CLIENT.display.enablePerformanceSulfurCloud)) {
                baseCloudParticles = 8;
                baseDustParticles = 5;
             } else {

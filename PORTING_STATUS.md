@@ -581,4 +581,30 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   `verify_installed_jar` 新增 2 条 ⇒ **168/168**；语言键 **1825/1825**；
   `javac` 0 / `build` ✓ / **28 个审计 0** / 已安装（19398550 字节，备份 `.bak-213047`）。
 
+## §81 枪手 AI"不换弹"：两个真凶（服务端读客户端配置崩服 + 野生枪手的枪从没装弹）
+
+- **真凶 A（已实测复现）**：`AIGunEvent.performGunAttack:122` 读 **`Config.CLIENT.display.fireLights`**。
+  专用服务器不加载 `scguns-client.toml`，NeoForge 直接抛
+  `IllegalStateException: Cannot get config value before config is loaded`（Forge 1.20.1 是**返回默认值**，
+  所以这是迁移引入的）。而它在 `GunAttackGoal.consumeAmmo` **之前** ⇒ **弹匣永不减少** ⇒
+  `getAmmoCount > 0` 恒成立 ⇒ **AI 永远不换弹**（与玩家描述逐字吻合），且每次开枪都
+  `ReportedException: Ticking entity` **崩服**。探针（修复前）：`ammo=3` 不动、t≈80 崩服。
+- **真凶 B（上游 0.5.5 就有的死守卫，§13 漏改一个文件）**：`GunnerMobSpawner.createModifiedGun` 的
+  守卫 `NbtHelper.getTagForWrite(gunStack) != null` 对刚 new 的 ItemStack **恒假** ⇒ `AmmoCount` 预填
+  **从未执行** ⇒ 野生枪手（掠夺者/卫道士/猪灵…）的枪**连 custom_data 都没有** ⇒ 读作 0 ⇒ 首次接敌
+  **先换弹**而不是开火。§13 修的 `RaidManager` / `EntityEquipmentConfig` 是同模式的两处兄弟路径。
+- **修复**：`Config.clientOr(ConfigValue)`（已加载用真值，未加载用默认值 = Forge 行为），服务端可达的
+  `Config.CLIENT` 读取全部改走它（`AIGunEvent`/`TemporaryLightManager`/`GunProgressionEventHandler`/
+  `ProjectileEntity`×2/`LightningProjectileEntity`/`SulfurGasCloud`×3），`client/` 包内保持原样；
+  同时拆掉三处 `catch (IllegalStateException)` 局部补丁（正是它们掩盖了其余六处）；
+  `GunnerMobSpawner` 改用 `getOrCreateTag`，与另两处同形。
+- **实测（修复后，同一探针）**：`ammo 3→2→1→0` ⇒ `RELOAD STARTED`（15 刻）⇒ `RELOAD ENDED ammo=12` ⇒
+  继续射击，整条链路闭合；野生枪手 `customData={AmmoCount:2}`（修复前无 custom_data）。
+  `GunAttackGoal` 与 0.5.5 仅剩 NBT 访问差异 ⇒ **换弹逻辑本身一直是对的**，坏在前面两处。
+  141 把枪 `maxAmmo` 全 ≥1 ⇒ 不存在补 0 死循环；`reloadTimer` 6–125 刻（多数 20–60）。
+- **门禁**：新增 `audit_client_config_side.py`（`client/` 外读取必须走 `clientOr`；禁止
+  `catch (IllegalStateException` 兜底；扫描前剥注释），`--selftest`（`d950b34`）命中 **13 条**；
+  `verify_installed_jar` 新增 4 条（枪手枪必须装弹、恒假守卫不得回归、`clientOr` 必须存在且被 `AIGunEvent` 使用）
+  ⇒ **172/172**；`javac` 0 / `build` ✓ / **29 个审计 0** / 已安装（19398807 字节，备份 `.bak-214429`）。
+
 

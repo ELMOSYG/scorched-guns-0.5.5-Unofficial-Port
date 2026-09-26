@@ -31,6 +31,27 @@ public class Config {
       clientSpec.save();
    }
 
+   /**
+    * A client-only option read from code that can also run on a <b>server</b> (HANDOFF section 81).
+    *
+    * <p>The dedicated server never loads {@code scguns-client.toml}, and NeoForge throws for that:
+    * {@code ConfigValue.get()} -&gt; {@code getRaw()} -&gt;
+    * {@code Preconditions.checkState(loadedConfig != null, "Cannot get config value before config is
+    * loaded.")}. Forge 1.20.1 returned the default instead, so 0.5.5 could read a client option from
+    * server code harmlessly - which is why the port crashed where the original did not. Inside
+    * {@code AIGunEvent.performGunAttack} that throw happened <b>before</b>
+    * {@code GunAttackGoal.consumeAmmo}, so a gunner's magazine never went down, the AI never reached its
+    * reload branch, and the server died with "Ticking entity".</p>
+    *
+    * <p>Everything that reads {@link #CLIENT} outside the {@code client} package must go through here;
+    * on a client - and in single player, where the client half is loaded in the same JVM - the real value
+    * is returned, and on a dedicated server the option's default is, which is what Forge used to
+    * return.</p>
+    */
+   public static <T> T clientOr(ConfigValue<T> value) {
+      return clientSpec.isLoaded() ? value.get() : value.getDefault();
+   }
+
    static {
       Pair<Config.Client, ModConfigSpec> clientSpecPair = new Builder().configure(Config.Client::new);
       clientSpec = (ModConfigSpec)clientSpecPair.getRight();

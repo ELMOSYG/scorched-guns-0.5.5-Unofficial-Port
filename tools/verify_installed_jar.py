@@ -952,6 +952,26 @@ def main():
             zf, "top/ribs/scguns/entity/raid/RaidManager.class", b"setLastRaidDay",
             "a natural raid records the day it started"))
 
+        # 36. the two halves of the gunner-reload fix (HANDOFF section 81).
+        # a) The gun a wild gunner is given must carry AmmoCount: the pre-fill sat behind a guard that
+        #    is always false for a freshly created stack, so pillagers and friends held a gun with no
+        #    data at all and reloaded before they ever fired. getTagForWrite must be gone from that call.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getOrCreateTag",
+            "a wild gunner's gun is given AmmoCount"))
+        checks.append(_check_class_lacks(
+            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getTagForWrite",
+            "the always-false guard is gone from the gunner gun"))
+        # b) Reading a client-only option on the server throws on NeoForge, and in the mob's firing path
+        #    that throw landed before the ammo was spent - so the magazine never emptied and the AI never
+        #    reloaded, on top of killing the server. Every server-side read goes through Config.clientOr.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config.class", b"clientOr",
+            "Config.clientOr exists for server-side reads of client options"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/entity/ai/AIGunEvent.class", b"clientOr",
+            "the mob firing path reads fireLights through it"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

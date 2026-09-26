@@ -327,7 +327,8 @@ public class LightningProjectileEntity extends ProjectileEntity {
                BlockState blockState = this.level().getBlockState(blockPos);
                FluidState fluidState = blockState.getFluidState();
                if (fluidState.is(FluidTags.WATER)) {
-                  if ((Boolean)Config.CLIENT.particle.enableWaterImpactParticles.get()) {
+                  // Server-side path, client-side option: see Config.clientOr (HANDOFF section 81).
+                  if ((Boolean)Config.clientOr(Config.CLIENT.particle.enableWaterImpactParticles)) {
                      this.onWaterImpact(fluidResult.getLocation());
                   } else {
                      this.level()

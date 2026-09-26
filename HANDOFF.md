@@ -6292,6 +6292,107 @@ nbt round trip: saved=42 reloaded=42 hasLastRaidDay=true
   `setLastRaidDay` ✓ —— 存档往返与接线因此也只剩"字节码里有没有"这一层可查 ✓）、
   语言键 **1825/1825** ✓、已安装 ✓（`19398550` 字节 ✓，上一版备份 `.bak-213047` ✓）。
 
+# 81. 枪手 AI"不换弹"——两个真凶：服务端读客户端配置（**崩服**）+ 野生枪手的枪**从来没装弹**
+
+玩家反馈 ✓：**"枪手 ai 不会进行换弹（1.20.1 的本体是有的）"** ✓。
+
+## 81.1 真凶 A：服务端读 `Config.CLIENT` ⇒ 抛异常 ⇒ **扣弹那一行永远执行不到**（且服务端当场崩）
+
+先复现 ✓（专用服务器 + 持枪僵尸探针，修复前 ✓）：
+
+```
+java.lang.IllegalStateException: Cannot get config value before config is loaded.
+  at ModConfigSpec$ConfigValue.get(ModConfigSpec.java:1222)
+  at top.ribs.scguns.entity.ai.AIGunEvent.performGunAttack(AIGunEvent.java:122)
+  at top.ribs.scguns.entity.ai.GunAttackGoal.shoot(GunAttackGoal.java:363)
+  at top.ribs.scguns.entity.ai.GunAttackGoal.tick(GunAttackGoal.java:321)
+  at net.minecraft.world.entity.ai.goal.GoalSelector.tickRunningGoals
+  ⇒ net.minecraft.ReportedException: Ticking entity ⇒ 服务器关停
+```
+
+* `AIGunEvent:122` 读的是 **`Config.CLIENT.display.fireLights`**（**客户端**配置 ✓）；
+* 专用服务器**从不加载** `scguns-client.toml` ✓，而 NeoForge 把"未加载就 `.get()`"写成了
+  `Preconditions.checkState(loadedConfig != null, "Cannot get config value before config is loaded.")` ✓；
+* 这一行在 `consumeAmmo`（`GunAttackGoal:367` ✓）**之前** ✓ ⇒ **弹匣永远不减** ✓ ⇒
+  `getAmmoCount(...) > 0` 恒成立 ✓ ⇒ **AI 永远进不了换弹分支** ✓ —— 与玩家描述**逐字吻合** ✓；
+  同时每一次开枪都让**服务端崩溃** ✓。
+* **为什么 1.20.1 没事** ✓：Forge 的 `ConfigValue.get()` 在未加载时**返回默认值** ✓，NeoForge 21.1 才改成抛异常 ✓
+  ⇒ 这是**迁移引入**的 ✗，不是上游原样 ✓。
+* 探针实测（修复前 ✓）：`ammo=3` 从头到尾不动 ✓、`reloading=false` ✓、t≈80 崩服 ✓。
+
+## 81.2 真凶 B：野生枪手的枪**从来就没有 `AmmoCount`**（0.5.5 的死守卫，§13 漏改一个文件）
+
+`GunnerMobSpawner.createModifiedGun` ✓：
+
+```java
+if (gun instanceof GunItem gunItem && NbtHelper.getTagForWrite(gunStack) != null) { ... putInt("AmmoCount", ...) }
+```
+
+`getTagForWrite` 对**刚 `new` 出来的** `ItemStack` 返回 `null` ✓（移植版自己的规则：没有 `custom_data` 就没有"可写的
+tag" ✓）⇒ 守卫**恒假** ✓ ⇒ 预填**从未执行** ✓ ⇒ 掠夺者/卫道士/猪灵等**野生枪手**手里的枪**连 `custom_data` 都没有** ✓
+⇒ `getAmmoCount` 读到 **0** ✓ ⇒ 它们拿到目标后**第一个动作是原地换弹**而不是开火 ✓，枪上也没有任何弹药数据 ✓
+（物品提示、以及"靠 `custom_data.AmmoCount` 判断是不是枪"的检查都会跟着错 ✓）。
+
+* **git / 兄弟路径对照** ✓：§13 那次修的是**同一模式的另外两处** ✓（`RaidManager.createModifiedGun` ✓、
+  `EntityEquipmentConfig` ✓），**只漏了这一个文件** ✓；后来 §16.3 把 `getTag(` 机械改名成 `getTagForWrite(` ✓，
+  把恒假守卫**原样保留** ✓ ⇒ 死代码又活了一轮 ✓。
+* **上游 0.5.5（1.20.1 jar）里是同一个恒假守卫** ✓ ⇒ 上游在 1.20.1 上等价于"枪手第一次锁定目标就 NPE 崩服" ✓
+  （正是 §13 记下的那份崩溃报告 ✓）。所以"1.20.1 本体有换弹"很可能指的是**另一条更新的上游线** ✓
+  （那条线用 `refillCurrentWeapon()` ✓）——我们要修的是**我们自己这条线** ✓。
+
+## 81.3 修复
+
+1. `Config` 新增 **`clientOr(ConfigValue<T>)`** ✓：客户端配置**已加载**就返回真值 ✓，否则返回该选项的
+   **默认值** ✓ —— 正是 Forge 当年的行为 ✓。**服务端可达的 `Config.CLIENT` 读取全部改走它** ✓：
+   `AIGunEvent`（崩服那处 ✓）、`TemporaryLightManager` ✓、`GunProgressionEventHandler` ✓、
+   `ProjectileEntity.onLavaImpact` ✓ / `onWaterImpact` ✓、`LightningProjectileEntity` ✓、`SulfurGasCloud` ×3 ✓；
+   `client/` 包内的读取**保持原样** ✓（只在客户端跑 ✓）。
+2. **顺手拆掉三处"临时补丁"** ✓：`TemporaryLightManager` 与 `ProjectileEntity.onWaterImpact` 以前各自
+   `catch (IllegalStateException)` 兜底 ✓ —— 正是这种**逐处打补丁**让另外六处一直没被发现 ✓（已写成审计规则 ✓）。
+   现在统一走 `clientOr` ✓（`TemporaryLightManager` 的语义从"服务端直接关掉火焰光照"变成"用默认值" ✓，
+   与"默认开着"的客户端一致 ✓）。
+3. `GunnerMobSpawner.createModifiedGun` 删掉恒假守卫 ✓，改用 `NbtHelper.getOrCreateTag(gunStack)` ✓
+   —— 与 `RaidManager` / `EntityEquipmentConfig` **完全同形** ✓。
+
+## 81.4 实测（同一探针、同一专用服务器，修复前后对比 ✓）
+
+修复前 ✓：`ammo=3` 永远不动 ✓、`reloading=false` ✓、t≈80 `Ticking entity` 崩服 ✓。
+修复后 ✓：
+
+```
+t=110 ammo=2                            ← 开始扣弹（修复前永远是 3）
+t=120 ammo=1
+t=220 RELOAD STARTED ammo=0 reloadTick=15
+t=230 ammo=0 reloading=true reloadTick=5
+t=236 RELOAD ENDED ammo=12              ← 补满 = maxAmmo
+t=240..390 ammo=12 reloading=false      ← 恢复射击，整条链路闭合
+wild gunner: tags=[GunAttackAssigned, AI_SMART, ThematicGunner, MobGunner] item=scguns:pax ammo=2 customData={AmmoCount:2}
+```
+
+* 打空 → 换弹（15 刻 = 该枪 `reloadTimer` ✓）→ 补满 → 继续射击 ✓：**换弹在专用服务器上确实工作** ✓。
+* 野生枪手那行 ✓：修复前枪上**没有** `custom_data` ✓，修复后 `customData={AmmoCount:2}` ✓
+  —— 这正是"看着不像在换弹"的另一半 ✓。
+* `GunAttackGoal` 与 0.5.5 的差异只剩 NBT 访问那几行 ✓（`tools/diff_vs_055.py entity/ai` ✓）⇒
+  **AI 的换弹逻辑本身一直是好的** ✓，坏的是它**前面**的两处 ✓。
+* 顺带确认 ✓：`maxAmmo` 全部 ≥ 1 ✓（141 把枪 ✓）⇒ 不存在"补 0 ⇒ 永远 ≤ 0 ⇒ 死循环"的形状 ✓；
+  `reloadTimer` 6–125 刻 ✓（多数 20–60 ✓）⇒ 有些枪换弹极快 ✓，看起来像"没停过" ✓。
+* 若玩家说的"枪手"其实指**女仆** ✓（整合里带 maid compat ✓），那走的是另一套换弹 ✓
+  （`SC2GunCompat` / `MaidSC2GunShootTask` 自己的 `ReloadTick` ✓），需要单独排查 ✓ —— 先按上面两处修完让玩家复看 ✓。
+
+## 81.5 防复发 + 验收
+
+* 审计 **`tools/audit_client_config_side.py`** ✓（新增）：`client/` 包之外的 `Config.CLIENT` 读取**必须**走
+  `Config.clientOr(` ✓；并且**禁止** `catch (IllegalStateException` 这种局部兜底 ✓（它就是另外六处的掩体 ✓）；
+  扫描前先剥离注释 ✓（第一版审计把我自己"解释已删除的 catch"的注释也判成了 catch ✓ —— 又踩了一次注释坑 ✓）。
+  **自测** ✓：对固定提交 `d950b34`（§80）跑 ⇒ 命中 **13 条** ✓（`AIGunEvent` ✓ / `ProjectileEntity` 两处 ✓ /
+  `SulfurGasCloud` ×3 ✓ / `GunProgressionEventHandler` ✓ / `LightningProjectileEntity` ✓ /
+  `TemporaryLightManager` 两处 ✓ + 两处 catch ✓ + 缺 `clientOr` ✓）；当前源码 **0** ✓；已加入 CI ✓。
+* `verify_installed_jar` ✓：新增 4 条 ✓（`GunnerMobSpawner.class` 必须含 `getOrCreateTag` ✓ 且**不得**再含
+  `getTagForWrite` ✓、`Config.class` 必须含 `clientOr` ✓、`AIGunEvent.class` 必须用它 ✓）⇒ **172/172** ✓。
+* 门禁 ✓：`javac` 0 错误 ✓（999 文件 ✓，探针已删 ✓）、`gradlew build` ✓、**29 个审计全 0** ✓、
+  语言键 **1825/1825** ✓、已安装 ✓（`19398807` 字节 ✓，上一版备份 `.bak-214429` ✓）。
+* **未验证** ✓：玩家在自己存档里看到的枪手换弹观感 ✓（换弹链路本身已在专用服务器上实测闭合 ✓）。
+
 
 
 

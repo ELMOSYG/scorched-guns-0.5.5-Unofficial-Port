@@ -306,9 +306,16 @@ public class GunnerMobSpawner {
 
    private static ItemStack createModifiedGun(PathfinderMob mob, Item gun) {
       ItemStack gunStack = new ItemStack(gun);
-      if (gun instanceof GunItem gunItem && NbtHelper.getTagForWrite(gunStack) != null) {
+      // `getTagForWrite` returns null for a stack that has no custom data yet, and this stack was just
+      // created - so the ammo pre-fill below never ran, and every wild gunner (pillager, vindicator,
+      // piglin, ...) carried a gun with no custom data at all (HANDOFF section 81). The mob's own
+      // getAmmoCount then read 0, so its first move on acquiring a target was a reload instead of a shot.
+      // The two sibling copies of this pattern - RaidManager.createModifiedGun and
+      // EntityEquipmentConfig - were fixed in section 13; this third one was missed.
+      if (gun instanceof GunItem gunItem) {
          Gun gunModified = gunItem.getModifiedGun(gunStack);
-         NbtHelper.getTagForWrite(gunStack).putInt("AmmoCount", mob.getRandom().nextInt(gunModified.getReloads().getMaxAmmo()));
+         NbtHelper.getOrCreateTag(gunStack)
+            .putInt("AmmoCount", mob.getRandom().nextInt(gunModified.getReloads().getMaxAmmo()));
       }
 
       return gunStack;

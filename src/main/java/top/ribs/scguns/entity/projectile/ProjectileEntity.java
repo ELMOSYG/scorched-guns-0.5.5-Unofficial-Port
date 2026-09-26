@@ -724,7 +724,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
    }
 
    protected void onLavaImpact(Vec3 impactPos) {
-      if (!this.level().isClientSide() && (Boolean)Config.CLIENT.particle.enableLavaImpactParticles.get()) {
+      if (!this.level().isClientSide() && (Boolean)Config.clientOr(Config.CLIENT.particle.enableLavaImpactParticles)) {
          ServerLevel serverLevel = (ServerLevel)this.level();
 
          for (int i = 0; i < 5; i++) {
@@ -757,13 +757,11 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
 
    protected void onWaterImpact(Vec3 impactPos) {
       if (!this.level().isClientSide()) {
-         boolean enableParticles = true;
-
-         try {
-            enableParticles = (Boolean)Config.CLIENT.particle.enableWaterImpactParticles.get();
-         } catch (IllegalStateException var16) {
-            enableParticles = true;
-         }
+         // This used to catch the throw from reading the client config on a dedicated server and fall
+         // back to `true`; Config.clientOr returns the option's default instead, which is the same
+         // behaviour and no longer hides every other IllegalStateException in the block (HANDOFF
+         // section 81).
+         boolean enableParticles = (Boolean)Config.clientOr(Config.CLIENT.particle.enableWaterImpactParticles);
 
          if (enableParticles) {
             ServerLevel serverLevel = (ServerLevel)this.level();
