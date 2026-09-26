@@ -236,6 +236,30 @@ python tools\show_errors.py  build-logs\compile-109.txt "<正则>" 5 --file <文
 
 ## 9. 每轮的验证清单
 
+### 9.1 测试靶：**无限时长的抗性提升 5**（玩家给的配方，2026-09-26 实测确认 ✓）
+
+要"打不死、但又能被打"的靶子时**不要用 `Invulnerable:1b`** ✗ —— `LivingEntity.canBeSeenAsEnemy()` 会拒绝无敌生物 ✓
+⇒ **任何 mob 都不会把它当目标** ✓（本轮就因此白跑了两趟探针 ✓）。用**抗性提升 5（amplifier 4，100% 减伤）+ 无限时长** ✓：
+
+```
+summon minecraft:pillager ~ ~ ~ {NoAI:1b,Silent:1b,PersistenceRequired:1b,active_effects:[{id:"minecraft:resistance",amplifier:4,duration:-1,show_particles:0b,show_icon:0b}]}
+```
+
+实测三条同时成立 ✓（`[SCGUNS-TD]` 探针，读完即删 ✓）：
+
+```
+dummy summoned: health=24 effects=[effect.minecraft.resistance x 5, Duration: infinite, Particles: false, Show Icon: false]
+canBeSeenAsEnemy=true                       ← 关键：仍是"敌人"，守卫/怪物会正常锁定它 ✓
+1000 damage: hurt()=true health 24 -> 24    ← 伤害流程真的走了、被 100% 减伤吃掉 ⇒ 免疫但不无敌 ✓
+```
+
+* `duration:-1` = **无限** ✓；`amplifier` 从 0 起算 ✓ ⇒ 等级 5 = `amplifier:4` ✓。
+* `NoAI:1b` 只影响它自己不动 ✓（要它反击就去掉 ✓）；`Silent:1b` 少刷屏 ✓。
+* 好处：**伤害事件链仍然会触发** ✓（`hurt()` 返回 true ✓）⇒ 测"受伤/减伤/友伤拦截"这类逻辑时靶子是活的 ✓；
+  而 `Invulnerable` 连 `hurt` 都不进 ✗，测不出东西 ✓。
+* 引申：给目标加血用 **`minecraft:generic.max_health`** ✓（1.21.1 就是这个名字 ✓；写成 `minecraft:max_health` 会被
+  `Ignoring unknown attribute` 静默忽略、血还是 20 ✗ —— 本轮踩过 ✓）。
+
 **秒级全量编译**（比 gradle 快一个数量级，本轮迭代的主力）：
 
 ```powershell
@@ -6555,7 +6579,8 @@ wild gunner: tags=[GunAttackAssigned, AI_SMART, ThematicGunner, MobGunner] item=
   —— 与 mod 自己那些枪手（`GunAttackGoal`）**同一套数字** ✓。
 * 想调：`mobFireRateMultiplier`（全局枪手快慢 ✓ 警卫同样吃 ✓）、警卫条目里的 `ai_difficulty`
   （越大点射越长、间歇越短 ✓）、以及 `spawn_chance`/`weapons` ✓。
-* **本轮探针踩的坑（记下来 ✓）**：① 用无敌目标试射 ⇒ 警卫**根本不认目标** ✗（`canBeSeenAsEnemy()` 拒绝无敌生物 ✓）；
+* **本轮探针踩的坑（记下来 ✓）**：① 用无敌目标试射 ⇒ 警卫**根本不认目标** ✗（`canBeSeenAsEnemy()` 拒绝无敌生物 ✓）
+  ⇒ **改用玩家给的"无限时长抗性提升 5"靶子 ✓，配方与实测见 §9.1** ✓；
   ② 40 只警卫一起打 ⇒ 目标秒没 ✓（属性名写错 `minecraft:max_health` 被忽略、血量仍是 20 ✗，
   1.21.1 要用 `minecraft:generic.max_health` ✓）；③ `String.formatted` 绑到了 `+` 的右半段 ✓
   ⇒ 命令带着 `%d` 发给服务器 ⇒ 目标压根没生成 ✓；④ 只剩 1 只警卫 + 1 只厚血掠夺者之后才量到真数字 ✓。
