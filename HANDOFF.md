@@ -5823,6 +5823,84 @@ null ✓ 而 boss 并没有死 ✓，与玩家遇到的场景等价 ✓。
   另注 ✓：**B 组**用 `boss.kill()` 验证的是"真死仍结算战利品" ✓，而玩家那次"拿不到战利品"是 A 种情况
   （袭击被提前结束 ✓）—— 两条路径现在都正确 ✓。
 
+# 75. 袭击"有时候刷在洞穴层"：0.5.5 的洞穴搜索**从 -5 开始**（优先放到玩家脚下的洞里）
+
+玩家报告：**"袭击有时候会刷在地下（也就是洞穴层）"** ✓。
+
+## 75.1 根因：两个错在同一个地方 —— 用 `playerY < 50` 猜"玩家在地下"
+
+0.5.5（本移植逐字相同 ✓，`ActiveRaid`/`RaidManager` 都核对过 ✓）的 `findRaidSpawnLocation`：
+
+```java
+int playerY = (int)center.y;
+boolean isUnderground = playerY < 50;          // ← 用 Y 猜"是否在地下"
+...
+if (isUnderground) groundPos = findNearestValidCaveSpawn(level, pos, playerY);
+else               groundPos = level.getHeightmapPos(MOTION_BLOCKING_NO_LEAVES, pos);
+```
+
+而那个洞穴搜索是：
+
+```java
+for (int yOffset = -5; yOffset <= 5; yOffset++) { ... }   // ← 从"玩家脚下 5 格"开始往上试
+```
+
+两个错叠在一起 ✓：
+
+1. **`playerY < 50` 不是"在地下"** ✗ —— 站在**露天**低处（峡谷底、深谷、下潜到海里 ✓）的玩家也会被判成"地下" ✓；
+2. **洞穴搜索的起点是 -5** ✗ —— 它**优先**选玩家**脚下 5 格**的位置 ✓，而 y&lt;50 的地层里到处是洞穴 ✓
+   ⇒ 玩家明明站在地面上 ✓ 袭击却被塞进脚下的洞里 ✓✓ —— 这正是玩家看到的"有时候刷在洞穴层" ✓。
+
+反方向的错同样存在 ✓：**浅层洞穴**（y&gt;50）里的玩家会被判成"地表" ✓ ⇒ 袭击刷在**头顶的地表** ✓。
+
+## 75.2 修法：不猜了 —— **先按玩家自己的 Y 找，再退回到该列的地面**
+
+```java
+private Vec3 findRaidSpawnLocation(ServerLevel level, Vec3 center) { ... findSpawnAtPlayerLevel(level, column, playerY) ... }
+
+private BlockPos findSpawnAtPlayerLevel(ServerLevel level, BlockPos column, int playerY) {
+   // 1) 玩家自己那一层（0 偏移先试）
+   // 2) 依次 ±1..±SPAWN_Y_WINDOW（8 格）
+   // 3) 最后才用该列的地面高度，且要求 |groundY - playerY| <= SPAWN_Y_WINDOW
+}
+```
+
+* 站在**地表**的玩家 ✓：他自己的 Y 就是地面 ✓ ⇒ 落点与玩家同层 ✓（不再"往脚下 5 格" ✗）；
+* 站在**峡谷底/露天低处**的玩家 ✓：他自己的 Y 就是峡谷底 ✓ ⇒ **不再被放进洞穴** ✓✓；
+* 在**洞穴里**的玩家 ✓：他自己的 Y 就是洞穴层 ✓ ⇒ 袭击照旧在他身边 ✓（0.5.5 的本意 ✓）；
+* 在**浅层洞穴**的玩家 ✓：落点跟着他 ✓（不再跑回地表 ✓）；
+* 站在**山体/峡谷壁**旁边的玩家 ✓：地面高度会被 8 格窗口**排除** ✓ ⇒ 不会把袭击放到头顶的崖顶/山顶 ✓；
+* 全部候选都不合格时（15 次尝试 ✓）仍然返回 null ✓ = 不开袭击 ✓（与 0.5.5 相同 ✓）。
+
+## 75.3 实测（专用服务器 + FakePlayer，探针读完即删）
+
+```
+[SCGUNS-SPAWN] standing spot 0, 74, -4   heightmap here = 71   canSeeSky=true
+[SCGUNS-SPAWN] player feet y=74.0
+[SCGUNS-SPAWN] raid spawn centre y=73.0   player y=74   delta=-1.0
+                 -> ON THE PLAYER'S LEVEL ✓
+                 (0.5.5 would have picked y=69 first: its cave search started at -5)
+[SCGUNS-SPAWN] spawn block below=grass_block   at spawn=air
+```
+
+⇒ 落点就在玩家那一层 ✓、脚下是草方块 ✓、落点是空气 ✓。
+（探针同时打印了"0.5.5 会先试 y=69" ✓ —— 这就是老代码把袭击塞进洞穴的机制 ✓。）
+
+## 75.4 防复发 + 验收
+
+* 新增审计 **`tools/audit_raid_spawn_level.py`** ✓（含 `--selftest` ✓）：禁止 `playerY < 50` 这种
+  "用 Y 猜地下"的判据 ✓、禁止 `findNearestValidCaveSpawn` / `yOffset = -5` 回归 ✓、
+  要求存在 `findSpawnAtPlayerLevel` ✓（先试玩家自己那层 ✓）、要求 `SPAWN_Y_WINDOW` 有界 ✓、
+  要求地面高度回退被窗口夹住 ✓。
+  **自测** ✓：对 `git show HEAD:`（本轮之前的源码 ✓）跑 ⇒ **6 条全部命中** ✓；当前源码 **0** ✓。
+  > 第一版又踩了同一个坑 ✗：`playerY < 50` 出现在**我自己的注释**里 ✓，于是审计把**当前源码**也报成问题 ✗
+  > ⇒ 加 `strip_comments()` ✓（审计**只允许读代码，不读注释** ✓）。已加入 CI ✓。
+* 门禁 ✓：`javac` 0 错误 ✓、`gradlew build` ✓、**26 个审计全 0** ✓、`verify_installed_jar` **161/161** ✓、
+  探针已删除 ✓、已安装 ✓（上一版备份 `.bak-202642` ✓）。
+* **边界**：这是**服务端落点**行为 ✓（已实测 ✓）。若玩家希望"袭击永远不上地下"（哪怕自己正在挖矿 ✓），
+  那是一次**玩法选择** ✓：可以在 `Config.COMMON.raids` 加一个开关 ✓（例如 `raidsForceSurfaceSpawn` ✓），
+  默认仍保持"跟着玩家" ✓ —— 等玩家拍板 ✓。
+
 
 
 

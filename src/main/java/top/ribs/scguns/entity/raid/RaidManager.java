@@ -351,61 +351,80 @@ public class RaidManager {
    }
 
    @Nullable
+   /**
+    * How far above/below the player the raid may be placed. Everything in this window is "where the
+    * player is" - a cave, a canyon floor, a surface plateau or the Nether floor.
+    */
+   private static final int SPAWN_Y_WINDOW = 8;
+
+   /**
+    * Where the raid spawns: near the player, on the player's own level (HANDOFF section 75).
+    *
+    * <p>0.5.5 decided "surface or cave" with {@code playerY < 50} and, when that said underground,
+    * searched a cave pocket around the player's Y. Both halves of that guess are wrong in practice:</p>
+    * <ul>
+    *   <li>a player standing in the open at y&lt;50 - a canyon floor, a deep valley, diving in an ocean -
+    *       got a raid placed in a **cave** instead of where they are (the reported bug);</li>
+    *   <li>a player in a shallow cave at y&gt;50 got a raid on the **surface** far above them.</li>
+    * </ul>
+    * <p>The fix is to stop guessing: search each candidate column around the player's own Y first, and
+    * fall back to the column's ground level only when it is within the same window (which is what happens
+    * for a player standing on the surface, where the two coincide). A boss is therefore always placed on
+    * the level the player occupies, and never behind a cave wall when they are standing outside.</p>
+    */
    private Vec3 findRaidSpawnLocation(ServerLevel level, Vec3 center) {
       RandomSource random = level.getRandom();
       int playerY = (int)center.y;
-      boolean isUnderground = playerY < 50;
 
       for (int attempt = 0; attempt < 15; attempt++) {
          double angle = random.nextDouble() * Math.PI * 2.0;
          double distance = 25.0 + random.nextDouble() * 15.0;
-         double x = center.x + Math.cos(angle) * distance;
-         double z = center.z + Math.sin(angle) * distance;
-         BlockPos pos = new BlockPos((int)x, playerY, (int)z);
-         BlockPos groundPos;
-         if (isUnderground) {
-            groundPos = this.findNearestValidCaveSpawn(level, pos, playerY);
-            if (groundPos == null) {
-               continue;
-            }
-         } else {
-            groundPos = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, pos);
-         }
-
-         if (level.getBlockState(groundPos.below()).isSolid()
-            && level.getBlockState(groundPos).isAir()
-            && level.getBlockState(groundPos.above()).isAir()
-            && level.getBlockState(groundPos.above(2)).isAir()) {
-            return new Vec3((double)groundPos.getX() + 0.5, (double)groundPos.getY(), (double)groundPos.getZ() + 0.5);
+         int x = (int)(center.x + Math.cos(angle) * distance);
+         int z = (int)(center.z + Math.sin(angle) * distance);
+         BlockPos candidate = this.findSpawnAtPlayerLevel(level, new BlockPos(x, playerY, z), playerY);
+         if (candidate != null) {
+            return new Vec3((double)candidate.getX() + 0.5, (double)candidate.getY(), (double)candidate.getZ() + 0.5);
          }
       }
 
       return null;
    }
 
+   /**
+    * The closest standable position to the player's own Y in this column, then the column's own ground
+    * if it is close enough to be the same place.
+    */
    @Nullable
-   private BlockPos findNearestValidCaveSpawn(ServerLevel level, BlockPos center, int playerY) {
-      for (int yOffset = -5; yOffset <= 5; yOffset++) {
-         BlockPos checkPos = new BlockPos(center.getX(), playerY + yOffset, center.getZ());
-         if (level.getBlockState(checkPos.below()).isSolid()
-            && level.getBlockState(checkPos).isAir()
-            && level.getBlockState(checkPos.above()).isAir()
-            && level.getBlockState(checkPos.above(2)).isAir()) {
-            int airCount = 0;
+   private BlockPos findSpawnAtPlayerLevel(ServerLevel level, BlockPos column, int playerY) {
+      BlockPos atPlayerLevel = new BlockPos(column.getX(), playerY, column.getZ());
+      if (this.isStandableSpawn(level, atPlayerLevel)) {
+         return atPlayerLevel;
+      }
 
-            for (int i = 0; i < 4; i++) {
-               if (level.getBlockState(checkPos.above(i)).isAir()) {
-                  airCount++;
-               }
-            }
+      for (int offset = 1; offset <= SPAWN_Y_WINDOW; offset++) {
+         BlockPos above = new BlockPos(column.getX(), playerY + offset, column.getZ());
+         if (this.isStandableSpawn(level, above)) {
+            return above;
+         }
 
-            if (airCount >= 3) {
-               return checkPos;
-            }
+         BlockPos below = new BlockPos(column.getX(), playerY - offset, column.getZ());
+         if (this.isStandableSpawn(level, below)) {
+            return below;
          }
       }
 
-      return null;
+      BlockPos ground = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, column);
+      return Math.abs(ground.getY() - playerY) <= SPAWN_Y_WINDOW && this.isStandableSpawn(level, ground)
+         ? ground
+         : null;
+   }
+
+   /** Solid floor, the position and the two blocks above it free - a mob fits. */
+   private boolean isStandableSpawn(ServerLevel level, BlockPos pos) {
+      return level.getBlockState(pos.below()).isSolid()
+         && level.getBlockState(pos).isAir()
+         && level.getBlockState(pos.above()).isAir()
+         && level.getBlockState(pos.above(2)).isAir();
    }
 
    public void startRaid(RaidConfig.RaidData config, ServerLevel level, Vec3 spawnPos) {
