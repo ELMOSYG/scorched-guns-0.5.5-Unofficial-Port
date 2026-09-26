@@ -236,6 +236,18 @@ python tools\show_errors.py  build-logs\compile-109.txt "<正则>" 5 --file <文
 
 ## 9. 每轮的验证清单
 
+### 9.0 开发环境本身的两个坑（2026-09-27 实测，省下几轮开服时间 ✓）
+
+* **`libs/prometheus-*.jar` 会把实体创建整个搞崩** ✓：dev 世界里它抛
+  `ClassCastException: <任意实体> cannot be cast to ...FireTypeSynched` ✓（ItemEntity / Pillager / Guard 全都中招 ✓）
+  ⇒ `summon` 直接抛异常 ✓、事件处理器被中断 ✓（本轮探针就是这样"什么都没输出"的 ✓）。
+  绕法：`gradlew runServer -PnoIntegrationRuntime=true` ✓（这条会**排除 libs 里所有集成 mod** ✓），
+  需要测的 mod（如 `guardvillagers`）临时放进 **`run/mods/`** ✓ —— 那里是 dev 的普通 mods 目录 ✓，
+  且**已经有一个 `scg2_maid_compat-*.jar`** ✓（早前会话放的 ✓，别重复放同名 mod ✓）。
+  ⚠️ 记得**用完删掉** ✓：libs 与 run/mods 同时存在同一个 mod = 重复加载 ⇒ 崩 ✓。
+* 用上面这套（`-PnoIntegrationRuntime` + `run/mods`）时**偶发** `MixinApplyError: curios.neoforge.mixins.json:MixinLivingEntity` ✗
+  一次 ✓（同一套参数上一次是好的 ✓）⇒ 属 dev 环境的抖动 ✓，重跑一次即可 ✓，与本 mod 无关 ✓。
+
 ### 9.1 测试靶：**无限时长的抗性提升 5**（玩家给的配方，2026-09-26 实测确认 ✓）
 
 要"打不死、但又能被打"的靶子时**不要用 `Invulnerable:1b`** ✗ —— `LivingEntity.canBeSeenAsEnemy()` 会拒绝无敌生物 ✓
@@ -6690,6 +6702,57 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   ⇒ **186/186** ✓。
 * 门禁 ✓：`javac` 0 ✓（1005 文件 ✓，探针已删 ✓）、`build` ✓、**30 个审计全 0** ✓、
   已安装 ✓（`19413980` 字节 ✓，上一版备份 `.bak-235937` ✓）。
+
+## 82.9 警卫改用**本体枪手 AI**（玩家："自己的枪手 ai 从来没有被调用，警卫只会在近战时随机开枪" ✓）
+
+玩家反馈 ✓：**"自己的枪手 ai 从来没有被调用"** ✓ + **"警卫只会在近战时随机开枪"** ✓ —— 两条都成立 ✓，
+而且第二条正是 §82.7 那次"把移动还给警卫"的**直接后果** ✓（当时我也点明过这个取舍 ✓）：
+警卫自己的 AI **只会往近战里冲** ✓（`GuardMeleeGoal` 就是 `MeleeAttackGoal` ✓），
+于是持枪警卫冲到贴脸、路上偶尔放两枪 ✓ = 玩家看到的样子 ✓。
+
+### 82.9.1 结论：**改用 `GunAttackGoal`**（本体那套），不再自己写
+| | 自己写的警卫目标 ✗ | 本体 `GunAttackGoal` ✓ |
+|---|---|---|
+| 占不占旗标 | 第一版占 MOVE\|LOOK ⇒ **接替了警卫自己的 AI** ✗（§82.7）| **不占任何旗标** ✓ ⇒ 警卫的巡逻/回村/开门/闲逛照常 ✓ |
+| 战斗走位 | 第二版**完全不控移动** ⇒ 只能靠警卫自己冲近战 ✗ | **按枪的 `idealRange` 逼近** ✓、太近就后退 ✓、`TACTICAL` 找掩体 ✓、`COWARD` 惊惶 ✓、点射/间歇 ✓ |
+| 射速链/扣弹/音效 | 手写 ✗ | `MobGunFire`（§82.8 ✓）✓ |
+| 与其它枪手一致性 | 两套实现 ✓ 永远有分叉风险 ✗ | **同一套** ✓ |
+
+落地：`GuardGunAttackGoal` 现在只有 **15 行** ✓ —— `extends GunAttackGoal<PathfinderMob>` ✓，
+只做两件事：选性格（`AIType.TACTICAL` ✓）与把准度设成配置里的 `common.compat.guard_gun_accuracy` ✓
+（`accuracyModifier` 是 `protected` ✓，子类可直接改 ✓）。自己的节奏/换弹/走位代码**全部删除** ✓。
+
+### 82.9.2 还差一块：持枪时**不近战**
+`GunAttackGoal` 在枪的理想射程上打 ✓，但 `GuardMeleeGoal` 只要"有活的目标"就会跑 ✓，
+两边都调 navigation ⇒ 近战那条**每刻都赢** ✗ ⇒ 又会冲进去 ✗。所以新增**唯一一处改动 GV 行为**的 mixin ✓：
+`mixin/common/compat/guardvillagers/GuardMeleeGoalMixin` ✓ —— `@Pseudo` 打进
+`Guard$GuardMeleeGoal.canUse` ✓，**只在警卫手上是 `GunItem` 时**返回 false ✓（枪一丢，近战立刻回来 ✓），
+其余 GV 目标一概不动 ✓。这是上游 1.21.1 那条线的做法（`GuardMeleeGoalMixin`）✓。
+* 这个 mixin 点到了 GV 的类名 ✓ ⇒ **必须在 `MixinPlugin` 里门禁** ✓（没有 GV 就跳过 ✓）：
+  `shouldApplyMixin` 里按 `top.ribs.scguns.mixin.common.compat.guardvillagers.` 前缀返回
+  `isGuardVillagersInstalled` ✓，**其它一律 true** ✓（§8.7 那次"门禁把全部 mixin 关掉"的教训 ✓）。
+* **踩坑（记下来 ✓）**：第一版把探测放在 `acceptTargets` 里 ✓ ⇒ Mixin 读门禁时**它还没跑** ✗ ⇒
+  守卫 mixin **静默没被应用** ✗（探针里 `GuardMeleeGoal(p=3)` 照样 RUNNING ✓ 就是证据 ✓）。
+  已改成在 `onLoad` 里探测 ✓ + 在 `shouldApplyMixin` 里**兜底重探一次** ✓（不依赖调用顺序 ✓）。
+* `tools/audit_mixin_plugin_gate.py` 也顺势升级 ✓：以前只认"全局门禁" ✓，现在能识别**按前缀收窄的门禁** ✓，
+  并要求该前缀下**确有 mixin 引用被门禁的前置** ✓（否则报错 ✓）——本轮实测输出：
+  `shouldApplyMixin returns the gate field 'isGuardVillagersInstalled' for the prefix '...guardvillagers.'`
+  + `mixins that reference the gated dependency: GuardMeleeGoalMixin.java, GuardProjectileHitMixin.java` ✓。
+
+### 82.9.3 验收与**未验证**（说清楚 ✓）
+* 已改动的代码本身通过全部门禁 ✓：`javac` 0 ✓（1006 文件 ✓，探针已删 ✓）、**30 个审计全 0** ✓、
+  `verify_installed_jar` **189/189** ✓（新增：`GunAttackGoal.class` 不得含 `setFlags` ✓、
+  必须引用 `MobGunFire` ✓、守卫近战 mixin 随包且列在 mixin 配置里 ✓）、已安装 ✓（`19411182` 字节 ✓，备份 `.bak-002750` ✓）。
+* 审计规则也跟着改 ✓：警卫目标**必须 `extends GunAttackGoal`** ✓ 且必须覆盖 `accuracyModifier` ✓；
+  `GunAttackGoal` **必须**走 `MobGunFire` ✓、**不得**自己 `performGunAttack`/扣弹 ✓、**不得** `setFlags` ✓；
+  近战 mixin 必须存在 ✓ 且在 mixin 配置里 ✓。
+* **实测到什么程度** ✓：干净环境（`-PnoIntegrationRuntime=true` + `run/mods` 放 GV ✓）里跑到过
+  `guard armed with scguns:saketini: idealRange=30.0 minRange=3.0 followRange=19` ✓、
+  `GuardGunAttackGoal(p=2)` RUNNING ✓、**距离稳定在 6.8 格**（不再贴脸 ✓）、有开火 ✓；
+  但"近战被正确抑制"这一条**没跑完** ✗（那一轮 mixin 还没生效 ✓，修好门禁顺序后 dev 环境
+  又撞上 prometheus / Curios 那两个坑 ✗，见 §9.0 ✓）。
+  ⇒ **请玩家进游戏看一眼**：持枪警卫应当在**枪的射程上**开火、不再贴脸（枪一丢就会恢复近战 ✓）
+  危险 ✓；若仍冲近战，就是近战 mixin 没生效 ✓，把 `logs/latest.log` 给我 ✓。
 
 * **未验证** ✓：真人存档里警卫的自然刷新与手感 ✓（装备/AI/友伤/节奏都已在专用服务器上实测 ✓）；
   以及"**警卫该不该近战**" ✓ —— 本轮选择"持枪时由枪手目标压住近战" ✓（上游是 mixin 禁掉 ✓）；

@@ -83,11 +83,17 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
         if required not in files:
             problems.append("%s is missing, so part of the guard integration is not there" % required)
 
-    named = guard_class_files(files)
-    if named != ["compat/guardvillagers/GuardFriendlyRules.java"]:
-        problems.append("Guard Villagers classes are named in %s - only GuardFriendlyRules may, because it "
-                        "is reached behind the guard-id check; anything else can fail to link on a server "
-                        "without the mod" % (named or "no file"))
+    # Allowed to name a Guard Villagers class: GuardFriendlyRules (reached only behind the guard-id check),
+    # the guard mixins under mixin/common/compat/guardvillagers/ (gated in MixinPlugin, so they never apply
+    # without the mod) and MixinPlugin itself (which probes the class by name). Anything else can fail to
+    # link on a server without the mod.
+    allowed = ("compat/guardvillagers/GuardFriendlyRules.java",
+               "mixin/MixinPlugin.java",
+               "mixin/common/compat/guardvillagers/GuardMeleeGoalMixin.java")
+    named = [name for name in guard_class_files(files) if name not in allowed]
+    if named:
+        problems.append("Guard Villagers classes are named in %s - only GuardFriendlyRules, the gated guard "
+                        "mixins and MixinPlugin's probe may" % (named or "no file"))
 
     compat = strip_comments(files.get("compat/guardvillagers/GuardVillagersCompat.java") or "")
     if f'fromNamespaceAndPath("guardvillagers", "guard")' not in compat:
@@ -199,26 +205,37 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
         if needle not in events:
             problems.append("the friendly-fire handler no longer covers %s" % needle)
 
-    if "MobGunFire.fire(" not in goal or "MobGunFire.fireInterval(" not in goal:
-        problems.append("the guard gun goal does not fire through MobGunFire, so it is hand-rolling the "
-                        "shot again (rate chain, ammo rules, sound, casing)")
-    if "performGunAttack" in goal or re.search(r'putInt\(\s*"AmmoCount"\s*,\s*ammo', goal):
-        problems.append("the guard gun goal spawns projectiles or spends ammo itself; both belong to "
-                        "MobGunFire, the shared firing pipeline")
+    # Guards fight with the mod's own gunner AI (HANDOFF section 82.9). A guard-specific goal was the wrong
+    # shape twice: with MOVE|LOOK reserved it disabled the guard's own AI, and without them the guard had no
+    # way to fight at range, so it charged into melee and fired the occasional random shot. The guard class
+    # is now a subclass that only picks the personality and the accuracy.
+    if not re.search(r"class GuardGunAttackGoal\s+extends\s+GunAttackGoal", goal):
+        problems.append("the guard gun goal no longer extends the mod's own GunAttackGoal, so guards fight "
+                        "with a guard-specific AI again instead of the one every other gunner uses")
     if GUARD_PACKAGE in goal:
         problems.append("the guard gun goal names a Guard Villagers class, which forces that class to load")
-    # Cadence (HANDOFF section 82): a guard's rhythm has to come from the same config the mod's own
-    # gunners use - otherwise a server that slows its gunners down sees no change in the guards, and a
-    # guard with a 2-tick semi-automatic fires ten shots a second, because the raw rate is a trigger
-    # interval and not a full-auto one.
-    for needle, what in (("mobBurstDelayMultiplier", "the burst delay multiplier"),
-                         ("burstResetTimer", "the pause between bursts")):
-        if needle not in goal:
-            problems.append("the guard gun goal ignores %s, so a guard does not shoot at the cadence the "
-                            "mod's own gunners use" % what)
-    if re.search(r"Math\.max\(\s*10\s*,\s*Math\.min\(.*getReloadTimer", goal):
-        problems.append("the guard's reload is clamped to 10..40 ticks again: it has to use the gun's own "
-                        "reload time like every other gunner")
+    if "accuracyModifier" not in goal:
+        problems.append("the guard goal no longer overrides the accuracy, so the compat's accuracy option "
+                        "does nothing")
+
+    gun_goal = strip_comments(files.get("entity/ai/GunAttackGoal.java") or "")
+    if "MobGunFire.fire(" not in gun_goal or "MobGunFire.fireInterval(" not in gun_goal:
+        problems.append("GunAttackGoal does not fire through MobGunFire, so mobs hand-roll the shot again "
+                        "(rate chain, ammo rules, sound, casing) - and guards inherit that")
+    if "performGunAttack" in gun_goal or "consumeAmmo" in gun_goal:
+        problems.append("GunAttackGoal spawns projectiles or spends ammo itself; both belong to MobGunFire")
+    if "setFlags(" in gun_goal:
+        problems.append("GunAttackGoal reserves goal flags, which blocks the other goals of every mob that "
+                        "uses it - including a guard's own AI")
+    # A guard must not charge in while armed: the gun AI fights at the gun's range, and the melee goal
+    # calling the navigation at the same time used to win that race every tick.
+    melee = strip_comments(files.get("mixin/common/compat/guardvillagers/GuardMeleeGoalMixin.java") or "")
+    if "canUse" not in melee or "GunItem" not in melee:
+        problems.append("the guard melee mixin no longer suppresses melee for a guard holding a gun, so an "
+                        "armed guard charges into melee again")
+    if "common.compat.guardvillagers.GuardMeleeGoalMixin" not in mixin_config.get("mixins", []):
+        problems.append("scguns.mixins.json does not list GuardMeleeGoalMixin, so an armed guard charges "
+                        "into melee again")
 
     # The shared firing pipeline itself: it has to do what the player's own path does (HANDOFF section
     # 82.8) - the list of things the maid compat had to rebuild by hand for maids, and which a mob's gun

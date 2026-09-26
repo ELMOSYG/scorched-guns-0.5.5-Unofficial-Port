@@ -360,30 +360,13 @@ public class GunAttackGoal<T extends PathfinderMob> extends Goal {
    private void shoot(LivingEntity target, Gun gun) {
       if (!this.shooter.hasEffect(ModEffects.BLINDED) || !this.shooter.getRandom().nextBoolean()) {
          ItemStack heldItem = this.shooter.getMainHandItem();
-         AIGunEvent.performGunAttack(this.shooter, target, heldItem, gun, this.accuracyModifier);
-         int baseRate = gun.getGeneral().getRate();
-         float configMultiplier = ((Double)Config.COMMON.gameplay.mobFireRateMultiplier.get()).floatValue();
-         this.attackTime = (int)((float)baseRate * configMultiplier);
-         this.consumeAmmo(heldItem);
-         if (this.shooter.getMainHandItem().getItem() instanceof GunItem) {
-            GunEventBus.ejectCasing(this.shooter.level(), this.shooter, false);
-         }
-
-         ResourceLocation fireSound = gun.getSounds().getFire();
-         if (fireSound != null) {
-            double posX = this.shooter.getX();
-            double posY = this.shooter.getY() + (double)this.shooter.getEyeHeight();
-            double posZ = this.shooter.getZ();
-            float volume = (float)((Integer)Config.COMMON.gameplay.mobGunfireVolume.get()).intValue();
-            float pitch = 0.9F + this.shooter.level().random.nextFloat() * 0.2F;
-            this.shooter.level().playSound(null, posX, posY, posZ, SoundEvent.createVariableRangeEvent(fireSound), SoundSource.HOSTILE, volume - 0.5F, pitch);
-         }
+         // One shared firing pipeline for every mob (HANDOFF section 82.9): the rate chain, the player's
+         // ammo rules, the silenced/enchanted fire sound and the casing all live in MobGunFire, so this AI
+         // and the guards' cannot drift apart. What stays here is the raider behaviour around it - the
+         // bursts, the approach to the gun's ideal range, cover and panic.
+         MobGunFire.fire(this.shooter, target, heldItem, this.accuracyModifier);
+         this.attackTime = MobGunFire.fireInterval(heldItem, gun);
       }
-   }
-
-   private void consumeAmmo(ItemStack itemStack) {
-      CompoundTag tag = NbtHelper.getOrCreateTag(itemStack);
-      tag.putInt("AmmoCount", tag.getInt("AmmoCount") - 1);
    }
 
    private Vec3 findCoverLocation() {

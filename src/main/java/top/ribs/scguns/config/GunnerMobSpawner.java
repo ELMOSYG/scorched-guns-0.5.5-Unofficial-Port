@@ -341,13 +341,10 @@ public class GunnerMobSpawner {
       mob.setItemSlot(EquipmentSlot.MAINHAND, modifiedGun);
       mob.setDropChance(EquipmentSlot.MAINHAND, gunnerData.weaponDropChance());
       if (!hasGunAttackGoal(mob)) {
-         // Priority 2 keeps the gun goal's aiming and firing ticks ahead of Guard Villagers' own combat
-         // goals. It does NOT need to outrank them: the goal holds no MOVE|LOOK flags (see
-         // GuardGunAttackGoal), so it never blocks them - unlike the first version here, which reserved
-         // both flags and thereby disabled the guard's own patrol, return-to-village, door and stroll
-         // goals for as long as it had a target (HANDOFF section 82.7).
-         // The goal takes the same difficulty the mod's own gunners use for their cadence.
-         mob.goalSelector.addGoal(2, new GuardGunAttackGoal(mob, accuracy, gunnerData.aiDifficulty()));
+         // The mod's own gunner AI, not a guard-specific one (HANDOFF section 82.9): guards fight at the
+         // gun's ideal range like every other gunner, and this AI reserves no goal flags, so Guard
+         // Villagers' patrol, return-to-village, door and stroll goals keep running while it does.
+         mob.goalSelector.addGoal(2, new GuardGunAttackGoal(mob, modifiedGun, gunnerData.aiDifficulty(), accuracy));
       }
 
       mob.addTag("GunAttackAssigned");

@@ -999,15 +999,26 @@ def main():
         # starting any of Guard Villagers' own goals that need them - the gun AI taking over the guard AI
         # (HANDOFF section 82.7).
         checks.append(_check_class_lacks(
-            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"setFlags",
-            "the guard gun goal reserves no goal flags"))
+            zf, "top/ribs/scguns/entity/ai/GunAttackGoal.class", b"setFlags",
+            "the gunner AI reserves no goal flags (a guard keeps its own AI)"))
+        # The guard melee mixin is gated on Guard Villagers in MixinPlugin, and only while armed: without it
+        # an armed guard charges into melee and only takes the occasional random shot (HANDOFF section 82.9).
+        checks.append((
+            "the guard melee mixin ships",
+            "top/ribs/scguns/mixin/common/compat/guardvillagers/GuardMeleeGoalMixin.class" in names))
+        checks.append((
+            "the melee mixin is listed in the packaged mixin config",
+            "common.compat.guardvillagers.GuardMeleeGoalMixin" in (read("scguns.mixins.json") or "")))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/entity/ai/GunAttackGoal.class", b"MobGunFire",
+            "the gunner AI fires through the shared pipeline"))
         # The mob firing pipeline (HANDOFF section 82.8), ported from the maid compat: the guard goal has
         # to fire through it, and it has to carry the rate chain and the player's ammo rules.
         checks.append(("the shared mob firing pipeline ships",
                        "top/ribs/scguns/entity/ai/MobGunFire.class" in names))
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"MobGunFire",
-            "the guard gun goal fires through it"))
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"GunAttackGoal",
+            "the guard goal subclasses the mod's own gunner AI"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/entity/ai/MobGunFire.class", b"IgnoreAmmo",
             "the pipeline applies the player's IgnoreAmmo rule"))

@@ -65,6 +65,21 @@ def dependency_class_exists(binary_name):
     return False
 
 
+def probe_hints(probes):
+    """Distinctive tokens of the probed class names, to look for in the mixins the gate protects.
+
+    `mrcrayfish.framework.FrameworkNeoForge` gives {mrcrayfish, framework}; the guard probe gives
+    {guardvillagers}. Skipped: the TLD and generic package segments that appear everywhere.
+    """
+    ignored = {"com", "net", "org", "api", "common", "client", "server", "forge", "neoforge", "mod"}
+    hints = set()
+    for name in probes:
+        for segment in name.split("."):
+            if len(segment) >= 4 and segment.lower() == segment and segment.lower() not in ignored:
+                hints.add(segment)
+    return sorted(hints)
+
+
 def main():
     problems = []
     plugins = [p for p in MIXIN_ROOT.rglob("*.java") if "IMixinConfigPlugin" in p.read_text(encoding="utf-8", errors="replace")]
@@ -103,17 +118,29 @@ def main():
         gating = re.search(r"return\s+(?!true\b)([\w.]+)\s*;", body)
         if gating:
             field = gating.group(1)
-            # Does any mixin actually touch the gated dependency?
-            dep_hint = "mrcrayfish"
+            # A gate scoped to one package prefix is the narrow, correct shape (the guard compat): it can
+            # only ever skip the mixins of that integration, not the whole config. A bare `return field;`
+            # is the shape that took the whole config down in 0.5.5 and keeps the strict check below.
+            scoped = re.search(r"startsWith\(\s*\"([^\"]+)\"\s*\)", body)
+            print("  shouldApplyMixin returns the gate field '%s'%s"
+                  % (field, " for the prefix '%s'" % scoped.group(1) if scoped else ""))
+            prefix = scoped.group(1) if scoped else ""
+            hints = probe_hints(probes)
             users = [
                 p.name
                 for p in MIXIN_ROOT.rglob("*.java")
                 if "IMixinConfigPlugin" not in p.read_text(encoding="utf-8", errors="replace")
-                and dep_hint in p.read_text(encoding="utf-8", errors="replace")
+                and (not prefix or prefix.replace(".", "/") in str(p).replace("\\", "/")
+                     or prefix.rstrip(".") in str(p).replace("\\", "/"))
+                and any(hint in p.read_text(encoding="utf-8", errors="replace") for hint in hints)
             ]
-            print("  shouldApplyMixin returns the gate field '%s'" % field)
             if users:
                 print("    mixins that reference the gated dependency: %s" % ", ".join(users))
+            elif prefix:
+                problems.append(
+                    "%s gates the prefix '%s' on '%s', but no mixin under it references that "
+                    "dependency: the gate can only ever lose them" % (plugin.name, prefix, field)
+                )
             else:
                 print("    no mixin references the gated dependency")
                 problems.append(

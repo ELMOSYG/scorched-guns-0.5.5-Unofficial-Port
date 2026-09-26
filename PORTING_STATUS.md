@@ -674,4 +674,24 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   `verify_installed_jar` 新增 4 条 ⇒ **186/186**；`javac` 0 / `build` ✓ / **30 个审计 0** /
   已安装（19413980 字节，备份 `.bak-235937`）。
 
+## §82.9 警卫改用**本体枪手 AI**（玩家："自己的枪手 ai 从来没有被调用，警卫只会在近战时随机开枪"）
+
+两条都成立，而且第二条正是 §82.7"把移动还给警卫"的直接后果：警卫自己的 AI 只会往近战冲
+（`GuardMeleeGoal` 就是 `MeleeAttackGoal`），于是持枪警卫贴脸开火、路上偶尔放两枪。
+
+- **改法**：`GuardGunAttackGoal` 现在只有 15 行 —— `extends GunAttackGoal<PathfinderMob>`，
+  只选性格（`AIType.TACTICAL`）并把准度设成 `common.compat.guard_gun_accuracy`（`accuracyModifier` 是 protected）。
+  本体的枪手 AI **不占任何旗标** ⇒ 警卫的巡逻/回村/开门/闲逛照常；它还会**按枪的 idealRange 逼近、太近后退、
+  点射/间歇、TACTICAL 找掩体** —— 这些正是自己那套写不出来的。射速链/扣弹/音效走 §82.8 的 `MobGunFire`。
+- **补上"持枪不近战"**：新增唯一一处改动 GV 行为的 mixin `GuardMeleeGoalMixin`（`@Pseudo` 打进
+  `Guard$GuardMeleeGoal.canUse`，只在手上是 `GunItem` 时返回 false；枪一丢近战立刻回来），并在 `MixinPlugin`
+  里按前缀门禁（没装 GV 就跳过；**其它 mixin 一律 true** —— §8.7 的教训）。
+- **踩坑**：第一版把门禁探测放在 `acceptTargets` ⇒ Mixin 读门禁时它还没跑 ⇒ 守卫 mixin **静默未应用**
+  （探针里 `GuardMeleeGoal` 照样 RUNNING 就是证据）；已改为 `onLoad` 探测 + `shouldApplyMixin` 兜底重探。
+  `audit_mixin_plugin_gate.py` 也升级为能识别"按前缀收窄的门禁"，并要求该前缀下确有 mixin 引用被门禁的前置。
+- **门禁**：`verify_installed_jar` 新增 3 条 ⇒ **189/189**；`javac` 0（1006 文件）/ `build` ✓ / **30 个审计 0** /
+  已安装（19411182 字节，备份 `.bak-002750`）。
+- **未验证**：dev 环境撞上两个第三方坑（`libs/prometheus` 让所有实体创建崩、Curios mixin 偶发失败，
+  已记进 HANDOFF §9.0）⇒ "近战被抑制"这一条没跑完，需玩家进游戏确认（持枪警卫应在枪的射程上开火、不贴脸）。
+
 

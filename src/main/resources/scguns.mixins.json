@@ -9,7 +9,8 @@
     "common.ItemRarityMixin",
     "common.LivingEntityMixin",
     "common.SittingPhaseMixin",
-    "common.compat.guardvillagers.GuardProjectileHitMixin"
+    "common.compat.guardvillagers.GuardProjectileHitMixin",
+    "common.compat.guardvillagers.GuardMeleeGoalMixin"
   ],
   "client": [
     "client.ItemInHandLayerMixin",
