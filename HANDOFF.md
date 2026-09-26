@@ -6636,6 +6636,61 @@ SUMMARY fired 3 times in 400 ticks; gaps: 115 5
   已安装 ✓（`19411416` 字节 ✓，上一版备份 `.bak-233508` ✓）。
 * **未验证** ✗：真人在游戏里看"持枪警卫是否还会正常巡逻/回村/开门" ✓（目标共生已在专用服务器上直接读到 ✓）。
 
+## 82.8 开火逻辑改成"女仆兼容那套"：一条共用的 mob 开火管线（玩家建议 ✓）
+
+玩家建议 ✓：**"开火逻辑我认为可以使用类似女仆兼容的方式"** ✓ —— 采纳 ✓。女仆兼容那份
+`SC2GunCompat.performGunAttack` 之所以存在，是因为**女仆也永远不经过玩家的开火路径** ✓（那条路由客户端封包驱动 ✓），
+所以它把玩家路径做的一切都手工补了一遍 ✓；警卫这边同样是"不经玩家路径的持枪 mob" ✓ ⇒ 直接把这套搬成**主机里的共用管线** ✓
+`src/main/java/top/ribs/scguns/entity/ai/MobGunFire.java` ✓。
+
+### 82.8.1 旧版警卫自己那套漏了什么（逐条对照女仆兼容的注释 ✓）
+
+| 项 | 女仆兼容怎么做的 ✓ | 旧版警卫（自己手写）✗ |
+|---|---|---|
+| **射速链** | `GunEnchantmentHelper.getRate(stack, gun)` —— 它内部**先算三个射速附魔**（Trigger Finger / Heavy Shot / Puncturing ✓）**再走配件** ✓，所以调它一个就够 ✓；注释里专门写了"**不要**改用 `GunModifierHelper.getModifiedRate`，那个只看配件" ✓ | 直接用 `general.getRate()` ✓ ⇒ **射速附魔和配件全都不生效** ✗ |
+| **扣弹规则** | 照抄 `ServerPlayHandler.consumeAmmo(ServerPlayer, ItemStack)`：先看 `IgnoreAmmo` ✓，再按**幽灵弹**（`scguns:reclaimed`）等级掷骰（`level == 0 \|\| nextInt(4 - clamp(level,1,2)) != 0` ✓）| 无条件 `AmmoCount - 1` ✓ ⇒ **幽灵弹 / IgnoreAmmo 对 mob 完全无效** ✗ |
+| **开火音效** | 消音枪用 `getSilencedFire()` ✓、附魔枪用 `getEnchantedFire()` ✓，都没有才退回 `getFire()` ✓ | 永远播 `getFire()` ✓ |
+| **抛壳** | `ejectsCasing() && !ejectDuringReload()` 才抛 ✓ | 无 ✓ |
+| **弹匣容量** | `GunModifierHelper.getModifiedAmmoCapacity`（含**弹匣配件** ✓）| `reloads.getMaxAmmo()` ✓ ⇒ 扩容弹匣对 mob 无效 ✗ |
+| **动作** | 转向目标 ✓、`swing(MAIN_HAND)` ✓、`setLastHurtByMob` + `setTarget(shooter)` ✓（让被打的怪回头 ✓）| 转向 ✓、威胁 ✓，无挥手 ✗ |
+
+> 能量枪那半（`HeatLevel` / `RechargeCounter`）**不在本仓** ✓：女仆兼容那两段是反射进 `scguns_cnc` 那个附属 mod 的类 ✓，
+> 我们这边 `IEnergyGun` 只是个空接口 ✓、全仓没有任何地方写 `HeatLevel` ✓ ⇒ 无可移植之物 ✓（记在这里免得以后又找一遍 ✓）。
+
+### 82.8.2 落地
+
+* 新增 **`entity/ai/MobGunFire`** ✓：`fireInterval(stack, gun)`（射速链 × `mobFireRateMultiplier` ✓）、
+  `magazineSize(stack, gun)`（含弹匣配件 ✓）、`fire(shooter, target, stack, accuracy)`（转向 ✓ 挥手 ✓ 弹丸 ✓
+  威胁 ✓ 音效 ✓ 扣弹规则 ✓ 抛壳 ✓）✓。
+* `GuardGunAttackGoal` 改成只做"何时开火" ✓（节奏/点射/换弹 ✓），**开火本身全部交给管线** ✓；
+  自己的 `fire()`/`fireInterval()`/`rotateToFace()` 全删 ✓（还有一处"弹匣打空"判定改成**从管线结果读当前弹药** ✓
+  —— 因为现在可能没扣弹 ✓，`ammo - 1` 那种算法不成立了 ✓）。
+* **没有**改动 `GunAttackGoal`（本体枪手/袭击怪的 AI ✓）⇒ 袭击怪的行为维持 0.5.5 原样 ✓；
+  想让它也走同一条管线只是两行的事 ✓（要就说 ✓）。
+
+### 82.8.3 实测（专用服务器，A/B ✓）
+```
+gun=scguns:callwell_conversion rawRate=15 enchantedRate=15 interval=15 triggerFinger=0
+after Trigger Finger 2:        rawRate=15 enchantedRate=11 interval=11 triggerFinger=2
+shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
+```
+* **射速链** ✓：基础 `rate` 不变（15 ✓），但**附魔后**的 rate 15 → **11** ✓（15 × (1 − 0.12×2) = 11.4 → 11 ✓），
+  `MobGunFire.fireInterval` 同步变成 11 ✓ ⇒ 旧版那个"永远 15"的行为确实被修掉了 ✓。
+* **扣弹规则** ✓：`IgnoreAmmo` 打开时**开了枪但弹药不减** ✓（旧版必然 -1 ✓）。
+* 探针踩的坑（记下来 ✓）：① 用 `sort=nearest` 指定 `/enchant` 目标 ⇒ 命中了**另一只**警卫 ✓ ⇒ 改用标记 tag ✓；
+  ② `Trigger Finger` 的 `max_level` 是 **2** ✓，写 3 会被命令拒绝（日志原话 "higher than the maximum level of 2" ✓）；
+  ③ 随机选到的枪 `rate=2` ✓，附魔系数 0.76 四舍五入后**还是 2** ✗ ⇒ A/B 必须用高 rate 的枪（`callwell_conversion` = 15 ✓）。
+
+### 82.8.4 防复发 + 验收
+* 审计 `tools/audit_guard_compat.py` ✓ 新增规则：警卫目标**必须**经 `MobGunFire.fire(`/`fireInterval(` ✓、
+  **不得**自己 `performGunAttack` 或写 `AmmoCount - 1` ✓；`MobGunFire` 必须保留
+  射速链 ✓ / `mobFireRateMultiplier` ✓ / `IgnoreAmmo` ✓ / `RECLAIMED` ✓ / `ejectsCasing` ✓ / `isSilencedFire` ✓
+  （缺哪条报哪条 ✓，删掉文件也会报 ✓ —— 已用"抽掉文件再跑"验证过这条规则能失败 ✓）。
+* `verify_installed_jar` ✓ 新增 4 条：管线类随包 ✓、警卫目标引用它 ✓、管线里有 `IgnoreAmmo` ✓ 与 `GunEnchantmentHelper` ✓
+  ⇒ **186/186** ✓。
+* 门禁 ✓：`javac` 0 ✓（1005 文件 ✓，探针已删 ✓）、`build` ✓、**30 个审计全 0** ✓、
+  已安装 ✓（`19413980` 字节 ✓，上一版备份 `.bak-235937` ✓）。
+
 * **未验证** ✓：真人存档里警卫的自然刷新与手感 ✓（装备/AI/友伤/节奏都已在专用服务器上实测 ✓）；
   以及"**警卫该不该近战**" ✓ —— 本轮选择"持枪时由枪手目标压住近战" ✓（上游是 mixin 禁掉 ✓）；
   玩家若想要枪托近战 ✓，把优先级 2 改回 3 并去掉压制即可 ✓。

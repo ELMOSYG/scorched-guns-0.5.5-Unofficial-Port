@@ -656,4 +656,22 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   探针踩的三个坑也记进 HANDOFF §82.6.2：无敌目标不会被认作敌人（`canBeSeenAsEnemy()`）、
   1.21.1 属性要用 `minecraft:generic.max_health`、`String.formatted` 被 `+` 抢先绑定导致命令带 `%d` 发出。
 
+## §82.7 / §82.8 玩家后续三条（AI 被接替 / 开火逻辑改走女仆兼容那套）
+
+- **§82.7 "scgun 的枪手 ai 接替了警卫的 ai"（真的）**：① 枪手目标 `setFlags(MOVE|LOOK)` ⇒ 只要警卫"有枪+有目标"，
+  Guard Villagers 自己的近战/巡逻回检查点/回村/跟随英雄/开门/闲逛/看玩家**全部无法启动**；
+  ② `extendFollowRange()` 把警卫跟随范围从 ~20 拉到**64** ⇒ 持枪警卫追出村子。
+  修法：**不占任何旗标**、**不碰任何导航/移动**（"保持射程/后退/让位"这些侵略者走位全删）、
+  装备时改 `resetFollowRange`。实测：`GuardMeleeGoal` 与 `GuardGunAttackGoal` **同时 RUNNING**（修复前不可能）、
+  follow range 19/20/22（不再 64）、仍能开枪。顺带修掉"目标短暂切换 ⇒ 目标重启 ⇒ `start()` 重置倒计时 ⇒ 一发不发"。
+- **§82.8 开火逻辑改成女仆兼容那套**：新增主机共用管线 `entity/ai/MobGunFire`（源自 `SC2GunCompat.performGunAttack`：
+  射速链 `GunEnchantmentHelper.getRate`（附魔→配件）、玩家扣弹规则（`IgnoreAmmo` + 幽灵弹 `RECLAIMED`）、
+  消音/附魔开火音效、抛壳、挥手、威胁、含弹匣配件的弹匣容量）。警卫目标只负责"何时开火"，开火全交给管线。
+  **A/B 实测**：`callwell_conversion` 附魔 Trigger Finger 2 后 `enchantedRate` 15→11、`fireInterval` 15→11
+  （基础 rate 仍 15）；`IgnoreAmmo` 打开时开枪而弹药不减。
+  `GunAttackGoal`（袭击怪）**未改**，维持 0.5.5 行为。
+- **门禁**：审计新增"警卫必须走 `MobGunFire`、不得自己 `performGunAttack`/扣弹"与"管线必须保留六条规则"，
+  `verify_installed_jar` 新增 4 条 ⇒ **186/186**；`javac` 0 / `build` ✓ / **30 个审计 0** /
+  已安装（19413980 字节，备份 `.bak-235937`）。
+
 

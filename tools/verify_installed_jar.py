@@ -1001,6 +1001,19 @@ def main():
         checks.append(_check_class_lacks(
             zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"setFlags",
             "the guard gun goal reserves no goal flags"))
+        # The mob firing pipeline (HANDOFF section 82.8), ported from the maid compat: the guard goal has
+        # to fire through it, and it has to carry the rate chain and the player's ammo rules.
+        checks.append(("the shared mob firing pipeline ships",
+                       "top/ribs/scguns/entity/ai/MobGunFire.class" in names))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"MobGunFire",
+            "the guard gun goal fires through it"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/entity/ai/MobGunFire.class", b"IgnoreAmmo",
+            "the pipeline applies the player's IgnoreAmmo rule"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/entity/ai/MobGunFire.class", b"GunEnchantmentHelper",
+            "the pipeline walks the enchantment rate chain"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/mixin/common/compat/guardvillagers/GuardProjectileHitMixin.class",
             b"isFriendlyShot", "the guard friendly-fire gate calls the shared ally test"))
