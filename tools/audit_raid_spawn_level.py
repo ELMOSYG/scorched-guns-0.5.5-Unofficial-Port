@@ -95,6 +95,21 @@ def check(text):
     if "findSpawnAtPlayerLevel" not in text or "SPAWN_Y_WINDOW" not in text:
         problems.append("the roofed-dimension search lost its bounded vertical window")
 
+    # The natural (nightly) raid must not fire while the player is under the surface (HANDOFF 77).
+    nightly = method_body(text, "checkForNightlyRaidSpawn")
+    if "isUnderground(" not in nightly:
+        problems.append("the nightly raid does not check whether the player is underground, so it still "
+                        "fires while they are mining")
+    underground = method_body(text, "isUnderground")
+    if not underground:
+        problems.append("isUnderground is missing")
+    else:
+        if "getHeightmapPos" not in underground:
+            problems.append("isUnderground does not compare the player against the column's surface")
+        if "UNDERGROUND_MARGIN" not in underground:
+            problems.append("isUnderground has no margin, so a player indoors (roof above them) or "
+                            "swimming at the ocean surface counts as underground and never gets a raid")
+
     return problems
 
 
@@ -110,6 +125,7 @@ def selftest():
         "findRaidSpawnLocation does not place the raid on the surface",
         "findSurfaceSpawn is missing",
         "no roofed-dimension fallback",
+        "the nightly raid does not check whether the player is underground",
     ]
     found = check(before)
     print("selftest: revision %s reports %d problem(s)" % (PRE_FIX_REVISION, len(found)))

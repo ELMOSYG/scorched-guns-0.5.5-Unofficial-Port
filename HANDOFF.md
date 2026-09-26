@@ -5971,6 +5971,65 @@ case 2: player deep underground (y=30): spawn y=70.0  heightmap=70  canSeeSky=tr
   （这正是玩家要的"能找到" ✓）；`raidTimeoutMinutes` 仍然兜底 ✓（打不完会超时结束 ✓）。
   若还想更贴脸，可以把候选半径从 25–40 格调小 ✓，说一声即可 ✓。
 
+# 77. **玩家在地下时，自然袭击不再生成**（手动不受影响）
+
+玩家要求：**"我想让玩家在地下时不自然刷新袭击"** ✓。
+
+## 77.1 改了什么
+
+「自然刷新」= 夜里那套自动袭击 ✓（`checkForNightlyRaidSpawn`：黄昏 13000 掷骰排期 ✓、午夜 18000 起事 ✓）。
+现在在**起事那一刻**先看目标玩家是否在地下 ✓：
+
+```java
+if (isUnderground(level, player.position())) {
+   saveData.removeScheduledRaid(dimension);   // 今晚不来了；明晚重新掷骰
+   return;
+}
+```
+
+* **为什么在 18000 判、而不在 13000 判** ✓：从黄昏到午夜玩家可能已经下矿 ✓，要看**起事时**他在哪 ✓。
+* **手动途径不受影响** ✓：**袭击信号弹**（`RaidFlareEntity` ✓）与**指令** ✓ 照旧 ✓ —— 那是玩家主动要的 ✓。
+* **排期被丢弃** ✓（不是"留着等他上来" ✓）⇒ 他今晚在地下就真的不来 ✓；明晚重新掷骰 ✓。
+
+## 77.2 判据：`isUnderground`（低于该列地面 8 格以上）
+
+```java
+public static boolean isUnderground(ServerLevel level, Vec3 position) {
+   int surfaceY = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, BlockPos.containing(position)).getY();
+   return position.y < (double)(surfaceY - UNDERGROUND_MARGIN);   // UNDERGROUND_MARGIN = 8
+}
+```
+
+> **我第一版写错了，记录一下** ✗：最初写的是"低于该列地面 **且** 看不见天空（`!canSeeSky`）" ✓ ——
+> 听起来更严谨 ✓，但**站在地表房子里**的玩家会因为屋顶把高度图抬高 ⇒ 被误判成"地下" ✗
+> ⇒ 那样他**整晚待在屋里就永远等不到自然袭击** ✗（树下的玩家同理 ✓）。
+> 改成**只比高度、留 8 格余量** ✓：地表 / 屋内 / 树下 / 海面游泳 / 浅坑（≤8 格）都不算地下 ✓，
+> 真正下矿（几十格深）才算 ✓ —— 与 §76 落点搜索用的是同一个 8 格窗口 ✓，两边语义一致 ✓。
+
+## 77.3 实测（专用服务器探针，读完即删）
+
+```
+[SCGUNS-UG] surface spot 0,71,0   heightmap=71
+on the surface                     y= 71.0  underground=false  ✓
+indoors on the surface (roof 3 up) y= 71.0  underground=false  ✓   ← 就是上面那个修正点
+5 blocks below the ground          y= 66.0  underground=false  ✓
+40 blocks below the ground         y= 31.0  underground=true   ✓   ← 自然袭击不会生成
+```
+
+## 77.4 防复发 + 验收
+
+* 审计 **`tools/audit_raid_spawn_level.py`** 扩展 ✓：要求午夜分支**必须**先调 `isUnderground(` ✓；
+  要求 `isUnderground` 用 `getHeightmapPos` ✓ **且带 `UNDERGROUND_MARGIN`** ✓
+  （防止退回"屋里也算地下"那个错误 ✓）。
+  **自测** ✓：对固定提交 `e9d8e03`（§76）跑 ⇒ 现在报 **5 条** ✓（含新增的两条 ✓）；当前源码 **0** ✓。
+* 门禁 ✓：`javac` 0 错误 ✓、`gradlew build` ✓、**26 个审计全 0** ✓、`verify_installed_jar` **161/161** ✓、
+  探针已删除 ✓、已安装 ✓（上一版备份 `.bak-203859` ✓）。
+* **未验证** ✓：**真实"午夜自动袭击"链路**需要在有真人玩家的服务器上等一个游戏夜 ✓
+  （专用服务器上 `scheduleRaidForTonight` 需要 `level.players()` 里有玩家 ✓，FakePlayer 不算 ✓）
+  ⇒ 判据本身已实测 ✓、接线由审计把关 ✓，最终请玩家在游戏里过一夜确认 ✓。
+  想快速自测：把 `nightlyRaidChance` 调到 `1.0` ✓，在地下挖矿等到午夜 ⇒ 应当**不刷** ✓；
+  上来在地表过一夜 ⇒ 应当刷 ✓。
+
 
 
 

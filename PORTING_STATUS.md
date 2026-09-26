@@ -493,4 +493,24 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 - **门禁**：`javac` 0 / `build` ✓ / **26 个审计 0** / `verify_installed_jar` **161/161** / 探针已删 / 已安装
   （备份 `.bak-203422`）。
 
+---
+
+## §77 玩家在地下时，**自然**袭击不再生成（手动不受影响）
+
+- **改法**：午夜起事那一刻（`checkForNightlyRaidSpawn` 的 18000 分支）先判
+  `if (isUnderground(level, player.position())) { saveData.removeScheduledRaid(dimension); return; }`
+  ⇒ 今晚不来（排期丢弃），明晚重新掷骰。**在 18000 判而不是 13000**：黄昏到午夜玩家可能已经下矿。
+  **信号弹与指令仍然照常**（那是玩家主动要的）。
+- **判据**：`isUnderground = position.y < heightmapY - 8`（`UNDERGROUND_MARGIN = 8`）。
+  ⚠️ 第一版写的是"低于地面 **且** `!canSeeSky`"，**那是错的**：站在地表房子里的玩家因屋顶抬高高度图
+  会被误判成地下 ⇒ 整晚在屋里就永远等不到自然袭击（树下同理）。改成只比高度 + 8 格余量，语义与 §76
+  落点搜索的窗口一致。
+- **实测**（探针已删）：地表 y=71 ⇒ false；**地表屋内（头顶 3 格屋顶）⇒ false**；地下 5 格 ⇒ false；
+  地下 40 格 ⇒ **true**（自然袭击不生成）。
+- **门禁**：`audit_raid_spawn_level.py` 扩展（午夜分支必须调 `isUnderground`、判据必须带 8 格余量），
+  `--selftest`（固定提交 `e9d8e03`）实测报 **5 条**、当前源码 0。`javac` 0 / `build` ✓ /
+  **26 个审计 0** / `verify_installed_jar` **161/161** / 探针已删 / 已安装（备份 `.bak-203859`）。
+- **未验证**：真实午夜链路需要真人玩家等一个游戏夜（专用服务器上排期需要 `level.players()` 里有玩家）。
+  快速自测：`nightlyRaidChance` 调 1.0，在地下等到午夜应当不刷，上来在地表过一夜应当刷。
+
 

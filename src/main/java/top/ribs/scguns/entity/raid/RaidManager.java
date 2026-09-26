@@ -291,6 +291,15 @@ public class RaidManager {
                return;
             }
 
+            // No natural raid while the player is under the surface (HANDOFF section 77): they are
+            // mining or exploring a cave, a raid on the surface above them is nothing but a lost boss.
+            // The schedule is dropped for tonight; the next night rolls again. A raid flare still works,
+            // because that is the player asking for one.
+            if (isUnderground(level, player.position())) {
+               saveData.removeScheduledRaid(dimension);
+               return;
+            }
+
             Vec3 playerPos = player.position();
             Vec3 spawnPos = this.findRaidSpawnLocation(level, playerPos);
             if (spawnPos == null) {
@@ -356,6 +365,30 @@ public class RaidManager {
     * {@link #findRaidSpawnLocation}). Everything in this window is "where the player is".
     */
    private static final int SPAWN_Y_WINDOW = 8;
+
+   /**
+    * How far below the column's ground level a player has to be before they count as "underground"
+    * (HANDOFF section 77). The margin is what keeps the test honest: a player inside a house has the
+    * roof above them - which raises the heightmap - a player under a tree has leaves, and someone
+    * swimming at the ocean surface floats just under the water line. Without it, all three would count
+    * as underground and never get a natural raid.
+    */
+   private static final int UNDERGROUND_MARGIN = 8;
+
+   /**
+    * Whether this position is **below the surface** (HANDOFF section 77) - the test the natural nightly
+    * raid uses to stay away from players who are mining or caving.
+    *
+    * <p>Deliberately a comparison against the column's ground level rather than a sky check: a sky check
+    * calls a player standing indoors (or under a tree) "underground", and then no natural raid ever
+    * reaches them. Anyone within {@value #UNDERGROUND_MARGIN} blocks of the ground is on the surface as
+    * far as a raid is concerned; anyone deeper is not.</p>
+    */
+   public static boolean isUnderground(ServerLevel level, Vec3 position) {
+      BlockPos pos = BlockPos.containing(position);
+      int surfaceY = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, pos).getY();
+      return position.y < (double)(surfaceY - UNDERGROUND_MARGIN);
+   }
 
    /**
     * Where a raid spawns: **on the surface**, near the player (HANDOFF sections 75 and 76).
