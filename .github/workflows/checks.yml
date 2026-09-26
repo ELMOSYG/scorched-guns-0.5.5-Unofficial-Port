@@ -29,6 +29,7 @@ jobs:
             audit_server_fire_paths \
             audit_raid_unload_safety \
             audit_raid_spawn_level \
+            audit_raid_check_command \
             audit_bus_registrations \
             audit_subscribers \
             audit_dist_safety \

@@ -6098,6 +6098,121 @@ exactly at sea level    y=63  naturalRaid=true   ✓   （与原版一致，用 
 * **未验证** ✓：真实午夜链路仍需真人玩家过一夜 ✓（同 §77 ✓）。快速自测：`nightlyRaidChance = 1.0`，
   在海平面以上过夜（**屋里也行** ✓）应当刷 ✓；下到 y&lt;63 过夜应当不刷 ✓。
 
+# 79. 自然袭击"当场可测"：`/scguns raid check`（**诊断**，不是触发器）
+
+玩家反馈 ✓：**"这个不好测试，因为自然刷新的袭击在提示后要等很久才会来"** ✓。
+
+## 79.1 原来为什么没法测
+
+自然袭击是一条**又长又静默**的链路 ✓：黄昏 `13000` 抽签（`nightlyRaidChance` ✓）⇒ 提示
+`raid.scguns.warning` ✓ ⇒ 到 `18000` 才真正开刷 —— 中间 **5000 刻 ≈ 4 分 10 秒**真实时间 ✓。
+而**六种失败全是静默的** ✓：抽签没过 ✓、目标玩家是创造/旁观（`scheduleRaidForTonight` 只挑非创造非旁观 ✓）、
+`raidLevel == 0` ✓、海平面门不过 ✓、地面找不到露天落点 ✓、本维度已有袭击 ✓。
+从外部看**一模一样** ✗ —— 今晚没刷 ✗，而且过完夜也不知道卡在哪一步 ✓。
+
+## 79.2 做法：报告调度器**同一批**判断，而不是再写一套
+
+`/scguns raid check`（**不需要权限** ✓，但只能查自己 ✓）把调度器用的**同一批方法**的返回值直接打出来 ✓：
+
+| 报告行 | 调用的**真**方法 |
+|---|---|
+| 海平面门 `PASS/FAIL` ✓ | `RaidManager.canGetNaturalRaid(level, pos)` ✓ |
+| 露天落点坐标 ✓ | `RaidManager.findRaidSpawnLocation(level, pos)` ✓（真搜索 ⇒ §78 那种"下界门过了但没地方刷"也能当场看见 ✓）|
+| 今晚排没排上、排在谁头上 ✓ | `RaidSaveData.getScheduledRaid(dimension)` ✓ |
+| 突袭等级 / 该等级可用的袭击 ✓ | `PlayerGunProgression.get(...).getCurrentRaidLevel()` + `RaidConfig.getRaidsForLevel(...)` ✓ |
+| 创造/旁观提示 ✓ | `scheduleRaidForTonight` 的筛选条件 ✓（**最容易白等一晚的坑** ✓）|
+
+刻意**不做成"一键触发"** ✓：`/scguns raid start`、`startnext` 已经是触发器 ✓，再添一个只会变成
+**第二条会走偏的路径** ✗；而且触发器回答不了"是**哪一步**把我挡了" ✗。
+所以新增的审计里有一条硬规定：报告函数**不得调用** `startRaid/scheduleRaid/endRaid/surrenderRaid` ✓。
+
+## 79.3 改动
+
+* `RaidManager.findRaidSpawnLocation`：`private` → `public` ✓（并补 `@Nullable` ✓，它本来就会返回 `null` ✓）；
+  **判定逻辑一字未改** ✓ —— 只多了一段"这是给诊断命令用的"注释 ✓。
+* `ModCommands`：新增 `raid check` 子命令 + `executeRaidCheck` ✓（含注释约 90 行 ✓）。
+* 语言：**15 条** `commands.scguns.raid.check.*` ✓（EN/ZH 各 **1823** key，**100% 对齐** ✓）。
+* **顺带查出一条"陈旧配置"** ✓（**本轮只记录、不改行为** ✓）：`minDaysBetweenRaids`（默认 2 ✓）
+  **从来没被任何代码读过** ✗ —— `RaidSaveData.canScheduleRaid/setLastRaidDay/getLastRaidDay`
+  全是死代码 ✓（`setLastRaidDay` 无任何调用点 ✓），所以"最少间隔 N 天"目前**完全无效** ✓，
+  实际只有概率抽取 + 海平面门在起作用 ✓。（上游 0.5.5 即如此 ✓，不是移植引入的 ✗。）
+  已直接写进报告 ✓，免得玩家以为是自己配置写错 ✓。**是否要按玩家意愿把它接上，留给玩家决定** ✓。
+
+## 79.4 快速测试流程（正式收录 ✓）
+
+前提：**生存模式** ✓（创造/旁观**永远不会**被抽中 ✗）、`raidLevel != 0` ✓（`/scguns progression check` 可查 ✓）。
+
+```
+/time set 12000      # 先退到黄昏之前，确保一定会穿过 13000 那个 20 刻窗口
+/time set 13000      # 抽签 + 发警告（默认只有 20% 概率通过；没抽中就看 raid check 的提示重来）
+/scguns raid check   # 当场看到：门过没过、落点在哪、今晚排没排上、排给谁
+/time set 17995      # 5 刻后即 18000 ⇒ 袭击当场开始（原来是再等 4 分多钟）
+```
+
+* 验证"地下不刷" ✓：站到 **y &lt; 63**（海平面 ✓）后重复 `13000 → 17995` ✓ ⇒ `raid check` 门 **FAIL** ✓、
+  且**不刷** ✓（当晚排期被丢弃 ✓，明晚重新抽签 ✓）。
+* 验证"屋里有方块照样刷" ✓：在室内（y 仍 ≥ 63 ✓）走同一流程 ⇒ 照常刷 ✓（与幻翼的差异点 ✓，§78 ✓）。
+* 验证"落点只在地表" ✓：`raid check` 给出的坐标**就是**袭击真正会用的落点 ✓（同一条 `findSurfaceSpawn` ✓），
+  不必先开一次袭击再跑过去看 ✓。
+
+## 79.5 实测（专用服务器 + 假玩家探针，读完即删 ✓）
+
+专用服务器上**没有玩家** ⇒ 用 NeoForge 的 `FakePlayerFactory.getMinecraft(level)` 造一个假玩家当命令源 ✓，
+在 `ServerStartedEvent` 里把 `/scguns raid check` 跑四遍（地表 / y=31 / 创造 / 已排期 ✓），
+让输出以服务器的 `[minecraft/MinecraftServer]:` 反馈落进日志 ✓ —— **15 条键全部正常渲染 ✓，
+没有原始 key ✗，没有 `TranslatableFormatException` ✗** ✓：
+
+```
+=== Raid check: minecraft:overworld ===
+Nightly raids enabled: true (chance 20% per night)
+Raid already active in this dimension: false
+Day 7, time 1171
+Note: the nightly scheduler never enforces minDaysBetweenRaids (2); only the chance roll and the sea-level gate decide
+Raid level for [Minecraft]: 1, raids at that level: Antique Raid, Frontier Raid
+Natural raid gate for [Minecraft]: PASS (y 71, sea level 63)
+Surface spawn within 40 blocks: 35 63 -1
+Nothing scheduled for tonight: the dusk roll failed (chance 20%) or has not happened yet
+Fast test: /time set 12000, then /time set 13000 for the roll and the warning, then /time set 17995 - the raid starts within 5 ticks
+
+--- underground (y=31) ---
+Natural raid gate for [Minecraft]: FAIL - below sea level (y 31 < 63), tonight's raid is dropped. A roof overhead does not matter, only the sea level does
+Surface spawn within 40 blocks: 20 56 -33
+
+--- creative mode ---
+Natural raid gate for [Minecraft]: PASS (y 71, sea level 63)
+[Minecraft] is in creative mode, and the scheduler never picks such a player - switch to survival to test a natural raid
+
+--- scheduled for tonight (antique) ---
+Natural raid gate for [Minecraft]: PASS (y 71, sea level 63)
+Surface spawn within 40 blocks: -20 78 -15
+Scheduled for tonight: antique, target 41c82c87-7afb-4024-ba57-13d2c99cae77, day 7
+```
+
+值得记下的三点 ✓：① 落点每次都不一样 ✓（真的是随机搜索 ✓），且**可以低于海平面** ✓
+（例如 `20 56 -33`：那一列的地表本来就在 56 ✓ —— 门管的是**玩家**高度 ✓，落点管的是**那一列的地面** ✓，
+两者互不干涉 ✓）；② `raidLevel=1` 的袭击名是**翻译过的** ✓（`Antique Raid, Frontier Raid` ✓ —— 走的是
+`raid.scguns.<id>` ✓）；③ 假玩家不在玩家列表里 ✓ ⇒ 排期那行按设计**回退打印 UUID** ✓（真人玩家则显示名字 ✓）。
+
+## 79.6 防复发 + 验收
+
+* 审计 **`tools/audit_raid_check_command.py`** ✓（新增）：要求 raid 节点下确有 `check` 子命令 ✓
+  （**不能**被 `/scguns progression check` 顶替 ✓ —— 审计第一版正是被它骗过的 ✗）、
+  `executeRaidCheck` 必须调用上面那批真方法 ✓、**不得调用** `startRaid/scheduleRaid/endRaid/surrenderRaid` ✓、
+  15 条语言键 **EN/ZH 都在且 `%s` 数量一致** ✓、**每个调用点的实参个数 == 该键的占位符个数** ✓
+  （少参会抛 `TranslatableFormatException` ✓，而多参只是静默忽略 ✓）。
+  **自测** ✓：对固定提交 `1bd9f60`（§78）跑 ⇒ 命中 **3 条** ✓（无 `check` 子命令 ✓ / 无 `executeRaidCheck` ✓ /
+  `findRaidSpawnLocation` 仍非 public ✓）；当前源码 **0** ✓；已加入 CI ✓。
+* 审计**自己**踩的两个坑（记下来 ✓）：① `%s%%` 里的**字面百分号**被第一版当成占位符 ✓ ⇒ 改为逐字符扫描 ✓；
+  ② 用"向后找 `(`"定位实参 ⇒ 抓到的是 `dimension.toString()` 的括号 ✓，实参被算成 0 个 ✓ ⇒ 改为
+  **向前找**（key 本身是第一个实参 ✓）。两处都修好后才归零 ✓。
+* `verify_installed_jar` ✓：新增 4 条 ✓（命令随包发出 ✓、两种语言都有 ✓、快速测试文案在 ✓）+
+  1 条"探针**不得**随包发出" ✓ ⇒ **166/166** ✓。
+* 门禁 ✓：`javac` 0 错误 ✓（999 文件 ✓，探针已删 ✓）、`gradlew build` ✓、**27 个审计全 0** ✓、
+  语言键 **1823/1823** ✓、已安装 ✓（`19397734` 字节 ✓，上一版备份 `.bak-211833` ✓，与 `build/libs` 逐字节一致 ✓）。
+* **未验证** ✓：真人在客户端里敲 `/scguns raid check` 看到的样子（颜色/排版 ✓）—— 文本内容已由上面的
+  实测逐行确认 ✓，剩下的只是玩家自己的观感 ✓。
+
+
 
 
 

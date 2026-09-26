@@ -396,8 +396,14 @@ public class RaidManager {
     * "ground" is a roof (the Nether's bedrock ceiling) has no open surface at all, and a raid there is
     * refused rather than dumped on the roof. Nothing else in this class places mobs at the player's own
     * level any more.</p>
+    *
+    * <p>Public because {@code /scguns raid check} reports the very spot this method picks (HANDOFF
+    * section 79): a tester standing under a roof, or in a dimension whose floor is a bedrock ceiling,
+    * gets no raid at all and cannot tell that refusal apart from a failed dice roll, so the command
+    * runs this same search instead of reimplementing it.</p>
     */
-   private Vec3 findRaidSpawnLocation(ServerLevel level, Vec3 center) {
+   @Nullable
+   public Vec3 findRaidSpawnLocation(ServerLevel level, Vec3 center) {
       RandomSource random = level.getRandom();
 
       for (int attempt = 0; attempt < 15; attempt++) {

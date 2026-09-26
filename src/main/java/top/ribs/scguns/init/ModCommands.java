@@ -12,15 +12,18 @@ import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.phys.Vec3;
+import top.ribs.scguns.Config;
 import top.ribs.scguns.config.RaidConfig;
 import top.ribs.scguns.entity.player.GunTier;
 import top.ribs.scguns.entity.player.GunTierRegistry;
 import top.ribs.scguns.entity.player.PlayerGunProgression;
 import top.ribs.scguns.entity.raid.ActiveRaid;
 import top.ribs.scguns.entity.raid.RaidManager;
+import top.ribs.scguns.entity.raid.RaidSaveData;
 import top.ribs.scguns.event.GunProgressionEventHandler;
 
 public class ModCommands {
@@ -87,6 +90,12 @@ public class ModCommands {
                         .then(Commands.literal("list").executes(context -> executeListRaids((CommandSourceStack)context.getSource()))))
                      .then(Commands.literal("listall").executes(context -> executeListAllAvailableRaids((CommandSourceStack)context.getSource()))))
                   .then(Commands.literal("startnext").executes(context -> executeStartNextRaid((CommandSourceStack)context.getSource())))
+                  // Diagnostic, not a trigger (HANDOFF section 79). A natural raid rolls at dusk (13000)
+                  // and only starts at 18000, and it silently drops itself when the player is below sea
+                  // level or when the ground has no open surface column - so "no raid tonight" has six
+                  // different causes and no way to tell them apart. This reports the same decisions the
+                  // scheduler makes, on demand.
+                  .then(Commands.literal("check").executes(context -> executeRaidCheck((CommandSourceStack)context.getSource())))
             )
       );
    }
@@ -375,5 +384,106 @@ public class ModCommands {
             return 1;
          }
       }
+   }
+
+   /**
+    * {@code /scguns raid check} (HANDOFF section 79): report every decision the nightly raid makes,
+    * without waiting for it.
+    *
+    * <p>A natural raid is hard to test because it rolls at dusk (13000) and only starts at 18000 - four
+    * minutes of real time - and then silently does nothing when the player is below sea level, when the
+    * ground has no open surface column, when the roll failed, when the target has raid level 0, or when
+    * somebody already has a raid running. All five look identical from the outside.</p>
+    *
+    * <p>Every line comes from the same code the scheduler uses ({@link RaidManager#canGetNaturalRaid},
+    * {@link RaidManager#findRaidSpawnLocation}, {@link RaidSaveData#getScheduledRaid}), so the report
+    * cannot drift from the real gate. The gate is measured where the raid would measure it: at the
+    * scheduled target when one is online, otherwise at the caller.</p>
+    */
+   private static int executeRaidCheck(CommandSourceStack source) {
+      ServerPlayer player = source.getPlayer();
+      if (player == null) {
+         source.sendFailure(Component.translatable("commands.scguns.requires_player"));
+         return 0;
+      }
+
+      ServerLevel level = source.getLevel();
+      ResourceLocation dimension = level.dimension().location();
+      RaidManager manager = RaidManager.get(level);
+      RaidSaveData.ScheduledRaidData scheduled = RaidSaveData.get(level).getScheduledRaid(dimension);
+      ServerPlayer scheduledTarget = scheduled == null
+         ? null
+         : source.getServer().getPlayerList().getPlayer(scheduled.targetPlayerUUID());
+      ServerPlayer gate = scheduledTarget != null ? scheduledTarget : player;
+      Vec3 gatePos = gate.position();
+
+      source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.header", dimension.toString())
+         .withStyle(ChatFormatting.GOLD), false);
+      boolean raidsEnabled = (Boolean)Config.COMMON.raids.raidsEnabled.get();
+      long chancePercent = Math.round(((Double)Config.COMMON.raids.nightlyRaidChance.get()) * 100.0);
+      source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.enabled", raidsEnabled, chancePercent)
+         .withStyle(ChatFormatting.GRAY), false);
+      source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.active", manager.hasActiveRaid())
+         .withStyle(ChatFormatting.GRAY), false);
+      source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.time",
+         level.getDayTime() / 24000L, level.getDayTime() % 24000L).withStyle(ChatFormatting.GRAY), false);
+      source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.cooldown_unused",
+         Config.COMMON.raids.minDaysBetweenRaids.get()).withStyle(ChatFormatting.DARK_GRAY), false);
+
+      int raidLevel = PlayerGunProgression.get(gate).getCurrentRaidLevel();
+      Component gateName = gate.getDisplayName();
+      if (raidLevel == 0) {
+         source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.level_zero", gateName)
+            .withStyle(ChatFormatting.RED), false);
+      } else {
+         Component raids = joinRaidNames(RaidConfig.getRaidsForLevel(raidLevel));
+         source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.level", gateName, raidLevel, raids)
+            .withStyle(ChatFormatting.AQUA), false);
+      }
+
+      // The gate and the placement are two separate refusals: the gate is about the player (below sea
+      // level), the placement is about the ground (no open surface column within reach of them).
+      boolean gatePasses = RaidManager.canGetNaturalRaid(level, gatePos);
+      long y = Math.round(gatePos.y);
+      int seaLevel = level.getSeaLevel();
+      source.sendSuccess(() -> Component.translatable(
+            gatePasses ? "commands.scguns.raid.check.gate_pass" : "commands.scguns.raid.check.gate_fail",
+            gateName, y, seaLevel)
+         .withStyle(gatePasses ? ChatFormatting.GREEN : ChatFormatting.RED), false);
+
+      // The most common reason a tester sees "no raid" is that they are testing in creative: the
+      // scheduler only ever picks a non-creative, non-spectator player.
+      if (gate.isCreative() || gate.isSpectator()) {
+         String mode = gate.isCreative() ? "creative" : "spectator";
+         source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.exempt", gateName, mode)
+            .withStyle(ChatFormatting.RED), false);
+      }
+
+      Vec3 spawn = manager.findRaidSpawnLocation(level, gatePos);
+      if (spawn == null) {
+         source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.spawn_none")
+            .withStyle(ChatFormatting.RED), false);
+      } else {
+         String coords = Math.round(spawn.x) + " " + Math.round(spawn.y) + " " + Math.round(spawn.z);
+         source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.spawn_found", coords)
+            .withStyle(ChatFormatting.WHITE), false);
+      }
+
+      if (scheduled == null) {
+         source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.not_scheduled", chancePercent)
+            .withStyle(ChatFormatting.YELLOW), false);
+      } else {
+         Component targetName = scheduledTarget != null
+            ? scheduledTarget.getDisplayName()
+            : Component.literal(scheduled.targetPlayerUUID().toString());
+         String raidId = scheduled.raidId();
+         long scheduledDay = scheduled.scheduledDay();
+         source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.scheduled",
+            raidId, targetName, scheduledDay).withStyle(ChatFormatting.GOLD), false);
+      }
+
+      source.sendSuccess(() -> Component.translatable("commands.scguns.raid.check.howto")
+         .withStyle(ChatFormatting.GRAY), false);
+      return 1;
    }
 }

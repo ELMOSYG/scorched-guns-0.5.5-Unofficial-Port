@@ -916,6 +916,30 @@ def main():
         # 33. the packaged version, which is also the jar name (HANDOFF section 73).
         checks.append(_check_declared_version(zf))
 
+        # 34. the raid-check diagnostic (HANDOFF section 79). A natural raid rolls at dusk and only
+        # starts at 18000, and every way it can fail is silent - a failed roll, a creative target, raid
+        # level 0, the sea-level gate, no open surface column, a raid already running - so "no raid
+        # tonight" was untestable without waiting out the whole night per attempt. `/scguns raid check`
+        # reports those decisions on demand; it ships with both language files, because a missing key
+        # prints a raw id instead of an answer.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/init/ModCommands.class", b"commands.scguns.raid.check",
+            "/scguns raid check ships"))
+        for locale in ("en_us", "zh_cn"):
+            checks.append(_check_resource_contains(
+                zf, "assets/scguns/lang/%s.json" % locale,
+                b'"commands.scguns.raid.check.gate_fail"',
+                "the raid check is translated (%s)" % locale))
+        checks.append(_check_resource_contains(
+            zf, "assets/scguns/lang/en_us.json", b'"commands.scguns.raid.check.howto"',
+            "the raid check prints the fast test recipe"))
+        # The probe that exercised the report on a dedicated server ran as a fake player, printed its
+        # four scenarios, and was deleted again - like the pose diagnostic, it must not ship.
+        checks.append((
+            "the temporary raid-check probe removed from the build",
+            "top/ribs/scguns/entity/raid/RaidCheckProbe.class" not in names,
+        ))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

@@ -537,4 +537,29 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   语言文件 EN/ZH 各加 1 键（1808/1808）；`javac` 0 / `build` ✓ / **26 个审计 0** /
   `verify_installed_jar` **161/161** / 探针已删 / 已安装（备份 `.bak-204827`）。
 
+## §79 自然袭击"当场可测"：新增诊断命令 `/scguns raid check`
+
+- **玩家反馈**："这个不好测试，因为自然刷新的袭击在提示后要等很久才会来"。原因：黄昏 13000 抽签 +
+  发警告，**18000** 才开刷（5000 刻 ≈ 4 分 10 秒）；而且六种失败全是静默的（抽签没过 / 目标是创造旁观 /
+  raidLevel 0 / 海平面门不过 / 没有露天落点 / 已有袭击）——外面看都是"今晚没刷"。
+- **做法**：`/scguns raid check`（不需权限，只能查自己）**报告调度器同一批判断**：
+  `canGetNaturalRaid`（海平面门）、`findRaidSpawnLocation`（真落点搜索，含坐标）、
+  `RaidSaveData.getScheduledRaid`（今晚排没排上、排给谁）、`PlayerGunProgression.getCurrentRaidLevel`
+  + `RaidConfig.getRaidsForLevel`（等级与可用袭击），再加一行创造/旁观提示（最常见的白等一晚原因）。
+  **刻意不做成触发器**（`raid start`/`startnext` 已是触发器，且触发器答不出"卡在哪一步"）。
+- **改动**：`RaidManager.findRaidSpawnLocation` 由 private 改 public（补 `@Nullable`，逻辑未动）；
+  `ModCommands` 新增 `raid check` 子命令 + `executeRaidCheck`；语言文件各加 **15** 键（1823/1823）。
+- **顺带查清（只记录，未改行为）**：`minDaysBetweenRaids` 从未被任何代码读取 ——
+  `canScheduleRaid/setLastRaidDay/getLastRaidDay` 是死代码（`setLastRaidDay` 无调用点），
+  "最少间隔 N 天"目前完全无效；已在报告里写明，是否接上交给玩家决定。
+- **实测**（专用服务器 + `FakePlayerFactory` 假玩家探针，四场景，探针已删）：15 条键全部正常渲染，
+  无原始 key、无 `TranslatableFormatException`。落点每次不同且**可低于海平面**（门管玩家高度、落点管那列地面，
+  互不干涉）；`raidLevel=1` 打出翻译后的 `Antique Raid, Frontier Raid`；假玩家不在玩家列表 ⇒ 排期行按设计回退 UUID。
+- **快速测试流程**（已收录进游戏内提示与 HANDOFF §79.4）：生存模式 + `raidLevel != 0` 前提下
+  `/time set 12000` → `/time set 13000`（抽签+警告，未通过就重来）→ `/scguns raid check` → `/time set 17995`（5 刻后开刷）。
+- **门禁**：新增 `audit_raid_check_command.py`（要求 raid 节点下确有 `check`、必须调真方法、**不得**调
+  `startRaid/scheduleRaid/endRaid/surrenderRaid`、15 键 EN/ZH 齐且占位符与实参数一致），`--selftest`（`1bd9f60`）
+  命中 **3 条**；`verify_installed_jar` 新增 5 条（含"探针不得随包发出"）⇒ **166/166**；
+  `javac` 0（999 文件）/ `build` ✓ / **27 个审计 0** / 已安装（19397734 字节，备份 `.bak-211833`）。
+
 
