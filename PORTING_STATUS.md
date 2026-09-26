@@ -641,4 +641,19 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 非警卫弹对村民照常命中 ⇒ 拦得住、不误拦、且是警卫专属。事件层（`LivingIncomingDamageEvent` +
 `LivingKnockBackEvent`）保留作兜底。
 
+## §82.6 玩家验收的两条：持枪率 100% + 射速不正常（都已修 + 实测）
+
+- **持枪率**：`spawn_chance` 当时照抄新版上游的 `1.0` ⇒ 人手一把。改成 **0.25**（= 玩家 1.20.1 那份兼容的值），
+  每只警卫只抽一次签。**6 次开服、240 只警卫实测：57 只持枪 = 23.8%**（与 25% 相差不到 1 个标准差）。
+- **射速**：那 8 把枪的 `fireMode` **全是 `semi_automatic`**，而旧实现把 `rate` 直接当"两发间隔" ⇒
+  `callwell`（rate=2）变成**每秒 10 发**；并且**绕过 mob 自己的节奏**：不看 `mobFireRateMultiplier`、
+  没有点射/间歇（`GunAttackGoal` 是打 1–2 发、歇 40–80 刻）、换弹被夹到 10–40 刻。
+  现在整套照 `GunAttackGoal`：间隔 `rate × mobFireRateMultiplier`、点射 `1+rand(2+ai_difficulty/2)`、
+  间歇 `40+rand(40)` 刻 × `mobBurstDelayMultiplier`、换弹用该枪自己的 `reloadTimer`、
+  `ai_difficulty` 从 `gunner_mobs.json` 传入。
+  **实测**（1 警卫 + 4000 血 NoAI 掠夺者，1200 刻）：`pax`(rate=9) 射击刻 97/108/193/205/269
+  ⇒ 点射内 **11–12** 刻、点射间 **64–85** 刻；`winnie_millend`(rate=14) 间隔 **15** 刻。
+  探针踩的三个坑也记进 HANDOFF §82.6.2：无敌目标不会被认作敌人（`canBeSeenAsEnemy()`）、
+  1.21.1 属性要用 `minecraft:generic.max_health`、`String.formatted` 被 `+` 抢先绑定导致命令带 `%d` 发出。
+
 

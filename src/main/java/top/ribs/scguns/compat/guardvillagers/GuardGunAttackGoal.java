@@ -37,14 +37,31 @@ public class GuardGunAttackGoal extends Goal {
    private final float accuracy;
    private int seeTime;
    private int repathTime;
-   private long lastFireTime;
    private boolean isReloading;
    private long reloadEndGameTime;
+   /** Ticks to wait before the next shot: the gun's rate scaled by {@code mobFireRateMultiplier}. */
+   private int attackTime;
+   // Burst bookkeeping, mirroring GunAttackGoal (HANDOFF section 82): a gunner fires a short burst and
+   // then pauses. Without it a guard with a 2-tick semi-automatic and a large magazine sprays.
+   private int burstIntervalTimer;
+   private int remainingBursts;
+   private int burstResetTimer;
+   private final int burstAmount;
+   private final int burstTimer;
 
-   public GuardGunAttackGoal(PathfinderMob mob, float accuracy) {
+   public GuardGunAttackGoal(PathfinderMob mob, float accuracy, int difficulty) {
       this.mob = mob;
       this.accuracy = accuracy;
       this.setFlags(EnumSet.of(Goal.Flag.LOOK, Goal.Flag.MOVE));
+      this.burstAmount = 2 + difficulty / 2;
+      float difficultyMultiplier = switch (mob.level().getDifficulty()) {
+         case PEACEFUL -> 2.0F;
+         case EASY -> 1.5F;
+         case NORMAL -> 1.0F;
+         case HARD -> 0.6F;
+      };
+      float configMultiplier = ((Double)Config.COMMON.gameplay.mobBurstDelayMultiplier.get()).floatValue();
+      this.burstTimer = Math.max(1, (int)((float)(30 - difficulty * 4) * difficultyMultiplier * configMultiplier));
    }
 
    public boolean canUse() {
@@ -63,17 +80,22 @@ public class GuardGunAttackGoal extends Goal {
 
    public void start() {
       this.repathTime = 0;
-      this.lastFireTime = this.mob.level().getGameTime();
       this.isReloading = false;
+      this.remainingBursts = 0;
+      this.burstResetTimer = 0;
+      this.burstIntervalTimer = 0;
       ItemStack gunStack = this.mob.getMainHandItem();
       if (gunStack.getItem() instanceof GunItem gunItem) {
          Gun modifiedGun = gunItem.getModifiedGun(gunStack);
+         this.attackTime = modifiedGun == null ? 0 : this.fireInterval(modifiedGun);
          if (modifiedGun != null && modifiedGun.getReloads() != null
             && NbtHelper.getOrCreateTag(gunStack).getInt("AmmoCount") <= 0) {
             // A guard has no ammo pouch: an empty gun is topped up once when the goal starts, rather
             // than left useless because the loot table handed it over unloaded.
             NbtHelper.getOrCreateTag(gunStack).putInt("AmmoCount", modifiedGun.getReloads().getMaxAmmo());
          }
+      } else {
+         this.attackTime = 0;
       }
    }
 
@@ -139,28 +161,62 @@ public class GuardGunAttackGoal extends Goal {
          this.mob.getNavigation().stop();
       }
 
-      // An ally in the firing line: step aside rather than shoot through them.
+      // An ally in the firing line: step aside rather than shoot through them, and end the burst so the
+      // guard is not firing again the moment it has moved.
       if (this.friendlyInLineOfSight() && distance * distance <= fireRange * fireRange) {
          Vec3 reposition = LandRandomPos.getPosTowards(this.mob, 5, 7, target.position());
          if (reposition != null && this.mob.getNavigation().isDone()) {
             this.mob.getNavigation().moveTo(reposition.x, reposition.y, reposition.z, 0.9D);
-            this.lastFireTime = 0L;
+            this.remainingBursts = 0;
+            this.attackTime = this.fireInterval(modifiedGun);
          }
       }
 
       int ammo = NbtHelper.getOrCreateTag(gunStack).getInt("AmmoCount");
-      if (ammo > 0 && canSee && distance <= fireRange
-         && gameTime - this.lastFireTime >= Math.max(1, modifiedGun.getGeneral().getRate())) {
+      if (ammo <= 0 || !canSee || distance > fireRange) {
+         return;
+      }
+
+      // The cadence is GunAttackGoal's, not the gun's raw rate (HANDOFF section 82). Firing on
+      // `gameTime - lastFireTime >= rate` alone made a guard empty a 2-tick semi-automatic every two
+      // ticks - ten shots a second, sustained - and it ignored mobFireRateMultiplier, so a server that
+      // slowed its gunners down saw no difference in the guards either.
+      if (--this.attackTime > 0) {
+         return;
+      }
+
+      if (this.remainingBursts <= 0 && this.burstResetTimer <= 0) {
+         this.remainingBursts = 1 + this.mob.level().random.nextInt(this.burstAmount);
+         this.burstIntervalTimer = 1 + this.mob.level().random.nextInt(this.burstTimer);
+         float configMultiplier = ((Double)Config.COMMON.gameplay.mobBurstDelayMultiplier.get()).floatValue();
+         this.burstResetTimer = Math.max(5, (int)((float)(40 + this.mob.level().random.nextInt(40)) * configMultiplier));
+      }
+
+      if (this.remainingBursts > 0 && --this.burstIntervalTimer <= 0) {
          this.fire(target, gunStack, modifiedGun);
-         this.lastFireTime = gameTime;
+         this.remainingBursts--;
+         this.burstIntervalTimer = 2 + this.mob.level().random.nextInt(6);
+         this.attackTime = this.fireInterval(modifiedGun);
          NbtHelper.getOrCreateTag(gunStack).putInt("AmmoCount", ammo - 1);
          if (ammo - 1 <= 0) {
             this.isReloading = true;
-            int reloadTime = Math.max(10, Math.min(modifiedGun.getReloads().getReloadTimer(), 40));
-            this.reloadEndGameTime = gameTime + reloadTime;
+            // The gun's own reload time, like every other gunner: it used to be clamped to 10..40 ticks,
+            // which made a guard with a slow-reloading gun fire noticeably more often than a raider with
+            // the same gun.
+            this.reloadEndGameTime = gameTime + modifiedGun.getReloads().getReloadTimer();
             this.playSound(modifiedGun.getSounds().getReload());
          }
       }
+
+      if (this.remainingBursts <= 0) {
+         this.burstResetTimer--;
+      }
+   }
+
+   /** Ticks between shots: the gun's rate, scaled by the same config the mod's own gunners use. */
+   private int fireInterval(Gun modifiedGun) {
+      float multiplier = ((Double)Config.COMMON.gameplay.mobFireRateMultiplier.get()).floatValue();
+      return Math.max(1, (int)((float)modifiedGun.getGeneral().getRate() * multiplier));
    }
 
    private void fire(LivingEntity target, ItemStack gunStack, Gun modifiedGun) {

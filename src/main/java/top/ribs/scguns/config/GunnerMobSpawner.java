@@ -345,7 +345,8 @@ public class GunnerMobSpawner {
          // flags, so a goal at 3 never starts - the first probe for this showed GuardMeleeGoal
          // running=true and the gun goal running=false for 500 ticks. Outranking it is also what the
          // standalone 1.20.1 compat did with a melee-suppressing mixin, without needing one here.
-         mob.goalSelector.addGoal(2, new GuardGunAttackGoal(mob, accuracy));
+         // The goal takes the same difficulty the mod's own gunners use for their cadence.
+         mob.goalSelector.addGoal(2, new GuardGunAttackGoal(mob, accuracy, gunnerData.aiDifficulty()));
       }
 
       mob.addTag("GunAttackAssigned");

@@ -174,6 +174,19 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
                         "not use the mod's projectile path")
     if GUARD_PACKAGE in goal:
         problems.append("the guard gun goal names a Guard Villagers class, which forces that class to load")
+    # Cadence (HANDOFF section 82): a guard's rhythm has to come from the same config the mod's own
+    # gunners use - otherwise a server that slows its gunners down sees no change in the guards, and a
+    # guard with a 2-tick semi-automatic fires ten shots a second, because the raw rate is a trigger
+    # interval and not a full-auto one.
+    for needle, what in (("mobFireRateMultiplier", "the mob fire rate multiplier"),
+                         ("mobBurstDelayMultiplier", "the burst delay multiplier"),
+                         ("burstResetTimer", "the pause between bursts")):
+        if needle not in goal:
+            problems.append("the guard gun goal ignores %s, so a guard does not shoot at the cadence the "
+                            "mod's own gunners use" % what)
+    if re.search(r"Math\.max\(\s*10\s*,\s*Math\.min\(.*getReloadTimer", goal):
+        problems.append("the guard's reload is clamped to 10..40 ticks again: it has to use the gun's own "
+                        "reload time like every other gunner")
 
     config = strip_comments(files.get("Config.java") or "")
     if "guard_gun_accuracy" not in config:
