@@ -1133,6 +1133,7 @@
   "raid.scguns.surrendered": "已投降！突袭首领饶恕了你",
   "raid.scguns.timeout": "突袭失败: 时间到！",
   "raid.scguns.boss_lost": "突袭失败: 找不到突袭首领。",
+  "raid.scguns.no_surface": "这里无法发起突袭：袭击需要地表的露天地面。",
   "raid.scguns.treated_brass": "烈焰黄铜突袭",
   "raid.scguns.treated_brass.name": "召唤运营治理联合会",
   "raid.scguns.warning": "空气中弥漫着硫磺的臭味...",

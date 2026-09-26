@@ -177,6 +177,11 @@ public class RaidManager {
          Vec3 spawnPos = this.findRaidSpawnLocation(level, playerPos);
          if (spawnPos != null) {
             this.startRaid(config, level, spawnPos);
+         } else {
+            // The player asked for this one, so say why nothing happened: a raid only ever starts on open
+            // ground (HANDOFF sections 76 and 78), which a roofed dimension like the Nether has none of.
+            player.displayClientMessage(
+               Component.translatable("raid.scguns.no_surface").withStyle(ChatFormatting.RED), false);
          }
       }
    }
@@ -291,11 +296,11 @@ public class RaidManager {
                return;
             }
 
-            // No natural raid while the player is under the surface (HANDOFF section 77): they are
-            // mining or exploring a cave, a raid on the surface above them is nothing but a lost boss.
-            // The schedule is dropped for tonight; the next night rolls again. A raid flare still works,
-            // because that is the player asking for one.
-            if (isUnderground(level, player.position())) {
+            // No natural raid for a player below sea level or under a roof (HANDOFF section 78): they are
+            // mining or sheltering, and a raid on the surface above them is nothing but a lost boss. This
+            // is the same rule vanilla applies to phantoms. The schedule is dropped for tonight (the next
+            // night rolls again); a raid flare still works, because that is the player asking for one.
+            if (!canGetNaturalRaid(level, player.position())) {
                saveData.removeScheduledRaid(dimension);
                return;
             }
@@ -359,69 +364,48 @@ public class RaidManager {
       }
    }
 
-   @Nullable
    /**
-    * How far above/below the player a raid may be placed **in a dimension without a surface** (see
-    * {@link #findRaidSpawnLocation}). Everything in this window is "where the player is".
-    */
-   private static final int SPAWN_Y_WINDOW = 8;
-
-   /**
-    * How far below the column's ground level a player has to be before they count as "underground"
-    * (HANDOFF section 77). The margin is what keeps the test honest: a player inside a house has the
-    * roof above them - which raises the heightmap - a player under a tree has leaves, and someone
-    * swimming at the ocean surface floats just under the water line. Without it, all three would count
-    * as underground and never get a natural raid.
-    */
-   private static final int UNDERGROUND_MARGIN = 8;
-
-   /**
-    * Whether this position is **below the surface** (HANDOFF section 77) - the test the natural nightly
-    * raid uses to stay away from players who are mining or caving.
+    * Whether a **natural** (nightly) raid may start for this player (HANDOFF section 78).
     *
-    * <p>Deliberately a comparison against the column's ground level rather than a sky check: a sky check
-    * calls a player standing indoors (or under a tree) "underground", and then no natural raid ever
-    * reaches them. Anyone within {@value #UNDERGROUND_MARGIN} blocks of the ground is on the surface as
-    * far as a raid is concerned; anyone deeper is not.</p>
+    * <p>One condition only: **the player is at or above sea level**. Below it - mining, in a cave, diving
+    * - the automatic raid leaves them alone. Everything else is deliberately **differentiated from
+    * phantoms**: vanilla's {@code PlayerSpawnPhantomsEvent#shouldSpawnPhantoms} also requires
+    * {@code level.canSeeSky(pos)}, so a player indoors or under a tree never gets phantoms, whereas here a
+    * roof over the player's head must not stop a raid - the raid is placed on the surface outside and the
+    * player walks out to it.</p>
+    *
+    * <p>Two earlier attempts are worth remembering: an invented "underground = eight blocks below the
+    * column's heightmap" test, which called a player inside a house underground because their roof raises
+    * the heightmap, and then the phantom rule verbatim, whose sky check did exactly the same thing.</p>
     */
-   public static boolean isUnderground(ServerLevel level, Vec3 position) {
-      BlockPos pos = BlockPos.containing(position);
-      int surfaceY = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, pos).getY();
-      return position.y < (double)(surfaceY - UNDERGROUND_MARGIN);
+   public static boolean canGetNaturalRaid(ServerLevel level, Vec3 position) {
+      return position.y >= (double)level.getSeaLevel();
    }
 
    /**
-    * Where a raid spawns: **on the surface**, near the player (HANDOFF sections 75 and 76).
+    * Where a raid spawns: **on the surface**, near the player (HANDOFF sections 75, 76 and 78).
     *
     * <p>0.5.5 decided "surface or cave" with {@code playerY < 50} and, when that said underground, walked
     * a cave search from -5 upwards - so a player standing in the open at y&lt;50 (a canyon floor, a deep
     * valley, diving in an ocean) got the raid placed in a cave below them, and a raid aimed at a player
-    * who was mining turned up in a cave pocket they could not find. Both are the same complaint: the
-    * raid has to appear somewhere the player can walk to and see.</p>
+    * who was mining turned up in a cave pocket they could not find.</p>
     *
-    * <p>So the rule is now the surface, full stop: each candidate column is asked for its own ground
-    * level (the heightmap, which can never point into a cave - a cave ceiling is itself motion blocking)
-    * and that has to be standable and open to the sky. A raid therefore never starts underground, no
-    * matter where the player is standing.</p>
-    *
-    * <p>The one exception is a dimension that has a roof - the Nether. Its heightmap is the bedrock
-    * ceiling, which is the last place a boss should appear, so there the raid follows the player's own
-    * level instead ({@link #findSpawnAtPlayerLevel}), which is the local floor.</p>
+    * <p>The rule is now simply the surface: each candidate column is asked for its own ground level (the
+    * heightmap, which can never point into a cave - a cave ceiling is itself motion blocking) and that
+    * has to be standable and open to the sky. <b>No dimension gets an exception</b>: a dimension whose
+    * "ground" is a roof (the Nether's bedrock ceiling) has no open surface at all, and a raid there is
+    * refused rather than dumped on the roof. Nothing else in this class places mobs at the player's own
+    * level any more.</p>
     */
    private Vec3 findRaidSpawnLocation(ServerLevel level, Vec3 center) {
       RandomSource random = level.getRandom();
-      int playerY = (int)center.y;
-      boolean surfaceOnly = !level.dimensionType().hasCeiling();
 
       for (int attempt = 0; attempt < 15; attempt++) {
          double angle = random.nextDouble() * Math.PI * 2.0;
          double distance = 25.0 + random.nextDouble() * 15.0;
          int x = (int)(center.x + Math.cos(angle) * distance);
          int z = (int)(center.z + Math.sin(angle) * distance);
-         BlockPos column = new BlockPos(x, playerY, z);
-         BlockPos candidate = surfaceOnly
-            ? this.findSurfaceSpawn(level, column)
-            : this.findSpawnAtPlayerLevel(level, column, playerY);
+         BlockPos candidate = this.findSurfaceSpawn(level, BlockPos.containing(x, center.y, z));
          if (candidate != null) {
             return new Vec3((double)candidate.getX() + 0.5, (double)candidate.getY(), (double)candidate.getZ() + 0.5);
          }
@@ -432,41 +416,13 @@ public class RaidManager {
 
    /**
     * The column's own ground level, which has to be standable and open to the sky. A covered spot (under
-    * a leaf canopy, an overhang or a roof) is rejected because the player would not see the raid there.
+    * a leaf canopy, an overhang, a roof, or a dimension's bedrock ceiling) is rejected because the player
+    * would not see the raid there.
     */
    @Nullable
    private BlockPos findSurfaceSpawn(ServerLevel level, BlockPos column) {
       BlockPos ground = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, column);
       return this.isStandableSpawn(level, ground) && level.canSeeSky(ground) ? ground : null;
-   }
-
-   /**
-    * The closest standable position to the player's own Y in this column, then the column's own ground
-    * if it is close enough to be the same place. Used in dimensions whose "surface" is a roof.
-    */
-   @Nullable
-   private BlockPos findSpawnAtPlayerLevel(ServerLevel level, BlockPos column, int playerY) {
-      BlockPos atPlayerLevel = new BlockPos(column.getX(), playerY, column.getZ());
-      if (this.isStandableSpawn(level, atPlayerLevel)) {
-         return atPlayerLevel;
-      }
-
-      for (int offset = 1; offset <= SPAWN_Y_WINDOW; offset++) {
-         BlockPos above = new BlockPos(column.getX(), playerY + offset, column.getZ());
-         if (this.isStandableSpawn(level, above)) {
-            return above;
-         }
-
-         BlockPos below = new BlockPos(column.getX(), playerY - offset, column.getZ());
-         if (this.isStandableSpawn(level, below)) {
-            return below;
-         }
-      }
-
-      BlockPos ground = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, column);
-      return Math.abs(ground.getY() - playerY) <= SPAWN_Y_WINDOW && this.isStandableSpawn(level, ground)
-         ? ground
-         : null;
    }
 
    /** Solid floor, the position and the two blocks above it free - a mob fits. */
@@ -720,9 +676,9 @@ public class RaidManager {
          double distance = random.nextDouble() * (double)radius;
          double x = center.x + Math.cos(angle) * distance;
          double z = center.z + Math.sin(angle) * distance;
-         BlockPos pos = new BlockPos((int)x, (int)center.y, (int)z);
-         BlockPos groundPos = level.getHeightmapPos(Types.MOTION_BLOCKING_NO_LEAVES, pos);
-         if (level.getBlockState(groundPos.below()).isSolid() && level.getBlockState(groundPos).isAir() && level.getBlockState(groundPos.above()).isAir()) {
+         // Same rule as the raid itself: the surface, open to the sky (HANDOFF section 76).
+         BlockPos groundPos = this.findSurfaceSpawn(level, BlockPos.containing(x, center.y, z));
+         if (groundPos != null) {
             return new Vec3((double)groundPos.getX() + 0.5, (double)groundPos.getY(), (double)groundPos.getZ() + 0.5);
          }
       }

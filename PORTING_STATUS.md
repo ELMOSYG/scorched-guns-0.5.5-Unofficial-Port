@@ -513,4 +513,28 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 - **未验证**：真实午夜链路需要真人玩家等一个游戏夜（专用服务器上排期需要 `level.players()` 里有玩家）。
   快速自测：`nightlyRaidChance` 调 1.0，在地下等到午夜应当不刷，上来在地表过一夜应当刷。
 
+---
+
+## §78 最终形态：落点**只在地表**、自然刷新**只在海平面以上**（与幻翼刻意不同）；地下机制清零
+
+- **玩家三轮定死的规则**：① 地下刷新机制删掉；② 低于海平面不自然刷新（像幻翼）；③ **头顶有方块也要能刷**
+  ⇒ 与幻翼做差异化。§77 的自造判据（"低于该列地面 8 格"）**已被取代**（它会把站在地表房子里的玩家
+  判成地下）。
+- **最终规则**：
+  - **落点**：`findSurfaceSpawn` = 该列地面高度 + 可站立 + `canSeeSky`，**无任何维度例外**；
+  - **自然刷新**：`canGetNaturalRaid = playerY >= level.getSeaLevel()` —— **只看高度**，头顶有无方块不影响；
+  - **手动**（信号弹/指令）照常；**落点找不到**（如下界：地面=基岩顶、`LightLayer.SKY` 恒 0）⇒ 不开袭击
+    并给一行提示（新键 `raid.scguns.no_surface`）。
+- **删掉的残留**：`findSpawnAtPlayerLevel`、`SPAWN_Y_WINDOW`、`hasCeiling()` 维度例外 ⇒ 全类只剩一条落点路径
+  （`findRaidSpawnLocation → findSurfaceSpawn`，小怪 `findHenchmanSpawnPos` 也改用它）。
+- **顺带查清**：`canSeeSky` = **skylight==15**（`BlockAndTintGetter:22`），不是"头顶有没有方块"
+  ⇒ 落点用它合适（满天空光=露天），门禁不能用它（会把屋里/树下也否掉）。
+- **实测**（探针已删，海平面 63）：地表 y=71 ⇒ true；**地表屋内 y=71 ⇒ true**（差异化的那一点）；y=31 ⇒ false；
+  y=62 ⇒ false；y=63 ⇒ true。
+- **门禁**：`audit_raid_spawn_level.py` 重写为最终形态（禁 `playerY<50`/洞穴搜索/`yOffset=-5`/
+  `findSpawnAtPlayerLevel`/`SPAWN_Y_WINDOW`/落点里的 `hasCeiling`；要求午夜分支调 `canGetNaturalRaid`，
+  且该判据必须用 `getSeaLevel` **且不得含 `canSeeSky`**），`--selftest`（`e9d8e03`）命中 **5 条**；
+  语言文件 EN/ZH 各加 1 键（1808/1808）；`javac` 0 / `build` ✓ / **26 个审计 0** /
+  `verify_installed_jar` **161/161** / 探针已删 / 已安装（备份 `.bak-204827`）。
+
 

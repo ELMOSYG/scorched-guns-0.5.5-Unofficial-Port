@@ -1,24 +1,24 @@
-"""A raid must be placed **on the surface**, next to the player - never underground.
+"""Where raids may spawn, and when the automatic (nightly) raid may start at all.
 
-Two rounds of bugs live here (HANDOFF sections 75 and 76):
+Three rounds of player feedback live here (HANDOFF sections 75, 76 and 78):
 
 * 0.5.5 decided "surface or cave" with `playerY < 50` and, when that said underground, walked a cave
-  search **from -5 upwards** - so a player standing in the open at y < 50 (a canyon floor, a deep valley,
-  diving in an ocean) got the raid placed in a cave below them, and a player in a *shallow* cave at
-  y > 50 got a raid on the surface far above them.
-* Searching around the player's own level fixed those, but a player who was mining still got the raid in
-  a cave pocket they could not find. The rule asked for is blunt: **surface only**.
-
-So the raid now asks each candidate column for its own ground level (the heightmap, which can never point
-into a cave - a cave ceiling is itself motion blocking) and requires that spot to be standable and open to
-the sky. The only exception is a dimension with a roof (the Nether), whose heightmap is its bedrock
-ceiling; there the raid follows the player's own level instead.
+  search **from -5 upwards** - so a player standing in the open at y < 50 got the raid placed in a cave
+  below them, and a player who was mining got one in a pocket they could not find.
+* Raids are therefore now placed **on the surface only**: the column's own ground level (the heightmap,
+  which can never point into a cave - a cave ceiling is itself motion blocking), standable and open to
+  the sky. No dimension gets an exception for having a roof; nothing places mobs at the player's level.
+* The **natural** nightly raid additionally refuses to start for a player **below sea level** - and only
+  that. It is deliberately differentiated from the phantom rule (`PlayerSpawnPhantomsEvent`), which also
+  demands `canSeeSky`: a roof over the player's head must not stop a raid here.
 
 This audit fails when the file:
   1. decides "underground" from a bare Y threshold again (`playerY < 50`);
-  2. brings back the cave search and its -5-first order (`findNearestValidCaveSpawn` / `yOffset = -5`);
-  3. does not restrict the overworld to the surface (`findSurfaceSpawn` / `canSeeSky`);
-  4. drops the roofed-dimension fallback (`findSpawnAtPlayerLevel` / `dimensionType().hasCeiling()`).
+  2. brings back the cave search (`findNearestValidCaveSpawn` / `yOffset = -5`);
+  3. does not restrict placement to the surface (`findSurfaceSpawn` / `canSeeSky` / `isStandableSpawn`);
+  4. brings back the player-level placement mechanism (`findSpawnAtPlayerLevel`, a `hasCeiling` exception);
+  5. drops the sea-level gate on the nightly raid, or makes it phantom-like again (`canSeeSky` inside
+     `canGetNaturalRaid`).
 
 Usage:
     python tools/audit_raid_spawn_level.py
@@ -33,9 +33,8 @@ import sys
 SOURCE = pathlib.Path("src/main/java/top/ribs/scguns/entity/raid/RaidManager.java")
 RELATIVE = "src/main/java/top/ribs/scguns/entity/raid/RaidManager.java"
 # The revision these checks were written against: it still placed raids on the player's own level
-# (HANDOFF section 75) instead of on the surface. A fixed id is used on purpose - comparing against HEAD
-# makes the selftest a no-op the moment the fix is committed (found while writing this audit, and now the
-# rule for every --selftest in this tree).
+# (HANDOFF section 75) instead of on the surface, and had no natural-raid gate at all. A fixed id, not
+# HEAD: comparing against HEAD makes a selftest pass as soon as the fix is committed.
 PRE_FIX_REVISION = "e9d8e03"
 
 
@@ -78,8 +77,11 @@ def check(text):
     if "findSurfaceSpawn" not in spawn:
         problems.append("findRaidSpawnLocation does not place the raid on the surface, so a mining player "
                         "can get a raid in a cave they cannot find")
-    if "dimensionType().hasCeiling()" not in spawn or "findSpawnAtPlayerLevel" not in spawn:
-        problems.append("no roofed-dimension fallback: in the Nether the heightmap is the bedrock ceiling")
+    if "hasCeiling" in spawn:
+        problems.append("placement is back to making an exception for roofed dimensions")
+    if "findSpawnAtPlayerLevel" in text or "SPAWN_Y_WINDOW" in text:
+        problems.append("the player-level placement mechanism is back - raids must never be placed at the "
+                        "player's own level underground")
 
     surface = method_body(text, "findSurfaceSpawn")
     if not surface:
@@ -92,23 +94,19 @@ def check(text):
         if "isStandableSpawn" not in surface:
             problems.append("findSurfaceSpawn does not require a standable spot")
 
-    if "findSpawnAtPlayerLevel" not in text or "SPAWN_Y_WINDOW" not in text:
-        problems.append("the roofed-dimension search lost its bounded vertical window")
-
-    # The natural (nightly) raid must not fire while the player is under the surface (HANDOFF 77).
     nightly = method_body(text, "checkForNightlyRaidSpawn")
-    if "isUnderground(" not in nightly:
-        problems.append("the nightly raid does not check whether the player is underground, so it still "
-                        "fires while they are mining")
-    underground = method_body(text, "isUnderground")
-    if not underground:
-        problems.append("isUnderground is missing")
+    if "canGetNaturalRaid(" not in nightly:
+        problems.append("the nightly raid has no gate, so it still fires for a player who is mining")
+
+    natural = method_body(text, "canGetNaturalRaid")
+    if not natural:
+        problems.append("canGetNaturalRaid is missing")
     else:
-        if "getHeightmapPos" not in underground:
-            problems.append("isUnderground does not compare the player against the column's surface")
-        if "UNDERGROUND_MARGIN" not in underground:
-            problems.append("isUnderground has no margin, so a player indoors (roof above them) or "
-                            "swimming at the ocean surface counts as underground and never gets a raid")
+        if "getSeaLevel" not in natural:
+            problems.append("the natural-raid gate does not compare the player against sea level")
+        if "canSeeSky" in natural:
+            problems.append("the natural-raid gate is phantom-like again: a roof over the player's head "
+                            "must not stop a raid")
 
     return problems
 
@@ -123,9 +121,10 @@ def selftest():
 
     expected = [
         "findRaidSpawnLocation does not place the raid on the surface",
+        "the player-level placement mechanism is back",
         "findSurfaceSpawn is missing",
-        "no roofed-dimension fallback",
-        "the nightly raid does not check whether the player is underground",
+        "the nightly raid has no gate",
+        "canGetNaturalRaid is missing",
     ]
     found = check(before)
     print("selftest: revision %s reports %d problem(s)" % (PRE_FIX_REVISION, len(found)))
@@ -135,9 +134,9 @@ def selftest():
     if missing:
         for entry in missing:
             print("selftest MISSING: %s" % entry)
-        print("selftest FAILED: the audit does not catch the placement bug it exists for")
+        print("selftest FAILED: the audit does not catch the placement bugs it exists for")
         return 1
-    print("selftest OK: the pre-surface-only placement is detected")
+    print("selftest OK: the pre-surface-only placement and the missing gate are detected")
     return 0
 
 
@@ -151,9 +150,10 @@ def main():
     for problem in problems:
         print("  %s" % problem)
     if problems:
-        print("%d problem(s): a raid can be placed underground or away from the player" % len(problems))
+        print("%d problem(s): a raid can be placed underground, or start while the player is mining"
+              % len(problems))
         return 1
-    print("0 problem(s): raids are placed on the surface, next to the player")
+    print("0 problem(s): raids spawn on the surface, and the nightly raid respects sea level")
     return 0
 
 

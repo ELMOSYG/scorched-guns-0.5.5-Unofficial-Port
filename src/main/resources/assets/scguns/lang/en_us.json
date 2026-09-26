@@ -37,6 +37,7 @@
   "raid.scguns.failed": "Raid Failed!",
   "raid.scguns.timeout": "Raid Failed: Time's up!",
   "raid.scguns.boss_lost": "Raid Failed: The boss could not be found.",
+  "raid.scguns.no_surface": "No raid here: a raid needs open ground on the surface.",
   "raid.scguns.surrendered": "Raid Surrendered! The boss has spared you.",
 
   "raid.scguns.antique": "Antique Raid",

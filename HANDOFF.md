@@ -6030,6 +6030,74 @@ indoors on the surface (roof 3 up) y= 71.0  underground=false  ✓   ← 就是�
   想快速自测：把 `nightlyRaidChance` 调到 `1.0` ✓，在地下挖矿等到午夜 ⇒ 应当**不刷** ✓；
   上来在地表过一夜 ⇒ 应当刷 ✓。
 
+# 78. 归纳：袭击落点**只在地表**、自然刷新**只在海平面以上**（与幻翼**刻意不同**）
+
+玩家连续三轮把规则定死了 ✓：**"地下袭击刷新机制也许应该删除"** ✓ +
+**"玩家低于海平面不自然刷新袭击，和幻翼一致"** ✓ + **"玩家头顶有方块也可以自然刷新，需要和幻翼的机制做差异化"** ✓。
+本节是这三条要求的最终形态 ✓，并**取代 §77 的自造判据** ✗。
+
+## 78.1 最终规则
+
+| 项 | 规则 | 依据 |
+|---|---|---|
+| **落点** | **只在地表**：该列自己的地面高度（`MOTION_BLOCKING_NO_LEAVES` ✓），必须可站立 **且** `canSeeSky` ✓。**没有任何维度例外** ✓ | §76 + 本轮"删除地下机制" ✓ |
+| **自然刷新** | **只按高度判**：`playerY >= level.getSeaLevel()` ✓ —— 低于海平面（挖矿/洞穴/潜水）不刷 ✓；海平面及以上**照常刷，哪怕头顶有方块** ✓ | 幻翼规则的"海平面那一半" ✓ |
+| **与幻翼的差异** | 幻翼还要求 `canSeeSky` ✓（`PlayerSpawnPhantomsEvent:78` ✓），**我们不要这一条** ✓ | 玩家明确要求 ✓ |
+| **手动** | 信号弹 / 指令照常 ✓；若**落点找不到**（例如下界——那里"地面"是基岩顶且没有天空光 ✓）⇒ 不开袭击，但**给玩家一行提示** ✓（新语言键 `raid.scguns.no_surface` ✓） | 本轮 ✓ |
+
+## 78.2 这一轮删掉的"地下机制"（残留清零）
+
+| 删除项 | 原因 |
+|---|---|
+| `findSpawnAtPlayerLevel`（按玩家那一层找落点 ✓）| 它就是"地下刷新机制"的最后一块 ✓ —— 只剩它还能把袭击放到非地表 ✓ |
+| `SPAWN_Y_WINDOW = 8`（配合上一条的竖向窗口 ✓）| 随之无用 ✓ |
+| `hasCeiling()` 维度例外 ✓ | 下界"地面"是基岩顶 ✓，放上去等于**玩家找不到** ✗ ⇒ 改为**拒绝**并提示 ✓ |
+
+现在全类**只剩一条落点路径** ✓：`findRaidSpawnLocation → findSurfaceSpawn` ✓（`findHenchmanSpawnPos` 也改用它 ✓，
+小怪同样落在地表露天处 ✓）。`grep` 可证：`playerY <`、`findNearestValidCaveSpawn`、`yOffset = -5`、
+`findSpawnAtPlayerLevel`、`SPAWN_Y_WINDOW`、`hasCeiling` **全部为 0** ✓。
+
+> **§77 的判据已被取代** ✗：那一版是"低于该列地面 8 格以上算地下" ✓ —— 自造、且会把**站在地表房子里**的
+> 玩家（屋顶抬高高度图 ✓）判成地下 ✗。现在这一版**不看高度图、只看海平面** ✓，没有这个副作用 ✓
+> （实测确认：地表屋内 `naturalRaid=true` ✓）。
+
+## 78.3 `canSeeSky` 到底是什么（本轮顺带查清，避免以后再误会）
+
+`BlockAndTintGetter:22` ✓：
+
+```java
+default boolean canSeeSky(BlockPos pos) { return this.getBrightness(LightLayer.SKY, pos) >= this.getMaxLightLevel(); }
+```
+
+⇒ 它是 **skylight == 15** 的判定 ✓，**不是**"头顶有没有方块" ✗。所以：
+
+* **落点**用它 ✓ 是恰当的：要求**满天空光**= 露天 ✓（洞穴/屋里/下界都不满足 ✓，下界 `LightLayer.SKY` 恒 0 ✓）；
+* **门禁**不能用它 ✗ —— 那会把"屋里/树下"也一起否掉 ✓（这正是玩家要求差异化的那一点 ✓）。
+
+## 78.4 实测（专用服务器探针，读完即删）
+
+```
+[SCGUNS-SEA] sea level=63   surface spot 0,71,0
+on the surface          y=71  naturalRaid=true   ✓
+indoors on the surface  y=71  naturalRaid=true   ✓   ← 头顶有方块也照常刷（与幻翼的差异）
+deep underground (y=31) y=31  naturalRaid=false  ✓
+just under sea level    y=62  naturalRaid=false  ✓
+exactly at sea level    y=63  naturalRaid=true   ✓   （与原版一致，用 >=）
+```
+
+## 78.5 防复发 + 验收
+
+* 审计 **`tools/audit_raid_spawn_level.py`** 已重写为最终形态 ✓：禁止 `playerY < 50` / 洞穴搜索 / `yOffset = -5` ✓；
+  要求落点只用 `findSurfaceSpawn`（含 `canSeeSky` + `isStandableSpawn` ✓）且**落点里不得出现 `hasCeiling`** ✓；
+  禁止 `findSpawnAtPlayerLevel` / `SPAWN_Y_WINDOW` 回归 ✓；要求午夜分支必须调 `canGetNaturalRaid` ✓、
+  而 `canGetNaturalRaid` 必须用 `getSeaLevel` ✓ 且**不得出现 `canSeeSky`** ✓（防止退回幻翼式 ✓）。
+  **自测** ✓：对固定提交 `e9d8e03`（§75）跑 ⇒ 命中 **5 条** ✓；当前源码 **0** ✓；已在 CI 里 ✓。
+* 语言文件 ✓：新增 `raid.scguns.no_surface`（EN/ZH ✓，`audit_lang_keys` **1808/1808 对齐** ✓）。
+* 门禁 ✓：`javac` 0 错误 ✓、`gradlew build` ✓、**26 个审计全 0** ✓、`verify_installed_jar` **161/161** ✓、
+  探针已删除 ✓、已安装 ✓（上一版备份 `.bak-204827` ✓）。
+* **未验证** ✓：真实午夜链路仍需真人玩家过一夜 ✓（同 §77 ✓）。快速自测：`nightlyRaidChance = 1.0`，
+  在海平面以上过夜（**屋里也行** ✓）应当刷 ✓；下到 y&lt;63 过夜应当不刷 ✓。
+
 
 
 
