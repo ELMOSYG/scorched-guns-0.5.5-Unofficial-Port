@@ -6465,6 +6465,12 @@ wild gunner: tags=[GunAttackAssigned, AI_SMART, ThematicGunner, MobGunner] item=
   `guardvillagers loaded=false` ✓、**没有 `NoClassDefFoundError`** ✓、服务器正常起 ✓、而且普通枪手照常 ✓
   （`wild gunner: hand=scguns:winnie_millend ammo=2 tags=[GunAttackAssigned, AI_COWARD, ThematicGunner,
   MobGunner]` ✓ —— 顺带复验了 §81 的修复 ✓）。
+* **再拿玩家实际装的 2.4.12 验了一遍** ✓（第一轮用的是 libs 里的 2.4.10 ✓）：同一探针、同一四轮结论 ✓
+  ⇒ `shots=16 refills=8` ✓、`GuardGunAttackGoal p=2 running=true` ✓、村民全程 20 血 ✓。
+  2.4.12 的 `Guard.registerGoals` 里多了一个 `ModCompat$UseMusketGoal`（**p=3** ✓，且只有装了那个"滑膛枪"
+  mod 才会注册 ✓ —— 本次运行的目标列表里根本没有它 ✓），而我们的目标在 **p=2** ✓ ⇒ 不会被它抢 ✓。
+  两个版本都实测通过 ✓ ⇒ `mods.toml` 里 `[2.4.10,)` 这个下限是**有依据**的 ✓；
+  `libs/` 里现在放的是 **2.4.12** ✓（与玩家一致 ✓）。
 
 ## 82.4 顺带修掉的一条死配置（同 §80 那种 ✓）
 
