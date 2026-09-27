@@ -846,8 +846,12 @@ navigation 并抢走移动，于是警卫该退不退、该压不进，站着随
   ② 兼容类里加 `GUARD_REARM_WINDOW_TICKS = 100`（约 5 秒，依据是实测 GV 装备约 20 tick 落地），
   只在生成窗口内、且 `isAlive()` 时才补。补枪路径于是只剩生成期的三条（join / `tickCount < 2` / 装备变化）。
 - **语义**：枪是"生成时自带"的东西；拿走就是拿走；被 GV 自己覆盖时仍会补回来；生成很久后被动装备则保持玩家留下的状态。
-- **防复发**：`audit_guard_compat.py` 新增两条（装备钩子必须检查替换物为空；`rearmReplacedGuardGun` 必须含 `tickCount` 窗口）；
-  `verify_installed_jar` 新增 2 条 ⇒ **210/210**；**31 个审计全 0**；已安装（19421910 字节，备份 `.bak-210128`）。
+- **防复发**：`audit_guard_compat.py` 新增三条（装备钩子必须检查替换物为空；`rearmReplacedGuardGun` 必须含 `tickCount` 窗口；
+  join 钩子必须含 `loadedFromDisk()`）；`verify_installed_jar` 新增 3 条 ⇒ **211/211**；**31 个审计全 0**；
+  已安装（19421950 字节，备份 `.bak-210304`）。
+- **同源的第三个洞（一起修）**：join 事件在**区块重载**时也会触发（新实例 ⇒ 掷骰记录丢失）⇒ 拿走枪、走远、回来
+  可能又凭空多一把。`onEntityJoinWorld` 加了 `event.loadedFromDisk()` 判断：只有真正新生成才发枪；
+  重载只保留必要的一件事——手里是枪就 `reassessWeaponGoal`（AI 目标不存盘，重载必须重装）。
 
 ### §82.13.6 玩家给出真正的规则：**开火后 10 tick 不渲染拖尾**（已实现）
 

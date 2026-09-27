@@ -1056,6 +1056,9 @@ def main():
             zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getTo",
             "taking a guard's gun does not hand it another one"))
         checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"loadedFromDisk",
+            "a guard reloaded with its chunk is not armed again"))
+        checks.append(_check_class_contains(
             zf, "top/ribs/scguns/compat/guardvillagers/GuardVillagersCompat.class",
             b"GUARD_REARM_WINDOW_TICKS", "guard rearming is limited to a spawn window"))
         checks.append(_check_class_contains(

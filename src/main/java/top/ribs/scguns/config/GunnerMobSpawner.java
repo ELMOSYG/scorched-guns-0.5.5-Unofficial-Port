@@ -300,6 +300,13 @@ public class GunnerMobSpawner {
             ItemStack heldItem = mob.getMainHandItem();
             if (heldItem.getItem() instanceof GunItem) {
                reassessWeaponGoal(mob);
+            } else if (event.loadedFromDisk()) {
+               // A guard that comes back with its chunk keeps whatever it was carrying (HANDOFF section
+               // 82.16). Arming here would make "unload the chunk and come back" a way to conjure a new gun
+               // for a guard whose gun was taken - the goal-bearing branch above is the one a reload really
+               // needs, because goals are not saved with the entity. It keeps its own follow range either
+               // way.
+               resetFollowRange(mob);
             } else if (!GuardVillagersCompat.equipGuardGun(mob)) {
                // Guard Villagers compat (HANDOFF section 82): a guard spawns holding a sword or a
                // crossbow like any other guard, and is equipped from this config's

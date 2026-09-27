@@ -7116,12 +7116,23 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   `onEntityJoinWorld` ✓、`onLivingUpdate` 的 `tickCount < 2` ✓、装备变化（非空 + 100 tick 内 ✓）。
 * 语义结果 ✓：枪是"**生成时自带**"的东西 ✓；拿走就是拿走 ✓；被 GV 自己覆盖时仍然会补回来 ✓。
 
+### 82.16.2b 同源的第三个洞：**区块重载**也会补枪 ✓（一起修 ✓）
+* 警卫的补枪走的是 **join 事件** ✓，而 `EntityJoinLevelEvent` 在**区块重新加载**时同样会触发 ✓
+  （实体是新实例 ✓、`GUARD_GUN_ROLLS` 里那次掷骰记录已经没了 ✓）⇒ 拿走枪 → 走远 → 回来 ✓
+  ⇒ 有可能**又掷一次骰子**并凭空多出一把 ✓（同一个"发枪机"症状的另一种触发方式 ✓）。
+* 修法 ✓：`onEntityJoinWorld` 里加 `event.loadedFromDisk()` 判断 ✓ —— **只有真正新生成**的实体才发枪 ✓；
+  重载只保留**必须**做的那件事：手里是枪 ⇒ `reassessWeaponGoal` ✓（因为 AI 目标**不随实体存盘** ✓，
+  重载后必须重新装 ✓，这一条对任何枪手 mob 都必要 ✓），否则只 `resetFollowRange` ✓。
+* 于是全部发枪路径只剩**生成期**三条 ✓：`onEntityJoinWorld`（非重载 ✓）、`onLivingUpdate` 的 `tickCount < 2` ✓、
+  装备变化（替换物非空 + 100 tick 内 ✓）✓。拿走枪后即使**卸载再加载区块**也不会再出现 ✓。
+
 ### 82.16.3 防复发 + 验收 ✓
 * `audit_guard_compat.py` 新增两条 ✓：装备变化钩子**必须**检查"替换物为空" ✓；
-  `rearmReplacedGuardGun` **必须**含 `tickCount` 窗口判断 ✓（否则又会变成无限发枪机 ✓）。
-* `verify_installed_jar` **210/210** ✓（新增 2 条 ✓：`GunnerMobSpawner` 必须引用 `getTo` ✓、
-  兼容类必须含 `GUARD_REARM_WINDOW_TICKS` ✓）；**31 个审计全 0** ✓、`javac` 0 ✓、`build` ✓、
-  已安装 ✓（`19421910` 字节 ✓，备份 `.bak-210128` ✓）。
+  `rearmReplacedGuardGun` **必须**含 `tickCount` 窗口判断 ✓（否则又会变成无限发枪机 ✓）；
+  再加一条 ✓：join 钩子**必须**含 `loadedFromDisk()` ✓（否则区块重载又会发枪 ✓）。
+* `verify_installed_jar` **211/211** ✓（新增 3 条 ✓：`GunnerMobSpawner` 必须引用 `getTo` ✓ 与
+  `loadedFromDisk` ✓、兼容类必须含 `GUARD_REARM_WINDOW_TICKS` ✓）；**31 个审计全 0** ✓、`javac` 0 ✓、`build` ✓、
+  已安装 ✓（`19421950` 字节 ✓，备份 `.bak-210304` ✓）。
 * **未实测** ✓（交给玩家 ✓）：① 生成时该带枪的警卫照旧带枪 ✓（持枪率仍是数据文件里的 25% ✓）；
   ② **拿走枪之后不会再冒出新的** ✓（本条就是玩家报的 ✓）；③ 用命令给警卫发把剑、或生成后很久再动它的装备 ✓
   ⇒ 保持你留下的样子 ✓。

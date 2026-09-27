@@ -343,6 +343,12 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
     if "tickCount" not in rearm:
         problems.append("rearming a guard is not limited to the ticks around its spawn, so a guard re-arms "
                         "long after the player disarmed it")
+    # The join event also fires when a chunk brings an entity back, with a fresh instance and therefore a
+    # fresh spawn roll. Arming there would let a player get a new gun by unloading the chunk and returning.
+    join_hook = method_body(spawner, "onEntityJoinWorld")
+    if "loadedFromDisk()" not in join_hook:
+        problems.append("the join hook arms a guard that was only loaded from disk, so a taken gun comes "
+                        "back after a chunk reload")
 
     if "isHoldingGun" not in compat:
         problems.append("GuardVillagersCompat has no isHoldingGun, so the mixins inside Guard Villagers' "
