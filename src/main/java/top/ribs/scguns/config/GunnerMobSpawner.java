@@ -92,10 +92,16 @@ public class GunnerMobSpawner {
          if (heldItem.getItem() instanceof GunItem) {
             reassessWeaponGoal(mob);
          } else if (event.getSlot() == EquipmentSlot.MAINHAND) {
-            // Guard Villagers refills a guard's main hand with its own sword or crossbow, sometimes well
-            // after the guard spawned - this is what puts the gun back (HANDOFF section 82). The compat
-            // remembers the guard's roll, so a guard that never won one stays armed with a sword.
-            GuardVillagersCompat.equipGuardGun(mob);
+            // Guard Villagers arms a fresh guard *after* it joins the level, so the gun this compat gave it
+            // can be overwritten a few ticks later - that is the one case worth putting a gun back, and it
+            // is what "the replacement is not empty" describes (HANDOFF section 82).
+            //
+            // An empty main hand means the gun was taken: by a player, a hopper, an item frame. Re-arming
+            // there turned a disarmed guard into a gun dispenser, which is what the player reported
+            // (HANDOFF section 82.16) - take the weapon away and a new one appears.
+            if (!event.getTo().isEmpty()) {
+               GuardVillagersCompat.rearmReplacedGuardGun(mob);
+            }
          }
       }
    }

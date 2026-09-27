@@ -55,14 +55,41 @@ public final class GuardVillagersCompat {
    }
 
    /**
+    * How long after a guard joins the level Guard Villagers may still overwrite its equipment, in ticks.
+    *
+    * <p>Guard Villagers equips a fresh guard with its own sword or crossbow a few ticks after the entity
+    * joins (the section 82 probe saw a gun at join and an iron sword twenty ticks later), so the compat has
+    * to be willing to put the gun back for that long. It is deliberately a <b>window</b> and not "forever":
+    * a gun a player takes away must stay taken (HANDOFF section 82.16).</p>
+    */
+   public static final int GUARD_REARM_WINDOW_TICKS = 100;
+
+   /**
+    * Puts a guard's gun back after <b>Guard Villagers itself</b> replaced it (HANDOFF section 82.16).
+    *
+    * <p>The caller has already checked that the main hand now holds something - an empty hand means the gun
+    * was taken, and arming the guard again there makes the compat an infinite gun dispenser. This adds the
+    * second condition: the guard must still be inside {@link #GUARD_REARM_WINDOW_TICKS} of its spawn, so a
+    * guard that loses its gun later in life (or is deliberately given a sword) stays as the player left
+    * it.</p>
+    */
+   public static boolean rearmReplacedGuardGun(PathfinderMob mob) {
+      if (!isGuard(mob) || !mob.isAlive() || mob.tickCount > GUARD_REARM_WINDOW_TICKS) {
+         return false;
+      }
+
+      return equipGuardGun(mob);
+   }
+
+   /**
     * Gives a guard its gun, once. Returns whether the guard is holding a gun afterwards.
     *
     * <p>Called three times on purpose. Guard Villagers equips a freshly spawned guard with its own sword
     * or crossbow <b>after</b> the entity joins the level, so the gun equipped on join is overwritten -
     * the probe for this section showed a guard holding {@code scguns:winnie} at join and an iron sword
-    * twenty ticks later. The join hook, the first ticks of the mob's life and the equipment-change hook
-    * therefore all come here; the spawn-chance roll is made once per guard and remembered, so the retries
-    * cannot turn a 30% chance into a certainty.</p>
+    * twenty ticks later. The join hook, the first ticks of the mob's life and
+    * {@link #rearmReplacedGuardGun} therefore all come here; the spawn-chance roll is made once per guard
+    * and remembered, so the retries cannot turn a 30% chance into a certainty.</p>
     */
    public static boolean equipGuardGun(PathfinderMob mob) {
       if (!isGuard(mob)) {

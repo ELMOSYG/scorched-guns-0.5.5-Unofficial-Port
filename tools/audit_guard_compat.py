@@ -331,6 +331,19 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
         if "common.compat.guardvillagers." + mixin_name not in mixin_config.get("mixins", []):
             problems.append("scguns.mixins.json does not list %s, so it never applies" % mixin_name)
 
+    # A guard's gun is a spawn-time thing (HANDOFF section 82.16). The compat has to put the gun back when
+    # Guard Villagers' own equipment lands on top of it a few ticks after the join, but re-arming on every
+    # equipment change - including an empty main hand, i.e. a player taking the gun - makes the compat an
+    # infinite gun dispenser, which is what the player reported.
+    equipment_change = method_body(spawner, "onLivingEquipmentChange")
+    if "getTo().isEmpty()" not in equipment_change:
+        problems.append("the equipment-change hook does not check whether the replacement is empty, so "
+                        "taking a guard's gun hands it another one")
+    rearm = method_body(compat, "rearmReplacedGuardGun")
+    if "tickCount" not in rearm:
+        problems.append("rearming a guard is not limited to the ticks around its spawn, so a guard re-arms "
+                        "long after the player disarmed it")
+
     if "isHoldingGun" not in compat:
         problems.append("GuardVillagersCompat has no isHoldingGun, so the mixins inside Guard Villagers' "
                         "classes have no entity-type-free way to read the hand")
