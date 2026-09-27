@@ -90,7 +90,9 @@ public class AIGunEvent {
             projectileEntity.setPos(posX, posY, posZ);
             level.addFreshEntity(projectileEntity);
             spawnedProjectiles[i] = projectileEntity;
-            projectileEntity.tick();
+            // No inline tick(): a shotgun's 26 pellets would each run a full projectile tick - raycasts,
+            // collisions, impact effects - inside the firing call, measured at ~41 ms per shot against
+            // 1.2 ms for a single-pellet gun (HANDOFF section 82.11). They tick on the next level tick.
          }
 
          int radius = (int)shooter.getX();

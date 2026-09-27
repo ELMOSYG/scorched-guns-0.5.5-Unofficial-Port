@@ -222,7 +222,12 @@ public class ServerPlayHandler {
          projectileEntity.setAdditionalDamage(Gun.getAdditionalDamage(heldItem));
          world.addFreshEntity(projectileEntity);
          spawnedProjectiles[i] = projectileEntity;
-         projectileEntity.tick();
+         // No projectileEntity.tick() here (HANDOFF section 82.11). A shotgun fires up to 26 pellets, and
+         // ticking each one inline means 26 full projectile ticks - block and entity raycasts, collision
+         // handling, impact effects - inside the packet handler: measured at ~41 ms for boomstick against
+         // 1.2 ms for a one-pellet gun, which is more than two server ticks and is exactly the hitch
+         // players report on every shotgun. The pellets tick normally on the next level tick, one tick
+         // later, which nothing in the game can notice.
       }
 
       if (!projectileProps.shouldHideProjectile()) {
