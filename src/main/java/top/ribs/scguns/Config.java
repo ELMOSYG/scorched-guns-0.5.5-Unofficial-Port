@@ -233,6 +233,8 @@ public class Config {
       public final BooleanValue sprintAnimation;
       public final DoubleValue bobbingIntensity;
       public final BooleanValue fireLights;
+      public final DoubleValue bulletTrailLifeMultiplier;
+      public final DoubleValue bulletTrailLengthMultiplier;
       public final BooleanValue puritySeals;
       public final DoubleValue dynamicCrosshairBaseSpread;
       public final DoubleValue dynamicCrosshairSpreadMultiplier;
@@ -290,6 +292,24 @@ public class Config {
             .defineInRange("bobbingIntensity", 1.0, 0.0, 2.0);
          this.cinematicGunEffects = builder.comment("If enabled, enables cinematic camera effects on guns ").define("cinematicGunEffects", true);
          this.fireLights = builder.comment("If enabled, enables light sources when firing guns").define("fireLights", true);
+         // HANDOFF 82.13. A shotgun fires up to 26 pellets and every pellet gets its own trail,
+         // drawn for as long as the gun's whole projectile life (25 ticks for the boomstick) as a
+         // ~1.8 block long beam. The trail used to be advanced twice per client tick by a
+         // duplicated event registration (HANDOFF 82.12), so it died after half that time; now
+         // that it tracks its pellet correctly, the same blast leaves twice as many beams on
+         // screen for twice as long, which reads as "the trails block my view". The default
+         // therefore keeps the length of time players were used to, and both numbers are exposed
+         // because this is a matter of taste: lower the life multiplier for a cleaner view, raise
+         // it if the tracer should linger.
+         this.bulletTrailLifeMultiplier = builder.comment(
+               "How long a bullet trail stays visible, as a multiple of the gun's projectile life. "
+                  + "0.5 keeps the timing players had before the trail renderer was fixed; 1.0 lets a trail live as long as its projectile."
+            )
+            .defineInRange("bulletTrailLifeMultiplier", 0.5, 0.05, 2.0);
+         this.bulletTrailLengthMultiplier = builder.comment(
+               "The length of a drawn bullet trail, as a multiple of its natural length. Lower it if long tracers get in the way."
+            )
+            .defineInRange("bulletTrailLengthMultiplier", 1.0, 0.1, 4.0);
          this.puritySeals = builder.comment("If enabled, enables purity seals on weapons").define("puritySeals", true);
          this.dynamicCrosshairBaseSpread = builder.comment("The resting size of the Dynamic Crosshair when spread is zero.")
             .defineInRange("dynamicCrosshairBaseSpread", 1.0, 0.0, 5.0);

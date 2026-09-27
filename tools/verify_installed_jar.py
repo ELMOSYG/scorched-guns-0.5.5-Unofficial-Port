@@ -1032,6 +1032,26 @@ def main():
             "the mixin is listed in the packaged mixin config",
             "common.compat.guardvillagers.GuardProjectileHitMixin" in (read("scguns.mixins.json") or "")))
 
+        # 82.12 / 82.13. The trails must be driven by one hook, drawn in one batch with a cached
+        # RenderType per projectile type, and their on-screen life must be adjustable - a shotgun's
+        # 26 beams are otherwise all still in front of the shooter a second after the shot.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/BulletTrailRenderingHandler.class", b"energySwirl",
+            "the trail renderer still draws with the energy swirl render type"))
+        checks.append((
+            "the trail renderer no longer subscribes to the render stage",
+            b"RenderLevelStageEvent" not in zf.read(
+                "top/ribs/scguns/client/handler/BulletTrailRenderingHandler.class")))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$Display.class", b"bulletTrailLifeMultiplier",
+            "the trail life multiplier is a client option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/network/ClientPlayHandler.class", b"bulletTrailLifeMultiplier",
+            "a received trail's life goes through that multiplier"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/BulletTrailRenderingHandler.class",
+            b"bulletTrailLengthMultiplier", "the drawn trail length goes through that multiplier"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

@@ -639,7 +639,15 @@ public class ClientPlayHandler {
          ItemStack item = message.getItem();
          int trailColor = message.getTrailColor();
          double trailLengthMultiplier = message.getTrailLengthMultiplier();
-         int life = message.getLife();
+         // HANDOFF 82.13: a trail used to be advanced twice per client tick by a duplicated bus
+         // registration (82.12), so it died at half the gun's projectile life. It now tracks its
+         // pellet correctly, and this multiplier decides how long it stays on screen - 0.5 by
+         // default, i.e. the timing players were used to, because a shotgun's 26 beams are
+         // otherwise all still hanging in front of the shooter a second later.
+         int life = Math.max(
+            1,
+            (int)Math.round((double)message.getLife() * Config.clientOr(Config.CLIENT.display.bulletTrailLifeMultiplier))
+         );
          double gravity = message.getGravity();
          int shooterId = message.getShooterId();
          boolean enchanted = message.isEnchanted();

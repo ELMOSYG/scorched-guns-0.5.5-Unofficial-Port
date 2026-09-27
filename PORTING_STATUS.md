@@ -763,4 +763,25 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 - **待办**：炮塔在不装 Sable 时崩溃（隔离 `PhysicsStructureHelper` 的 11 处 `dev.ryanhcode.sable.*` 引用）、
   警卫 AI 套用 1.21.1 移植版。
 
+## §82.13 玩家实测反馈：拖尾"很挡视野，之前是好的"（已修，旋钮交给玩家）
+
+旧的"好看"是 §82.12 那个 bug 的副产物：重复注册让拖尾**每客户端刻走两格**，于是它同时
+**只活一半寿命**（`age` 每刻 +2）而且**跑到弹丸前方 2 倍距离**（常常已经埋进墙里/飞出视野）。
+§82.12 把它改回"每刻一格"，拖尾于是**贴着弹丸**走（设计意图，位置修正是对的）并活满 `life`：
+`boomstick` 是 26 颗 / `life 25` / `thickness 0.5` / `speed 5` ⇒ 每颗约 **1.8 格**光束，存活
+12.5 tick → **25 tick**，同一时刻屏幕上的光束数量接近翻倍 —— 这就是"挡视野"。
+
+- **修法（不恢复错位，改为可调 + 默认回到玩家习惯的时长）**：新增两个**客户端**配置
+  `display.bulletTrailLifeMultiplier`（默认 **0.5**，`round(25*0.5)=13` ≈ 旧版 12.5）与
+  `display.bulletTrailLengthMultiplier`（默认 1.0）；前者在 `ClientPlayHandler` 收到拖尾时折算 `life`，
+  后者在渲染器里缩放光束长度。两处都在纯客户端路径、经 `Config.clientOr` 读取（`audit_client_config_side` 保持 0）。
+- **顺带查清**：每把枪 JSON 的 `trailLengthMultiplier`（`boomstick` 写 2.0）**从没被渲染器读过**，是死配置；
+  本轮没接上（接上会让光束变 2 倍长，与诉求相反），可用旋钮就是新加的客户端倍率。
+- **玩家怎么调**：实例 `config/scguns-client.toml` 的 `[display]`：嫌挡视野 → `bulletTrailLifeMultiplier=0.25`；
+  嫌光束长 → `bulletTrailLengthMultiplier=0.5`；想看完整拖尾 → 都设 1.0。重启生效。
+- **门禁**：**31 个审计全 0** / `verify_installed_jar` **194/194**（新增 5 条：渲染器仍用 `energySwirl`、
+  渲染器不再订阅 `RenderLevelStageEvent`、配置项存在、接收端折算 life、渲染端缩放长度）/ `javac` 0 /
+  已安装（19412769 字节，备份 `.bak-202613`）。
+- **仍未做**：若还嫌多，可选"只给多弹丸枪的前几颗弹丸画拖尾"（26 条 → 3~5 条，单发枪不受影响）。
+
 

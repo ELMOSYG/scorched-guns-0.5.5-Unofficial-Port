@@ -21,6 +21,7 @@ import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import org.joml.Matrix4f;
+import top.ribs.scguns.Config;
 import top.ribs.scguns.client.BulletTrail;
 import top.ribs.scguns.init.ModTags;
 
@@ -126,10 +127,14 @@ public class BulletTrailRenderingHandler {
                   double speed = Math.sqrt(motion.x * motion.x + motion.y * motion.y + motion.z * motion.z);
                   float speedFactor = (float)Math.max(1.0, speed * 0.4);
                   int baseSize = 30;
-                  int size = (int)Math.min(
+                  // HANDOFF 82.13: the drawn beam is a fixed multiple of the projectile's speed and
+                  // the gun's configured trail thickness, which for a shotgun is a ~1.8 block bar
+                  // per pellet - 26 of them across the view. This is the knob for shortening it.
+                  double lengthMultiplier = Config.clientOr(Config.CLIENT.display.bulletTrailLengthMultiplier);
+                  int size = (int)(Math.min(
                      (double)((trail.getAge() + 1) * 30) * trail.getTrailThickness() * (double)speedFactor,
                      (double)baseSize * trail.getTrailThickness() * (double)speedFactor
-                  );
+                  ) * lengthMultiplier);
                   int color = trail.getTrailColor();
                   int red = color >> 16 & 0xFF;
                   int green = color >> 8 & 0xFF;
