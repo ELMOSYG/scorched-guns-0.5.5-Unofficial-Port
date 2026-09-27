@@ -189,34 +189,53 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
     # The gun goal must not reserve MOVE|LOOK: while it runs, the goal selector cannot start any other
     # goal needing those flags, which silently disabled Guard Villagers' melee, patrol, checkpoint,
     # return-to-village, door and stroll goals - the gun AI "taking over" the guard's AI.
-    if "setFlags(" in goal:
-        problems.append("the guard gun goal reserves goal flags again, which blocks Guard Villagers' own "
-                        "movement goals for as long as the guard has a target")
-    # Movement belongs to Guard Villagers: this goal aims and fires, nothing else. Steering the navigation
-    # (approach, back away, step aside) fights the guard's own goals and is what made an armed guard behave
-    # like a raider in the first place.
-    for needle in ("getNavigation(", "getMoveControl("):
-        if needle in goal:
-            problems.append("the guard gun goal steers movement again (%s); Guard Villagers' own goals own "
-                            "the guard's movement" % needle)
+    if "setFlags(" not in goal:
+        problems.append("the guard gun goal no longer reserves MOVE and LOOK, so it cannot position itself: "
+                        "Guard Villagers' own goals share the navigation and win it, and the guard fires "
+                        "from wherever it happens to be (HANDOFF 82.15)")
+    if "getNavigation(" not in goal:
+        problems.append("the guard gun goal never steers movement, so it has no way to hold the gun's range "
+                        "or back out of melee (HANDOFF 82.15)")
 
     events = strip_comments(files.get("compat/guardvillagers/GuardVillagersEvents.java") or "")
     for needle in ("LivingIncomingDamageEvent", "LivingKnockBackEvent", "GuardVillagersCompat.isFriendlyShot"):
         if needle not in events:
             problems.append("the friendly-fire handler no longer covers %s" % needle)
 
-    # Guards fight with the mod's own gunner AI (HANDOFF section 82.9). A guard-specific goal was the wrong
-    # shape twice: with MOVE|LOOK reserved it disabled the guard's own AI, and without them the guard had no
-    # way to fight at range, so it charged into melee and fired the occasional random shot. The guard class
-    # is now a subclass that only picks the personality and the accuracy.
-    if not re.search(r"class GuardGunAttackGoal\s+extends\s+GunAttackGoal", goal):
-        problems.append("the guard gun goal no longer extends the mod's own GunAttackGoal, so guards fight "
-                        "with a guard-specific AI again instead of the one every other gunner uses")
+    # Guards fight with their own dedicated AI (HANDOFF section 82.15). This reverses 82.9 deliberately: the
+    # raider AI takes no flags, so Guard Villagers' goals keep the navigation and the guard never positions
+    # itself - the player's "its gunner AI is not smart". The guard AI owns its movement instead, like
+    # vanilla's MeleeAttackGoal does, and everything that is about the *shot* still comes from the shared
+    # pipeline rather than being hand-rolled again.
+    if not re.search(r"class GuardGunAttackGoal[^\{]*extends\s+Goal", goal):
+        problems.append("the guard gun goal is not a standalone Goal any more; a guard is supposed to fight "
+                        "with its own AI (HANDOFF 82.15)")
+    if re.search(r"class GuardGunAttackGoal[^\{]*extends\s+GunAttackGoal", goal):
+        problems.append("the guard gun goal extends the raider AI again, whose missing flags are exactly why "
+                        "a guard could not position itself (HANDOFF 82.15)")
     if GUARD_PACKAGE in goal:
         problems.append("the guard gun goal names a Guard Villagers class, which forces that class to load")
-    if "accuracyModifier" not in goal:
-        problems.append("the guard goal no longer overrides the accuracy, so the compat's accuracy option "
-                        "does nothing")
+    if "MobGunFire.fire(" not in goal or "MobGunFire.fireInterval(" not in goal:
+        problems.append("the guard goal does not fire through MobGunFire, so guards hand-roll the shot again "
+                        "(rate chain, ammo rules, sound, casing)")
+    if "performGunAttack" in goal or "consumeAmmo" in goal:
+        problems.append("the guard goal spawns projectiles or spends ammo itself; both belong to MobGunFire")
+    # The two bugs the reference goal carries, which must not come back with it.
+    if re.search(r"\.\s*tick\s*\(\s*\)", goal):
+        problems.append("the guard goal ticks its own projectiles inline, which is the section 82.11 shotgun "
+                        "stutter (26 pellets, 26 full ticks inside one call)")
+    if re.search(r"rate\s*/\s*50|/\s*50", goal):
+        problems.append("the guard goal converts the fire rate by dividing by 50, the section 82.6 bug (a "
+                        "0.20.1 millisecond value read as ticks)")
+    if "getIdealAttackRange" not in goal:
+        problems.append("the guard goal no longer reads the gun's ideal range, so every guard fights at one "
+                        "fixed distance whatever it is holding")
+    if "AmmoCount" not in goal:
+        problems.append("the guard goal no longer reloads, so a guard fires one magazine and then stands "
+                        "there (section 81)")
+    if "isFriendlyShot" not in goal:
+        problems.append("the guard goal no longer checks for an ally in the line of fire, so it shoots "
+                        "through the villager it is protecting")
 
     gun_goal = strip_comments(files.get("entity/ai/GunAttackGoal.java") or "")
     if "MobGunFire.fire(" not in gun_goal or "MobGunFire.fireInterval(" not in gun_goal:

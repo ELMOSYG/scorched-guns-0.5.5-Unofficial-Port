@@ -110,7 +110,7 @@ public class GunAttackGoal<T extends PathfinderMob> extends Goal {
     * {@code AmmoCount} crashed the server from {@link #tick()}. Reading it as 0
     * instead makes the mob reload, which is the behaviour we want anyway.</p>
     */
-   protected static int getAmmoCount(ItemStack stack) {
+   public static int getAmmoCount(ItemStack stack) {
       CompoundTag tag = NbtHelper.getTag(stack);
       return tag == null ? 0 : tag.getInt("AmmoCount");
    }

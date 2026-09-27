@@ -1017,8 +1017,20 @@ def main():
         checks.append(("the shared mob firing pipeline ships",
                        "top/ribs/scguns/entity/ai/MobGunFire.class" in names))
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"GunAttackGoal",
-            "the guard goal subclasses the mod's own gunner AI"))
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"MobGunFire",
+            "the guard AI fires through the shared mob pipeline"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"getIdealAttackRange",
+            "the guard AI fights at its own gun's range"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"AmmoCount",
+            "the guard AI reloads instead of firing one magazine"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"LandRandomPos",
+            "the guard AI positions itself (backs out of melee, steps aside for an ally)"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"isFriendlyShot",
+            "the guard AI will not shoot through an ally"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/entity/ai/MobGunFire.class", b"IgnoreAmmo",
             "the pipeline applies the player's IgnoreAmmo rule"))
