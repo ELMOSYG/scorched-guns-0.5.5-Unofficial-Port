@@ -25,7 +25,8 @@
     "client.MixinVindicatorRenderer",
     "client.MouseHandlerMixin",
     "client.PlayerModelMixin",
-    "client.VehiclePoseMixin"
+    "client.VehiclePoseMixin",
+    "client.compat.guardvillagers.GuardModelGunPoseMixin"
   ],
   "injectors": {
     "defaultRequire": 1

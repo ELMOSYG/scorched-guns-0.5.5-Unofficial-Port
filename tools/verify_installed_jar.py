@@ -1068,6 +1068,18 @@ def main():
             checks.append((
                 "scguns.mixins.json lists " + guard_mixin,
                 ("common.compat.guardvillagers." + guard_mixin) in (read("scguns.mixins.json") or "")))
+
+        # 82.17. A guard uses the player's gun holding animation, through the widened pose entry point.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/mixin/client/compat/guardvillagers/GuardModelGunPoseMixin.class",
+            b"applyPlayerModelRotation", "a guard is posed with the player's own gun animation"))
+        checks.append((
+            "scguns.mixins.json lists the guard pose mixin under client",
+            "client.compat.guardvillagers.GuardModelGunPoseMixin" in (read("scguns.mixins.json") or "")))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/render/pose/WeaponPose.class",
+            b"(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/client/model/geom/ModelPart;",
+            "the pose entry point takes any humanoid holder, not only a player"))
         checks.append((
             "the mixin is listed in the packaged mixin config",
             "common.compat.guardvillagers.GuardProjectileHitMixin" in (read("scguns.mixins.json") or "")))

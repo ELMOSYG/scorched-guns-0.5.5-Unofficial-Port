@@ -33,6 +33,16 @@ PARTIAL_NEW = re.compile(r"getGameTimeDeltaPartialTick\s*\(")
 DELTA_NEW = re.compile(r"getGameTimeDeltaTicks\s*\(")
 
 
+# New port code with no 0.5.5 counterpart that legitimately needs the real frame delta, because it drives an
+# accumulation rather than interpolating between ticks. Each entry is a decision, not an oversight, and the
+# reason is recorded here:
+ALLOWED_NEW_DELTA_SITES = {
+    # 82.17. The guard's aim pose eases towards its target at that rate, so the quantity has to be elapsed
+    # ticks; a 0..1 partial tick would make the animation speed depend on the frame rate.
+    "mixin/client/compat/guardvillagers/GuardModelGunPoseMixin.java",
+}
+
+
 def suffix(path, root):
     return path.relative_to(root).as_posix()
 
@@ -92,13 +102,22 @@ def main():
     # Guard the other direction: a file with no 0.5.5 delta site must not have
     # gained a gameTimeDeltaTicks read, which would mean an over-application.
     over = []
+    allowed_new = []
     for path in NEW.rglob("*.java"):
         rel = path.relative_to(NEW).as_posix()
         if rel in expected:
             continue
         text = code_only(path.read_text(encoding="utf-8", errors="replace"))
         if DELTA_NEW.search(text):
+            if rel in ALLOWED_NEW_DELTA_SITES:
+                allowed_new.append(rel)
+                continue
             over.append(rel)
+    if allowed_new:
+        print("")
+        print("gameTimeDeltaTicks in new code, reviewed and wanted (see ALLOWED_NEW_DELTA_SITES):")
+        for name in sorted(allowed_new):
+            print("    %s" % name)
     if over:
         print("")
         print("!!! gameTimeDeltaTicks used in file(s) with no 0.5.5 delta site:")

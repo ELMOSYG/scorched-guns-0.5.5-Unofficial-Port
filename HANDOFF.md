@@ -7138,6 +7138,63 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   ⇒ 保持你留下的样子 ✓。
 
 
+## 82.17 警卫改用**玩家的持枪动画**（玩家提议："警卫和玩家骨骼一致，理论上是可以的" ✓）
+
+### 82.17.1 结论：可以 ✓ —— 前提是把姿势入口的**持有者类型**放宽 ✓
+* 玩家的持枪动作就是 `IHeldAnimation.applyPlayerModelRotation(...)` ✓（`PlayerModelMixin` 在
+  `PlayerModel.setupAnim` 尾部调用它 ✓）。它只用三样东西 ✓：`xRotO`/`getXRot()`（俯仰 ✓）、
+  `isCrouching()` ✓、副手/使用中的物品 ✓ —— **全在 `LivingEntity` 上** ✓，所以签名从 `Player` 放宽成
+  `LivingEntity` 是纯机械改动 ✓（14 个姿势类一起改 ✓，编译期就把漏改的地方全找出来了 ✓）。
+* 但有两处是**本地玩家专有**的 ✓，必须挡住 ✓，否则"玩家挥一下刀，所有持枪警卫都摆出近战姿势" ✗：
+  `GunRenderingHandler.isThirdPersonMeleeAttacking()`（第三人称近战姿势 ✓）与
+  `getThirdPersonMeleeProgress()` ✓ ⇒ 全部加 `player instanceof Player &&` ✓（12 个文件 / 11 处 ✓）。
+* `getPlayerPitch(Player)` 也一并放宽 ✓（子类只调用、不覆写 ✓）；相机的那个分支天然是玩家场景 ✓
+  （只有本地玩家会成为 `getCameraEntity()` ✓）。
+
+### 82.17.2 为什么以前**完全没有**姿势 ✓
+* `MixinHumanoidModel` 注入的是 `HumanoidModel.setupAnim(LivingEntity, ...)` ✓，
+  而 GV 的 `GuardModel extends HumanoidModel<Guard>` **自己覆写**了 `setupAnim(Guard, ...)` ✓
+  （其桥接方法覆盖了 `LivingEntity` 那个 ✓）⇒ Java 调用的是覆写 ✓ ⇒ 通用 mob 姿势**对警卫从不生效** ✗，
+  警卫只是保留了它自己模型动画留下的手臂角度 ✓。
+* 新增客户端 mixin `mixin/client/compat/guardvillagers/GuardModelGunPoseMixin` ✓：
+  目标是 `GuardModel.setupAnim(Guard, ...)` 的**完整描述符** ✓（不写描述符会同时命中三个重载 ✓），
+  实体参数用 `@Coerce Object` ✓ ⇒ 注入签名里**不出现任何实体类型** ✓（§82.10 的规矩 ✓，`audit_mixins` 强制 ✓）。
+
+### 82.17.3 两个必须处理的细节 ✓
+* **骨架**：姿势应用会连带写手臂的**枢轴**（`renderer.x/y/z` ✓，那是玩家的身体尺寸 ✓）
+  ⇒ 警卫只保留**旋转** ✓，枢轴在读前存下、应用后写回 ✓（只写回 x/y/z，不动旋转 ✓）。
+* **瞄准进度**：玩家是 `AimingHandler` 的平滑值 ✓；警卫没有那套状态 ✓ ⇒ 用
+  "有目标 → 1、无目标 → 0" 并**按真实刻差缓动**（约 7 刻到位 ✓）✓，而不是瞬间切换 ✓。
+  这里用的是 `getGameTimeDeltaTicks()`（真实刻差 ✓）而**不是** 0..1 的部分刻 ✓ —— 这正是
+  `audit_time_delta.py` 管的那件事 ✓，它把新用法拦下来了 ✓；本轮把它登记为**审阅过的例外** ✓
+  （`ALLOWED_NEW_DELTA_SITES` ✓，附理由 ✓），规则本身不动 ✓。
+
+### 82.17.4 **枪在手里的物品变换仍然保持原版** ✓（有意 ✓）
+* `ItemInHandLayerMixin` 里写着 ✓：上一版曾照搬 0.4.7 移植版的做法 ✓ 手工给 mob 摆枪 ✓
+  ⇒ "mobs look like they were not holding the gun properly" ✗ ⇒ 已经删掉 ✓，mob 一律走原版
+  `ItemInHandLayer#renderArmWithItem` ✓。本轮**只做手臂** ✓；枪由手臂带着走 ✓（物品层是按手部变换渲染的 ✓）。
+  若观感仍不对 ✓，翻案点就在这一条 ✓。
+
+### 82.17.5 顺手修掉的**审计缺口** ✓
+* `audit_mixin_plugin_gate.py` 取门禁前缀用的是 `re.search`（**只取第一个** ✓）⇒ 本轮给
+  `MixinPlugin` 加了客户端前缀后 ✓ 那条规则等于没检查 ✓。改成 `findall` ✓，**逐个前缀**都要求
+  其下确有引用该前置的 mixin ✓。
+* 同一审计判断"mixin 是否真的用了被门禁的前置"时 ✓ 是靠**类名片段**去 mixin 文件里搜 ✓
+  而插件现在用的是 `isModLoaded("guardvillagers")`（mod id ✓ 不是类名 ✓）
+  ⇒ 片段集合里根本没有 `guardvillagers` ✗ ⇒ 之前那条"通过"其实是靠注释里出现了 **"loading"** 一词命中的 ✗
+  （等于没检查 ✓）。现在 mod id 也纳入片段 ✓；修好后 common/client 两个前缀各自的使用者都列全了 ✓
+  （`GuardMeleeGoalMixin` 等 5 个 ✓ / `GuardModelGunPoseMixin` ✓）。
+
+### 82.17.6 验收与**未实测** ✓
+* **31 个审计全 0** ✓（`audit_guard_compat` 新增 4 条 ✓：客户端姿势 mixin 必须存在 ✓、必须列在 mixin 配置的
+  **client** 段 ✓、必须走 `applyPlayerModelRotation` ✓、姿势入口必须收 `LivingEntity` ✓ 且近战状态必须限定玩家 ✓）；
+  `verify_installed_jar` **214/214** ✓（新增 3 条 ✓）；`javac` 0 ✓、`build` ✓、
+  已安装 ✓（`19425274` 字节 ✓，备份 `.bak-211623` ✓）。
+* **未实测** ✓（交给玩家 ✓）：① 警卫持枪的手臂姿势正常、瞄准平滑 ✓；
+  ② 走动/受击/换弹时不穿模 ✓；③ **玩家自己的第一/第三人称姿势没有任何变化** ✓
+  —— 这条是**回归风险点** ✓（改了共享的姿势入口 ✓，12 个姿势类 ✓），请重点看一眼 ✓。
+
+
 
 
 

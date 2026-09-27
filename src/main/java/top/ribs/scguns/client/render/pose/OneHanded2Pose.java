@@ -10,6 +10,7 @@ import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.HumanoidArm;
@@ -30,13 +31,13 @@ public class OneHanded2Pose implements IHeldAnimation {
 
    @OnlyIn(Dist.CLIENT)
    @Override
-   public void applyPlayerModelRotation(Player player, ModelPart rightArm, ModelPart leftArm, ModelPart head, InteractionHand hand, float aimProgress) {
+   public void applyPlayerModelRotation(LivingEntity player, ModelPart rightArm, ModelPart leftArm, ModelPart head, InteractionHand hand, float aimProgress) {
       boolean right = Minecraft.getInstance().options.mainHand().get() == HumanoidArm.RIGHT
          ? hand == InteractionHand.MAIN_HAND
          : hand == InteractionHand.OFF_HAND;
       ModelPart arm = right ? rightArm : leftArm;
       GunRenderingHandler renderingHandler = GunRenderingHandler.get();
-      if (renderingHandler.isThirdPersonMeleeAttacking()) {
+      if (player instanceof Player && renderingHandler.isThirdPersonMeleeAttacking()) {
          this.applySimplifiedMeleePose(player, arm, renderingHandler.getThirdPersonMeleeProgress());
       } else {
          IHeldAnimation.copyModelAngles(head, arm);
@@ -47,7 +48,7 @@ public class OneHanded2Pose implements IHeldAnimation {
       }
    }
 
-   private void applySimplifiedMeleePose(Player player, ModelPart arm, float progress) {
+   private void applySimplifiedMeleePose(LivingEntity player, ModelPart arm, float progress) {
       if (progress < 0.2F) {
          float lowerProgress = progress / 0.2F;
          arm.xRot = (float)Math.toRadians((double)(-70.0F - 10.0F * lowerProgress));

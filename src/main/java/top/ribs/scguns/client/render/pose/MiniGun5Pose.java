@@ -11,6 +11,7 @@ import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
@@ -125,7 +126,7 @@ public class MiniGun5Pose extends WeaponPose {
 
    @OnlyIn(Dist.CLIENT)
    @Override
-   public void applyPlayerModelRotation(Player player, ModelPart rightArm, ModelPart leftArm, ModelPart head, InteractionHand hand, float aimProgress) {
+   public void applyPlayerModelRotation(LivingEntity player, ModelPart rightArm, ModelPart leftArm, ModelPart head, InteractionHand hand, float aimProgress) {
       if ((Boolean)Config.CLIENT.display.oldAnimations.get()) {
          boolean right = Minecraft.getInstance().options.mainHand().get() == HumanoidArm.RIGHT
             ? hand == InteractionHand.MAIN_HAND
@@ -142,7 +143,7 @@ public class MiniGun5Pose extends WeaponPose {
          super.applyPlayerModelRotation(player, rightArm, leftArm, head, hand, aimProgress);
       }
 
-      if (GunRenderingHandler.get().isThirdPersonMeleeAttacking()) {
+      if (player instanceof Player && GunRenderingHandler.get().isThirdPersonMeleeAttacking()) {
          float banzaiProgress = GunRenderingHandler.get().getThirdPersonMeleeProgress();
          this.applyBanzaiPose(rightArm, leftArm, banzaiProgress);
       }

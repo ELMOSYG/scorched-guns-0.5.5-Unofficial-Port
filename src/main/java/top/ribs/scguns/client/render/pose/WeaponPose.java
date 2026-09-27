@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
@@ -42,28 +43,37 @@ public abstract class WeaponPose implements IHeldAnimation {
 
    @OnlyIn(Dist.CLIENT)
    @Override
-   public void applyPlayerModelRotation(Player player, ModelPart rightArm, ModelPart leftArm, ModelPart head, InteractionHand hand, float aimProgress) {
+   public void applyPlayerModelRotation(LivingEntity holder, ModelPart rightArm, ModelPart leftArm, ModelPart head, InteractionHand hand, float aimProgress) {
       Minecraft mc = Minecraft.getInstance();
       boolean right = mc.options.mainHand().get() == HumanoidArm.RIGHT ? hand == InteractionHand.MAIN_HAND : hand == InteractionHand.OFF_HAND;
       ModelPart mainArm = right ? rightArm : leftArm;
       ModelPart secondaryArm = right ? leftArm : rightArm;
-      float angle = this.getPlayerPitch(player);
+      float angle = this.getPlayerPitch(holder);
       float angleAbs = Math.abs(angle);
       float zoom = this.hasAimPose() ? aimProgress : 0.0F;
       AimPose targetPose = (double)angle > 0.0 ? this.downPose : this.upPose;
-      GunRenderingHandler renderingHandler = GunRenderingHandler.get();
-      if (renderingHandler.isThirdPersonMeleeAttacking()) {
+      // The melee pose comes from the local player's own swing state, so it only applies to the player: a
+      // guard (HANDOFF section 82.17) must not take the player's pose because the player happened to swing.
+      if (holder instanceof Player && GunRenderingHandler.get().isThirdPersonMeleeAttacking()) {
          targetPose = this.meleePose;
          zoom = 1.0F;
       }
 
-      this.applyAimPose(targetPose, mainArm, secondaryArm, angleAbs, zoom, right ? 1.0F : -1.0F, player.isCrouching());
+      this.applyAimPose(targetPose, mainArm, secondaryArm, angleAbs, zoom, right ? 1.0F : -1.0F, holder.isCrouching());
    }
 
-   protected float getPlayerPitch(Player player) {
-      return Minecraft.getInstance().getCameraEntity() == player && Minecraft.getInstance().screen != null
+   /**
+    * The holder's pitch as a fraction of a right angle (HANDOFF section 82.17).
+    *
+    * <p>Takes any {@link LivingEntity}, not a {@link Player}: the pose math only ever needs pitch, crouching
+    * and the off hand, all of which a guard has, which is what lets a guard use the player's own gun holding
+    * animation instead of a hand written one. The camera case below is a player case by nature - only the
+    * local player is the camera entity.</p>
+    */
+   protected float getPlayerPitch(LivingEntity holder) {
+      return Minecraft.getInstance().getCameraEntity() == holder && Minecraft.getInstance().screen != null
          ? 0.0F
-         : Mth.lerp(Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false), player.xRotO, player.getXRot()) / 90.0F;
+         : Mth.lerp(Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false), holder.xRotO, holder.getXRot()) / 90.0F;
    }
 
    private void applyAimPose(AimPose targetPose, ModelPart rightArm, ModelPart leftArm, float partial, float zoom, float offhand, boolean sneaking) {
