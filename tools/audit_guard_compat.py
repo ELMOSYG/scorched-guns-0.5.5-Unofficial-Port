@@ -279,6 +279,19 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
     config = strip_comments(files.get("Config.java") or "")
     if "guard_gun_accuracy" not in config:
         problems.append("the guard accuracy is not configurable (no compat.guard_gun_accuracy option)")
+    if "guard_gun_move_speed" not in config:
+        problems.append("the guard's fighting pace is not configurable (no compat.guard_gun_move_speed option)")
+
+    # Section 82.19. Guard Villagers' own goals walk a guard at 0.6 of its movement speed attribute
+    # (Guard$GuardMeleeGoal's constants), so a gun AI that asks for 1.0 - the attribute's full value - makes
+    # an armed guard cross the village at nearly twice the pace of one holding a sword. That was the
+    # player's report, and the number now comes from Guard Villagers itself. Matched precisely: a bare "0.6"
+    # check was satisfied by the retreat constant's 0.65 and let the ported 1.0 straight through.
+    if not re.search(r"APPROACH_SPEED\s*=\s*0\.6", goal):
+        problems.append("the guard gun goal no longer closes in at Guard Villagers' own pace (0.6), so an "
+                        "armed guard moves much faster than an unarmed one")
+    if "guardGunMoveSpeed" not in goal:
+        problems.append("the guard gun goal's movement is not scaled by the guard_gun_move_speed option")
 
     # Section 82.14: the three pieces of the reference 1.21.1 port's guard compat that this port was
     # missing. Each one is narrow on purpose, and each one has a rule here because each one can be

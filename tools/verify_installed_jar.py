@@ -1031,6 +1031,13 @@ def main():
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"isFriendlyShot",
             "the guard AI will not shoot through an ally"))
+        # 82.19. An armed guard walks at Guard Villagers' own pace, not at the mob's full attribute speed.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardGunAttackGoal.class", b"guardGunMoveSpeed",
+            "the guard AI's movement is scaled by the guard_gun_move_speed option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$Compat.class", b"guard_gun_move_speed",
+            "the guard's fighting pace is a config option"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/entity/ai/MobGunFire.class", b"IgnoreAmmo",
             "the pipeline applies the player's IgnoreAmmo rule"))

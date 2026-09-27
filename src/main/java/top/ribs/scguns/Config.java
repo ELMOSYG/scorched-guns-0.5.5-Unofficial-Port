@@ -170,6 +170,7 @@ public class Config {
     */
    public static class Compat {
       public final DoubleValue guardGunAccuracy;
+      public final DoubleValue guardGunMoveSpeed;
 
       public Compat(Builder builder) {
          builder.comment("Options for the optional mod integrations").push("compat");
@@ -181,6 +182,19 @@ public class Config {
                }
             )
             .defineInRange("guard_gun_accuracy", 3.5, 0.1, 10.0);
+         // HANDOFF section 82.19. Guard Villagers' own goals walk a guard at 0.6 of its movement speed
+         // attribute (Guard$GuardMeleeGoal's constants are 0.6 and 0.65), while the guard gun AI this compat
+         // ports asked for 1.0 - the mob's full attribute speed - so an armed guard crossed the village at
+         // nearly twice the pace of the same guard holding a sword. The AI now uses Guard Villagers' own two
+         // numbers, and this is the multiplier on top of them for players who want a different pace.
+         this.guardGunMoveSpeed = builder.comment(
+               new String[]{
+                  "A multiplier on how fast a Guard Villagers guard moves while fighting with a gun.",
+                  "The base is Guard Villagers' own pace (0.6/0.65 of the guard's movement speed attribute);",
+                  "lower it if armed guards look like they are sprinting past unarmed ones."
+               }
+            )
+            .defineInRange("guard_gun_move_speed", 1.0, 0.25, 2.0);
          builder.pop();
       }
    }

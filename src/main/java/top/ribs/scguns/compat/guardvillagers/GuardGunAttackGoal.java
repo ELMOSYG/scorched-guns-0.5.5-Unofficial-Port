@@ -10,6 +10,7 @@ import net.minecraft.world.entity.ai.util.LandRandomPos;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import top.ribs.scguns.Config;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.entity.ai.AIType;
 import top.ribs.scguns.entity.ai.GunAttackGoal;
@@ -70,8 +71,18 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    /** How far ahead an ally is looked for before a shot is taken. */
    private static final double ALLY_CHECK_REACH = 6.0;
 
-   private static final double APPROACH_SPEED = 1.0;
-   private static final double RETREAT_SPEED = 1.2;
+   /**
+    * How fast the guard closes in - Guard Villagers' own pace, not the mob's full attribute speed.
+    *
+    * <p>{@code Guard$GuardMeleeGoal} walks a guard at 0.6 of its movement speed attribute, so an armed guard
+    * charging at 1.0 (the full attribute, which is what the ported AI asked for) crossed the village at
+    * nearly twice the pace of the same guard holding a sword - the player's "an armed guard moves too fast"
+    * (HANDOFF section 82.19). Same number, same gait.</p>
+    */
+   private static final double APPROACH_SPEED = 0.6;
+
+   /** Backing off and stepping aside use Guard Villagers' other walk constant. */
+   private static final double RETREAT_SPEED = 0.65;
 
    /** The target has to be visible this many ticks before the guard shoots, as the reference requires. */
    private static final int AIM_GATE = 5;
@@ -192,7 +203,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
          if (this.guard.getNavigation().isDone()) {
             Vec3 away = LandRandomPos.getPosAway(this.guard, 10, 7, target.position());
             if (away != null) {
-               this.guard.getNavigation().moveTo(away.x, away.y, away.z, RETREAT_SPEED);
+               this.guard.getNavigation().moveTo(away.x, away.y, away.z, moveSpeed(RETREAT_SPEED));
             }
          }
 
@@ -203,7 +214,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       if (distanceSqr < this.attackRadiusSqr && canSee && this.seeTime >= AIM_GATE) {
          this.guard.getNavigation().stop();
       } else {
-         this.guard.getNavigation().moveTo(target, APPROACH_SPEED);
+         this.guard.getNavigation().moveTo(target, moveSpeed(APPROACH_SPEED));
       }
    }
 
@@ -256,7 +267,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private void stepAside(LivingEntity target) {
       Vec3 aside = LandRandomPos.getPosAway(this.guard, 8, 6, target.position());
       if (aside != null) {
-         this.guard.getNavigation().moveTo(aside.x, aside.y, aside.z, RETREAT_SPEED);
+         this.guard.getNavigation().moveTo(aside.x, aside.y, aside.z, moveSpeed(RETREAT_SPEED));
       }
 
       this.timeUntilShoot = Math.max(this.timeUntilShoot, 10);
@@ -264,6 +275,11 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
 
    private boolean isMagazineEmpty(ItemStack heldItem) {
       return GunAttackGoal.getAmmoCount(heldItem) <= 0;
+   }
+
+   /** Guard Villagers' own pace for this action, scaled by the config multiplier (HANDOFF section 82.19). */
+   private static double moveSpeed(double base) {
+      return base * (Double)Config.COMMON.compat.guardGunMoveSpeed.get();
    }
 
    /**
