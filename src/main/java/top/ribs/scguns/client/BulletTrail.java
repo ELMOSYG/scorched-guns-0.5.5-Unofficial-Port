@@ -122,6 +122,11 @@ public class BulletTrail {
       return this.age;
    }
 
+   /** Total life in client ticks; the renderer uses it to keep the render delay from eating a short trail whole. */
+   public int getMaxAge() {
+      return this.maxAge;
+   }
+
    public ItemStack getItem() {
       return this.item;
    }

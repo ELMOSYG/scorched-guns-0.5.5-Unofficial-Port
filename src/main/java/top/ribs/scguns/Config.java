@@ -233,6 +233,7 @@ public class Config {
       public final BooleanValue sprintAnimation;
       public final DoubleValue bobbingIntensity;
       public final BooleanValue fireLights;
+      public final IntValue bulletTrailRenderDelay;
       public final DoubleValue bulletTrailLifeMultiplier;
       public final DoubleValue bulletTrailLengthMultiplier;
       public final BooleanValue puritySeals;
@@ -293,19 +294,23 @@ public class Config {
          this.cinematicGunEffects = builder.comment("If enabled, enables cinematic camera effects on guns ").define("cinematicGunEffects", true);
          this.fireLights = builder.comment("If enabled, enables light sources when firing guns").define("fireLights", true);
          // HANDOFF 82.13. A shotgun fires up to 26 pellets and every pellet gets its own trail,
-         // drawn for as long as the gun's whole projectile life (25 ticks for the boomstick) as a
-         // ~1.8 block long beam. The trail used to be advanced twice per client tick by a
-         // duplicated event registration (HANDOFF 82.12), so it died after half that time; now
-         // that it tracks its pellet correctly, the same blast leaves twice as many beams on
-         // screen for twice as long, which reads as "the trails block my view". The default
-         // therefore keeps the length of time players were used to, and both numbers are exposed
-         // because this is a matter of taste: lower the life multiplier for a cleaner view, raise
-         // it if the tracer should linger.
-         this.bulletTrailLifeMultiplier = builder.comment(
-               "How long a bullet trail stays visible, as a multiple of the gun's projectile life. "
-                  + "0.5 keeps the timing players had before the trail renderer was fixed; 1.0 lets a trail live as long as its projectile."
+         // and the trail is a beam that hangs *behind* its projectile. While the projectile is
+         // still at the muzzle that beam therefore starts behind the shooter's own camera and cuts
+         // straight across the screen - which is what players report as "the trails block my view".
+         // The rule they asked for is simple: do not draw a trail during the first ticks after the
+         // shot, so this is that delay, and it is the knob that matters. The life multiplier stays
+         // available for how long the trail lingers once it does appear.
+         this.bulletTrailRenderDelay = builder.comment(
+               "How many ticks after a shot a bullet trail stays invisible. The trail is drawn behind its projectile, "
+                  + "so at the muzzle it would cross the shooter's own camera. 0 draws it from the shot, higher values "
+                  + "let the projectile get clear of the shooter first."
             )
-            .defineInRange("bulletTrailLifeMultiplier", 0.5, 0.05, 2.0);
+            .defineInRange("bulletTrailRenderDelay", 10, 0, 40);
+         this.bulletTrailLifeMultiplier = builder.comment(
+               "How long a bullet trail stays visible, as a multiple of the gun's projectile life, counted from the shot "
+                  + "(so it includes the render delay above)."
+            )
+            .defineInRange("bulletTrailLifeMultiplier", 1.0, 0.05, 2.0);
          this.bulletTrailLengthMultiplier = builder.comment(
                "The length of a drawn bullet trail, as a multiple of its natural length. Lower it if long tracers get in the way."
             )

@@ -1046,6 +1046,15 @@ def main():
             zf, "top/ribs/scguns/Config$Display.class", b"bulletTrailLifeMultiplier",
             "the trail life multiplier is a client option"))
         checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$Display.class", b"bulletTrailRenderDelay",
+            "the trail render delay is a client option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/BulletTrailRenderingHandler.class",
+            b"bulletTrailRenderDelay", "no trail is drawn during the first ticks after a shot"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/BulletTrail.class", b"getMaxAge",
+            "the render delay can see a trail's life so it cannot erase a short one"))
+        checks.append(_check_class_contains(
             zf, "top/ribs/scguns/client/network/ClientPlayHandler.class", b"bulletTrailLifeMultiplier",
             "a received trail's life goes through that multiplier"))
         checks.append(_check_class_contains(

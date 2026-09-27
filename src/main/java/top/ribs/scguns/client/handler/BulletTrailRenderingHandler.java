@@ -82,8 +82,9 @@ public class BulletTrailRenderingHandler {
       // buffer anyway now that every pellet of a gun resolves to the same cached
       // RenderType. TurretBulletTrailRenderingHandler never ended it per trail at all.
       BufferSource renderTypeBuffer = Minecraft.getInstance().renderBuffers().bufferSource();
+      int configuredDelay = Config.clientOr(Config.CLIENT.display.bulletTrailRenderDelay);
       for (BulletTrail bulletTrail : this.bullets.values()) {
-         this.renderBulletTrail(bulletTrail, stack, partialSticks, renderTypeBuffer);
+         this.renderBulletTrail(bulletTrail, stack, partialSticks, renderTypeBuffer, configuredDelay);
       }
 
       renderTypeBuffer.endBatch();
@@ -99,7 +100,7 @@ public class BulletTrailRenderingHandler {
       this.bullets.clear();
    }
 
-   private void renderBulletTrail(BulletTrail trail, PoseStack poseStack, float deltaTicks, BufferSource renderTypeBuffer) {
+   private void renderBulletTrail(BulletTrail trail, PoseStack poseStack, float deltaTicks, BufferSource renderTypeBuffer, int configuredDelay) {
       Minecraft mc = Minecraft.getInstance();
       Entity entity = mc.getCameraEntity();
       Level world = mc.level;
@@ -107,6 +108,17 @@ public class BulletTrailRenderingHandler {
          Entity projectileEntity = world.getEntity(trail.getEntityId());
          if (projectileEntity != null) {
             if (!projectileEntity.getType().is(ModTags.Entities.DISABLE_BULLET_TRAIL)) {
+               // HANDOFF 82.13: no trail during the first ticks after the shot. The beam hangs
+               // behind its projectile, so while that projectile is still at the muzzle the beam
+               // lies behind the shooter's own camera and sweeps across the screen. The old code
+               // hid that by accident - every trail was advanced twice per client tick by the
+               // duplicated registration removed in 82.12, which threw the beam clear before a
+               // frame could show it. Waiting out the delay gets the same view honestly. Turret
+               // trails carry no delay: the camera is never at a turret's muzzle.
+               if (trail.getAge() < this.renderDelay(trail, configuredDelay)) {
+                  return;
+               }
+
                if (trail.isTrailVisible()) {
                   poseStack.pushPose();
                   Vec3 view = mc.gameRenderer.getMainCamera().getPosition();
@@ -185,6 +197,20 @@ public class BulletTrailRenderingHandler {
          }
       }
    }
+
+   /**
+    * How long this trail stays invisible after the shot (HANDOFF 82.13).
+    *
+    * <p>The configured delay is what the player asked for, but two guns ship trails shorter than
+    * it ({@code inquisitor} lives 8 ticks, {@code spitfire} 10), and a flat delay would erase their
+    * trails completely. A trail therefore always keeps a few visible ticks at the end of its life.
+    */
+   private int renderDelay(BulletTrail trail, int configured) {
+      return Math.min(configured, Math.max(0, trail.getMaxAge() - MIN_VISIBLE_TRAIL_TICKS));
+   }
+
+   /** The tail of a trail's life that the render delay may never take away (see {@link #renderDelay}). */
+   private static final int MIN_VISIBLE_TRAIL_TICKS = 4;
 
    /** The trail RenderType for this projectile type, built once per type (HANDOFF 82.12). */
    private RenderType getRenderType(Entity entity) {

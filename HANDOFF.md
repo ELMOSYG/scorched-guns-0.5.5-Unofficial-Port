@@ -6915,9 +6915,8 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   ⇒ 同一时刻屏幕上的光束数量**接近翻倍** ✓（开火间隔 `rate 7` ✓）；`callwell` 是 18 颗 / `life 45` ✓ 更久 ✓。
 
 ### 82.13.3 修法：两个客户端旋钮 ✓（默认值 = 玩家习惯的时长 ✓）
-* 新增 `Config.CLIENT.display.bulletTrailLifeMultiplier` ✓（默认 **0.5** ✓，范围 0.05–2.0 ✓）——
-  `ClientPlayHandler.handleMessageBulletTrail` 收到拖尾时按它折算 `life` ✓
-  （`round(25*0.5)=13` ✓ ≈ 旧版的 12.5 ✓）。
+* 新增 `Config.CLIENT.display.bulletTrailLifeMultiplier` ✓（默认 **1.0** ✓，范围 0.05–2.0 ✓）——
+  见 §82.13.6：真正解决"挡视野"的是打开火延迟，所以这条恢复成"活满 `life`" ✓。
 * 新增 `Config.CLIENT.display.bulletTrailLengthMultiplier` ✓（默认 **1.0** ✓，范围 0.1–4.0 ✓）——
   渲染器按它缩放光束长度 ✓（`size *= 倍率` ✓）。
 * 两处都在**纯客户端**路径上 ✓，用 `Config.clientOr(...)` 读取 ✓（沿用 §81 的规矩 ✓，
@@ -6929,8 +6928,8 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
 
 ### 82.13.4 玩家怎么调（已交付 ✓）
 * 配置文件：实例的 `config/scguns-client.toml` ✓ 的 `[display]` 段 ✓：
-  `bulletTrailLifeMultiplier`（嫌挡视野 → `0.25` ✓；想看完整拖尾 → `1.0` ✓）、
-  `bulletTrailLengthMultiplier`（嫌光束太长 → `0.5` ✓）。
+  `bulletTrailRenderDelay`（默认 **10** ✓，见 §82.13.6 ✓）、
+  `bulletTrailLifeMultiplier`（默认 1.0 ✓）、`bulletTrailLengthMultiplier`（嫌光束太长 → `0.5` ✓）。
 * 改完重启游戏生效 ✓。
 
 ### 82.13.5 验收
@@ -6938,8 +6937,29 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   （新增 5 条 ✓：渲染器仍用 `energySwirl` ✓、渲染器**不再**订阅 `RenderLevelStageEvent` ✓、
   配置项存在于 `Config$Display` ✓、接收端折算 `life` ✓、渲染端缩放长度 ✓）；
   `javac` 0 ✓、`build` ✓、已安装 ✓（`19412769` 字节 ✓，备份 `.bak-202613` ✓）。
-* **仍未做**（等玩家决定 ✓）：若还嫌多 ✓，可选"**只给多弹丸枪的前几颗弹丸画拖尾**" ✓（26 条 → 3~5 条 ✓，
-  单发枪不受影响 ✓）。
+
+### 82.13.6 玩家给出真正的规则：**开火后 10 tick 不渲染拖尾** ✓（这才是病根 ✓）
+* 玩家第二次反馈把方向说清楚了 ✓："**拖尾直接在玩家背后出现，直接从玩家摄像头穿过去**" ✓。
+  结合渲染几何 ✓（光束是从拖尾位置沿弹丸方向**向后**延伸 `1+size` 个局部单位 ✓）：
+  ⇒ 弹丸还在枪口时 ✓，这条挂在它**后面**的光束正好落在**玩家自己的摄像头**上 ✓
+  ⇒ 于是它横穿屏幕 ✓ —— 这正是"挡视野" ✓。
+* **为什么以前没这问题** ✓：§82.12 之前的重复注册让拖尾每刻走两格 ✓，开火后**第一帧**光束就已被甩到 10 格外 ✓
+  （`boomstick` speed 5 ✓）⇒ 你根本没机会看到它 ✓。位置修正后它老老实实跟着弹丸 ✓，于是这段被暴露出来 ✓。
+* **修法（按玩家规则 ✓）**：新增 `Config.CLIENT.display.bulletTrailRenderDelay` ✓（默认 **10** ✓，范围 0–40 ✓）；
+  `renderBulletTrail` 在 `trail.getAge() < 延迟` 时**直接不画** ✓（`age` 就是从收到开火封包起算的客户端刻数 ✓）。
+  ⇒ 开火后 10 tick 内没有任何光束 ✓，之后才随着弹丸出现 ✓。
+* **一个必须处理的边界** ✓：有 **两把枪的拖尾寿命短于这个延迟** ✗ ——
+  `inquisitor`（`life 8` ✓）、`spitfire`（`life 10` ✓）⇒ 硬套 10 tick 会把它们的拖尾**整个抹掉** ✗。
+  所以 `renderDelay()` 会夹一下 ✓：`min(配置值, max(0, maxAge - 4))` ✓ ——
+  拖尾**至少保留 4 个可见刻** ✓（`inquisitor` → 延迟 4 ✓，`spitfire` → 6 ✓，`boomstick` → 10 ✓）。
+  为此给 `BulletTrail` 加了 `getMaxAge()` ✓。
+* **炮塔拖尾不加延迟** ✓：摄像头不在炮塔枪口上 ✓，它的光束永远不会穿过玩家摄像头 ✓（`TurretBulletTrailRenderingHandler` 未改 ✓）。
+* 延迟值每帧只读一次 ✓（`render()` 里读好后传下去 ✓），不是每条拖尾读一次 ✓。
+* **验收（本节）** ✓：**31 个审计全 0** ✓；`verify_installed_jar` **197/197** ✓
+  （本节新增 4 条 ✓：`bulletTrailRenderDelay` 是客户端配置项 ✓、渲染器引用它 ✓、
+  `BulletTrail` 暴露 `getMaxAge` ✓）；`javac` 0 ✓、`build` ✓、
+  已安装 ✓（`19413219` 字节 ✓，备份 `.bak-203502` ✓）。
+* **仍未做**（等玩家决定 ✓）：若还嫌多 ✓，可选"只给多弹丸枪的前几颗弹丸画拖尾" ✓（26 条 → 3~5 条 ✓）。
 
 
 
