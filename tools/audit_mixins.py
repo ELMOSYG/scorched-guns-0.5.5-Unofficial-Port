@@ -23,11 +23,24 @@ REFS = os.path.join(ROOT, ".refs", "nf-src")
 ORIG = r"E:\mod\SG2-1.21\.sg055_deobf"
 
 MIXIN = re.compile(r"@Mixin\s*\(\s*\{?\s*([\w.]+)\s*\.class")
+# `@Shadow` followed by a field declaration: the declared type is loaded during mixin
+# preparation. Entity types must not appear there (see the check in main()).
+SHADOW_FIELD = re.compile(r"@Shadow\s+[^;{]*?\b([A-Za-z_][\w.]*(?:<[^;]*?>)?)\s+[A-Za-z_]\w*\s*;")
+ENTITY_TYPE = re.compile(r"\b(Entity|LivingEntity|Mob|PathfinderMob|Monster|Player|ServerPlayer|"
+                         r"AbstractVillager|MobEffectInstance)\b")
+
 INJECT = re.compile(r"@(Inject|Redirect|ModifyVariable|ModifyArg|ModifyArgs|WrapOperation|Accessor|Invoker)"
                     r"\s*\(([^)]*)\)", re.S)
 METHOD_ATTR = re.compile(r'method\s*=\s*(\{[^}]*\}|"[^"]*")')
 QUOTED = re.compile(r'"([^"]*)"')
 IMPORT = re.compile(r"import\s+([\w.]+);")
+
+
+def strip_comments(text: str) -> str:
+    """Comments quote the broken patterns on purpose (see the guard melee mixin's javadoc) - a scan that
+    reads them flags its own documentation."""
+    text = re.sub(r"/\*.*?\*/", lambda m: re.sub(r"[^\n]", " ", m.group(0)), text, flags=re.S)
+    return re.sub(r"//[^\n]*", "", text)
 
 
 def source_for(fqn: str) -> str | None:
@@ -388,6 +401,19 @@ def main() -> None:
                 target_fqn = next((imports[t] for t in now if t in imports), None)
                 if target_fqn is not None:
                     broken += check_callbacks(rel, text, target_fqn)
+
+            # @Shadow fields are resolved while Mixin is still PREPARING configs, so their
+            # declared type is loaded at that moment - and an entity type drags in
+            # LivingEntity. Every mod that mixes into LivingEntity (GeckoLib does) then dies
+            # with "MixinTargetAlreadyLoadedException: target
+            # net.minecraft.world.entity.LivingEntity was loaded too early", pointing at the
+            # innocent mod. Reached by reflection instead: method-body type references are
+            # resolved lazily, field and signature types are not.
+            for declared in SHADOW_FIELD.findall(strip_comments(text)):
+                if ENTITY_TYPE.search(declared):
+                    broken += 1
+                    print("BROKEN %-57s @Shadow %s loads an entity type during mixin "
+                          "preparation" % (rel, declared.strip()))
 
     print("\n%d target drift(s), %d missing injection point(s), %d unresolved target(s)"
           % (drift, broken, unresolved))

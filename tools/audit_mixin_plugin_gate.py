@@ -113,8 +113,22 @@ def main():
             )
 
         # Does shouldApplyMixin gate on a field?
-        match = re.search(r"shouldApplyMixin\s*\([^)]*\)\s*\{([^}]*)\}", text, re.S)
-        body = match.group(1) if match else ""
+        # Brace-matched, not `[^}]*`: a scoped gate has an inner block, and stopping at its first `}`
+        # made the audit report "does not gate on a field" for a plugin that does (and would hide a
+        # genuinely global gate written the same way).
+        match = re.search(r"shouldApplyMixin\s*\([^)]*\)\s*\{", text)
+        body = ""
+        if match:
+            depth, i = 0, match.end() - 1
+            while i < len(text):
+                if text[i] == "{":
+                    depth += 1
+                elif text[i] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        body = text[match.end():i]
+                        break
+                i += 1
         gating = re.search(r"return\s+(?!true\b)([\w.]+)\s*;", body)
         if gating:
             field = gating.group(1)

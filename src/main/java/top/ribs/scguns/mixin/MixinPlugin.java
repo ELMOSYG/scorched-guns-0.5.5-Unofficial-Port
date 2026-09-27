@@ -24,24 +24,25 @@ public class MixinPlugin implements IMixinConfigPlugin {
    private boolean isFrameworkInstalled;
 
    /**
-    * Guard Villagers, probed by its Guard class - the same shape as the Framework probe above, and the same
-    * caveat: if that class is ever renamed, this gate silently skips the guard compat's mixins (the guard
-    * simply keeps its melee goal and loses nothing else), so it is a nuisance, not a crash.
+    * Guard Villagers is looked up in the <b>mod list</b>, not by loading one of its classes.
+    *
+    * <p>Probing {@code tallestegg.guardvillagers.common.entities.Guard} looks harmless and is fatal: the
+    * probe runs while Mixin is preparing configs, and {@code Guard} extends {@code PathfinderMob}, so
+    * {@code Mob} and then {@code LivingEntity} are loaded at that moment. Every mod that mixes into
+    * {@code LivingEntity} - GeckoLib and Curios both do - then dies with
+    * {@code MixinTargetAlreadyLoadedException: target net.minecraft.world.entity.LivingEntity was loaded too
+    * early}, and the crash report names that innocent mod rather than this probe. {@code LoadingModList}
+    * answers the same question without touching Minecraft at all (HANDOFF section 82.10).</p>
     */
-   private static final String GUARD_VILLAGERS_GUARD = "tallestegg.guardvillagers.common.entities.Guard";
-
-   private boolean isGuardVillagersInstalled;
-   private boolean guardProbed;
+   private boolean guardVillagersProbed;
+   private boolean isGuardVillagersInstalled = true;
 
    public MixinPlugin() {
       super();
    }
 
    public void onLoad(String mixinPackage) {
-      // Probed here, not in acceptTargets: Mixin asks shouldApplyMixin before that, so a flag set there is
-      // still false when the gate is read and the guard mixins are skipped without a word - the same silent
-      // failure this class exists to prevent.
-      this.isGuardVillagersInstalled = isClassPresent(GUARD_VILLAGERS_GUARD);
+      this.isGuardVillagersInstalled = isModLoaded("guardvillagers");
 
       for (String candidate : FRAMEWORK_BOOTSTRAP) {
          try {
@@ -61,6 +62,26 @@ public class MixinPlugin implements IMixinConfigPlugin {
             + "been renamed again and this probe needs updating.",
          String.join(", ", FRAMEWORK_BOOTSTRAP)
       );
+   }
+
+   /**
+    * Whether Guard Villagers is in the mod list, by reflection into {@code LoadingModList} so the class is
+    * only referenced if it exists.
+    *
+    * <p><b>Fails open</b>: if the lookup cannot be made, the guard mixins are applied, and because they are
+    * {@code @Pseudo} Mixin skips the ones whose target is missing - which is exactly what happens without
+    * Guard Villagers. Failing closed would silently disable them with the mod installed, which is the one
+    * failure mode this class exists to prevent.</p>
+    */
+   private static boolean isModLoaded(String modId) {
+      try {
+         Class<?> loadingModList = Class.forName("net.neoforged.fml.loading.LoadingModList",
+            false, MixinPlugin.class.getClassLoader());
+         Object modList = loadingModList.getMethod("get").invoke(null);
+         return loadingModList.getMethod("getModFileById", String.class).invoke(modList, modId) != null;
+      } catch (Throwable notDeterminable) {
+         return true;
+      }
    }
 
    public String getRefMapperConfig() {
@@ -87,25 +108,16 @@ public class MixinPlugin implements IMixinConfigPlugin {
     */
    public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
       if (mixinClassName.startsWith("top.ribs.scguns.mixin.common.compat.guardvillagers.")) {
-         // Re-probe if onLoad somehow never ran, so the gate cannot fail closed by ordering alone.
-         if (!this.isGuardVillagersInstalled && !this.guardProbed) {
-            this.guardProbed = true;
-            this.isGuardVillagersInstalled = isClassPresent(GUARD_VILLAGERS_GUARD);
+         // Re-probe if onLoad somehow never ran, so the gate cannot hinge on call order.
+         if (!this.guardVillagersProbed) {
+            this.guardVillagersProbed = true;
+            this.isGuardVillagersInstalled = isModLoaded("guardvillagers");
          }
 
          return this.isGuardVillagersInstalled;
       }
 
       return true;
-   }
-
-   private static boolean isClassPresent(String className) {
-      try {
-         Class.forName(className, false, MixinPlugin.class.getClassLoader());
-         return true;
-      } catch (Throwable ignored) {
-         return false;
-      }
    }
 
    public void acceptTargets(Set<String> myTargets, Set<String> otherTargets) {
