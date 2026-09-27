@@ -7195,6 +7195,47 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   —— 这条是**回归风险点** ✓（改了共享的姿势入口 ✓，12 个姿势类 ✓），请重点看一眼 ✓。
 
 
+## 82.18 玩家诊断出参照版"警卫持枪姿势怪"的根因：**身体不转** ✓（已核对 ✓，并修掉我们自己的同类缺口 ✓）
+
+### 82.18.1 玩家的诊断被代码证实 ✓
+* 玩家 ✓："玩家在持枪时**身体骨骼会旋转**，而警卫这类**不会旋转身体**，所以看起来很奇怪" ✓ —— 完全正确 ✓。
+* 证据 ✓：玩家那套姿势的"侧身"来自**姿势数据自己的 `renderYawOffset`** ✓
+  （`BazookaPose` = 35° ✓、`MiniGun*Pose` = 45° ✓、双手姿势 = 25° ✓），由
+  `WeaponPose.applyPlayerPreRender` 写进 `holder.yBodyRot / yBodyRotO` ✓；
+  那 9 个姿势类里还各有一份**硬编码**的同值写法 ✓，查过条件后确认那是
+  `Config.CLIENT.display.oldAnimations` 的**遗留分支** ✓（默认路径走 `super` = 数据驱动 ✓）。
+* 参照版的手写姿势**只摆手臂、从不碰 `yBodyRot`** ✗ ⇒ 躯干朝着走路方向 ✓、手臂却按"已经侧过身"的躯干摆 ✓
+  ⇒ 就是玩家看到的"很奇怪" ✓。而 GV 的 `GuardRenderer.render` 是直接委派
+  `HumanoidMobRenderer.render` ✓（走标准 `LivingEntityRenderer` 路径 ✓）⇒ 只要设了 `yBodyRot` 就一定生效 ✓。
+
+### 82.18.2 我们自己的同类缺口（已修 ✓）
+* §82.17 让警卫走**玩家同一套姿势类** ✓，本来就能拿到侧身 ✓ —— 但 `WeaponPose` 把那两行只写在
+  `applyPlayerPreRender` ✓，那是**玩家专属路径** ✗（由物品层/预渲染调用 ✓），而 mob 走的是
+  `applyPlayerModelRotation` ✗ ⇒ 侧身对警卫**不生效** ✗ —— 与参照版同一个病 ✓，只是程度轻 ✓。
+* 修法 ✓：抽出 `WeaponPose.applyBodyTwist(holder, targetPose, right, angleAbs, zoom)` ✓，
+  `applyPlayerModelRotation`（mob 路径 ✓）与 `applyPlayerPreRender`（玩家路径 ✓）**都调用它** ✓。
+  玩家的数值与行为**完全不变** ✓（同一份 `renderYawOffset` 数据、同一个 `getValue` 公式 ✓，
+  只是两处调用同一实现 ✓）。
+* 审计新增规则 ✓：`WeaponPose.applyPlayerModelRotation` **必须**应用身体旋转 ✓
+  （直接写 `yBodyRot` 或调用 `applyBodyTwist` ✓）。**做了反向验证** ✓：把那条调用删掉 ⇒
+  审计报 "does not apply the pose's body twist" 并退出 1 ✓；恢复 ⇒ 0 ✓。
+  各姿势类里 `oldAnimations` 的遗留分支**不动** ✓（那是玩家的可选旧观感 ✓，且 mob 的情形已由基础类覆盖 ✓）。
+
+### 82.18.3 过程中的一个坑（记下来 ✓）
+* 我一开始用脚本把那 9 个类的硬编码旋转**从 `applyPlayerPreRender` 搬到 `applyPlayerModelRotation`** ✗ ——
+  5 个文件搬成功 ✓、4 个因为方法里没有 `right` 局部变量而中止 ✓。随后查清那些硬编码值属于
+  `oldAnimations` 遗留分支 ✓、且默认路径本来就由 `super`（数据驱动）负责 ✓ ⇒ **已全部 `git checkout` 回退** ✓，
+  只保留基础类那一处修复 ✓。
+* 教训 ✓：**看到硬编码的常量先查它属于哪个开关分支** ✓ —— 否则会把"可选旧观感"当成主路径来改 ✓，
+  反而改动玩家的现有行为 ✓。
+
+### 82.18.4 验收与**未实测** ✓
+* **31 个审计全 0** ✓、`verify_installed_jar` **214/214** ✓、`javac` 0 ✓、`build` ✓、
+  已安装 ✓（`19425367` 字节 ✓，备份 `.bak-212819` ✓）。
+* **未实测** ✓（交给玩家 ✓）：① 警卫持枪瞄准时**躯干会像玩家一样侧转** ✓（双手枪 25° ✓、机枪 45° ✓、
+  火箭筒 35° ✓）；② 与参照版对比不再"怪" ✓；③ **玩家自己的姿势与躯干旋转没有任何变化** ✓。
+
+
 
 
 

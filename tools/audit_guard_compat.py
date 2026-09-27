@@ -381,6 +381,16 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
     if "isThirdPersonMeleeAttacking" in pose_entry and "instanceof Player" not in pose_entry:
         problems.append("the pose reads the local player's melee state without checking for a player, so a "
                         "player swinging a weapon drags every armed guard into the melee pose")
+    # 82.18. A player's stance is bladed because the pose turns the body, and a mob's renderer reads the same
+    # two fields (`rotLerp(yBodyRotO, yBodyRot)`), so the turn has to happen in applyPlayerModelRotation -
+    # the method a mob goes through. It used to live only in applyPlayerPreRender, which only a player ever
+    # reaches: a guard then held the gun with its torso still facing the direction it was walking, which is
+    # what made the reference port's hand written guard pose look wrong. The per-pose hardcoded turns under
+    # the legacy `oldAnimations` option stay where they are; the twist that matters is the pose data's own
+    # renderYawOffset, applied through WeaponPose#applyBodyTwist from both paths.
+    if "applyBodyTwist" not in method_body(pose_entry, "applyPlayerModelRotation"):
+        problems.append("WeaponPose#applyPlayerModelRotation does not apply the pose's body twist, so a mob "
+                        "posed with a player animation keeps its torso facing its walking direction")
 
     # A guard armed by anything other than this config's data file still has to get the guard's gun AI and
     # keep its own follow range (section 82.14): reassessWeaponGoal used to hand it the raider's AI and the

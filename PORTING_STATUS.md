@@ -893,3 +893,22 @@ navigation 并抢走移动，于是警卫该退不退、该压不进，站着随
   已安装（19425274 字节，备份 `.bak-211623`）。
 - **未实测（交给玩家）**：① 警卫持枪姿势与瞄准缓动是否正常；② 走动/受击/换弹不穿模；
   ③ **玩家自己的第一/第三人称姿势没有任何变化** —— 这是回归风险点（改了共享的姿势入口与 12 个姿势类）。
+
+## §82.18 玩家诊断：参照版"警卫持枪姿势怪"的根因是**身体不转**（已核对并修掉我们自己的同类缺口）
+
+玩家的判断被代码证实：玩家的"侧身"来自姿势数据自己的 `renderYawOffset`（双手 25°、火箭筒 35°、机枪 45°），
+由 `WeaponPose.applyPlayerPreRender` 写进 `yBodyRot/yBodyRotO`；那 9 个姿势类里另有一份硬编码同值写法，
+查条件后确认是 `Config.CLIENT.display.oldAnimations` 的**遗留分支**（默认路径走 `super` 的数据驱动值）。
+参照版的手写姿势只摆手臂、从不碰 `yBodyRot` ⇒ 躯干朝走路方向、手臂却按"已侧身"的躯干摆 = 怪。
+GV 的 `GuardRenderer.render` 直接委派 `HumanoidMobRenderer.render`（标准渲染路径），所以只要设了 `yBodyRot` 就一定生效。
+
+- **我们自己的同类缺口**：§82.17 让警卫走玩家同一套姿势类，但那两行只写在 `applyPlayerPreRender`（**玩家专属路径**），
+  而 mob 走的是 `applyPlayerModelRotation` ⇒ 侧身对警卫不生效。已抽出 `WeaponPose.applyBodyTwist(...)`，
+  **两条路径都调用**；玩家的数值与行为完全不变（同一份数据、同一个公式）。
+- **审计**：新增"`WeaponPose.applyPlayerModelRotation` 必须应用身体旋转"，带反向验证（删掉调用 ⇒ 报错退出 1）。
+- **坑**：我先用脚本把 9 个类的硬编码旋转从 `applyPlayerPreRender` 搬进 `applyPlayerModelRotation`，
+  查清那些属于 `oldAnimations` 遗留分支后**全部 `git checkout` 回退**，只保留基础类那一处。
+  教训：看到硬编码常量先查它属于哪个开关分支。
+- **门禁**：**31 个审计全 0** / `verify_installed_jar` **214/214** / `javac` 0 / `build` ✓ /
+  已安装（19425367 字节，备份 `.bak-212819`）。
+- **未实测（交给玩家）**：① 警卫瞄准时躯干像玩家一样侧转；② 不再"怪"；③ 玩家自己的姿势与躯干旋转无变化。

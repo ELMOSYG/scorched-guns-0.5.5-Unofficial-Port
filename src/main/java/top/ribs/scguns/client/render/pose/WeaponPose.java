@@ -59,7 +59,34 @@ public abstract class WeaponPose implements IHeldAnimation {
          zoom = 1.0F;
       }
 
+      this.applyBodyTwist(holder, targetPose, right, angleAbs, zoom);
       this.applyAimPose(targetPose, mainArm, secondaryArm, angleAbs, zoom, right ? 1.0F : -1.0F, holder.isCrouching());
+   }
+
+   /**
+    * Turns the holder's body away from its view direction, which is what gives a player's stance its bladed
+    * look with a gun in hand (HANDOFF section 82.18).
+    *
+    * <p>This used to happen only in {@link #applyPlayerPreRender}, a player-only path, and that is the whole
+    * difference between a player and a mob holding the same gun: a guard's torso kept facing the direction
+    * it was walking while its arms held the gun bladed, which is what made the reference port's hand written
+    * guard pose look wrong. Both paths call this now, with the turn taken from the pose data's own
+    * {@code renderYawOffset} - 25 degrees for the two-handed poses, 35 for the bazooka, 45 for the miniguns -
+    * so a pose turns the body the same way whatever is holding the gun.</p>
+    */
+   protected void applyBodyTwist(LivingEntity holder, AimPose targetPose, boolean right, float angleAbs, float zoom) {
+      float rightOffset = this.getValue(
+         targetPose.getIdle().getRenderYawOffset(),
+         targetPose.getAiming().getRenderYawOffset(),
+         this.forwardPose.getIdle().getRenderYawOffset(),
+         this.forwardPose.getAiming().getRenderYawOffset(),
+         0.0F,
+         angleAbs,
+         zoom,
+         right ? 1.0F : -1.0F
+      );
+      holder.yBodyRotO = holder.yRotO + rightOffset;
+      holder.yBodyRot = holder.getYRot() + rightOffset;
    }
 
    /**
@@ -197,18 +224,7 @@ public abstract class WeaponPose implements IHeldAnimation {
       float angleAbs = Math.abs(angle);
       float zoom = this.hasAimPose() ? aimProgress : 0.0F;
       AimPose targetPose = (double)angle > 0.0 ? this.downPose : this.upPose;
-      float rightOffset = this.getValue(
-         targetPose.getIdle().getRenderYawOffset(),
-         targetPose.getAiming().getRenderYawOffset(),
-         this.forwardPose.getIdle().getRenderYawOffset(),
-         this.forwardPose.getAiming().getRenderYawOffset(),
-         0.0F,
-         angleAbs,
-         zoom,
-         right ? 1.0F : -1.0F
-      );
-      player.yBodyRotO = player.yRotO + rightOffset;
-      player.yBodyRot = player.getYRot() + rightOffset;
+      this.applyBodyTwist(player, targetPose, right, angleAbs, zoom);
    }
 
    @OnlyIn(Dist.CLIENT)
