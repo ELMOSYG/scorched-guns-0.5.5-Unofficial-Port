@@ -6966,6 +6966,80 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
 * **仍未做**（等玩家决定 ✓）：若还嫌多 ✓，可选"只给多弹丸枪的前几颗弹丸画拖尾" ✓（26 条 → 3~5 条 ✓）。
 
 
+## 82.14 警卫 AI：套用"之前的 1.21.1 移植版"（玩家指定 ✓；客户端持枪动画**不做** ✓）
+
+### 82.14.1 参照物与逐条对齐 ✓
+* 玩家指的参照版 ✓：`E:\mod\SG2-1.21\ScorchedGunsNeoforge-main` ✓（它的警卫兼容共 7 个文件 ✓）。
+* 对齐结果 ✓：
+
+| 参照版 | 我们（§82 起） | 本轮处理 |
+|---|---|---|
+| `GuardGunAIMixin`：`performRangedAttack` 持枪时取消 ✓ | 缺 ✗ | **移植** ✓（`GuardRangedAttackMixin`） |
+| `GuardGunnerEquipmentMixin`：`Mob.canReplaceCurrentItem` 允许枪替换非枪 ✓ | 缺 ✗ | **移植** ✓（`GuardEquipmentMixin`，**收窄到警卫** ✓） |
+| `GuardKickGoalMixin`：持枪也能踹 ✓ | 缺 ✗ | **移植但修正** ✓（见 §82.14.3 ✓） |
+| `GuardGunAIMixin`：`registerGoals` TAIL 里加目标 ✓ | 我们在装备时加 ✓ | **不加** ✓（见 §82.14.2 ✓），改为在 `reassessWeaponGoal` 里给警卫分流 ✓ |
+| 它自己那套 `GuardGunAttackGoal`（独立 239 行） ✓ | 我们的 `GuardGunAttackGoal extends GunAttackGoal`（15 行） ✓ | **不换** ✓（见 §82.14.2 ✓） |
+| 客户端 `GuardModelGunPoseMixin` / `GuardEntityHandleEventMixin` / `GuardAnimationHandler` ✓ | 无 ✓ | **不做** ✓ —— 玩家明确："客户端持枪动画不用做，那个动画是有问题的" ✓ |
+
+### 82.14.2 为什么**不**用它那套 AI 类（三条都是我们刚修过的坑 ✓）
+* 它的构造器里 `this.setFlags(EnumSet.of(Flag.MOVE, Flag.LOOK))` ✓ —— 这正是 §82.7 的病根 ✓：
+  枪手目标一旦占住 MOVE|LOOK ✓，GV 自己的近战/巡逻/回村/开门/闲逛目标全部**无法启动** ✓。
+* 它的 `fireGun` 里对每颗弹丸 `projectile.tick()` ✓ —— 这正是 §82.11 的病根 ✓（一发 26 颗 = 26 次完整 tick ✓）。
+* 它的射速是 `getFireRate = max(1, rate / 50)` ✓ —— 这正是 §82.6 的病根 ✓（把 0.20.1 的"毫秒"当 tick 用 ✓）。
+* 所以本轮只搬**行为**（上面三条 ✓），AI 仍是我们那条：警卫用**本体 `GunAttackGoal`** ✓ + 共用开火管线 `MobGunFire` ✓ + 不占旗标 ✓（§82.8/§82.9 ✓，也是玩家当时要的 ✓）。
+* `registerGoals` 注入**也没照搬** ✓：我们的目标在**构造时**要拿到枪的物品栈 ✓（用来取这把枪的 idealRange ✓）。
+  照搬会在警卫**还没枪**时构造它 ✓ ⇒ 射程被钉死在默认的 15/8 ✓，而且 `hasGunAttackGoal` 之后会认为
+  "已有目标"✓ 而**拒绝**装正确的那一个 ✗。改为 ✓：`reassessWeaponGoal` 里给警卫分流 ✓ ——
+  用**手里那把真枪**构造 `GuardGunAttackGoal` ✓，并且用 `resetFollowRange` 而**不是** `extendFollowRange` ✓
+  （否则被命令/别的 mod 发枪的警卫会拿到掠夺者的 64 格追击范围 ✓，跑到村外去 ✓，§82 的老问题 ✓）。
+
+### 82.14.3 踹击：参照版的写法会**刷踹** ✗，已按 GV 原逻辑重写 ✓
+* 反编译 GV ✓ `Guard$KickGoal.canUse` 的实际条件 ✓（逐条核对字节码 ✓）：
+  `target != null` ✓ && `distanceTo(target) <= 2.5` ✓ &&
+  **`getMainHandItem().getItem().useOnRelease(...)` == true** ✓ && `!isBlocking()` ✓ && `kickCoolDown == 0` ✓。
+* 第三条是关键 ✓：`Item.useOnRelease` 对**弩**和**三叉戟**为 true ✓ —— GV 的"踹"本来就是"拿着弩被贴脸就踹" ✓。
+  **枪既不是弩也不是三叉戟** ✓ ⇒ 持枪警卫**永远踹不了** ✗ ⇒ 参照版那个 mixin 确实必要 ✓（我们缺 ✓）。
+* 但参照版是直接把整个判断**替换**成 `!isBlocking()` ✓ ⇒ 把 `kickCoolDown == 0` 一起丢了 ✗
+  ⇒ 只要目标待在 2.5 格内，警卫**每刻都能踹** ✗ —— 比原问题更糟 ✓。
+* 我们的写法 ✓：只放宽"手里是弩"这一条 ✓，GV 的其余四条**逐条保留** ✓（含冷却 ✓）。
+  冷却字段读不到时（别的 GV 版本改了名 ✓）⇒ **不动** ✓，把决定权还给 GV ✓（fail-safe ✓）。
+
+### 82.14.4 装备：参照版改了**全游戏所有 mob** ✗，我们收窄到警卫 ✓
+* 它的 `GuardGunnerEquipmentMixin` 打在 `Mob.class` 上且**没有任何实体判断** ✓
+  ⇒ 为了一个可选 mod 的警卫 ✓，把**所有 mob** 的换装规则都改了 ✓。
+* 我们保留 `@Mixin(Mob.class)` ✓（已核实 ✓：GV 的 `Guard` **覆写了 `setItemSlot`** ✓ 但**没有覆写
+  `canReplaceCurrentItem`** ✓ ⇒ 注入在 `Mob` 上对警卫同样生效 ✓），但加了 `GuardVillagersCompat.isGuard` 判断 ✓。
+* 另外它不是必需的 ✓（§82 本来就有"被 GV 换掉就补回来"的钩子 ✓），但让**枪赢下装备判定**更省事 ✓，
+  也是玩家看到的样子 ✓（枪根本不会被换走 ✓）。
+
+### 82.14.5 顺手补掉的一个**审计缺口** ✓（这才是这条规则一直没被发现的原因 ✓）
+* `audit_mixins.py` 里"回调参数必须与目标方法匹配"的检查 ✓ 用的是 `(\w+)` 取方法名 ✓ ——
+  而本项目的注入方法名一律是 **`scguns$Something`** ✓ ⇒ `\w` **不匹配 `$`** ✗
+  ⇒ 这条检查**从来没有真正匹配过任何一个注入方法** ✗（静默空转 ✓）。已改为 `[\w$]+` ✓。
+* 新增规则 ✓（把 §82.10 的教训推广到**外部目标**的 mixin ✓）：`@Mixin(targets = "...")` 的注入方法
+  **签名里不得出现实体类型** ✓（`CallbackInfo` 之外不要写 `LivingEntity`/`Mob`/... ✓），因为签名和
+  `@Shadow` 字段一样是在 mixin **准备阶段**解析的 ✓。**做了反向验证** ✓：故意把
+  `GuardRangedAttackMixin` 的注入方法改成带 `LivingEntity` 参数 ✓ ⇒ 审计报 BROKEN 并退出 1 ✓；
+  改回 ⇒ 0 ✓。
+
+### 82.14.6 踩到的坑（记进 §9.0 ✓）
+* 反向验证时用 PowerShell `[System.IO.File]::WriteAllText($p, $text, [Text.Encoding]::UTF8)` 还原文件 ✓
+  ⇒ **PowerShell 的 UTF8 编码默认写 BOM** ✗ ⇒ 编译报 `illegal character: '\ufeff'` ✓、
+  `BUILD FAILED` ✓ —— 而且当时的 `verify_installed_jar` 拿的是**旧 jar** ✓（install 在 build 失败后仍跑了 ✓），
+  于是新加的检查报 FAIL ✓，看起来像"功能没生效" ✓，其实是文件被 BOM 毒了 ✓。
+  已剥离 BOM ✓ 并全仓扫描确认无残留 ✓。**教训：改 Java 源文件用 `edit`/`write` 工具，别用 PowerShell 写回** ✓。
+
+### 82.14.7 验收与**未实测** ✓
+* **31 个审计全 0** ✓（`audit_guard_compat.py` 新增 12 条规则 ✓、`audit_mixins.py` 新增外部签名规则 ✓）；
+  `verify_installed_jar` **204/204** ✓（新增 7 条 ✓：三个新 mixin 随包 ✓ 且列在 mixin 配置里 ✓、
+  踹击 mixin 必须含 `kickCoolDown` ✓、装备 mixin 必须含 `isGuard` ✓、兼容类必须有 `isHoldingGun` ✓）；
+  `javac` 0 ✓、`build` ✓、已安装 ✓（`19417719` 字节 ✓，备份 `.bak-205020` ✓）。
+* **未实测** ✗（交给玩家 ✓，按玩家的意思这类实测自己上手 ✓）：请重点看四条 ✓ ——
+  ① 持枪警卫**不再出现弩的射击/装填**动作 ✓；② 贴脸（≤2.5 格）时会**踹** ✓ 且有节奏（不是每刻 ✓）；
+  ③ 枪**不会被 GV 自己的装备换走** ✓（或最多一瞬间就回来 ✓）；
+  ④ 用命令给警卫发枪时 ✓ 它用**枪的射程**打 ✓、**不会**跑出村子老远 ✓。
+
+
 
 
 

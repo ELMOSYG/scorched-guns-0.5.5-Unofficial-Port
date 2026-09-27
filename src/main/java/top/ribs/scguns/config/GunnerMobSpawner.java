@@ -366,6 +366,22 @@ public class GunnerMobSpawner {
          AIType aiType = AIType.values()[mob.getRandom().nextInt(AIType.values().length)];
          int aiDifficulty = mob.getRandom().nextInt(4) + 1;
          ItemStack heldItem = mob.getMainHandItem();
+         if (GuardVillagersCompat.isGuard(mob)) {
+            // A guard armed by anything other than this config's data file - a command, another mod, a
+            // player handing it a gun - still gets the guard's own gun AI, built from the gun it is
+            // actually holding so it fights at that gun's ideal range (HANDOFF section 82.14). It also
+            // gets resetFollowRange rather than the raiders' extendFollowRange below: a guard with a
+            // 64 block follow range abandons the village it exists to defend (section 82).
+            GunnerMobConfig.MobGunnerData guardData = GunnerMobConfig.getGunnerData(mob.getType());
+            mob.goalSelector.addGoal(
+               2,
+               new GuardGunAttackGoal(mob, heldItem, guardData != null ? guardData.aiDifficulty() : 1, GuardVillagersCompat.accuracy())
+            );
+            mob.addTag("GunAttackAssigned");
+            resetFollowRange(mob);
+            return;
+         }
+
          mob.goalSelector.addGoal(2, new GunAttackGoal<>(mob, heldItem, 1.2F, aiType, aiDifficulty));
          mob.addTag("GunAttackAssigned");
          extendFollowRange(mob);

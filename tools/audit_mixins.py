@@ -34,6 +34,8 @@ INJECT = re.compile(r"@(Inject|Redirect|ModifyVariable|ModifyArg|ModifyArgs|Wrap
 METHOD_ATTR = re.compile(r'method\s*=\s*(\{[^}]*\}|"[^"]*")')
 QUOTED = re.compile(r'"([^"]*)"')
 IMPORT = re.compile(r"import\s+([\w.]+);")
+# An annotated injector's handler declaration: used to inspect the signature Mixin resolves early.
+HANDLER = re.compile(r"\b(?:private|protected|public)\s+[\w<>\[\],.\s]+?\s([\w\$]+)\s*\(([^;{]*?)\)\s*\{", re.S)
 
 
 def strip_comments(text: str) -> str:
@@ -257,7 +259,7 @@ def check_callbacks(rel: str, text: str, target_fqn: str) -> int:
         # locals; a plain @Inject callback always has it LAST. Only the latter has
         # to match the target's parameter list.
         callback = re.search(
-            r"\b(?:private|protected|public)\s+[\w<>\[\],.\s]+?\s(\w+)\s*\(([^;{]*?)\)\s*\{",
+            r"\b(?:private|protected|public)\s+[\w<>\[\],.\s]+?\s([\w\$]+)\s*\(([^;{]*?)\)\s*\{",
             text[text.index(args) + len(args):],
             re.S,
         )
@@ -287,6 +289,34 @@ def check_callbacks(rel: str, text: str, target_fqn: str) -> int:
             broken += 1
             print("BROKEN %-57s @%s callback %s params %s != target %s %s"
                   % (rel, kind, callback.group(1), params, wanted_name, wanted))
+    return broken
+
+
+def check_foreign_signatures(rel: str, text: str) -> int:
+    """An injector signature in a mixin into a FOREIGN class must not name an entity type.
+
+    `@Mixin(targets = "some.other.mods.Class")` means the target is not ours and not vanilla, so its
+    injectors cannot be validated against `.refs` the way the vanilla ones are - but their signatures are
+    resolved while Mixin is still preparing configs, exactly like a `@Shadow` field's type. Naming
+    `LivingEntity` there loads it at that moment, and every mod that mixes into `LivingEntity` then dies
+    with "MixinTargetAlreadyLoadedException: target net.minecraft.world.entity.LivingEntity was loaded too
+    early" - which is how section 82.10 cost a crash investigation that first blamed GeckoLib and then
+    Curios. The fix is always the same: take `CallbackInfo` only and read the entity by reflection.
+    """
+    broken = 0
+    code = strip_comments(text)
+    if not re.search(r"@Mixin\s*\(\s*targets\s*=", code):
+        return 0
+    for kind, args in INJECT.findall(code):
+        tail = code[code.index(args) + len(args):]
+        handler = HANDLER.search(tail)
+        if not handler:
+            continue
+        for name in source_param_names_from_text(handler.group(2)):
+            if ENTITY_TYPE.search(name):
+                broken += 1
+                print("BROKEN %-57s @%s handler %s names the entity type %s in its signature; "
+                      "use CallbackInfo and reflection instead" % (rel, kind, handler.group(1), name))
     return broken
 
 
@@ -414,6 +444,9 @@ def main() -> None:
                     broken += 1
                     print("BROKEN %-57s @Shadow %s loads an entity type during mixin "
                           "preparation" % (rel, declared.strip()))
+
+            # The same trap, one step further out: an injector signature in a foreign-target mixin.
+            broken += check_foreign_signatures(rel, text)
 
     print("\n%d target drift(s), %d missing injection point(s), %d unresolved target(s)"
           % (drift, broken, unresolved))

@@ -1028,6 +1028,25 @@ def main():
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/mixin/common/compat/guardvillagers/GuardProjectileHitMixin.class",
             b"isFriendlyShot", "the guard friendly-fire gate calls the shared ally test"))
+
+        # 82.14. The three pieces of the reference 1.21.1 port's guard compat this port was missing, plus
+        # the check that the guard branch of reassessWeaponGoal keeps its follow range.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/mixin/common/compat/guardvillagers/GuardRangedAttackMixin.class",
+            b"performRangedAttack", "a gun-armed guard no longer runs the crossbow attack"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/mixin/common/compat/guardvillagers/GuardKickGoalMixin.class",
+            b"kickCoolDown", "the guard kick keeps Guard Villagers' own cooldown"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/mixin/common/compat/guardvillagers/GuardEquipmentMixin.class",
+            b"isGuard", "the equipment allowance is scoped to guards"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardVillagersCompat.class", b"isHoldingGun",
+            "the guard mixins read the hand without naming an entity type"))
+        for guard_mixin in ("GuardRangedAttackMixin", "GuardKickGoalMixin", "GuardEquipmentMixin"):
+            checks.append((
+                "scguns.mixins.json lists " + guard_mixin,
+                ("common.compat.guardvillagers." + guard_mixin) in (read("scguns.mixins.json") or "")))
         checks.append((
             "the mixin is listed in the packaged mixin config",
             "common.compat.guardvillagers.GuardProjectileHitMixin" in (read("scguns.mixins.json") or "")))

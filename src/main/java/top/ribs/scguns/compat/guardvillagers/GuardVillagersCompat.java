@@ -98,6 +98,28 @@ public final class GuardVillagersCompat {
    }
 
    /**
+    * Whether this entity's main hand holds one of the mod's guns (HANDOFF section 82.14).
+    *
+    * <p>Takes {@code Object} and reads the hand reflectively on purpose. The callers are mixins that live
+    * <b>inside</b> Guard Villagers' own classes, and an entity type in an injector signature is resolved
+    * while Mixin is still preparing configs - which is what stops the game from starting
+    * ({@code MixinTargetAlreadyLoadedException: target LivingEntity was loaded too early}, section 82.10).
+    * Method bodies are resolved lazily, so this is the safe side of the same problem.</p>
+    */
+   public static boolean isHoldingGun(Object entity) {
+      if (entity == null) {
+         return false;
+      }
+
+      try {
+         Object held = entity.getClass().getMethod("getMainHandItem").invoke(entity);
+         return held instanceof ItemStack stack && stack.getItem() instanceof GunItem;
+      } catch (Throwable broken) {
+         return false;
+      }
+   }
+
+   /**
     * Whether a shot from {@code shooter} at {@code target} would hit an ally. Always false unless the
     * shooter is a guard, so every projectile and damage path can call it unconditionally.
     */

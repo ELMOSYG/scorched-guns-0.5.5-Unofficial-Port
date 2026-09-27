@@ -88,9 +88,9 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
     # without the mod) and MixinPlugin itself (which probes the class by name). Anything else can fail to
     # link on a server without the mod.
     allowed = ("compat/guardvillagers/GuardFriendlyRules.java",
-               "mixin/MixinPlugin.java",
-               "mixin/common/compat/guardvillagers/GuardMeleeGoalMixin.java")
-    named = [name for name in guard_class_files(files) if name not in allowed]
+               "mixin/MixinPlugin.java")
+    named = [name for name in guard_class_files(files)
+             if name not in allowed and not name.startswith("mixin/common/compat/guardvillagers/")]
     if named:
         problems.append("Guard Villagers classes are named in %s - only GuardFriendlyRules, the gated guard "
                         "mixins and MixinPlugin's probe may" % (named or "no file"))
@@ -259,6 +259,73 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
     config = strip_comments(files.get("Config.java") or "")
     if "guard_gun_accuracy" not in config:
         problems.append("the guard accuracy is not configurable (no compat.guard_gun_accuracy option)")
+
+    # Section 82.14: the three pieces of the reference 1.21.1 port's guard compat that this port was
+    # missing. Each one is narrow on purpose, and each one has a rule here because each one can be
+    # "simplified" back into a bug.
+    hand = strip_comments(files.get("mixin/common/compat/guardvillagers/GuardRangedAttackMixin.java") or "")
+    if not hand:
+        problems.append("GuardRangedAttackMixin is missing, so a gun-armed guard still runs Guard "
+                        "Villagers' crossbow attack against the gun in its hand")
+    else:
+        for needle, what in (
+            ("performRangedAttack", "the crossbow attack call"),
+            ("isHoldingGun", "the shared reflective hand check"),
+            ("ci.cancel()", "the cancel that stops the crossbow path"),
+        ):
+            if needle not in hand:
+                problems.append("GuardRangedAttackMixin no longer covers %s" % what)
+        # An entity type in an injector signature is resolved while Mixin prepares configs, which is what
+        # made the game unstartable in section 82.10.
+        if re.search(r"scguns\$\w+\s*\([^)]*\b(LivingEntity|Mob|PathfinderMob|Entity)\b", hand):
+            problems.append("GuardRangedAttackMixin names an entity type in its injector signature, which "
+                            "is what loaded LivingEntity too early in section 82.10")
+
+    kick = strip_comments(files.get("mixin/common/compat/guardvillagers/GuardKickGoalMixin.java") or "")
+    if not kick:
+        problems.append("GuardKickGoalMixin is missing, so a gun-armed guard can no longer kick a target "
+                        "that reaches it (Guard Villagers gates its kick on Item.useOnRelease, which a gun "
+                        "is not)")
+    else:
+        # The reference bypasses Guard Villagers' whole decision (`!guard.isBlocking()`), which throws away
+        # kickCoolDown and makes the guard kick every tick. The cooldown has to stay in the decision.
+        if "kickCoolDown" not in kick:
+            problems.append("GuardKickGoalMixin no longer reads kickCoolDown, so an armed guard kicks every "
+                            "tick something stays within reach instead of on Guard Villagers' cadence")
+        if "isBlocking" not in kick:
+            problems.append("GuardKickGoalMixin no longer keeps Guard Villagers' isBlocking condition")
+        if "2.5F" not in kick:
+            problems.append("GuardKickGoalMixin no longer keeps Guard Villagers' 2.5 block kick reach")
+
+    equipment = strip_comments(files.get("mixin/common/compat/guardvillagers/GuardEquipmentMixin.java") or "")
+    if not equipment:
+        problems.append("GuardEquipmentMixin is missing, so Guard Villagers' own equipment can replace an "
+                        "armed guard's gun through canReplaceCurrentItem")
+    else:
+        if "canReplaceCurrentItem" not in equipment:
+            problems.append("GuardEquipmentMixin no longer hooks canReplaceCurrentItem")
+        if "isGuard" not in equipment:
+            problems.append("GuardEquipmentMixin is not scoped to guards, so it changes the equipment rules "
+                            "of every mob in the game for the sake of one optional mod")
+
+    for mixin_name in ("GuardRangedAttackMixin", "GuardKickGoalMixin", "GuardEquipmentMixin"):
+        if "common.compat.guardvillagers." + mixin_name not in mixin_config.get("mixins", []):
+            problems.append("scguns.mixins.json does not list %s, so it never applies" % mixin_name)
+
+    if "isHoldingGun" not in compat:
+        problems.append("GuardVillagersCompat has no isHoldingGun, so the mixins inside Guard Villagers' "
+                        "classes have no entity-type-free way to read the hand")
+
+    # A guard armed by anything other than this config's data file still has to get the guard's gun AI and
+    # keep its own follow range (section 82.14): reassessWeaponGoal used to hand it the raider's AI and the
+    # raider's 64 block follow range, which sends it away from the village it defends.
+    reassess = method_body(spawner, "reassessWeaponGoal")
+    if "isGuard(" not in reassess:
+        problems.append("reassessWeaponGoal does not route guards to the guard gun AI, so a guard armed by "
+                        "a command or another mod gets the hostile raider AI")
+    elif "GuardGunAttackGoal" not in reassess or "resetFollowRange(" not in reassess:
+        problems.append("the guard branch of reassessWeaponGoal no longer installs GuardGunAttackGoal and "
+                        "resets the follow range")
 
     toml = strip_comments(mods_toml) if mods_toml else ""
     if "guardvillagers" not in toml:

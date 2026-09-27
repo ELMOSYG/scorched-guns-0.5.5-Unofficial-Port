@@ -784,6 +784,35 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
   已安装（19412769 字节，备份 `.bak-202613`）。
 - **仍未做**：若还嫌多，可选"只给多弹丸枪的前几颗弹丸画拖尾"（26 条 → 3~5 条，单发枪不受影响）。
 
+## §82.14 警卫 AI：套用"之前的 1.21.1 移植版"（玩家指定；客户端持枪动画不做）
+
+参照版 `E:\mod\SG2-1.21\ScorchedGunsNeoforge-main` 的警卫兼容共 7 个文件，逐条对齐后**只搬行为、不换 AI 类**：
+
+- **移植**：① 持枪时取消 `Guard.performRangedAttack`（否则 GV 的弩射击逻辑对着手里的枪跑）；
+  ② `Mob.canReplaceCurrentItem` 允许枪替换非枪（**收窄到警卫**，参照版改的是全游戏所有 mob）；
+  ③ 持枪也能踹（**按 GV 原逻辑重写**，见下）。
+- **不换 AI 类**：它那套独立 `GuardGunAttackGoal` 里 `setFlags(MOVE,LOOK)`、每颗弹丸 `projectile.tick()`、
+  射速 `rate/50` —— 正好是 §82.7 / §82.11 / §82.6 刚修掉的三条。AI 仍用本体 `GunAttackGoal` + `MobGunFire`。
+- **不照搬 `registerGoals` 注入**：我们的目标构造时要拿枪的物品栈（取这把枪的 idealRange），照搬会在
+  警卫还没枪时构造 ⇒ 射程钉死默认值且 `hasGunAttackGoal` 之后拒绝装正确的那个。改为在
+  `reassessWeaponGoal` 里给警卫分流：用真枪构造 `GuardGunAttackGoal`，并用 `resetFollowRange`
+  而非 `extendFollowRange`（否则被命令发枪的警卫会拿 64 格追击范围跑出村）。
+- **踹击的证据与修正**：反编译 `Guard$KickGoal.canUse` 的实际条件是
+  `target != null && distanceTo <= 2.5 && Item.useOnRelease == true && !isBlocking && kickCoolDown == 0`；
+  其中 `useOnRelease` 只对**弩/三叉戟**为 true ⇒ 持枪警卫永远踹不了（所以参照版那个 mixin 必要），
+  但参照版把整个判断替换成 `!isBlocking()` ⇒ 丢掉 `kickCoolDown` ⇒ 每刻都能踹。我们只放宽"手里是弩"这一条，
+  其余四条逐条保留；冷却字段读不到时不动，把决定权还给 GV。
+- **客户端持枪/后坐动画不做**（玩家："那个动画是有问题的"）。
+- **顺手补掉审计缺口**：`audit_mixins.py` 取方法名用 `(\w+)`，而本项目注入方法名是 `scguns$Foo`（`\w` 不匹配 `$`）
+  ⇒ "回调参数匹配"检查**从未真正生效**；已改 `[\w$]+`，并新增"外部目标 mixin 的注入签名不得出现实体类型"规则
+  （§82.10 教训的推广），带反向验证（种入 `LivingEntity` 参数 ⇒ 报 BROKEN 且退出 1）。
+- **坑**：反向验证用 PowerShell `WriteAllText(..., UTF8)` 还原文件会**写 BOM** ⇒ 编译 `illegal character: '\ufeff'`，
+  且 install 在 build 失败后仍执行 ⇒ verify 拿旧 jar 报 FAIL，看起来像功能没生效。已剥离 BOM 并全仓确认无残留。
+- **门禁**：**31 个审计全 0** / `verify_installed_jar` **204/204**（新增 7 条）/ `javac` 0 / `build` ✓ /
+  已安装（19417719 字节，备份 `.bak-205020`）。
+- **未实测（交给玩家）**：① 持枪警卫不再有弩的射击/装填动作；② 贴脸 ≤2.5 格会踹且有节奏；
+  ③ 枪不会被 GV 装备换走；④ 命令发枪时用枪的射程打、不跑出村。
+
 ### §82.13.6 玩家给出真正的规则：**开火后 10 tick 不渲染拖尾**（已实现）
 
 玩家的第二次反馈把病根说清楚了："拖尾直接在玩家背后出现，直接从玩家摄像头穿过去" —— 渲染几何上
