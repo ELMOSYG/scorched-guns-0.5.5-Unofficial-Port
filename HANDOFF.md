@@ -6759,6 +6759,143 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   玩家若想要枪托近战 ✓，把优先级 2 改回 3 并去掉压制即可 ✓。
 
 
+## 82.10 玩家报"geckolib 注入失败？"——真凶是 mixin **准备阶段就加载了 `LivingEntity`**（已修 ✓，已实测 ✓）
+
+### 82.10.1 现象：崩溃报告指着 GeckoLib，其实与 GeckoLib 无关
+* 崩溃信息：`MixinTargetAlreadyLoadedException: target net.minecraft.world.entity.LivingEntity was loaded too early`
+  ✓（`LivingEntity` 一旦在 mixin **准备**阶段被加载 ✓，之后**任何**往它注入的 mixin 都会失败 ✓，
+  所以报告里的"肇事 mod"往往是**下一个**受害者 ✓ —— 第一次怪 GeckoLib ✓，第二次怪 Curios ✓）。
+* 关键认知 ✓：**`@Shadow` 字段与 `@Shadow` 方法签名里的类型，是在 mixin 准备阶段解析的** ✓。
+  只要某个 mixin `@Shadow protected PathfinderMob mob;` ✓，`PathfinderMob → LivingEntity` 就被提前加载 ✓，
+  与这个 mixin 自己注不注入无关 ✓；而**方法体里**的类型引用是惰性的 ✓，不触发提前加载 ✓。
+
+### 82.10.2 两个真凶
+1. `mixin/common/compat/guardvillagers/GuardMeleeGoalMixin.java` 里有 `@Shadow protected PathfinderMob mob` ✗。
+2. `mixin/MixinPlugin.java` 用 `Class.forName("tallestegg.guardvillagers.common.entities.Guard")` 探测前置 ✗
+   —— `Guard extends PathfinderMob` ✓，于是准备阶段又把 `LivingEntity` 拉了起来 ✗。
+
+### 82.10.3 修法
+* 近战 mixin 改成**纯反射** ✓：`findMobField` 沿父类链找 `mob` 字段 ✓、`readMainHand` 调 `getMainHandItem` ✓，
+  一个实体类型的 `@Shadow` 都不留 ✓。
+* `MixinPlugin` 改成查 `net.neoforged.fml.loading.LoadingModList.isModLoaded("guardvillagers")` ✓
+  （`onLoad` 探一次 ✓ + `shouldApplyMixin` 里懒重探 ✓），**失败即放行**（fail open ✓）。
+  仍然只 gate `top.ribs.scguns.mixin.common.compat.guardvillagers.` 前缀 ✓（不得把整个 mixin 配置 gate 掉 ✓，见 §9 那条 0.5.5 回归 ✓）。
+* 审计补齐 ✓：`audit_mixins.py` 新增"`@Shadow` 字段的类型不得是实体类"✓（按父类链与已知实体类名判断 ✓，
+  且**去注释**后匹配 ✓ —— 上一轮就是被注释里的 `@Shadow` 示例坑出假阳性 ✓）。
+
+### 82.10.4 实测与另一个崩溃
+* 实测 ✓：启动无 FATAL ✓，两个警卫 mixin 都 `Mixing ... into` ✓，服务器到 `Done` ✓。
+* 玩家给的另一个崩溃 `crash-2026-09-27_00.03.19-client.txt` **与本 mod 无关** ✓：是 Iris/Sodium
+  （`Mod with id iris not found in ModList`）✓。
+
+
+## 82.11 霰弹枪卡顿第一刀：**逐颗弹丸的内联 `tick()`**（已修 ✓；但"卡顿已解决"这句本轮**不能**说 ✓）
+
+### 82.11.1 定位
+* 两条开火路径都在**循环里**对每颗弹丸调 `projectileEntity.tick()` ✗：
+  玩家路径 `ServerPlayHandler.fireProjectiles` ✓、mob 路径 `AIGunEvent.performGunAttack` ✓。
+* 一次 `scguns:boomstick`（26 颗 ✓）就是**26 次完整弹丸 tick**（方块/实体射线 ✓、碰撞 ✓、命中效果 ✓）
+  全塞在封包处理里 ✓ ⇒ 只影响**多弹丸**武器 ✓ ⇒ 玩家说的"**只有霰弹枪卡**" ✓ 完全对得上 ✓。
+
+### 82.11.2 修法
+* 删掉两处内联 `tick()` ✓：弹丸在**下一个游戏刻**由关卡正常 tick ✓（晚一刻，游戏内看不出来 ✓）。
+
+### 82.11.3 冷/热测量：**必须说清楚这次数据的分量** ✓
+* **冷**测量 ✓（首调用 ✓，类加载占大头 ✓）：boomstick 41 ms → 33 ms ✓；分解 factory 0.02 / create 1.2 /
+  setWeapon 0.02 / setDamage 0.2 / spawn 0.6 / tick 4.0（ms）✓ —— 但**分解合计只有 9.7 ms ✓，总耗时 32.7 ms ✓**，
+  差额全在"第一次跑这段代码"上 ✓。
+* **热**测量那次写错了 ✗：清的是 `player.getCooldowns()` ✗ 而不是 `ShootTracker` ✗，
+  8 发里 7 发被冷却拦掉 ✓ ⇒ `avg 0.01 ms` ✓ **无意义** ✗。
+* ⇒ 所以 §82.11 能声称的只有"**逐颗内联 tick 已删除**" ✓；**不能**声称"卡顿已解决" ✓。
+
+### 82.11.4 顺手排除掉的一条（读代码 ✓，非测量）
+* 每颗弹丸的生成包里**不含枪械物品** ✓：`ProjectileEntity.defineSynchedData` 是**空的** ✓；
+  `S2CMessageBulletTrail.encode` 每次开火只写**一次** `ItemStack` ✓（每颗只写 28 字节 ✓）。
+  ⇒ 网络侧**不是**按弹丸数线性膨胀 ✓，不是卡顿主因 ✓。
+
+
+## 82.12 卡顿的真凶之一：弹道拖尾**每帧画三遍**，而且每颗弹丸**各刷一次批次**（已修 ✓，门禁全绿 ✓，实测**交给玩家** ✓）
+
+### 82.12.1 先说证据链：玩家给的 spark 链接**已经失效** ✗
+* `https://spark.lucko.me/HixBGLnvA4?raw=1` → **`err: 404 - Not Found`** ✓（这是 spark 自己数据端的回复 ✓）；
+  `bytebin.lucko.me/HixBGLnvA4` → 404 ✓。
+* 之前那个 `http=200` 的 HTML **什么都不能证明** ✗：它只是 SPA 外壳 ✓ —— 随便编一个 id
+  （`ZZZZZZZZZZ`）返回**一模一样**的 5713 字节 ✓。
+* ⇒ 本轮**不靠**那份 profile ✓，改为**读代码 + 补审计** ✓（结论见下 ✓，全是结构性的、可复算的 ✓）。
+
+### 82.12.2 三处缺陷叠加，且**都按"每颗弹丸"放大**（所以只有霰弹枪卡 ✓）
+1. **重复注册** ✗：`ScorchedGuns:198` 与 `ClientHandler:425` 各 `register(BulletTrailRenderingHandler.get())` 一次 ✓
+   ⇒ NeoForge 每个 `@SubscribeEvent` **一次注册执行一次** ✓ ⇒ `onClientTick` 每客户端刻跑**两遍** ✓
+   ⇒ 每条拖尾 `age++` 与 `position += motion` 各跑两遍 ✓ ⇒ **拖尾寿命只有配置值的一半** ✗、
+   而且"拖尾跟着弹丸飞"的观感也会偏 ✓。
+2. **两个渲染 hook** ✗：同一个处理器**还**订阅了 `RenderLevelStageEvent.AFTER_PARTICLES` ✓，
+   而 `mixin/client/LevelRendererMixin` **也**直接调 `render()` ✓ ⇒ 每条拖尾每帧画 **2 遍** ✓；
+   叠加第 1 条 ⇒ 每帧 **3 遍** ✗。
+3. **逐条拖尾的重建与刷批** ✗：`render()` 循环里对每条拖尾都
+   ① 新建 `RenderType.energySwirl(...)` ✓（`RenderType.create` 每次都 new 一个 `CompositeType` ✓
+   和整套 `CompositeState`/state shard ✓，**没有缓存** ✓，见 `.refs/nf-src` 的 `RenderType.java:914` ✓）、
+   ② `String.format` + `ResourceLocation.parse` 拼纹理路径 ✓、③ **在循环内** `endBatch()` ✓
+   ⇒ 每帧 26 次绘制调用 ✓ + 26 个新建 RenderType/BufferBuilder ✓；乘上前两条 ⇒ 每帧 **78 次** ✗。
+* 对照 ✓：隔壁 `TurretBulletTrailRenderingHandler` **从不**逐条刷批次 ✓（整帧一次 ✓）
+  ⇒ 炮塔拖尾这条路本来就是对的 ✓ —— 这本身就是"弹道拖尾写法是历史遗留"的旁证 ✓。
+
+### 82.12.3 "两个 hook 画在不同坐标空间"？—— **不是** ✓（这条必须查证，否则删错 hook 会改观感）
+* 读 `.refs/nf-src/net/minecraft/client/renderer/LevelRenderer.java` ✓：
+  关卡 PoseStack 就是 `new PoseStack()` ✓（第 **1006** 行 ✓），相机**位移**是**逐实体减掉**的 ✓
+  （`renderEntity(entity, d0, d1, d2, ...)` ✓），`renderLevel` 里**没有任何** `posestack.mulPose` ✓；
+  `dispatchRenderStage` 各阶段传的也是**同一个** stack ✓（1052 / 1124 / 1192 / 1210 行 ✓）。
+* ⇒ mixin 里那个 `new PoseStack()` 与事件里拿到的栈**等价** ✓（mixin 的注释本来就断言了这点 ✓，现在有源码证据 ✓）
+  ⇒ 事件那两遍**纯属重复** ✓，删掉**不改变观感** ✓。
+
+### 82.12.4 修法
+* **只留一个渲染 hook** ✓：保留 `LevelRendererMixin` ✓（它本来就是画对的那一个 ✓），删掉 `onRenderLevelStage` ✓。
+* 删掉 `ScorchedGuns` 里那次**重复注册** ✓（保留 `ClientHandler.setup()` 那次 ✓）。
+* 按**弹丸实体类型**缓存纹理 `ResourceLocation` 与 `RenderType` ✓（`RenderType.energySwirl` 对同一纹理是纯函数 ✓）
+  ⇒ 一次霰弹的 26 条拖尾**共用同一个** RenderType ✓ ⇒ **同一个 buffer** ✓。
+* `endBatch()` 从循环内**移到循环外** ✓（整帧一次 ✓）⇒ 26 颗：**每帧 1 次**绘制调用 ✓、**1 个** RenderType ✓。
+* 炮塔拖尾 ✓：纹理是常量 ✓ ⇒ 提升为 `static final RenderType` ✓（`GunRenderType` 早就是这种写法 ✓，是本病历里的既有约定 ✓）。
+
+### 82.12.5 防复发：审计缺口才是这次漏掉的**真正原因** ✓
+* `tools/audit_bus_registrations.py` ✓：重复注册以前只是**打印提示** ✓、**退出码 0** ✓
+  ⇒ 改成**阻断** ✓（计入 `problems` ✓）。
+* `tools/audit_duplicate_registrations.py` ✓：只认 `new X()` / `X.class` ✗，**不认识 `X.get()`** ✗
+  —— 而 `X.get()` 正是本 mod 到处都是的单例写法 ✓ ⇒ 补上 ✓、重复即**失败** ✓、并加 `--selftest`
+  （对 `5b53ff4` **必须**失败 ✓）。
+* **新增** `tools/audit_trail_render.py` ✓，规则：
+  ① 每条拖尾渲染器**只能有一个** hook ✓（事件与 mixin 不得并存 ✓，也不得"一个都没有" ✓）；
+  ② 同一处理器**不得**注册多次 ✓；③ `endBatch()` **不得**出现在"逐条拖尾循环之内"✓
+  **或它所调用的方法里** ✓（会跟三层调用 ✓ —— 本轮的真凶恰恰不在循环文本里 ✓，而在被调用的 `renderBulletTrail` 里 ✓）；
+  ④ 任何 `render*` 方法里**不得**新建 RenderType ✓；⑤ `getTexture` **必须**走缓存 ✓。
+  `--selftest` 对 `5b53ff4` 报 **6 条** ✓（含"两个 hook 并存"✓、"注册 2 次"✓、"循环内刷批"✓、"每次新建 RenderType"✓、"纹理没缓存"✓）。
+* 写这条审计时**自己踩的坑** ✓（记下来，同类审计都要防 ✓）：一开始用 `/\*.*?\*/` 去注释 ✗，
+  而 `ScorchedGuns` 的注释里有个资源 glob `.../*.json` ✓ ⇒ 正则把 `/*` 当块注释起始 ✓，
+  **吞掉了后面一百行** ✓（包括要检查的那行注册 ✓）⇒ 审计对真问题视而不见 ✓。
+  修法 ✓：一次扫描同时处理**行注释 / 块注释 / 字符串字面量** ✓（保留长度与行号 ✓）。
+
+### 82.12.6 验收
+* **31 个审计全 0** ✓（新增 1 个 ✓：`audit_trail_render.py` ✓）；`verify_installed_jar` **189/189** ✓；
+  已安装 ✓（`19412068` 字节 ✓，备份 `.bak-201538` ✓）。
+* 结构上的算术是**确定的、可复算的** ✓：3 遍 → **1 遍** ✓；26 次刷批 → **1 次** ✓；
+  26 个 RenderType → **1 个** ✓；拖尾寿命从"一半"回到**配置值** ✓。
+
+### 82.12.7 **未实测**（说清楚 ✓，并说明为什么）✗
+* 帧时间数字**这一轮没拿到** ✗。为它准备的临时探针 ✓（`debug/TrailProbe` ✓：在"旧写法 = 逐条新建 + 逐条刷批"
+  与"新写法 = 语义相同的缓存 + 整帧一次刷批"之间**自动交替** ✓，统计"有拖尾的那些帧"的平均/最大毫秒与拖尾数 ✓）
+  必须**客户端真的进世界并挨一发霰弹** ✓，而两次尝试都在"客户端刚进服后 5 秒内"被外部关掉 ✗
+  （客户端日志 `Stopping!` ✓、服务器 `BUILD SUCCESSFUL` ✓，两个 JVM 同时退出 ✓），拿不到可用样本 ✓。
+  探针**已删除** ✓、**未进入发布 jar** ✓（`build.gradle` 里为验证加的两行 `programArgument` 也已还原 ✓，
+  `git diff build.gradle` 为**空** ✓）。
+* **玩家决定：这类实测玩家自己上手** ✓（"测试这类东西直接让我自己上手测试" ✓）
+  ⇒ 本轮**改为交给玩家验收** ✓，需要看的只有两件事 ✓：
+  1. **霰弹枪开火还卡不卡** ✓（`boomstick` / `callwell` 这类多弹丸枪 ✓；对比上一版 ✓）。
+  2. **弹道拖尾仍然正常显示** ✓ —— 保留的 hook 本来就是**之前就在画**的那一个 ✓，
+     几何体、矩阵、纹理一字未改 ✓，所以这条是低风险 ✓；顺带能看到"拖尾活得比原来久" ✓
+     （原来被双份 tick 折半 ✓）。
+* **仍未解决 / 待办** ✓（不在本节范围内 ✓）：炮塔在**不装 Sable** 时崩溃 ✗（§82.13 待办 ✓）、
+  警卫 AI 套用 1.21.1 移植版那条 ✓；若霰弹枪仍卡 ✓，请给一份**新的** spark 链接 ✓
+  （旧链接的 payload 已 404 ✓）或本地 `.sparkprofile` ✓。
+
+
 
 
 

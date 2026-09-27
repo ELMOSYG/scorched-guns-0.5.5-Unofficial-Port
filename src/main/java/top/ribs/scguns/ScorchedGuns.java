@@ -26,7 +26,6 @@ import top.ribs.scguns.attributes.SCAttributes;
 import top.ribs.scguns.client.ClientHandler;
 import top.ribs.scguns.client.CustomGunManager;
 import top.ribs.scguns.client.handler.BeamHandler;
-import top.ribs.scguns.client.handler.BulletTrailRenderingHandler;
 import top.ribs.scguns.client.handler.HUDRenderHandler;
 import top.ribs.scguns.client.handler.InspectHandler;
 import top.ribs.scguns.client.handler.RecoilHandler;
@@ -189,13 +188,15 @@ public class ScorchedGuns {
       // is the registration now, and it avoids registering either class twice.
       DistHelper.runWhenOn(Dist.CLIENT, () -> {
             ClientHandler.registerClientHandlers(bus);
-            // HUDRenderHandler is registered by ClientHandler.registerClientHandlers
-            // above; registering it here as well made every @SubscribeEvent method in
-            // it run twice per event, so the HUD was drawn twice. (Inherited from
-            // 0.5.5, where Forge tolerated the duplicate.)
+            // HUDRenderHandler and BulletTrailRenderingHandler are registered by
+            // ClientHandler (registerClientHandlers / setup) below; registering either
+            // of them here as well made every @SubscribeEvent method in it run twice per
+            // event. For the HUD that drew it twice; for the bullet trail handler it
+            // additionally aged every trail twice per client tick (so trails died at
+            // half their configured life) and rendered them twice per frame - on top of
+            // the third copy drawn by LevelRendererMixin. (HANDOFF 82.12)
             NeoForge.EVENT_BUS.register(InspectHandler.get());
             NeoForge.EVENT_BUS.register(BeamHandler.class);
-            NeoForge.EVENT_BUS.register(BulletTrailRenderingHandler.get());
          });
       NeoForge.EVENT_BUS.register(this);
       NeoForge.EVENT_BUS.register(WeaponMovementEventHandler.class);

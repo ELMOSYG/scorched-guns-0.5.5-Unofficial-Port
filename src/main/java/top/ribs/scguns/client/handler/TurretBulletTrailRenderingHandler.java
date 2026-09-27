@@ -25,6 +25,10 @@ import top.ribs.scguns.client.TurretBulletTrail;
 public class TurretBulletTrailRenderingHandler {
    private static TurretBulletTrailRenderingHandler instance;
    private static final ResourceLocation TURRET_TRAIL_TEXTURE = ResourceLocation.fromNamespaceAndPath("scguns", "textures/trail/turret_projectile.png");
+   // HANDOFF 82.12: RenderType.energySwirl() builds a new RenderType and CompositeState on
+   // every call. The turret texture is a constant, so the whole RenderType is one too -
+   // it was being rebuilt once per live trail per frame.
+   private static final RenderType TURRET_TRAIL_RENDER_TYPE = RenderType.energySwirl(TURRET_TRAIL_TEXTURE, 0.0F, 0.15625F);
    private final Map<Integer, TurretBulletTrail> trails = new HashMap<>();
 
    public static TurretBulletTrailRenderingHandler get() {
@@ -104,7 +108,7 @@ public class TurretBulletTrailRenderingHandler {
             poseStack.scale(0.05625F, 0.05625F, 0.05625F);
             poseStack.translate(-4.0F, 0.0F, 0.0F);
             BufferSource renderTypeBuffer = mc.renderBuffers().bufferSource();
-            VertexConsumer vertexConsumer = renderTypeBuffer.getBuffer(RenderType.energySwirl(TURRET_TRAIL_TEXTURE, 0.0F, 0.15625F));
+            VertexConsumer vertexConsumer = renderTypeBuffer.getBuffer(TURRET_TRAIL_RENDER_TYPE);
             Pose posestack$pose = poseStack.last();
             Matrix4f matrix4f = posestack$pose.pose();
             double speed = Math.sqrt(motion.x * motion.x + motion.y * motion.y + motion.z * motion.z);

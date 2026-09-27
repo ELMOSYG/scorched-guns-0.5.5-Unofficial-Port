@@ -7,8 +7,11 @@ loading, so they have to be found together rather than one crash at a time:
     - Forge tolerated registering a class/object with nothing to subscribe.
   * "Expected @SubscribeEvent method ... to NOT be static because register() was
     called with an instance type" (and the mirror case for a class registration).
-  * registering the same target twice - not an error, but the handlers then run
-    twice per event.
+  * registering the same target twice - the handlers then run twice per event.  This
+    was reported as a note and exited 0, which is exactly how a duplicated
+    `BulletTrailRenderingHandler` registration survived: every trail aged twice per
+    client tick (dying at half its configured life) and was drawn twice per frame, on
+    top of a third copy drawn by LevelRendererMixin.  It is a failure now.  (HANDOFF 82.12)
 
 An earlier version of this script only understood `new X()` / `X.get()` /
 `X.class` / `this` and **silently skipped everything else**, which let
@@ -144,6 +147,7 @@ def main() -> None:
         print("\n=== registered more than once (handlers run once per registration) ===")
         for cls, where in sorted(dupes.items()):
             print("  %-34s %s" % (cls, ", ".join(where)))
+        problems += len(dupes)
     print("\n%d blocking registration problem(s) (%d unresolvable)" % (problems, unresolved))
     sys.exit(1 if problems else 0)
 

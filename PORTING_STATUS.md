@@ -694,4 +694,73 @@ python tools\rcon_mob_equipment.py                             # ★ 生物装�
 - **未验证**：dev 环境撞上两个第三方坑（`libs/prometheus` 让所有实体创建崩、Curios mixin 偶发失败，
   已记进 HANDOFF §9.0）⇒ "近战被抑制"这一条没跑完，需玩家进游戏确认（持枪警卫应在枪的射程上开火、不贴脸）。
 
+## §82.10 玩家报"geckolib 注入失败？"——真凶是 mixin **准备阶段就加载了 `LivingEntity`**
+
+崩溃报告里的"肇事 mod"（先是 GeckoLib，后是 Curios）都是**下一个受害者**：
+`MixinTargetAlreadyLoadedException: target net.minecraft.world.entity.LivingEntity was loaded too early`
+之后，**任何**往 `LivingEntity` 注入的 mixin 都会失败。两个真凶：
+
+1. `GuardMeleeGoalMixin` 里的 `@Shadow protected PathfinderMob mob` —— **`@Shadow` 字段/方法签名的类型是在
+   mixin 准备阶段解析的**，于是 `PathfinderMob → LivingEntity` 被提前拉起来（**方法体里**的类型引用是惰性的，安全）。
+2. `MixinPlugin` 用 `Class.forName` 探测 GV 的 `Guard`（`extends PathfinderMob`）——准备阶段同样把 `LivingEntity` 拉起来。
+
+- **改法**：近战 mixin 改**纯反射**（沿父类链找 `mob` 字段、调 `getMainHandItem`），不留任何实体类型的 `@Shadow`；
+  `MixinPlugin` 改查 `LoadingModList.isModLoaded("guardvillagers")`（`onLoad` 一次 + `shouldApplyMixin` 懒重探，
+  **失败即放行**），仍只 gate `...guardvillagers.` 前缀。`audit_mixins.py` 新增"`@Shadow` 字段的类型不得是实体类"
+  （**去注释**后匹配 —— 上一轮就是被注释里的示例坑出假阳性）。
+- **实测**：无 FATAL、两个警卫 mixin 都应用、服务器 `Done`。玩家另一个崩溃 `crash-...-client.txt` 是 Iris/Sodium，与本 mod 无关。
+
+## §82.11 霰弹枪卡顿第一刀：**逐颗弹丸的内联 `tick()`**（已修，但"卡顿已解决"这句不能说）
+
+- **定位**：玩家路径 `ServerPlayHandler.fireProjectiles` 与 mob 路径 `AIGunEvent.performGunAttack`
+  都在循环里对每颗弹丸调 `tick()` ⇒ 一发 `boomstick`（26 颗）= 26 次完整弹丸 tick（射线/碰撞/命中效果）
+  挤在封包处理里 ⇒ 只影响多弹丸武器，和"只有霰弹枪卡"完全对得上。**改法**：两处内联 `tick()` 都删掉，
+  弹丸改由下一个游戏刻正常 tick。
+- **冷/热测量的分量要说清楚**：**冷**测量 41 ms → 33 ms，但分解只合计 9.7 ms（差额全在首调用类加载）；
+  而"热"那次**写错了**（清的是 `player.getCooldowns()` 而不是 `ShootTracker`，8 发里 7 发被冷却拦掉，
+  `avg 0.01 ms` 无意义）⇒ 本节只能声称"逐颗内联 tick 已删除"，**不能**声称"卡顿已解决"。
+- **顺手排除**（读代码）：每颗弹丸的生成包**不含**枪械物品（`ProjectileEntity.defineSynchedData` 为空，
+  `S2CMessageBulletTrail` 每次开火只写**一次** `ItemStack`）⇒ 网络侧不是按弹丸数线性膨胀，不是主因。
+
+## §82.12 卡顿真凶之一：弹道拖尾**每帧画三遍**、每颗弹丸**各刷一次批次**（已修，门禁全绿，实测交给玩家）
+
+玩家给的 spark 链接**已失效**（`?raw=1` → `err: 404 - Not Found`；之前那个 `200` 的 HTML 只是 SPA 外壳，
+随便编个 id 也是同样 5713 字节）⇒ 本轮不靠 profile，改为读代码 + 补审计，结论全是可复算的结构事实。
+
+三处缺陷叠加，**都按"每颗弹丸"放大**（所以只有霰弹枪卡）：
+
+1. **重复注册**：`ScorchedGuns` 与 `ClientHandler` 各注册一次 `BulletTrailRenderingHandler.get()`
+   ⇒ 每个 `@SubscribeEvent` 跑两遍 ⇒ `onClientTick` 每刻两遍 ⇒ 每条拖尾 `age`/`position` 走两遍 ⇒
+   **拖尾寿命只有配置值的一半**。
+2. **两个渲染 hook**：同一处理器**还**订阅 `RenderLevelStageEvent.AFTER_PARTICLES`，而 `LevelRendererMixin`
+   也调 `render()` ⇒ 每帧 **2 遍**；叠加第 1 条 ⇒ **3 遍**。
+   （已查证两者**不在**不同坐标空间：`.refs/nf-src` 里 `LevelRenderer` 的关卡 PoseStack 就是 `new PoseStack()`，
+   相机位移逐实体减掉、全程无 `mulPose`，事件各阶段传的是同一个栈 ⇒ 事件那两遍纯属重复，删掉不改观感。）
+3. **逐条重建 + 逐条刷批**：循环里每条拖尾都新建 `RenderType.energySwirl(...)`（每次都 new 一整套
+   `CompositeState`，无缓存）、`String.format`+`ResourceLocation.parse` 拼纹理、并**在循环内** `endBatch()`
+   ⇒ 每帧 26 次绘制调用 + 26 个新建 RenderType/BufferBuilder；乘上前两条 ⇒ 每帧 **78 次**。
+   隔壁 `TurretBulletTrailRenderingHandler` 从不逐条刷批（整帧一次）—— 炮塔那条路本来就是对的。
+
+- **改法**：只留 `LevelRendererMixin` 一个 hook、删掉重复注册、按弹丸类型**缓存纹理与 RenderType**
+  （26 条拖尾共用一个 RenderType ⇒ 同一个 buffer）、`endBatch()` 移到循环外、炮塔纹理提升为 `static final RenderType`。
+  ⇒ 3 遍 → **1 遍**、26 次刷批 → **1 次**、26 个 RenderType → **1 个**、拖尾寿命回到配置值。
+- **防复发（审计缺口才是这次漏掉的真正原因）**：`audit_bus_registrations.py` 的重复注册以前只是**打印提示**、
+  退出码 0 ⇒ 改成**阻断**；`audit_duplicate_registrations.py` 只认 `new X()`/`X.class`、**不认识 `X.get()`**
+  （本 mod 到处都是的单例写法）⇒ 补上 + 重复即失败 + `--selftest`；**新增** `audit_trail_render.py`
+  （只能有一个 hook / 不得重复注册 / `endBatch()` 不得在"逐条拖尾循环**或其所调方法**里" / `render*` 里不得新建
+  RenderType / `getTexture` 必须缓存；`--selftest` 对 `5b53ff4` 报 6 条）。写这条审计时自己踩了个坑：
+  用 `/\*.*?\*/` 去注释会把 `ScorchedGuns` 注释里的 glob `.../*.json` 当成块注释起始、**吞掉一百行**
+  （包括要检查的那行注册）⇒ 改成一次扫描同时处理行注释/块注释/字符串字面量。
+- **门禁**：**31 个审计全 0** / `verify_installed_jar` **189/189** / `javac` 0 / `build` ✓ /
+  已安装（19412068 字节，备份 `.bak-201538`）。
+- **未实测**：帧时间数字**没拿到** —— 临时探针（在"旧写法=逐条新建+逐条刷批"与"新写法"之间自动交替统计每帧毫秒）
+  需要客户端真的进世界挨一发霰弹，两次尝试都在客户端刚进服后 5 秒内被外部关掉（客户端 `Stopping!`、
+  服务器 `BUILD SUCCESSFUL`，两个 JVM 同时退出）。探针**已删除、未进发布 jar**，`build.gradle` 里为验证加的
+  两行 `programArgument` 也已还原（`git diff build.gradle` 为空）。
+  **玩家决定这类实测自己上手** ⇒ 交给玩家验收两点：① 霰弹枪开火还卡不卡；② 弹道拖尾仍正常显示
+  （保留的 hook 本来就是之前就在画的那一个，几何/矩阵/纹理一字未改，低风险；顺带会看到拖尾活得比原来久）。
+  若仍卡，请给**新的** spark 链接或本地 `.sparkprofile`。
+- **待办**：炮塔在不装 Sable 时崩溃（隔离 `PhysicsStructureHelper` 的 11 处 `dev.ryanhcode.sable.*` 引用）、
+  警卫 AI 套用 1.21.1 移植版。
+
 

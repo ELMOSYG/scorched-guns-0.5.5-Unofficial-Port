@@ -41,7 +41,15 @@ public class LevelRendererMixin {
       float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(false);
       // 1.21's renderLevel has no PoseStack parameter. checkPoseStack() has just
       // asserted that the level's own stack is back at its base state, so it is the
-      // identity at this point and a fresh stack is equivalent.
+      // identity at this point and a fresh stack is equivalent. Verified against the
+      // decompiled LevelRenderer: its level PoseStack is a plain `new PoseStack()` and
+      // the camera position is subtracted per entity, so this is the same space that
+      // RenderLevelStageEvent hands out.
+      //
+      // HANDOFF 82.12: this is the ONLY hook that draws trails. The trail handlers used
+      // to subscribe to RenderLevelStageEvent.AFTER_PARTICLES as well, so every trail
+      // was drawn a second time there (and a third time through a duplicated bus
+      // registration), each with its own batch flush.
       PoseStack stack = new PoseStack();
       BulletTrailRenderingHandler.get().render(stack, partialTicks);
       TurretBulletTrailRenderingHandler.get().render(stack, partialTicks);

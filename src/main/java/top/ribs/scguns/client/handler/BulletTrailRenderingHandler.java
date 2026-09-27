@@ -16,10 +16,8 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.Clone;
 import net.neoforged.neoforge.client.event.ClientPlayerNetworkEvent.LoggingOut;
-import net.neoforged.neoforge.client.event.RenderLevelStageEvent.Stage;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import org.joml.Matrix4f;
@@ -29,6 +27,15 @@ import top.ribs.scguns.init.ModTags;
 public class BulletTrailRenderingHandler {
    private static BulletTrailRenderingHandler instance;
    private final Map<Integer, BulletTrail> bullets = new HashMap<>();
+   // HANDOFF 82.12. RenderType.energySwirl() builds a brand new RenderType (and with it a
+   // whole CompositeState and its state shards) on every call, and the texture path was
+   // formatted and parsed from a string on every call as well - per trail, per frame. A
+   // shotgun keeps up to 26 trails alive at once, so that was 26 of each per frame. Both
+   // values are pure functions of the projectile's entity type, so they are cached here.
+   // They stay valid across levels (a RenderType is only a description of render state),
+   // which is why onRespawn/onLoggedOut do not clear them.
+   private final Map<EntityType<?>, ResourceLocation> textureCache = new HashMap<>();
+   private final Map<EntityType<?>, RenderType> renderTypeCache = new HashMap<>();
 
    public static BulletTrailRenderingHandler get() {
       if (instance == null) {
@@ -64,9 +71,21 @@ public class BulletTrailRenderingHandler {
    }
 
    public void render(PoseStack stack, float partialSticks) {
-      for (BulletTrail bulletTrail : this.bullets.values()) {
-         this.renderBulletTrail(bulletTrail, stack, partialSticks);
+      if (this.bullets.isEmpty()) {
+         return;
       }
+
+      // HANDOFF 82.12: the batch used to be ended *inside* the per-trail call, so one
+      // shotgun blast (26 pellets, 26 live trails) ended the batch 26 times per frame -
+      // 26 draw calls and 26 fresh BufferBuilders, for geometry that belongs in one
+      // buffer anyway now that every pellet of a gun resolves to the same cached
+      // RenderType. TurretBulletTrailRenderingHandler never ended it per trail at all.
+      BufferSource renderTypeBuffer = Minecraft.getInstance().renderBuffers().bufferSource();
+      for (BulletTrail bulletTrail : this.bullets.values()) {
+         this.renderBulletTrail(bulletTrail, stack, partialSticks, renderTypeBuffer);
+      }
+
+      renderTypeBuffer.endBatch();
    }
 
    @SubscribeEvent
@@ -79,7 +98,7 @@ public class BulletTrailRenderingHandler {
       this.bullets.clear();
    }
 
-   private void renderBulletTrail(BulletTrail trail, PoseStack poseStack, float deltaTicks) {
+   private void renderBulletTrail(BulletTrail trail, PoseStack poseStack, float deltaTicks, BufferSource renderTypeBuffer) {
       Minecraft mc = Minecraft.getInstance();
       Entity entity = mc.getCameraEntity();
       Level world = mc.level;
@@ -101,8 +120,7 @@ public class BulletTrailRenderingHandler {
                   poseStack.mulPose(Axis.XP.rotationDegrees(45.0F));
                   poseStack.scale(0.05625F, 0.05625F, 0.05625F);
                   poseStack.translate(-4.0F, 0.0F, 0.0F);
-                  BufferSource renderTypeBuffer = mc.renderBuffers().bufferSource();
-                  VertexConsumer vertexConsumer = renderTypeBuffer.getBuffer(RenderType.energySwirl(this.getTexture(projectileEntity), 0.0F, 0.15625F));
+                  VertexConsumer vertexConsumer = renderTypeBuffer.getBuffer(this.getRenderType(projectileEntity));
                   Pose posestack$pose = poseStack.last();
                   Matrix4f matrix4f = posestack$pose.pose();
                   double speed = Math.sqrt(motion.x * motion.x + motion.y * motion.y + motion.z * motion.z);
@@ -156,7 +174,6 @@ public class BulletTrailRenderingHandler {
                      }
                   }
 
-                  renderTypeBuffer.endBatch();
                   poseStack.popPose();
                }
             }
@@ -164,9 +181,28 @@ public class BulletTrailRenderingHandler {
       }
    }
 
+   /** The trail RenderType for this projectile type, built once per type (HANDOFF 82.12). */
+   private RenderType getRenderType(Entity entity) {
+      EntityType<?> type = entity.getType();
+      RenderType cached = this.renderTypeCache.get(type);
+      if (cached == null) {
+         cached = RenderType.energySwirl(this.getTexture(entity), 0.0F, 0.15625F);
+         this.renderTypeCache.put(type, cached);
+      }
+
+      return cached;
+   }
+
    public ResourceLocation getTexture(Entity entity) {
-      ResourceLocation id = EntityType.getKey(entity.getType());
-      return ResourceLocation.parse(String.format("%s:textures/trail/%s.png", id.getNamespace(), id.getPath()));
+      EntityType<?> type = entity.getType();
+      ResourceLocation cached = this.textureCache.get(type);
+      if (cached == null) {
+         ResourceLocation id = EntityType.getKey(type);
+         cached = ResourceLocation.parse(String.format("%s:textures/trail/%s.png", id.getNamespace(), id.getPath()));
+         this.textureCache.put(type, cached);
+      }
+
+      return cached;
    }
 
    public void addVertex(
@@ -195,10 +231,10 @@ public class BulletTrailRenderingHandler {
          ;
    }
 
-   @SubscribeEvent
-   public void onRenderLevelStage(RenderLevelStageEvent event) {
-      if (event.getStage() == Stage.AFTER_PARTICLES) {
-         get().render(event.getPoseStack(), event.getPartialTick().getGameTimeDeltaPartialTick(false));
-      }
-   }
+   // HANDOFF 82.12: no onRenderLevelStage here. LevelRendererMixin already calls render()
+   // once per frame, so subscribing to RenderLevelStageEvent.AFTER_PARTICLES as well drew
+   // every trail twice there - and the duplicate NeoForge.EVENT_BUS registration in
+   // ScorchedGuns made it twice again. The mixin is the hook that stays: it runs at the
+   // point vanilla's own level PoseStack is known to be at its base state, which is the
+   // space this renderer writes into.
 }
