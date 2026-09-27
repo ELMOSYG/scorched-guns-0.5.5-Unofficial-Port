@@ -7,7 +7,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.util.Mth;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.player.Player;
@@ -43,64 +42,28 @@ public abstract class WeaponPose implements IHeldAnimation {
 
    @OnlyIn(Dist.CLIENT)
    @Override
-   public void applyPlayerModelRotation(LivingEntity holder, ModelPart rightArm, ModelPart leftArm, ModelPart head, InteractionHand hand, float aimProgress) {
+   public void applyPlayerModelRotation(Player player, ModelPart rightArm, ModelPart leftArm, ModelPart head, InteractionHand hand, float aimProgress) {
       Minecraft mc = Minecraft.getInstance();
       boolean right = mc.options.mainHand().get() == HumanoidArm.RIGHT ? hand == InteractionHand.MAIN_HAND : hand == InteractionHand.OFF_HAND;
       ModelPart mainArm = right ? rightArm : leftArm;
       ModelPart secondaryArm = right ? leftArm : rightArm;
-      float angle = this.getPlayerPitch(holder);
+      float angle = this.getPlayerPitch(player);
       float angleAbs = Math.abs(angle);
       float zoom = this.hasAimPose() ? aimProgress : 0.0F;
       AimPose targetPose = (double)angle > 0.0 ? this.downPose : this.upPose;
-      // The melee pose comes from the local player's own swing state, so it only applies to the player: a
-      // guard (HANDOFF section 82.17) must not take the player's pose because the player happened to swing.
-      if (holder instanceof Player && GunRenderingHandler.get().isThirdPersonMeleeAttacking()) {
+      GunRenderingHandler renderingHandler = GunRenderingHandler.get();
+      if (renderingHandler.isThirdPersonMeleeAttacking()) {
          targetPose = this.meleePose;
          zoom = 1.0F;
       }
 
-      this.applyBodyTwist(holder, targetPose, right, angleAbs, zoom);
-      this.applyAimPose(targetPose, mainArm, secondaryArm, angleAbs, zoom, right ? 1.0F : -1.0F, holder.isCrouching());
+      this.applyAimPose(targetPose, mainArm, secondaryArm, angleAbs, zoom, right ? 1.0F : -1.0F, player.isCrouching());
    }
 
-   /**
-    * Turns the holder's body away from its view direction, which is what gives a player's stance its bladed
-    * look with a gun in hand (HANDOFF section 82.18).
-    *
-    * <p>This used to happen only in {@link #applyPlayerPreRender}, a player-only path, and that is the whole
-    * difference between a player and a mob holding the same gun: a guard's torso kept facing the direction
-    * it was walking while its arms held the gun bladed, which is what made the reference port's hand written
-    * guard pose look wrong. Both paths call this now, with the turn taken from the pose data's own
-    * {@code renderYawOffset} - 25 degrees for the two-handed poses, 35 for the bazooka, 45 for the miniguns -
-    * so a pose turns the body the same way whatever is holding the gun.</p>
-    */
-   protected void applyBodyTwist(LivingEntity holder, AimPose targetPose, boolean right, float angleAbs, float zoom) {
-      float rightOffset = this.getValue(
-         targetPose.getIdle().getRenderYawOffset(),
-         targetPose.getAiming().getRenderYawOffset(),
-         this.forwardPose.getIdle().getRenderYawOffset(),
-         this.forwardPose.getAiming().getRenderYawOffset(),
-         0.0F,
-         angleAbs,
-         zoom,
-         right ? 1.0F : -1.0F
-      );
-      holder.yBodyRotO = holder.yRotO + rightOffset;
-      holder.yBodyRot = holder.getYRot() + rightOffset;
-   }
-
-   /**
-    * The holder's pitch as a fraction of a right angle (HANDOFF section 82.17).
-    *
-    * <p>Takes any {@link LivingEntity}, not a {@link Player}: the pose math only ever needs pitch, crouching
-    * and the off hand, all of which a guard has, which is what lets a guard use the player's own gun holding
-    * animation instead of a hand written one. The camera case below is a player case by nature - only the
-    * local player is the camera entity.</p>
-    */
-   protected float getPlayerPitch(LivingEntity holder) {
-      return Minecraft.getInstance().getCameraEntity() == holder && Minecraft.getInstance().screen != null
+   protected float getPlayerPitch(Player player) {
+      return Minecraft.getInstance().getCameraEntity() == player && Minecraft.getInstance().screen != null
          ? 0.0F
-         : Mth.lerp(Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false), holder.xRotO, holder.getXRot()) / 90.0F;
+         : Mth.lerp(Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false), player.xRotO, player.getXRot()) / 90.0F;
    }
 
    private void applyAimPose(AimPose targetPose, ModelPart rightArm, ModelPart leftArm, float partial, float zoom, float offhand, boolean sneaking) {
@@ -224,7 +187,18 @@ public abstract class WeaponPose implements IHeldAnimation {
       float angleAbs = Math.abs(angle);
       float zoom = this.hasAimPose() ? aimProgress : 0.0F;
       AimPose targetPose = (double)angle > 0.0 ? this.downPose : this.upPose;
-      this.applyBodyTwist(player, targetPose, right, angleAbs, zoom);
+      float rightOffset = this.getValue(
+         targetPose.getIdle().getRenderYawOffset(),
+         targetPose.getAiming().getRenderYawOffset(),
+         this.forwardPose.getIdle().getRenderYawOffset(),
+         this.forwardPose.getAiming().getRenderYawOffset(),
+         0.0F,
+         angleAbs,
+         zoom,
+         right ? 1.0F : -1.0F
+      );
+      player.yBodyRotO = player.yRotO + rightOffset;
+      player.yBodyRot = player.getYRot() + rightOffset;
    }
 
    @OnlyIn(Dist.CLIENT)

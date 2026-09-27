@@ -869,46 +869,26 @@ navigation 并抢走移动，于是警卫该退不退、该压不进，站着随
 - **同源的第三个洞（一起修）**：join 事件在**区块重载**时也会触发（新实例 ⇒ 掷骰记录丢失）⇒ 拿走枪、走远、回来
   可能又凭空多一把。`onEntityJoinWorld` 加了 `event.loadedFromDisk()` 判断：只有真正新生成才发枪；重载只保留必要的一件事——手里是枪就 `reassessWeaponGoal`（AI 目标不存盘，重载必须重装）。
 
-## §82.17 警卫改用**玩家的持枪动画**（玩家提议："骨骼一致，理论上可以"）
+## §82.17 警卫持枪动画：试过、已按玩家决定回退
 
-**可以** —— 前提是把姿势入口的持有者类型从 `Player` 放宽到 `LivingEntity`：那个方法只用俯仰、蹲伏、副手，
-全在 `LivingEntity` 上（14 个姿势类一起改，编译期把漏改点全找出来）。但两处**本地玩家专有**状态必须用
-`instanceof Player` 挡住，否则玩家挥刀会带动所有持枪警卫摆出近战姿势（`isThirdPersonMeleeAttacking` /
-`getThirdPersonMeleeProgress`，12 文件 11 处）。
+先按玩家提议做了一版：把玩家姿势入口 `IHeldAnimation.applyPlayerModelRotation` 从 `Player` 放宽到 `LivingEntity`、
+给 GV 的 `GuardModel.setupAnim(Guard, ...)` 加客户端 mixin、并把身体侧转抽成共享方法。玩家进游戏实测后判定
+**观感不理想** ⇒ **全部回退**：姿势入口恢复 `Player`、mixin 删除、`MixinPlugin` 的客户端前缀与
+`scguns.mixins.json` 的 client 条目撤销、共享侧转方法与相关审计/校验规则一并撤掉。
+只保留与动画**无关**的审计改进（`audit_mixin_plugin_gate` 逐个前缀检查 + 把 `isModLoaded(...)` 的 mod id 纳入判据）。
 
-- **为什么以前完全没有姿势**：`MixinHumanoidModel` 注入 `HumanoidModel.setupAnim(LivingEntity,...)`，
-  而 GV 的 `GuardModel` 覆写了它（桥接方法覆盖）⇒ 通用 mob 姿势对警卫从不生效。
-  新增客户端 `GuardModelGunPoseMixin` 注入 `GuardModel.setupAnim(Guard,...)`（写完整描述符避免命中三个重载；
-  实体参数用 `@Coerce Object`，注入签名不含实体类型 —— §82.10 的规矩）。
-- **两个细节**：① 姿势会连带写手臂**枢轴**（那是玩家的身体尺寸）⇒ 只保留旋转，枢轴读前存下、应用后写回；
-  ② 瞄准进度按**真实刻差**缓动（约 7 刻到位），用 `getGameTimeDeltaTicks()` 而非 0..1 部分刻
-  （被 `audit_time_delta` 拦下后登记为审阅过的例外 `ALLOWED_NEW_DELTA_SITES`，规则本身不动）。
-- **枪的物品变换仍保持原版**：`ItemInHandLayerMixin` 明确记着上一版手工给 mob 摆枪"看起来不像在持枪"、已删；
-  本轮只做手臂，枪由手臂带着走（物品层按手部变换渲染）。
-- **顺手修掉的审计缺口**：`audit_mixin_plugin_gate` 取门禁前缀只用 `re.search`（只取第一个），加了客户端前缀后等于没检查
-  ⇒ 改 `findall` 并**逐个前缀**验证其下确有引用前置的 mixin；而且它靠类名片段搜索判断"mixin 是否真用了前置"，
-  而插件现在用 `isModLoaded("guardvillagers")`（mod id）⇒ 之前那次"通过"其实是注释里出现 "loading" 一词命中的（等于没检查）
-  ⇒ 已把 mod id 也纳入片段。
-- **门禁**：**31 个审计全 0** / `verify_installed_jar` **214/214**（新增 3 条）/ `javac` 0 / `build` ✓ /
-  已安装（19425274 字节，备份 `.bak-211623`）。
-- **未实测（交给玩家）**：① 警卫持枪姿势与瞄准缓动是否正常；② 走动/受击/换弹不穿模；
-  ③ **玩家自己的第一/第三人称姿势没有任何变化** —— 这是回归风险点（改了共享的姿势入口与 12 个姿势类）。
+**留下的结论（要再做就从这里开始）**：
 
-## §82.18 玩家诊断：参照版"警卫持枪姿势怪"的根因是**身体不转**（已核对并修掉我们自己的同类缺口）
+- 参照版那套姿势为什么怪（玩家的诊断，已用代码证实）：玩家的侧身来自姿势数据自己的 `renderYawOffset`
+  （双手 25°、火箭筒 35°、机枪 45°），由 `WeaponPose.applyPlayerPreRender` 写进 `yBodyRot/yBodyRotO`；
+  参照版的手写姿势只摆手臂、**从不碰 `yBodyRot`** ⇒ 躯干朝走路方向、手臂按"已侧身"的躯干摆。
+  那 9 个姿势类里各有一份硬编码同值写法，属于 `Config.CLIENT.display.oldAnimations` 的遗留分支
+  （默认路径走 `super` 的数据驱动值）——**改动画前先看那个开关**。
+- 通用 mob 姿势对警卫从来不起作用：`MixinHumanoidModel` 注入 `HumanoidModel.setupAnim(LivingEntity, ...)`，
+  而 GV 的 `GuardModel` **自己覆写了 `setupAnim(Guard, ...)`** ⇒ 覆写优先 ⇒ 任何方案都必须直接注入 GV 的 `GuardModel`。
+- 枪在手里的**物品摆放**对 mob 保持原版是**有意**的（`ItemInHandLayerMixin` 记着上一版手工摆枪
+  "看起来不像在持枪"、已删）。
 
-玩家的判断被代码证实：玩家的"侧身"来自姿势数据自己的 `renderYawOffset`（双手 25°、火箭筒 35°、机枪 45°），
-由 `WeaponPose.applyPlayerPreRender` 写进 `yBodyRot/yBodyRotO`；那 9 个姿势类里另有一份硬编码同值写法，
-查条件后确认是 `Config.CLIENT.display.oldAnimations` 的**遗留分支**（默认路径走 `super` 的数据驱动值）。
-参照版的手写姿势只摆手臂、从不碰 `yBodyRot` ⇒ 躯干朝走路方向、手臂却按"已侧身"的躯干摆 = 怪。
-GV 的 `GuardRenderer.render` 直接委派 `HumanoidMobRenderer.render`（标准渲染路径），所以只要设了 `yBodyRot` 就一定生效。
-
-- **我们自己的同类缺口**：§82.17 让警卫走玩家同一套姿势类，但那两行只写在 `applyPlayerPreRender`（**玩家专属路径**），
-  而 mob 走的是 `applyPlayerModelRotation` ⇒ 侧身对警卫不生效。已抽出 `WeaponPose.applyBodyTwist(...)`，
-  **两条路径都调用**；玩家的数值与行为完全不变（同一份数据、同一个公式）。
-- **审计**：新增"`WeaponPose.applyPlayerModelRotation` 必须应用身体旋转"，带反向验证（删掉调用 ⇒ 报错退出 1）。
-- **坑**：我先用脚本把 9 个类的硬编码旋转从 `applyPlayerPreRender` 搬进 `applyPlayerModelRotation`，
-  查清那些属于 `oldAnimations` 遗留分支后**全部 `git checkout` 回退**，只保留基础类那一处。
-  教训：看到硬编码常量先查它属于哪个开关分支。
-- **门禁**：**31 个审计全 0** / `verify_installed_jar` **214/214** / `javac` 0 / `build` ✓ /
-  已安装（19425367 字节，备份 `.bak-212819`）。
-- **未实测（交给玩家）**：① 警卫瞄准时躯干像玩家一样侧转；② 不再"怪"；③ 玩家自己的姿势与躯干旋转无变化。
+**门禁**：31 个审计全 0 / `verify_installed_jar` 211/211 / `javac` 0 / `build` ✓。
+警卫侧保留的是 §82.14 起那套：独立警卫 AI、装备规则、踹击、防友伤闸门 —— 即
+"**AI 用移植版那套，客户端持枪动画不做**"。

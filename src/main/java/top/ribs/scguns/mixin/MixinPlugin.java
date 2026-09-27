@@ -107,8 +107,7 @@ public class MixinPlugin implements IMixinConfigPlugin {
     * else would take the whole config down with it the moment its probe goes stale.</p>
     */
    public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
-      if (mixinClassName.startsWith("top.ribs.scguns.mixin.common.compat.guardvillagers.")
-         || mixinClassName.startsWith("top.ribs.scguns.mixin.client.compat.guardvillagers.")) {
+      if (mixinClassName.startsWith("top.ribs.scguns.mixin.common.compat.guardvillagers.")) {
          // Re-probe if onLoad somehow never ran, so the gate cannot hinge on call order.
          if (!this.guardVillagersProbed) {
             this.guardVillagersProbed = true;

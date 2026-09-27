@@ -84,15 +84,14 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
             problems.append("%s is missing, so part of the guard integration is not there" % required)
 
     # Allowed to name a Guard Villagers class: GuardFriendlyRules (reached only behind the guard-id check),
-    # the guard mixins under mixin/common/compat/guardvillagers/ and mixin/client/compat/guardvillagers/
-    # (both gated in MixinPlugin, so they never apply without the mod) and MixinPlugin itself (which probes
-    # the mod list by name). Anything else can fail to link on a server without the mod.
+    # the guard mixins under mixin/common/compat/guardvillagers/ (gated in MixinPlugin, so they never apply
+    # without the mod) and MixinPlugin itself (which probes the mod list by name). Anything else can fail to
+    # link on a server without the mod.
     allowed = ("compat/guardvillagers/GuardFriendlyRules.java",
                "mixin/MixinPlugin.java")
     named = [name for name in guard_class_files(files)
              if name not in allowed
-             and not name.startswith("mixin/common/compat/guardvillagers/")
-             and not name.startswith("mixin/client/compat/guardvillagers/")]
+             and not name.startswith("mixin/common/compat/guardvillagers/")]
     if named:
         problems.append("Guard Villagers classes are named in %s - only GuardFriendlyRules, the gated guard "
                         "mixins and MixinPlugin's probe may" % (named or "no file"))
@@ -356,41 +355,9 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
         problems.append("GuardVillagersCompat has no isHoldingGun, so the mixins inside Guard Villagers' "
                         "classes have no entity-type-free way to read the hand")
 
-    # Section 82.17: a guard holding a gun uses the player's own gun holding animation. Guard Villagers'
-    # GuardModel overrides HumanoidModel#setupAnim(LivingEntity, ...), which is where the generic mob pose
-    # lives, so nothing ever posed a guard; the player's pose entry point is now widened to LivingEntity so a
-    # guard - whose model is a HumanoidModel with the same skeleton - can call it.
-    pose_mixin = "mixin/client/compat/guardvillagers/GuardModelGunPoseMixin.java"
-    pose_text = strip_comments(files.get(pose_mixin) or "")
-    if not pose_text:
-        problems.append("%s is missing, so a guard holds a gun with whatever arm angles Guard Villagers' own "
-                        "model animation left behind" % pose_mixin)
-    else:
-        if "applyPlayerModelRotation" not in pose_text:
-            problems.append("the guard pose mixin does not go through the player's own pose entry point, so "
-                            "a guard animates with hand written angles again")
-        if "GuardModel" not in pose_text:
-            problems.append("the guard pose mixin no longer targets Guard Villagers' guard model")
-    if "client.compat.guardvillagers.GuardModelGunPoseMixin" not in mixin_config.get("client", []):
-        problems.append("scguns.mixins.json does not list GuardModelGunPoseMixin in its client section, so a "
-                        "guard is never posed")
-    pose_entry = strip_comments(files.get("client/render/pose/WeaponPose.java") or "")
-    if "applyPlayerModelRotation(LivingEntity" not in pose_entry:
-        problems.append("WeaponPose#applyPlayerModelRotation no longer takes a LivingEntity, so a guard "
-                        "cannot use the player's animation at all")
-    if "isThirdPersonMeleeAttacking" in pose_entry and "instanceof Player" not in pose_entry:
-        problems.append("the pose reads the local player's melee state without checking for a player, so a "
-                        "player swinging a weapon drags every armed guard into the melee pose")
-    # 82.18. A player's stance is bladed because the pose turns the body, and a mob's renderer reads the same
-    # two fields (`rotLerp(yBodyRotO, yBodyRot)`), so the turn has to happen in applyPlayerModelRotation -
-    # the method a mob goes through. It used to live only in applyPlayerPreRender, which only a player ever
-    # reaches: a guard then held the gun with its torso still facing the direction it was walking, which is
-    # what made the reference port's hand written guard pose look wrong. The per-pose hardcoded turns under
-    # the legacy `oldAnimations` option stay where they are; the twist that matters is the pose data's own
-    # renderYawOffset, applied through WeaponPose#applyBodyTwist from both paths.
-    if "applyBodyTwist" not in method_body(pose_entry, "applyPlayerModelRotation"):
-        problems.append("WeaponPose#applyPlayerModelRotation does not apply the pose's body twist, so a mob "
-                        "posed with a player animation keeps its torso facing its walking direction")
+    # 82.17/82.18 (guard gun holding animation through the player's poses) were reverted by the player's
+    # decision: the result did not look right in game. The rules that guarded that work are gone with it -
+    # what stays is the guard AI, the equipment rules, the kick and the friendly-fire gate.
 
     # A guard armed by anything other than this config's data file still has to get the guard's gun AI and
     # keep its own follow range (section 82.14): reassessWeaponGoal used to hand it the raider's AI and the
