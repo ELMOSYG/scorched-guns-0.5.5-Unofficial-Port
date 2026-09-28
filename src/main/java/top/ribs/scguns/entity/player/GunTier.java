@@ -1,6 +1,7 @@
 package top.ribs.scguns.entity.player;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 public class GunTier {
@@ -47,6 +48,18 @@ public class GunTier {
       return this;
    }
 
+   /**
+    * Every tier a gunner mob may be equipped from once this tier is unlocked: the previous tiers, then this
+    * one (HANDOFF section 82.29).
+    *
+    * <p>This used to return {@code previousTierIds} alone, leaving the tier itself out. Two things followed:
+    * unlocking a tier announced the tier <em>below</em> it - "【antique】 enemies may now appear" immediately
+    * after obtaining frontier guns - and the spawner, which reads this same list, could never equip a gunner
+    * with the newest tier's weapons, so the newest tier was permanently unreachable.</p>
+    *
+    * <p>This tier goes last on purpose: {@code equipProgressionGun} weights the list by position, taking the
+    * front half most of the time and the tail rarely, which keeps the newest tier the rare one.</p>
+    */
    public List<GunTier> getAvailableMobTiers() {
       List<GunTier> tiers = new ArrayList<>();
 
@@ -57,6 +70,24 @@ public class GunTier {
          }
       }
 
+      // The "none" tier (level 0) has no weapons and must never be offered to the spawner.
+      if (this.level > 0) {
+         tiers.add(this);
+      }
+
+      return tiers;
+   }
+
+   /**
+    * The same tiers, newest first, for the unlock message: the tier just obtained should read first in a
+    * sentence about what just became possible (HANDOFF section 82.29).
+    *
+    * <p>Sorted by level rather than by the declared previous-tier order: that order happens to be newest first
+    * today, but the message must not depend on how the table was typed.</p>
+    */
+   public List<GunTier> getAvailableMobTiersNewestFirst() {
+      List<GunTier> tiers = this.getAvailableMobTiers();
+      tiers.sort(Comparator.comparingInt(GunTier::getLevel).reversed());
       return tiers;
    }
 

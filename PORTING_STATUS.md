@@ -1094,3 +1094,25 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 
 **门禁**：37 个审计全 0 / `verify_installed_jar` **236/236**（新增 7 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：① 爆头点击应能听出来；② 仍偏弱 ⇒ 先加 `hitSoundPitch`（对付频率掩蔽最有效）；③ 延迟明显 ⇒ 降 `hitSoundDelayTicks` 到 1–2（0=立即=回到被掩蔽）；④ 更响 ⇒ `hitSoundVolume`（0–8）；⑤ `headshotSound` 可换回原版音。
+
+## §82.29 枪械等级解锁提示：去掉"袭击"字样 + 等级列表漏掉本级（玩家报的文案 bug）
+
+**玩家报告**：解锁【边疆】时第二行写"现在可能会出现【古典】的敌人和袭击！"；随后明确要求"**袭击字眼应该去掉**"（`你获得了【铁】的枪械！现在可能会出现【铜、边疆、古典】的敌人和袭击！`）。
+
+**根因（一行文案 + 一个玩法 bug，同一原因）**：`GunTier.getAvailableMobTiers()` 只返回 `previousTierIds`、**不含自己** ⇒ 解�锁【边疆】（previous=[antique]）时列表=【古典】；
+更严重的是 `GunnerMobSpawner.equipProgressionGun` **用的就是这个列表** ⇒ **边疆枪手永远不可能装备边疆枪械**（最新一级永久不可达）。
+旁证：该方法的权重是"前段常见/尾段罕见"，设计上最新一级本应是稀有尾段。
+"袭击"错在突袭并非按枪械等级绑定（`raid_level` 绑定、且有自己那行），"【铜】的袭击"不存在。
+第三行还会重复：`getRaidsForLevel` 是"≤该等级全部"，而边疆与古典 `raidLevel` 都是 1 ⇒ 把古典那次已公布的两条又列一遍。
+
+**修法**：① `getAvailableMobTiers()` 补上自己（`level>0` 守卫，`none` 不入列），**放最后**以保持"最新=稀有"的权重；② 新增 `getAvailableMobTiersNewestFirst()`（按等级降序）**专供文案**，不依赖 GunTiers 书写顺序；
+③ 键 `enemies_and_raids_can_spawn` 改名 `enemies_can_spawn`（名字不再承诺突袭），EN `[%s] enemies may now appear!` / ZH `现在可能会出现【%s】的敌人！`（**去掉"和袭击"**），两语言文件逐行替换同步（§40.3 教训：不 re-serialize）；
+④ `sendRaidUnlockedMessage` 只报本级新增（下界＝上一级们的最高 `raidLevel`），无新增则整行不出现。
+
+**修复后输出（脚本按真实表+语言文件模拟）**：边疆 → `你获得了【边疆】的枪械！/ 现在可能会出现【边疆、古典】的敌人！/（无新突袭，该行不出现）`；铁 → `【铁、铜、边疆、古典】的敌人！/ 铁突袭、海洋突袭、扫荡者突袭`；铜 → `【铜、边疆、古典】的敌人！/ 铜突袭`。
+
+**新增审计 `tools/audit_progression_messages.py`**（第 38 个）：列表必须含本级且有 `level>0` 守卫；文案必须用 newest-first 且该方法按等级降序；**敌人句子的键名与文本都不许出现 raid/袭击**；突袭行必须用上一级最高 raidLevel 做下界且无新增时跳过。
+反向验证 **8/8** 被抓；一次是规则自己写松（只查 `previousRaidLevel` 名字出现 ⇒ 赋常量 `-999` 也能过，那等于"全部突袭都算新"）⇒ 改为必须匹配 `Math.max(..., getRaidLevel())`。**同类教训第三次。**
+
+**门禁**：38 个审计全 0 / `verify_installed_jar` **239/239**（新增 3 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：① 再解锁一级看第二行（新等级在最前、无"袭击"）；② **行为改动**：枪手现在真会拿最新等级枪械（以前永远不会）——若希望"敌人不要立刻跟上"，一句话即可改回只到上一级；③ 突袭行只在真有新增时出现。

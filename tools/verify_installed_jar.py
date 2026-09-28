@@ -1208,6 +1208,18 @@ def main():
             zf, "top/ribs/scguns/init/ModSounds.class", b"hit.hitmarker",
             "the hitmarker sound event is registered"))
 
+        # 82.29. The unlock message named the tier below the one obtained and promised raids for a gun tier.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/entity/player/GunTier.class", b"getAvailableMobTiersNewestFirst",
+            "the message reads its own, newest-first list"))
+        checks.append(_check_resource_contains(
+            zf, "assets/scguns/lang/en_us.json", b"progression.scguns.enemies_can_spawn",
+            "the enemies sentence says enemies only"))
+        checks.append((
+            "the old enemies-and-raids sentence is gone from the packaged lang files",
+            b"enemies_and_raids_can_spawn" not in zf.read("assets/scguns/lang/en_us.json")
+            and b"enemies_and_raids_can_spawn" not in zf.read("assets/scguns/lang/zh_cn.json")))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

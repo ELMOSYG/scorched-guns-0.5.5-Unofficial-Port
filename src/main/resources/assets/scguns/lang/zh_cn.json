@@ -1105,7 +1105,7 @@
   "progression.scguns.tier_cleared": "清除了 %s 的枪械进度",
   "progression.scguns.tier_set": "将 %s 的进度设置为 %s",
   "progression.scguns.tier_unlocked": "你获得了【%s】的枪械！",
-  "progression.scguns.enemies_and_raids_can_spawn": "现在可能会出现【%s】的敌人和袭击！",
+  "progression.scguns.enemies_can_spawn": "现在可能会出现【%s】的敌人！",
   "raid.announcement.scguns.antique": "红衣军来了！",
   "raid.announcement.scguns.copper": "锈岭的残余部队正在突袭！",
   "raid.announcement.scguns.diamond_steel": "阿斯加里安军团正在行军！",

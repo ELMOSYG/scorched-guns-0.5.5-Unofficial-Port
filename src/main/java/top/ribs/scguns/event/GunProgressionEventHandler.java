@@ -25,6 +25,7 @@ import top.ribs.scguns.client.screen.GunBenchRecipe;
 import top.ribs.scguns.common.recipe.GunBenchUnlockKeys;
 import top.ribs.scguns.config.RaidConfig;
 import top.ribs.scguns.entity.player.GunTier;
+import top.ribs.scguns.entity.player.GunTierRegistry;
 import top.ribs.scguns.entity.player.PlayerGunProgression;
 
 @EventBusSubscriber(
@@ -182,9 +183,11 @@ public class GunProgressionEventHandler {
                .withStyle(new ChatFormatting[]{ChatFormatting.GOLD, ChatFormatting.BOLD});
             Component message = Component.translatable("progression.scguns.tier_unlocked", new Object[]{tierName}).withStyle(ChatFormatting.YELLOW);
             player.sendSystemMessage(message);
-            List<GunTier> availableTiers = tier.getAvailableMobTiers();
+            List<GunTier> availableTiers = tier.getAvailableMobTiersNewestFirst();
             if (!availableTiers.isEmpty()) {
-               Component mobMessage = Component.translatable("progression.scguns.enemies_and_raids_can_spawn",
+               // Enemies only: these are gun tiers, and a tier says nothing about which raids exist - that is
+               // what the raid line below is for. "【copper】 enemies and raids" claimed copper raids exist.
+               Component mobMessage = Component.translatable("progression.scguns.enemies_can_spawn",
                   new Object[]{joinTierNames(availableTiers)}).withStyle(ChatFormatting.RED);
                player.sendSystemMessage(mobMessage);
             }
@@ -209,24 +212,51 @@ public class GunProgressionEventHandler {
       return joined;
    }
 
+   /**
+    * Announce the raids this tier actually adds (HANDOFF section 82.29).
+    *
+    * <p>It used to announce every raid reachable at this tier's raid level, which repeats the whole list on
+    * every unlock that shares a level: obtaining frontier guns printed the same two raids as obtaining antique
+    * guns, as if something new had appeared. Raids are now filtered to those above the best level the previous
+    * tiers already had, so a tier that unlocks nothing new says nothing - and the list is genuinely the news.</p>
+    */
    private static void sendRaidUnlockedMessage(Player player, GunTier tier) {
       int raidLevel = tier.getRaidLevel();
-      if (raidLevel > 0) {
-         List<RaidConfig.RaidData> availableRaids = RaidConfig.getRaidsForLevel(raidLevel);
-         if (!availableRaids.isEmpty()) {
-            MutableComponent raidList = Component.empty();
+      if (raidLevel <= 0) {
+         return;
+      }
 
-            for (int i = 0; i < availableRaids.size(); i++) {
-               RaidConfig.RaidData raid = availableRaids.get(i);
-               raidList.append(Component.translatable("raid.scguns." + raid.raidId()).withStyle(ChatFormatting.DARK_RED));
-               if (i < availableRaids.size() - 1) {
-                  raidList.append(Component.translatable("progression.scguns.list_separator").withStyle(ChatFormatting.GRAY));
-               }
-            }
-
-            player.sendSystemMessage(Component.translatable("progression.scguns.raids_can_spawn", new Object[]{raidList})
-               .withStyle(ChatFormatting.DARK_GRAY));
+      int previousRaidLevel = 0;
+      for (String id : tier.getPreviousTierIds()) {
+         GunTier previous = GunTierRegistry.getTier(id);
+         if (previous != null) {
+            previousRaidLevel = Math.max(previousRaidLevel, previous.getRaidLevel());
          }
       }
+
+      List<RaidConfig.RaidData> availableRaids = RaidConfig.getRaidsForLevel(raidLevel);
+      List<RaidConfig.RaidData> newRaids = new ArrayList<>();
+      for (RaidConfig.RaidData raid : availableRaids) {
+         Integer level = raid.raidLevel();
+         if (level != null && level > previousRaidLevel) {
+            newRaids.add(raid);
+         }
+      }
+
+      if (newRaids.isEmpty()) {
+         return;
+      }
+
+      MutableComponent raidList = Component.empty();
+      for (int i = 0; i < newRaids.size(); i++) {
+         RaidConfig.RaidData raid = newRaids.get(i);
+         raidList.append(Component.translatable("raid.scguns." + raid.raidId()).withStyle(ChatFormatting.DARK_RED));
+         if (i < newRaids.size() - 1) {
+            raidList.append(Component.translatable("progression.scguns.list_separator").withStyle(ChatFormatting.GRAY));
+         }
+      }
+
+      player.sendSystemMessage(Component.translatable("progression.scguns.raids_can_spawn", new Object[]{raidList})
+         .withStyle(ChatFormatting.DARK_GRAY));
    }
 }

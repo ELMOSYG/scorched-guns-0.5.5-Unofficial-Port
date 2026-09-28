@@ -120,7 +120,7 @@
 
 
   "progression.scguns.tier_unlocked": "You obtained a [%s]-tier gun!",
-  "progression.scguns.enemies_and_raids_can_spawn": "[%s] enemies and raids may now appear!",
+  "progression.scguns.enemies_can_spawn": "[%s] enemies may now appear!",
   "progression.scguns.raids_can_spawn": "Raids that may now target you: %s",
   "progression.scguns.list_separator": ", ",
   "progression.scguns.mob_tier_enabled": "Enemies can now spawn with %s tier weapons",
