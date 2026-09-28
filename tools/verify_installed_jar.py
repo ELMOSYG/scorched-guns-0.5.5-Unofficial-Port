@@ -1151,12 +1151,14 @@ def main():
         # 82.23. A charge must not be ended by losing the sprint flag: vanilla drops it on every block
         # collision (which a charge walks straight into), in water and when the food bar empties. The named
         # field survives into the class file, so its presence proves the tolerance logic is really packaged.
+        # 82.32: the values moved into Config.COMMON.bayonetCharge, so the field names live on that class now -
+        # a field name surviving into the class file is what proves the logic is really packaged.
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class",
-            b"BANZAI_SPRINT_LOST_TOLERANCE_TICKS", "a lost sprint flag is tolerated, not fatal"))
+            zf, "top/ribs/scguns/Config$BayonetCharge.class", b"sprintLossToleranceTicks",
+            "a lost sprint flag is tolerated, and the tolerance is a config option"))
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"BANZAI_MIN_FORWARD_SPEED",
-            "a charge can tell 'flag lost' from 'player stopped running'"))
+            zf, "top/ribs/scguns/Config$BayonetCharge.class", b"minimumForwardSpeed",
+            "a charge is told apart from 'the player stopped running' by a config option"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/network/message/C2SMessageMeleeAttack.class", b"banzaiTask",
             "one ticker per charge, replaced instead of stacked"))
@@ -1254,6 +1256,38 @@ def main():
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"MobGunDurability",
             "the code-driven gun path actually rolls the durability"))
+
+        # 82.32. The bayonet charge's numbers moved out of the handler and into their own config section, so
+        # tuning the mechanic is a config edit and the switches have to reach the packaged code.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$BayonetCharge.class", b"damageScalingLevel1",
+            "the charge's damage scaling is a config option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$BayonetCharge.class", b"minimumForwardSpeed",
+            "the charge's 'still running' threshold is a config option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$BayonetCharge.class", b"wallCheckSpreadDegrees",
+            "the wall check fan is a config option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"bayonetCharge",
+            "the handler reads that section instead of hard-coded numbers"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"isBanzaiEnabled",
+            "the charge can be switched off"))
+
+        # 82.33. The mechanic itself: one target, the gun's own melee damage, a recoil and an execution.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"stabWithBayonet",
+            "the charge stabs a single target"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"isExecutionTarget",
+            "a stab can execute a weakened hostile mob"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$BayonetCharge.class", b"executeHealthThreshold",
+            "the execution threshold is a config option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$BayonetCharge.class", b"endChargeOnHit",
+            "whether a stab spends the charge is a config option"))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:

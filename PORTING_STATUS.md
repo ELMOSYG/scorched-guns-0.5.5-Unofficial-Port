@@ -1152,3 +1152,20 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 **门禁**：40 个审计全 0 / `verify_installed_jar` **247/247**（新增 4 条）/ `javac` 0（1010 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：① 刷怪蛋放出的枪手枪应是旧的（20%–60% 剩余耐久）；② mod 自己的生物保持原样（JSON 的 0.2–0.6，无叠加）；③ 调 `mobGunMinDurability`/`mobGunMaxDurability`（1.0/1.0 = 回到满耐久）。
 **没动、等发话**：突袭 Boss/随从武器走 `RaidManager.createModifiedGun`（同样无耐久）；本轮按住报告只改了枪手路径，若要 Boss 的枪也是旧的，一处调用即可。
+
+## §82.32 刺刀冲锋有了自己的配置区（玩家要求：机制改动放进这个配置项）
+
+把它所有写死的参数搬成 `Config.COMMON.bayonetCharge` 下的选项并在代码里改为读它（否则旋钮是摆设）：`enabled`（关掉后近战键=普通捅击）、`requireSprintToStart`、`damageRadius`/`hitRadius`、`damageIntervalTicks`、`damageScalingLevel1/2/3`（默认由 3.0/5.5/7.0 改为 **0.0**，见 §82.33）、`knockbackGraceTicks`、`sprintLossToleranceTicks`、`minimumForwardSpeed`、`wallImpactEnabled`/`wallImpactCooldownTicks`、`wallCheckDistance`/`wallCheckSpreadDegrees`（30 度复现原来的 0/±10/±20/±30 射线）、`execute*`、`knockPlayerBackOnHit`、`endChargeOnHit`。只保留 3 个存档 tag 名为常量（不是可调项）。
+顺带修好两条**过时**门禁检查：`verify_installed_jar` 原本在 `MeleeAttackHandler.class` 里找两个已搬家的常量，改指向 `Config$BayonetCharge`（**门禁的字段名检查必须跟着搬家**）。
+
+## §82.33 刺刀冲锋机制重做：单体 + 枪械当前近战伤害 + 命中弹开玩家 + 残血敌对生物处决（玩家指定）
+
+**玩家指定**：改为单体伤害；刺到敌人造成枪械当前近战伤害并**把玩家弹开**；刺到的若是**敌对**生物且血量 < 15 则**直接处决**。参考 1.21.11+ 长矛；玩家把 `spear-backport-neoforge-1.8.0` 放进实例后，用它作**权威参照**反查了原版机制（`KineticWeapon` 的 `hitboxMargin`/`contactCooldownTicks`/`delayTicks`/`forwardMovement`/`damageMultiplier`、`PiercingWeapon.stab`、`AttackRange`、`SpearUser` 的穿刺冷却与计数）。
+
+**实现**：① 单体——`handleBanzaiMode` 伤害分支改为 `findChargeTarget`（正前方、`damageRadius` 内、`hitRadius` 触及内最近一个）＋ `stabWithBayonet`，删除 `performMeleeAttackOnTarget` 的 AoE 分支；② 伤害＝`meleeDamageOf(...)`，与普通捅击**同一算法**（攻击力+配件附加+刺刀附魔+枪械近战伤害），速度倍率默认 0.0；③ 命中用 `knockPlayerBack` 把玩家弹开（`knockPlayerBackOnHit` 默认开）；④ 处决＝`executeEnabled && instanceof Enemy && health < 15`，用 `hurt(playerAttack, Float.MAX_VALUE)` 而**非 `kill()`**（保住战利品/经验/击杀归属）；⑤ `endChargeOnHit`（默认结束）⇒ 一次冲锋一次突刺。
+
+**审计**（`audit_banzai_charge.py` 扩到"机制+旋钮"两层）：保留原规则（ticker 不得查疾跑、撞墙判定在维持判定之前、tag 只能常量、`knockbackGraceTicks>7`、`0<minimumForwardSpeed<0.2`）；新增"必须 stabWithBayonet 且不得再出现旧区域攻击/遍历目标""19 个选项每个都必须被读到""速度倍率默认必须 0.0""处决必须查 `instanceof Enemy` 且走两个配置""处决必须是压倒性伤害""弹开与结束冲锋必须在开关后面"。规则作用域修过一次（初版把处决检查查在 `stabWithBayonet` 里，而逻辑在 `isExecutionTarget`）⇒ **规则要查逻辑真正所在的方法**。反向验证 **9/9**。
+
+**门禁**：40 个审计全 0 / `verify_installed_jar` **256/256**（新增 4 条 + 修好 2 条）/ `javac` 0（1010 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：① 撞到敌人只伤那一个；② 伤害＝同枪普通捅击；③ 命中被弹开；④ 敌对血量<15 一刀处决（非敌对不会被处决，掉落/经验/击杀归属仍是玩家的）；⑤ 一次冲锋只刺一次（要连刺关 `endChargeOnHit`）。
+**还没做（等你点名）**：长矛的蓄力/前冲位移（`KineticWeapon.forwardMovement`）、穿刺冷却（`SpearUser.isInPiercingCooldown`）、下马、触及 min/max、以及"按住蓄力"的输入模型（现在是按键切换）——都能直接加进 `bayonet_charge`。

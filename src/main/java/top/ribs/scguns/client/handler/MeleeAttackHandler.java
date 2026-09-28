@@ -27,6 +27,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enemy;
 import top.ribs.scguns.util.MobType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -52,6 +53,7 @@ import software.bernie.geckolib.animation.AnimationController;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.common.ReloadType;
 import top.ribs.scguns.enchantment.CorrodedEnchantment;
+import top.ribs.scguns.Config;
 import top.ribs.scguns.event.GunEventBus;
 import top.ribs.scguns.init.ModEnchantments;
 import top.ribs.scguns.init.ModSyncedDataKeys;
@@ -68,38 +70,81 @@ import top.ribs.scguns.util.GunModifierHelper;
 public class MeleeAttackHandler {
    private static final float ENCHANTMENT_DAMAGE_SCALING_FACTOR = 0.7F;
    private static final float BASE_SPEED_DAMAGE_SCALING_FACTOR = 0.0F;
-   private static final float[] BANZAI_SCALING_FACTORS = new float[]{3.0F, 5.5F, 7.0F};
    private static final String WALL_COLLISION_COOLDOWN_TAG = "WallCollisionCooldown";
    private static final String MELEE_COOLDOWN_TAG = "MeleeCooldown";
-   /**
-    * How long the sprint check is skipped after a bayonet charge's own wall impact knocks the player back.
-    * 0.5.5 used 5 ticks, which is shorter than the ~6 ticks the 0.3 knockback keeps the player airborne plus
-    * vanilla's own 7-tick {@code sprintTriggerTime} before a sprint can be re-acquired (HANDOFF 82.23).
-    */
-   private static final int KNOCKBACK_GRACE_PERIOD_TICKS = 10;
    private static final String KNOCKBACK_GRACE_TAG = "KnockbackGracePeriod";
-   /**
-    * How long a charge survives without the sprint flag, as long as the player is still running forward.
-    * See {@link #keepCharging(ServerPlayer, CompoundTag, long)} for why a lost flag must not end a charge.
-    */
-   private static final int BANZAI_SPRINT_LOST_TOLERANCE_TICKS = 20;
-   /** When the flag was first seen missing, so that tolerance can be measured in the player's saved data. */
+   /** When the sprint flag was first seen missing, so the tolerance can be measured in the player's saved data. */
    private static final String BANZAI_SPRINT_LOST_TAG = "BanzaiSprintLostAt";
-   /**
-    * Blocks per tick of forward motion that still counts as charging. A sprinting player moves about 0.28 and
-    * a walking one about 0.2, while a player who stopped moves 0 (HANDOFF section 82.23).
-    */
-   private static final double BANZAI_MIN_FORWARD_SPEED = 0.1;
-   private static boolean isBanzai = false;
-   private static final int WALL_COLLISION_COOLDOWN_TICKS = 20;
-   private static final double WALL_CHECK_DISTANCE = 1.0;
-   private static final double[] WALL_CHECK_ANGLES = new double[]{0.0, 10.0, -10.0, 20.0, -20.0, 30.0, -30.0};
    private static final String BANZAI_DAMAGE_COOLDOWN_TAG = "BanzaiDamageCooldown";
-   private static final int BANZAI_DAMAGE_COOLDOWN_TICKS = 25;
-   private static final double BANZAI_AOE_RADIUS = 1.5;
+   private static boolean isBanzai = false;
+   /**
+    * The wall check's ray angles, derived from {@code bayonetCharge.wallCheckSpreadDegrees} (HANDOFF section
+    * 82.32). Cached because this is read on every charge tick and building an array there would allocate once a
+    * tick; the cache is rebuilt whenever the configured spread changes.
+    */
+   private static double cachedWallSpread = Double.NaN;
+   private static double[] cachedWallAngles = new double[0];
    private static ItemStack banzaiActiveItem = ItemStack.EMPTY;
    /** Who is charging, so the state below can be synced to that player's client (HANDOFF section 82.22). */
    private static ServerPlayer banzaiPlayer;
+
+   /** The bayonet charge's own options - every number this mechanic uses lives in that section. */
+   private static Config.BayonetCharge charge() {
+      return Config.COMMON.bayonetCharge;
+   }
+
+   /**
+    * The wall check rays: straight ahead, then a third, two thirds and all of the configured spread to each
+    * side. A spread of 30 degrees reproduces the 0, 10, 20, 30 degree rays the code used to hard-code.
+    */
+   private static double[] wallCheckAngles() {
+      double spread = charge().wallCheckSpreadDegrees.get();
+      if (spread != cachedWallSpread) {
+         cachedWallSpread = spread;
+         double third = spread / 3.0;
+         cachedWallAngles = new double[]{0.0, third, -third, third * 2.0, -third * 2.0, spread, -spread};
+      }
+
+      return cachedWallAngles;
+   }
+
+   /**
+    * The charge's damage multiplier for a bayonet's banzai level: {@code 1.0 + speed * factor}, with the factor
+    * coming from the configured level scaling.
+    */
+   private static float banzaiDamageFactor(int banzaiLevel) {
+      return switch (banzaiLevel) {
+         case 1 -> charge().damageScalingLevel1.get().floatValue();
+         case 2 -> charge().damageScalingLevel2.get().floatValue();
+         case 3 -> charge().damageScalingLevel3.get().floatValue();
+         default -> BASE_SPEED_DAMAGE_SCALING_FACTOR;
+      };
+   }
+
+   /** Whether the charge is switched on at all. */
+   public static boolean isBanzaiEnabled() {
+      return (Boolean)charge().enabled.get();
+   }
+
+   /** Whether a charge requires a sprint to start. */
+   public static boolean isSprintRequiredToStart() {
+      return (Boolean)charge().requireSprintToStart.get();
+   }
+
+   /** Whether running a charge into a wall knocks the player back. */
+   public static boolean isWallImpactEnabled() {
+      return (Boolean)charge().wallImpactEnabled.get();
+   }
+
+   /** Whether a successful stab throws the player back off the target. */
+   public static boolean isKnockPlayerBackOnHit() {
+      return (Boolean)charge().knockPlayerBackOnHit.get();
+   }
+
+   /** Whether a successful stab spends the charge. */
+   public static boolean isEndChargeOnHit() {
+      return (Boolean)charge().endChargeOnHit.get();
+   }
 
    public MeleeAttackHandler() {
       super();
@@ -208,7 +253,7 @@ public class MeleeAttackHandler {
                PacketHandler.getPlayChannel().sendToPlayer(() -> player, new S2CMessageMeleeAttack(heldItem));
                LivingEntity target = findTargetWithinReach(player, heldItem);
                if (target != null && target != player) {
-                  performMeleeAttackOnTarget(player, target, false);
+                  performMeleeAttackOnTarget(player, target);
                   damageGunAndAttachments(heldItem, player);
                } else {
                   HitResult hitResult = rayTraceBlocks(player, heldItem);
@@ -266,41 +311,121 @@ public class MeleeAttackHandler {
       NbtHelper.setTag(heldItem, tag);
    }
 
-   private static void performMeleeAttackOnTarget(ServerPlayer player, LivingEntity target, boolean isBanzaiAttack) {
+   /**
+    * One bayonet stab (HANDOFF section 82.33). The charge is single target: it damages the one enemy it runs
+    * into with the gun's own melee damage, throws the player back off it, and executes a hostile mob outright if
+    * the stab already left it below the configured health.
+    *
+    * <p>This replaced an area attack that damaged everything within {@code hitRadius} on every pass. The
+    * player asked for a single target thrust with the gun's current melee damage, so the speed damage scaling
+    * the old version applied is 0 by default - raising a level's factor in config restores it.</p>
+    */
+   private static void stabWithBayonet(ServerPlayer player, LivingEntity target) {
       ItemStack heldItem = player.getItemInHand(InteractionHand.MAIN_HAND);
-      if (heldItem.getItem() instanceof GunItem gunItem) {
-         float var15 = (float)player.getAttributeValue(Attributes.ATTACK_DAMAGE);
-         float additionalDamage = GunModifierHelper.getAdditionalDamage(heldItem, true);
-         float enchantmentDamage = getEnchantmentDamageFromBayonet(heldItem, target, gunItem);
-         Gun modifiedGun = gunItem.getModifiedGun(heldItem);
-         float meleeDamage = modifiedGun.getGeneral().getMeleeDamage();
-         float attackDamage = var15 + additionalDamage + enchantmentDamage + meleeDamage;
-         if (isBanzaiAttack) {
-            float speedDamageMultiplier = getBanzaiDamageMultiplier(player, heldItem);
-            attackDamage *= speedDamageMultiplier;
-            attackDamage = (float)((double)Math.round((double)attackDamage * 100.0) / 100.0);
+      if (!(heldItem.getItem() instanceof GunItem gunItem) || !target.isAlive()) {
+         return;
+      }
+
+      float attackDamage = meleeDamageOf(player, heldItem, gunItem, target);
+      float speedMultiplier = getBanzaiDamageMultiplier(player, heldItem);
+      if (speedMultiplier != 1.0F) {
+         attackDamage = (float)((double)Math.round((double)(attackDamage * speedMultiplier) * 100.0) / 100.0);
+      }
+
+      DamageSource damageSource = player.serverLevel().damageSources().playerAttack(player);
+      boolean executed = isExecutionTarget(target);
+      boolean connected = executed
+         // An execution is a kill, and it has to be the player's kill: hurt() with more damage than anything
+         // has health keeps loot, experience and kill credit attached to the attacker, which kill() would not.
+         ? target.hurt(damageSource, Float.MAX_VALUE)
+         : target.hurt(damageSource, attackDamage);
+
+      if (connected) {
+         spawnSuccessfulHitParticles(player, target);
+         player.level()
+            .playSound(null, target.getX(), target.getY(), target.getZ(), SoundEvents.PLAYER_ATTACK_STRONG, SoundSource.PLAYERS, 1.0F, 1.0F);
+         if (!executed) {
+            applyKnockback(player, target, heldItem);
          }
 
+         applySpecialEnchantmentsFromBayonet(heldItem, target, player, gunItem);
+         triggerBanzaiImpactIfNecessary(heldItem);
+      }
+
+      if (isKnockPlayerBackOnHit() && connected) {
+         // The thrust throws the player back, exactly as the wall impact does: charging something through
+         // costs the player their momentum.
+         knockPlayerBack(player);
+      }
+
+      if (isEndChargeOnHit() && connected) {
+         stopBanzai();
+      }
+   }
+
+   /**
+    * The one enemy a charge can stab: the closest living entity in front of the player, within the search
+    * radius and inside the thrust's reach.
+    */
+   private static LivingEntity findChargeTarget(ServerPlayer player) {
+      double reach = (Double)charge().hitRadius.get();
+      Vec3 look = player.getLookAngle();
+      Vec3 eye = player.getEyePosition();
+      LivingEntity closest = null;
+      double closestDistance = Double.MAX_VALUE;
+
+      for (LivingEntity candidate : findTargetsInArea(player, (Double)charge().damageRadius.get())) {
+         if (!candidate.isAlive() || candidate.isSpectator()) {
+            continue;
+         }
+
+         Vec3 towards = candidate.position().add(0.0, (double)candidate.getBbHeight() * 0.5, 0.0).subtract(eye);
+         if (towards.dot(look) <= 0.0) {
+            continue;   // behind the player: a charge stabs what it runs into, not what it left behind
+         }
+
+         double distance = towards.length();
+         if (distance <= reach && distance < closestDistance) {
+            closest = candidate;
+            closestDistance = distance;
+         }
+      }
+
+      return closest;
+   }
+
+   /** The gun's melee damage against this target, the same sum an ordinary bayonet stab deals. */
+   private static float meleeDamageOf(ServerPlayer player, ItemStack heldItem, GunItem gunItem, LivingEntity target) {
+      float attackAttribute = (float)player.getAttributeValue(Attributes.ATTACK_DAMAGE);
+      float additionalDamage = GunModifierHelper.getAdditionalDamage(heldItem, true);
+      float enchantmentDamage = getEnchantmentDamageFromBayonet(heldItem, target, gunItem);
+      float meleeDamage = gunItem.getModifiedGun(heldItem).getGeneral().getMeleeDamage();
+      return attackAttribute + additionalDamage + enchantmentDamage + meleeDamage;
+   }
+
+   /**
+    * Whether this stab should execute: a hostile mob whose health is already below the configured threshold.
+    * {@code Enemy} is vanilla's marker for hostile mobs, so this covers modded ones too.
+    */
+   private static boolean isExecutionTarget(LivingEntity target) {
+      if (!(Boolean)charge().executeEnabled.get() || !(target instanceof Enemy)) {
+         return false;
+      }
+
+      return (double)target.getHealth() < (Double)charge().executeHealthThreshold.get();
+   }
+
+   private static void performMeleeAttackOnTarget(ServerPlayer player, LivingEntity target) {
+      ItemStack heldItem = player.getItemInHand(InteractionHand.MAIN_HAND);
+      if (heldItem.getItem() instanceof GunItem gunItem) {
+         float attackDamage = meleeDamageOf(player, heldItem, gunItem, target);
          DamageSource damageSource = player.serverLevel().damageSources().playerAttack(player);
-         if (isBanzaiAttack) {
-            for (LivingEntity aoeTarget : findTargetsInArea(player, 2.5)) {
-               if (aoeTarget.hurt(damageSource, attackDamage)) {
-                  spawnSuccessfulHitParticles(player, aoeTarget);
-                  player.level()
-                     .playSound(null, aoeTarget.getX(), aoeTarget.getY(), aoeTarget.getZ(), SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.PLAYERS, 1.0F, 1.0F);
-                  applyKnockback(player, aoeTarget, heldItem);
-                  applySpecialEnchantmentsFromBayonet(heldItem, aoeTarget, player, gunItem);
-                  triggerBanzaiImpactIfNecessary(heldItem);
-               }
-            }
-         } else {
-            LivingEntity raycastTarget = raycastForMeleeAttack(player, heldItem);
-            if (raycastTarget != null && raycastTarget.hurt(damageSource, attackDamage)) {
-               spawnSuccessfulHitParticles(player, raycastTarget);
-               applyKnockback(player, raycastTarget, heldItem);
-               applySpecialEnchantmentsFromBayonet(heldItem, raycastTarget, player, gunItem);
-               triggerBanzaiImpactIfNecessary(heldItem);
-            }
+         LivingEntity raycastTarget = raycastForMeleeAttack(player, heldItem);
+         if (raycastTarget != null && raycastTarget.hurt(damageSource, attackDamage)) {
+            spawnSuccessfulHitParticles(player, raycastTarget);
+            applyKnockback(player, raycastTarget, heldItem);
+            applySpecialEnchantmentsFromBayonet(heldItem, raycastTarget, player, gunItem);
+            triggerBanzaiImpactIfNecessary(heldItem);
          }
       }
    }
@@ -389,24 +514,24 @@ public class MeleeAttackHandler {
             boolean inGracePeriod = playerData.contains(KNOCKBACK_GRACE_TAG) && currentTime < playerData.getLong(KNOCKBACK_GRACE_TAG);
             // The wall impact comes first: it is the charge's own reaction to running into something, and it
             // is exactly what kills the sprint flag. Checking the flag first is what made 0.5.5's grace
-            // period unreachable (HANDOFF section 82.23).
-            if (checkForWallCollision(player)) {
+            // period unreachable (HANDOFF section 82.23). Switching it off in config removes the knockback and
+            // its grace; running into a wall then simply stops the charge the ordinary way, when the player
+            // stops moving.
+            if (isWallImpactEnabled() && checkForWallCollision(player)) {
                knockPlayerBack(player);
                sendWallImpactParticles(player);
                triggerBanzaiImpactIfNecessary(currentHeldItem);
-               playerData.putLong(KNOCKBACK_GRACE_TAG, currentTime + (long)KNOCKBACK_GRACE_PERIOD_TICKS);
+               playerData.putLong(KNOCKBACK_GRACE_TAG, currentTime + (long)charge().knockbackGraceTicks.get());
             } else if (!inGracePeriod && !keepCharging(player, playerData, currentTime)) {
                stopBanzai();
             } else if (!playerData.contains(BANZAI_DAMAGE_COOLDOWN_TAG) || currentTime >= playerData.getLong(BANZAI_DAMAGE_COOLDOWN_TAG)) {
-               List<LivingEntity> targets = findTargetsInArea(player, BANZAI_AOE_RADIUS);
-               if (!targets.isEmpty()) {
-                  playerData.putLong(BANZAI_DAMAGE_COOLDOWN_TAG, currentTime + (long)BANZAI_DAMAGE_COOLDOWN_TICKS);
-
-                  for (LivingEntity target : targets) {
-                     if (target != player) {
-                        performMeleeAttackOnTarget(player, target, true);
-                     }
-                  }
+               // Single target (HANDOFF section 82.33): the charge damages the one enemy it runs into, not
+               // everything standing near it. The stab itself throws the player back and, by default, spends
+               // the charge, so this is one thrust rather than a repeated area sweep.
+               LivingEntity target = findChargeTarget(player);
+               if (target != null) {
+                  playerData.putLong(BANZAI_DAMAGE_COOLDOWN_TAG, currentTime + (long)charge().damageIntervalTicks.get());
+                  stabWithBayonet(player, target);
                }
             }
          }
@@ -423,12 +548,12 @@ public class MeleeAttackHandler {
     * the knockback grace period below unreachable.</p>
     *
     * <p>So a charge continues while the player is still running forward: sprinting, or moving forward fast
-    * enough. A lost flag is tolerated for {@link #BANZAI_SPRINT_LOST_TOLERANCE_TICKS} ticks, which keeps a
+    * enough. A lost flag is tolerated for {@code bayonetCharge.sprintLossToleranceTicks} ticks, which keeps a
     * wall bump or a water splash from ending a charge while still ending one for a player who genuinely can
     * no longer sprint.</p>
     */
    private static boolean keepCharging(ServerPlayer player, CompoundTag playerData, long currentTime) {
-      if (!player.isSprinting() && horizontalForwardSpeed(player) <= BANZAI_MIN_FORWARD_SPEED) {
+      if (!player.isSprinting() && horizontalForwardSpeed(player) <= charge().minimumForwardSpeed.get()) {
          return false;
       }
 
@@ -442,7 +567,7 @@ public class MeleeAttackHandler {
          return true;
       }
 
-      return currentTime - playerData.getLong(BANZAI_SPRINT_LOST_TAG) <= (long)BANZAI_SPRINT_LOST_TOLERANCE_TICKS;
+      return currentTime - playerData.getLong(BANZAI_SPRINT_LOST_TAG) <= (long)charge().sprintLossToleranceTicks.get();
    }
 
    /**
@@ -477,12 +602,12 @@ public class MeleeAttackHandler {
             for (double heightOffset : heightOffsets) {
                Vec3 checkPosition = eyePosition.add(0.0, heightOffset, 0.0);
 
-               for (double angle : WALL_CHECK_ANGLES) {
+               for (double angle : wallCheckAngles()) {
                   Vec3 rotatedVector = rotateVector(lookVector, angle);
-                  Vec3 reachVector = checkPosition.add(rotatedVector.scale(WALL_CHECK_DISTANCE));
+                  Vec3 reachVector = checkPosition.add(rotatedVector.scale(charge().wallCheckDistance.get()));
                   BlockHitResult hitResult = player.level().clip(new ClipContext(checkPosition, reachVector, Block.COLLIDER, Fluid.NONE, player));
                   if (hitResult.getType() == Type.BLOCK) {
-                     playerData.putLong(WALL_COLLISION_COOLDOWN_TAG, currentTime + (long)WALL_COLLISION_COOLDOWN_TICKS);
+                     playerData.putLong(WALL_COLLISION_COOLDOWN_TAG, currentTime + (long)charge().wallImpactCooldownTicks.get());
                      return true;
                   }
                }
@@ -509,7 +634,7 @@ public class MeleeAttackHandler {
    private static void sendWallImpactParticles(ServerPlayer player) {
       Vec3 eyePosition = player.getEyePosition(1.0F);
       Vec3 lookVector = player.getLookAngle();
-      Vec3 reachVector = eyePosition.add(lookVector.scale(WALL_CHECK_DISTANCE));
+      Vec3 reachVector = eyePosition.add(lookVector.scale(charge().wallCheckDistance.get()));
       ClipContext context = new ClipContext(eyePosition, reachVector, Block.COLLIDER, Fluid.NONE, player);
       BlockHitResult hitResult = player.level().clip(context);
       if (hitResult.getType() == Type.BLOCK) {
@@ -536,7 +661,7 @@ public class MeleeAttackHandler {
       int banzaiLevel = ((GunItem)heldItem.getItem()).getBayonetBanzaiLevel(heldItem);
       float scalingFactor = 0.0F;
       if (banzaiLevel > 0 && banzaiLevel <= 3) {
-         scalingFactor = BANZAI_SCALING_FACTORS[banzaiLevel - 1];
+         scalingFactor = banzaiDamageFactor(banzaiLevel);
       }
 
       return 1.0F + (float)speed * scalingFactor;

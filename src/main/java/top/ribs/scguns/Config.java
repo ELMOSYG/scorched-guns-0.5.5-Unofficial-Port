@@ -134,6 +134,7 @@ public class Config {
       public final Config.Gameplay gameplay;
       public final Config.Network network;
       public final Config.GunnerMobs gunnerMobs;
+      public final Config.BayonetCharge bayonetCharge;
       public final Config.AggroMobs aggroMobs;
       public final Config.FleeingMobs fleeingMobs;
       public final Config.Grenades grenades;
@@ -150,6 +151,7 @@ public class Config {
          this.gameplay = new Config.Gameplay(builder);
          this.network = new Config.Network(builder);
          this.gunnerMobs = new Config.GunnerMobs(builder);
+         this.bayonetCharge = new Config.BayonetCharge(builder);
          this.aggroMobs = new Config.AggroMobs(builder);
          this.fleeingMobs = new Config.FleeingMobs(builder);
          this.grenades = new Config.Grenades(builder);
@@ -663,6 +665,121 @@ public class Config {
             .defineInRange("mobGunMinDurability", 0.2, 0.0, 1.0);
          this.mobGunMaxDurability = builder.comment("The fraction a spawned gunner's gun has left, at maximum")
             .defineInRange("mobGunMaxDurability", 0.6, 0.0, 1.0);
+         builder.pop();
+      }
+   }
+
+   /**
+    * Every parameter of the bayonet charge (HANDOFF section 82.32).
+    *
+    * <p>This section is the mechanic's own home. The charge used to be defined by constants inside
+    * {@code MeleeAttackHandler} - three damage scaling factors, two grace periods, an AoE radius, a wall check
+    * and so on - and the player judged the mechanic poor and asked for a config section to change it in. So
+    * each of those numbers is an option here now, with the value the code used to hard-code as its default:
+    * tuning the charge is a config edit, and a change to how it works belongs in this section rather than
+    * spread through the handler.</p>
+    *
+    * <p>Common, not server: the charge is decided server side, but a single-player world reads the same file,
+    * and the client half of it (the animation) is driven by a synced key, so nothing here is client-only.</p>
+    */
+   public static class BayonetCharge {
+      public final BooleanValue enabled;
+      public final BooleanValue requireSprintToStart;
+      public final DoubleValue damageRadius;
+      public final DoubleValue hitRadius;
+      public final IntValue damageIntervalTicks;
+      public final DoubleValue damageScalingLevel1;
+      public final DoubleValue damageScalingLevel2;
+      public final DoubleValue damageScalingLevel3;
+      public final BooleanValue executeEnabled;
+      public final DoubleValue executeHealthThreshold;
+      public final BooleanValue knockPlayerBackOnHit;
+      public final BooleanValue endChargeOnHit;
+      public final IntValue knockbackGraceTicks;
+      public final IntValue sprintLossToleranceTicks;
+      public final DoubleValue minimumForwardSpeed;
+      public final BooleanValue wallImpactEnabled;
+      public final IntValue wallImpactCooldownTicks;
+      public final DoubleValue wallCheckDistance;
+      public final DoubleValue wallCheckSpreadDegrees;
+
+      public BayonetCharge(Builder builder) {
+         super();
+         builder.comment("Bayonet charge (the sprinting bayonet attack, 'banzai')").push("bayonet_charge");
+         this.enabled = builder.comment(
+               new String[]{
+                  "If false, the charge is off: pressing melee with a bayonet fitted does an ordinary bayonet",
+                  "stab instead. This is the switch to build a different mechanic behind."
+               }
+            )
+            .define("enabled", true);
+         this.requireSprintToStart = builder.comment(
+               "If true, a charge only starts while sprinting. The charge's own wall impacts can still drop the",
+               "sprint flag mid-charge; that is handled by sprintLossToleranceTicks, not by this."
+            )
+            .define("requireSprintToStart", true);
+         this.damageRadius = builder.comment("Radius, in blocks, in which the charge looks for targets to hit")
+            .defineInRange("damageRadius", 1.5, 0.0, 8.0);
+         this.hitRadius = builder.comment("Radius, in blocks, in which a found target is actually damaged and knocked back")
+            .defineInRange("hitRadius", 2.5, 0.0, 8.0);
+         this.damageIntervalTicks = builder.comment("Ticks between two damage passes of a running charge")
+            .defineInRange("damageIntervalTicks", 25, 1, 400);
+         this.damageScalingLevel1 = builder.comment(
+               new String[]{
+                  "Speed damage scaling per bayonet banzai level (1, 2, 3).",
+                  "The mechanic is single target and deals the gun's own melee damage, so these default to 0.0:",
+                  "damage multiplier = 1.0 + speed * factor. Raise one to give that banzai level a speed bonus."
+               }
+            )
+            .defineInRange("damageScalingLevel1", 0.0, 0.0, 100.0);
+         this.damageScalingLevel2 = builder.comment("Speed damage scaling for banzai level 2 (0.0 = none)")
+            .defineInRange("damageScalingLevel2", 0.0, 0.0, 100.0);
+         this.damageScalingLevel3 = builder.comment("Speed damage scaling for banzai level 3 (0.0 = none)")
+            .defineInRange("damageScalingLevel3", 0.0, 0.0, 100.0);
+         this.executeEnabled = builder.comment(
+               "If true, stabbing a hostile mob whose health is below executeHealthThreshold kills it outright")
+            .define("executeEnabled", true);
+         this.executeHealthThreshold = builder.comment(
+               "Health (not hearts) below which a stab executes a hostile mob. Vanilla mobs sit at 8 to 20,",
+               "so 15 executes the weak half of the hostile roster and never touches anything healthy."
+               )
+            .defineInRange("executeHealthThreshold", 15.0, 0.0, 200.0);
+         this.knockPlayerBackOnHit = builder.comment(
+               "If true, a successful stab throws the player back the way the wall impact does - the charge's",
+               "own recoil, so running something through costs the player their momentum")
+            .define("knockPlayerBackOnHit", true);
+         this.endChargeOnHit = builder.comment(
+               "If true, a successful stab ends the charge. Off lets a player keep charging and stab repeatedly")
+            .define("endChargeOnHit", true);
+         this.knockbackGraceTicks = builder.comment(
+               "Ticks after a wall impact during which the sprint check is skipped, so the charge survives its",
+               "own knockback. Must outlast vanilla's 7 tick sprint re-acquire delay to be worth anything."
+            )
+            .defineInRange("knockbackGraceTicks", 10, 0, 200);
+         this.sprintLossToleranceTicks = builder.comment(
+               "How long a charge survives without the sprint flag while the player is still running forward",
+               "before it ends. Vanilla drops that flag on every block collision, in water and when the food",
+               "bar empties, so treating the first missing tick as the end of the charge ended charges at the",
+               "first wall."
+            )
+            .defineInRange("sprintLossToleranceTicks", 20, 0, 600);
+         this.minimumForwardSpeed = builder.comment(
+               "Blocks per tick of forward motion that still counts as running. A sprinting player moves about",
+               "0.28 and a walking one about 0.2; below this the charge ends."
+            )
+            .defineInRange("minimumForwardSpeed", 0.1, 0.0, 1.0);
+         this.wallImpactEnabled = builder.comment(
+               "If true, running a charge into a wall knocks the player back and plays the impact effect")
+            .define("wallImpactEnabled", true);
+         this.wallImpactCooldownTicks = builder.comment("Ticks between two wall impact reactions")
+            .defineInRange("wallImpactCooldownTicks", 20, 0, 400);
+         this.wallCheckDistance = builder.comment("How far ahead of the eyes, in blocks, the charge looks for a wall")
+            .defineInRange("wallCheckDistance", 1.0, 0.1, 8.0);
+         this.wallCheckSpreadDegrees = builder.comment(
+               "Half-angle of the wall check's fan, in degrees. The rays sit at 0, a third, two thirds and all",
+               "of this spread either side, so 30 reproduces the original 0, 10, 20, 30 degree rays."
+            )
+            .defineInRange("wallCheckSpreadDegrees", 30.0, 0.0, 90.0);
          builder.pop();
       }
    }

@@ -41,7 +41,11 @@ public class C2SMessageMeleeAttack {
          if (player != null && !player.isSpectator()) {
             if (MeleeAttackHandler.isBanzaiActive()) {
                MeleeAttackHandler.stopBanzai();
-            } else if (player.isSprinting()) {
+            } else if (!MeleeAttackHandler.isBanzaiEnabled()) {
+               // The charge is switched off (HANDOFF section 82.32). A press with a bayonet fitted is then an
+               // ordinary bayonet stab, not a dead key, and any charge still running is stopped above.
+               this.handleNormalMeleeAttack(player);
+            } else if (player.isSprinting() || !MeleeAttackHandler.isSprintRequiredToStart()) {
                ItemStack heldItem = player.getItemInHand(InteractionHand.MAIN_HAND);
                if (!(heldItem.getItem() instanceof GunItem gunItem)) {
                   return;

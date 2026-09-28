@@ -7912,6 +7912,95 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
 * **没动、等你发话的一处** ✓：**突袭 Boss / 随从**的武器走的是 `RaidManager.createModifiedGun` ✓（同样没有耐久 ✗ ✓）——
   本轮**按你的纠正只改了枪手路径** ✓；如果你也想让 Boss 的枪是旧的 ✓（它们的枪是掉落里最好的 ✓，这条对平衡影响最大 ✓），说一声 ✓（一处调用 ✓）。
 
+---
+
+## 82.32 刺刀冲锋有了自己的配置区 ✓（玩家要求：机制改动放进这个配置项 ✓）
+
+### 82.32.1 玩家要求 ✓
+* "我认为 scgun 自带的刺刀冲锋机制做的不好，做个配置选项，后面我会把对刺刀冲锋的机制更改放进这个配置项里" ✓。
+* ⇒ 做法 ✓：把它**所有**写死的参数都搬成 `Config.COMMON.bayonetCharge` 下的选项 ✓，
+  并在代码里**改为读这个区** ✓（否则旋钮是摆设 ✗）✓ —— 此后改机制就是改这个区 ✓。
+
+### 82.32.2 搬进配置区的参数 ✓（默认值 = 代码原来写死的值 ✓）
+| 选项 | 默认 | 原本写死在哪 |
+| --- | --- | --- |
+| `enabled` | true | **新增**：关掉后近战键改为普通刺刀捅击 ✓（不是变成空键 ✗） |
+| `requireSprintToStart` | true | 起手要求疾跑 ✓（起手之后由下面那条容错接管 ✓） |
+| `damageRadius` / `hitRadius` | 1.5 / 2.5 | 找目标的半径 / 实际触及 ✓ |
+| `damageIntervalTicks` | 25 | 两次伤害之间的间隔 ✓ |
+| `damageScalingLevel1/2/3` | **0.0**（原 3.0/5.5/7.0） | 速度伤害倍率 ✓（见 82.33：机制改为"枪械当前近战伤害" ⇒ 默认不再乘速度 ✓） |
+| `knockbackGraceTicks` | 10 | 撞墙被弹开后的宽限 ✓（必须 > 原版 7 tick ✓） |
+| `sprintLossToleranceTicks` | 20 | 疾跑标志丢失的容忍时间 ✓ |
+| `minimumForwardSpeed` | 0.1 | "还在跑"的判定阈值 ✓ |
+| `wallImpactEnabled` / `wallImpactCooldownTicks` | true / 20 | 撞墙反弹这整套 ✓ |
+| `wallCheckDistance` / `wallCheckSpreadDegrees` | 1.0 / 30 | 撞墙检测的距离与扇形 ✓（30 度正好复现原来的 0/±10/±20/±30 射线 ✓） |
+| `executeEnabled` / `executeHealthThreshold` | true / 15 | 处决开关与血量阈值 ✓（见 82.33 ✓） |
+| `knockPlayerBackOnHit` / `endChargeOnHit` | true / true | 命中弹开玩家 ✓、命中是否结束冲锋 ✓（见 82.33 ✓） |
+* 只保留 3 个**存档 tag 名**为常量 ✓（`KnockbackGracePeriod` 等 ✓ —— 它们不是可调项 ✓，改了会让旧存档里的状态读不到 ✓）。
+
+### 82.32.3 顺带修掉两条**过时**的门禁检查 ✓
+* `verify_installed_jar` 里有两条在 `MeleeAttackHandler.class` 里找 `BANZAI_SPRINT_LOST_TOLERANCE_TICKS` /
+  `BANZAI_MIN_FORWARD_SPEED` ✗ —— 这两个常量已经变成配置项 ✓ ⇒ 字段名现在在 `Config$BayonetCharge` 上 ✓
+  ⇒ 两条检查改指向配置类 ✓（**门禁的"字段名检查"必须跟着搬家 ✓**，否则改完机制门禁就红 ✓）。
+
+---
+
+## 82.33 刺刀冲锋机制重做：**单体 + 枪械当前近战伤害 + 命中弹开玩家 + 残血敌对生物处决** ✓（玩家指定 ✓）
+
+### 82.33.1 玩家指定的机制 ✓
+* "刺刀冲锋改为**单体伤害** ✓，如果刺到敌人造成**枪械当前的近战伤害** ✓，并把**玩家弹开** ✓，
+  如果刺到的生物是**敌对生物**且**血量低于 15** 则**直接处决** ✓"。
+* 参考对象 ✓：你想借鉴 **1.21.11+ 的长矛** ✓ —— 你随后把 **`spear-backport-neoforge-1.8.0`** 放进了实例 ✓，
+  我用它当**权威参照**反查了原版机制 ✓：`KineticWeapon`（`hitboxMargin` / `contactCooldownTicks` / `delayTicks` /
+  `forwardMovement` / `damageMultiplier` ✓）、`PiercingWeapon.stab`（穿刺 ✓、可选击退/下马 ✓）、
+  `AttackRange`（min/max 触及 ✓）、`SpearUser`（穿刺冷却 + "刺中过几个" ✓）✓ —— 你给的机制与它同一族 ✓，
+  本轮先**严格按你写的那四条**落地 ✓。
+
+### 82.33.2 实现 ✓
+1. **单体** ✓：`handleBanzaiMode` 的伤害分支不再遍历 `findTargetsInArea(...)` ✗ ⇒ 改为
+   `findChargeTarget(player)` ✓（**正前方** ✓、`damageRadius` 内 ✓、`hitRadius` 触及内 ✓ 的**最近一个** ✓；
+   背后的不刺 ✓）+ `stabWithBayonet(player, target)` ✓。
+   `performMeleeAttackOnTarget` 的 AoE 分支整个删除 ✓（它只剩普通捅击这一个用途 ✓）。
+2. **伤害 = 枪械当前近战伤害** ✓：新增 `meleeDamageOf(...)` ✓ —— 与普通捅击**完全相同**的算法 ✓
+   （`ATTACK_DAMAGE` + 配件附加伤害 + 刺刀附魔伤害 + `gun.getGeneral().getMeleeDamage()` ✓）✓；
+   速度倍率 `damageScalingLevel*` **默认改成 0.0** ✓ ⇒ 默认就是"枪械当前近战伤害" ✓；
+   想留一点速度加成，把对应等级调 >0 即可 ✓（审计专门守住"默认必须是 0.0" ✓）。
+3. **命中把玩家弹开** ✓：复用撞墙那套 `knockPlayerBack(player)` ✓（沿视线反向推 + 0.3 上抛 + `hurtMarked` ✓）
+   ⇒ 刺中就等于把冲锋的动量还回去 ✓；由 `knockPlayerBackOnHit` 控制 ✓（默认开 ✓）。
+4. **处决** ✓：`isExecutionTarget(target)` = `executeEnabled` ✓ 且 `target instanceof Enemy` ✓
+   （原版的敌对生物标记 ✓ ⇒ **mod 生物也覆盖** ✓）且 `getHealth() < executeHealthThreshold`（默认 **15** ✓）✓；
+   处决用 `target.hurt(playerAttack(player), Float.MAX_VALUE)` ✓ —— **不用 `kill()`** ✓：
+   这样**战利品、经验、击杀归属都记在玩家头上** ✓（`kill()` 会丢掉归属 ✗）。
+5. **命中是否结束冲锋** ✓ 由 `endChargeOnHit` 控制（默认结束 ✓）：刺中即消耗这次冲锋 ✓
+   ⇒ 一次冲锋 = 一次突刺 ✓（想连续突刺就把它关掉 ✓）。
+
+### 82.33.3 审计 `tools/audit_banzai_charge.py` 扩到"机制 + 旋钮"两层 ✓
+* 原有规则保留 ✓（ticker 不得再查疾跑 ✓、撞墙判定必须在维持判定之前 ✓、tag 只能用常量 ✓、
+  两个默认值必须满足外部约束 ✓：`knockbackGraceTicks > 7` ✓、`0 < minimumForwardSpeed < 0.2` ✓）。
+* 新增：① `handleBanzaiMode` **必须**调 `stabWithBayonet` ✓ 且**不得**再出现 `performMeleeAttackOnTarget` ✓
+  或遍历目标 ✗（**防止 AoE 悄悄回来** ✓）；② 这一版 19 个选项**每一个都必须在 `MeleeAttackHandler` 里被读到** ✓；
+  ③ `damageScalingLevel*` 默认**必须**是 0.0 ✓；④ 处决**必须**检查 `instanceof Enemy` ✓ 且走两个配置项 ✓；
+  ⑤ 处决**必须**是"压倒性伤害"而不是普通伤害 ✓；⑥ 弹开与结束冲锋**必须**在各自的开关后面 ✓。
+* 规则作用域也修过一次 ✓：初版把 `instanceof Enemy` / 两个处决配置查在 `stabWithBayonet` 里 ✗，
+  而它们在 `isExecutionTarget` 里 ✓ ⇒ 改为查对应方法 ✓（**规则要查"逻辑真正所在的方法"** ✓）。
+* **反向验证 9/9 全部被抓 ✓**：把 AoE 循环放回去 ✓、改回旧区域攻击 ✓、处决丢掉敌对检查 ✓、
+  丢掉阈值配置 ✓、处决退化成普通伤害 ✓、弹开脱离开关 ✓、速度倍率默认改回 3.0 ✓、
+  选项改名后无人读取 ✓、关掉总开关后不再被读取 ✓。
+* `verify_installed_jar` **256/256** ✓（新增 4 条 ✓：`stabWithBayonet` ✓、`isExecutionTarget` ✓、
+  `executeHealthThreshold` ✓、`endChargeOnHit` ✓；另修好 2 条搬家的旧检查 ✓）。
+
+### 82.33.4 验收与**未实测** ✓
+* **40 个审计全 0** ✓、`javac` 0 错误 ✓（1010 文件 ✓）、`build` ✓、`verify_installed_jar` **256/256** ✓、已安装 ✓。
+* **未实测** ✓（交给玩家 ✓）：① 冲锋撞到敌人 ⇒ **只伤那一个** ✓（周围不再被波及 ✓）；
+  ② 伤害应等于同枪普通捅击 ✓（`damageScalingLevel*` 默认 0 ✓）；
+  ③ 命中后**玩家被弹开** ✓；④ **敌对**生物血量 < 15 ⇒ **一刀处决** ✓（掉落/经验/击杀归属仍是玩家的 ✓；
+  非敌对（村民/宠物 ✓）**不会**被处决 ✓）；⑤ 一次冲锋只刺一次 ✓（想连刺把 `endChargeOnHit` 关掉 ✓）。
+* **可调项** ✓：`executeHealthThreshold`（15 ✓）、`knockPlayerBackOnHit` ✓、`endChargeOnHit` ✓、
+  `damageScalingLevel1/2/3`（>0 = 恢复速度加成 ✓）、`enabled`（关掉后近战键仍是普通捅击 ✓）。
+* **还没做的** ✓（长矛里其余部分 ✓，等你点名 ✓）：`spear-backport` 还有**蓄力/前冲位移**（`KineticWeapon.forwardMovement` ✓）、
+  **穿刺冷却**（`SpearUser.isInPiercingCooldown` ✓）、**下马**（`dismounts` ✓）、**触及 min/max**（`AttackRange` ✓）、
+  **按住蓄力的输入模型**（现在是按键切换 ✓ 不是长按 ✓）—— 这些都能直接加进 `bayonet_charge` ✓。
+
 
 
 
