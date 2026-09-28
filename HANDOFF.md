@@ -7345,3 +7345,18 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   两个客户端读点都在 ✓）、已安装 ✓。
 * **未实测** ✓（交给玩家 ✓）：在**服务器**上拿带刺刀的枪冲锋 ✓ —— 期望**能看到**冲锋姿势/动画 ✓
   （单人存档本来就正常 ✓，所以请务必在服务器上验 ✓）。
+
+### 82.22.6 顺带核对的几处（避免"修一个坑、埋一个坑" ✓，证据来自 `javap -c` ✓）
+* **键不会落盘** ✓：Framework 的 `SyncedDataKey$Builder` 里持久化是**显式**的 `saveToFile()` ✓
+  （构造里默认 `save = false` ✓、`putfield` 常量是 `iconst_0` ✓）而**我们没调用它** ✓（和 `AIMING`/`RELOADING`/`MELEE` 一致 ✓）
+  ⇒ 存档/重连**不会**把玩家"卡在冲锋姿势" ✓。
+* **跨玩家克隆不会带上旧值** ✓：`resetOnDeath()` 的字节码就是 **`persistent = false`** ✓（不是另一个开关 ✓），
+  而 `SyncedEntityData.onPlayerClone` 只在 `wasDeath == false || key.persistent()` 时才搬运旧值 ✓
+  ⇒ 死亡 ✓ **以及切维度**（也是克隆 ✓）都会回到默认 `false` ✓，不会出现"客户端一直冲锋" ✓。
+* **默认同步模式是 `ALL`** ✓（构造里 `putfield syncMode = SyncMode.ALL` ✓）⇒ 一次变化发给**自己 + 正在追踪你的人** ✓
+  ⇒ 别的玩家现在也能看见你在冲锋 ✓（这是修对之后顺带的正确行为 ✓，不是新加的机制 ✓）。
+* **不会留下脏键** ✓：`C2SMessageMeleeAttack` 是**全局开关** ✓（`if (isBanzaiActive()) stopBanzai();` ✓），
+  第二个玩家按下走的是 `stopBanzai()` ✓ ⇒ 清掉的是**被跟踪那一位**的键 ✓；死亡/不再疾跑也会清 ✓
+  （另有上面那条 `persistent = false` 兜底 ✓）。**原始设计的限制**（**未改** ✗、也**不是本次引入** ✗）：
+  `isBanzai` / `banzaiPlayer` 是**全局单槽** ⇒ 同一时刻只支持**一个**玩家冲锋 ✓（第二个人按下等于替第一个人取消 ✓）。
+

@@ -968,3 +968,8 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 
 **门禁**：33 个审计全 0 / `verify_installed_jar` **222/222**（新增 5 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：在**服务器**上用带刺刀的枪冲锋，应能看到冲锋动画（单人生效不算验证）。
+
+**生命周期核对（`javap -c` 证据）**：`saveToFile()` 才落盘，构造默认 `save = false` 且我们没调用 ⇒ 重连不会卡姿势；
+`resetOnDeath()` 的实现就是 `persistent = false`，而 `SyncedEntityData.onPlayerClone` 只在
+`wasDeath == false || key.persistent()` 时搬运旧值 ⇒ 死亡**和切维度**都回默认 false；默认 `syncMode = ALL`
+⇒ 变化发给自己 + 追踪者（别人也能看到你冲锋）。全局单槽 `isBanzai`/`banzaiPlayer` 使"同时只能一人冲锋"是原始设计限制，本次未改。
