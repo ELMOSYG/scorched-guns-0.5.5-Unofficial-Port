@@ -1148,6 +1148,19 @@ def main():
             zf, "top/ribs/scguns/item/animated/AnimatedGunItem.class", b"isBanzaiCharging",
             "the animation check drives off the synced state too"))
 
+        # 82.23. A charge must not be ended by losing the sprint flag: vanilla drops it on every block
+        # collision (which a charge walks straight into), in water and when the food bar empties. The named
+        # field survives into the class file, so its presence proves the tolerance logic is really packaged.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class",
+            b"BANZAI_SPRINT_LOST_TOLERANCE_TICKS", "a lost sprint flag is tolerated, not fatal"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"BANZAI_MIN_FORWARD_SPEED",
+            "a charge can tell 'flag lost' from 'player stopped running'"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/network/message/C2SMessageMeleeAttack.class", b"banzaiTask",
+            "one ticker per charge, replaced instead of stacked"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

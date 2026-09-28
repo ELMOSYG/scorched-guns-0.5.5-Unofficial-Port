@@ -71,8 +71,25 @@ public class MeleeAttackHandler {
    private static final float[] BANZAI_SCALING_FACTORS = new float[]{3.0F, 5.5F, 7.0F};
    private static final String WALL_COLLISION_COOLDOWN_TAG = "WallCollisionCooldown";
    private static final String MELEE_COOLDOWN_TAG = "MeleeCooldown";
-   private static final int KNOCKBACK_GRACE_PERIOD_TICKS = 5;
+   /**
+    * How long the sprint check is skipped after a bayonet charge's own wall impact knocks the player back.
+    * 0.5.5 used 5 ticks, which is shorter than the ~6 ticks the 0.3 knockback keeps the player airborne plus
+    * vanilla's own 7-tick {@code sprintTriggerTime} before a sprint can be re-acquired (HANDOFF 82.23).
+    */
+   private static final int KNOCKBACK_GRACE_PERIOD_TICKS = 10;
    private static final String KNOCKBACK_GRACE_TAG = "KnockbackGracePeriod";
+   /**
+    * How long a charge survives without the sprint flag, as long as the player is still running forward.
+    * See {@link #keepCharging(ServerPlayer, CompoundTag, long)} for why a lost flag must not end a charge.
+    */
+   private static final int BANZAI_SPRINT_LOST_TOLERANCE_TICKS = 20;
+   /** When the flag was first seen missing, so that tolerance can be measured in the player's saved data. */
+   private static final String BANZAI_SPRINT_LOST_TAG = "BanzaiSprintLostAt";
+   /**
+    * Blocks per tick of forward motion that still counts as charging. A sprinting player moves about 0.28 and
+    * a walking one about 0.2, while a player who stopped moves 0 (HANDOFF section 82.23).
+    */
+   private static final double BANZAI_MIN_FORWARD_SPEED = 0.1;
    private static boolean isBanzai = false;
    private static final int WALL_COLLISION_COOLDOWN_TICKS = 20;
    private static final double WALL_CHECK_DISTANCE = 1.0;
@@ -114,6 +131,7 @@ public class MeleeAttackHandler {
             isBanzai = true;
             banzaiActiveItem = heldItem.copy();
             banzaiPlayer = player;
+            player.getPersistentData().remove(BANZAI_SPRINT_LOST_TAG);
             ModSyncedDataKeys.BANZAI.setValue(player, true);
          }
       }
@@ -121,6 +139,7 @@ public class MeleeAttackHandler {
 
    public static void stopBanzai() {
       if (banzaiPlayer != null) {
+         banzaiPlayer.getPersistentData().remove(BANZAI_SPRINT_LOST_TAG);
          ModSyncedDataKeys.BANZAI.setValue(banzaiPlayer, false);
          banzaiPlayer = null;
       }
@@ -367,18 +386,21 @@ public class MeleeAttackHandler {
          } else {
             CompoundTag playerData = player.getPersistentData();
             long currentTime = player.level().getGameTime();
-            boolean inGracePeriod = playerData.contains("KnockbackGracePeriod") && currentTime < playerData.getLong("KnockbackGracePeriod");
-            if (!player.isSprinting() && !inGracePeriod) {
-               stopBanzai();
-            } else if (checkForWallCollision(player)) {
+            boolean inGracePeriod = playerData.contains(KNOCKBACK_GRACE_TAG) && currentTime < playerData.getLong(KNOCKBACK_GRACE_TAG);
+            // The wall impact comes first: it is the charge's own reaction to running into something, and it
+            // is exactly what kills the sprint flag. Checking the flag first is what made 0.5.5's grace
+            // period unreachable (HANDOFF section 82.23).
+            if (checkForWallCollision(player)) {
                knockPlayerBack(player);
                sendWallImpactParticles(player);
                triggerBanzaiImpactIfNecessary(currentHeldItem);
-               playerData.putLong("KnockbackGracePeriod", currentTime + 5L);
-            } else if (!playerData.contains("BanzaiDamageCooldown") || currentTime >= playerData.getLong("BanzaiDamageCooldown")) {
-               List<LivingEntity> targets = findTargetsInArea(player, 1.5);
+               playerData.putLong(KNOCKBACK_GRACE_TAG, currentTime + (long)KNOCKBACK_GRACE_PERIOD_TICKS);
+            } else if (!inGracePeriod && !keepCharging(player, playerData, currentTime)) {
+               stopBanzai();
+            } else if (!playerData.contains(BANZAI_DAMAGE_COOLDOWN_TAG) || currentTime >= playerData.getLong(BANZAI_DAMAGE_COOLDOWN_TAG)) {
+               List<LivingEntity> targets = findTargetsInArea(player, BANZAI_AOE_RADIUS);
                if (!targets.isEmpty()) {
-                  playerData.putLong("BanzaiDamageCooldown", currentTime + 25L);
+                  playerData.putLong(BANZAI_DAMAGE_COOLDOWN_TAG, currentTime + (long)BANZAI_DAMAGE_COOLDOWN_TICKS);
 
                   for (LivingEntity target : targets) {
                      if (target != player) {
@@ -391,10 +413,57 @@ public class MeleeAttackHandler {
       }
    }
 
+   /**
+    * Whether a charge should continue (HANDOFF section 82.23).
+    *
+    * <p>Sprinting is what starts a charge and what scales its damage, but it must not be what ends one: the
+    * flag is dropped by vanilla on every block collision, in water and when the food bar empties, and for
+    * players who sprint by double-tapping W it only comes back on a fresh double tap. A charge is meant to
+    * run into things, so treating a missing flag as "stop" ended charges at the first wall - and it also made
+    * the knockback grace period below unreachable.</p>
+    *
+    * <p>So a charge continues while the player is still running forward: sprinting, or moving forward fast
+    * enough. A lost flag is tolerated for {@link #BANZAI_SPRINT_LOST_TOLERANCE_TICKS} ticks, which keeps a
+    * wall bump or a water splash from ending a charge while still ending one for a player who genuinely can
+    * no longer sprint.</p>
+    */
+   private static boolean keepCharging(ServerPlayer player, CompoundTag playerData, long currentTime) {
+      if (!player.isSprinting() && horizontalForwardSpeed(player) <= BANZAI_MIN_FORWARD_SPEED) {
+         return false;
+      }
+
+      if (player.isSprinting()) {
+         playerData.remove(BANZAI_SPRINT_LOST_TAG);
+         return true;
+      }
+
+      if (!playerData.contains(BANZAI_SPRINT_LOST_TAG)) {
+         playerData.putLong(BANZAI_SPRINT_LOST_TAG, currentTime);
+         return true;
+      }
+
+      return currentTime - playerData.getLong(BANZAI_SPRINT_LOST_TAG) <= (long)BANZAI_SPRINT_LOST_TOLERANCE_TICKS;
+   }
+
+   /**
+    * The player's speed along the horizontal direction they are looking, in blocks per tick. The look vector
+    * is flattened first so that looking at the ground while charging does not shrink the projection.
+    */
+   private static double horizontalForwardSpeed(ServerPlayer player) {
+      Vec3 look = player.getLookAngle();
+      Vec3 motion = player.getDeltaMovement();
+      double horizontalLook = Math.sqrt(look.x * look.x + look.z * look.z);
+      if (horizontalLook < 1.0E-4) {
+         return Math.sqrt(motion.x * motion.x + motion.z * motion.z);
+      }
+
+      return (look.x * motion.x + look.z * motion.z) / horizontalLook;
+   }
+
    private static boolean checkForWallCollision(ServerPlayer player) {
       CompoundTag playerData = player.getPersistentData();
       long currentTime = player.level().getGameTime();
-      if (playerData.contains("WallCollisionCooldown") && currentTime < playerData.getLong("WallCollisionCooldown")) {
+      if (playerData.contains(WALL_COLLISION_COOLDOWN_TAG) && currentTime < playerData.getLong(WALL_COLLISION_COOLDOWN_TAG)) {
          return false;
       } else {
          Vec3 eyePosition = player.getEyePosition(1.0F);
@@ -410,10 +479,10 @@ public class MeleeAttackHandler {
 
                for (double angle : WALL_CHECK_ANGLES) {
                   Vec3 rotatedVector = rotateVector(lookVector, angle);
-                  Vec3 reachVector = checkPosition.add(rotatedVector.scale(1.0));
+                  Vec3 reachVector = checkPosition.add(rotatedVector.scale(WALL_CHECK_DISTANCE));
                   BlockHitResult hitResult = player.level().clip(new ClipContext(checkPosition, reachVector, Block.COLLIDER, Fluid.NONE, player));
                   if (hitResult.getType() == Type.BLOCK) {
-                     playerData.putLong("WallCollisionCooldown", currentTime + 20L);
+                     playerData.putLong(WALL_COLLISION_COOLDOWN_TAG, currentTime + (long)WALL_COLLISION_COOLDOWN_TICKS);
                      return true;
                   }
                }
@@ -440,7 +509,7 @@ public class MeleeAttackHandler {
    private static void sendWallImpactParticles(ServerPlayer player) {
       Vec3 eyePosition = player.getEyePosition(1.0F);
       Vec3 lookVector = player.getLookAngle();
-      Vec3 reachVector = eyePosition.add(lookVector.scale(1.0));
+      Vec3 reachVector = eyePosition.add(lookVector.scale(WALL_CHECK_DISTANCE));
       ClipContext context = new ClipContext(eyePosition, reachVector, Block.COLLIDER, Fluid.NONE, player);
       BlockHitResult hitResult = player.level().clip(context);
       if (hitResult.getType() == Type.BLOCK) {

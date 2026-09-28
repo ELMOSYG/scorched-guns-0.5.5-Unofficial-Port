@@ -7360,3 +7360,73 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   （另有上面那条 `persistent = false` 兜底 ✓）。**原始设计的限制**（**未改** ✗、也**不是本次引入** ✗）：
   `isBanzai` / `banzaiPlayer` 是**全局单槽** ⇒ 同一时刻只支持**一个**玩家冲锋 ✓（第二个人按下等于替第一个人取消 ✓）。
 
+---
+
+## 82.23 刺刀冲锋被"疾跑丢失"打断：冲锋的维持条件本身是自相矛盾的 ✓
+
+### 82.23.1 玩家的报告 ✓
+* "刺刀冲锋可能被疾跑打断，但是刺刀冲锋就是依赖疾跑的" ✓ —— 冲锋**靠疾跑**起手 ✓，却**又**因为疾跑丢失被打断 ✗，
+  这是自相矛盾 ✓。**不是移植引入的** ✓：0.5.5 原文**一模一样** ✗（下面 82.23.2 的 zip 原文对照 ✓）。
+
+### 82.23.2 根因①：维持条件用了**疾跑标志**，而这个标志在冲锋过程中必掉 ✓
+* 冲锋的维持检查是 `!player.isSprinting() → stopBanzai()` ✓（`handleBanzaiMode` ✓ + 50ms 调度任务 ✓）。
+* **原版会在这些情况下把疾跑标志丢掉** ✓（`LocalPlayer.aiStep` 原文 ✓）：
+  ```java
+  boolean flag7 = !this.input.hasForwardImpulse() || !this.hasEnoughFoodToStartSprinting();
+  boolean flag8 = flag7
+      || this.horizontalCollision && !this.minorHorizontalCollision   // ← 撞到方块
+      || this.isInWater() && !this.isUnderWater()
+      || (this.isInFluidType(...) && !this.canStartSwimming());
+  ```
+  ⇒ ① **撞墙/撞方块** ✗（**冲锋本来就是往东西上撞** ✓）、② **水里** ✗、③ **饥饿值 ≤ 6** ✗
+  （`hasEnoughFoodToStartSprinting` ✓，也就是**冲得越久越会断** ✗）、④ 松开 W ✗。
+* 另外**双点 W 疾跑**的玩家 ✗：`sprintTriggerTime = 7` ✓ ⇒ 标志一丢，**必须重新双点**才能再疾跑 ✓
+  （不是"按住就能恢复" ✓）。
+* ⇒ 结论 ✓：**冲锋自己的玩法（撞上去）就会杀掉冲锋** ✗。
+
+### 82.23.3 根因②：0.5.5 自己写的"撞击宽限期"是**死代码** ✗（决定性 ✗）
+* 作者显然**知道**这个问题 ✓：撞击分支里有 `KnockbackGracePeriod` ✓（撞墙被弹开后 **5 tick** 内不检查疾跑 ✓）。
+* 但**检查顺序反了** ✗：50ms 调度任务先做
+  `if (!player.isSprinting()) stopBanzai();` ✓，**然后才**调用 `handleBanzaiMode` ✓
+  ⇒ 宽限期所在的那段代码**永远不会被执行到** ✓（撞墙那一瞬间疾跑已掉 ✓ ⇒ 调度任务当场停冲 ✓）。
+* ⇒ 实机效果 ✓：**撞到任何东西 ⇒ 冲锋立刻结束** ✓，而"被弹开 + 宽限 5 tick 继续冲"的设计一次都没生效过 ✗。
+* 顺带（同一路径 ✓）：调度任务是**每次起冲都新开一个** ✓、**从不取消** ✗ ⇒ 冲 N 次就有 N 个任务每 50ms
+  一起调 `handleBanzaiMode` ✗（重复撞墙判定/重复扫描目标 ✓）。
+
+### 82.23.4 修法 ✓：**疾跑管起手，跑动管维持** ✓
+1. **调度任务不再检查疾跑** ✓：只负责"死了/没了就停" ✓ + 调用 `handleBanzaiMode` ✓（**决定权只留一处** ✓）。
+   `if (player.isSprinting())` **起手条件保留** ✓ —— 玩家说的"冲锋依赖疾跑"就是这个 ✓。
+2. `handleBanzaiMode` 的**顺序**改为：**先**撞击判定 ✓（它是冲锋自己的反应、也是掉疾跑的元凶 ✓），
+   **再**维持判定 ✓。宽限期从 5 tick 提到 **10 tick** ✓（0.5.5 的 5 tick 短于"0.3 击退的滞空 ~6 tick" ✓ 加上
+   原版 **7 tick** 的 `sprintTriggerTime` ✓）。
+3. **维持规则换成"还在不在往前跑"** ✓（新增 `keepCharging` ✓）：
+   * 还在疾跑 ✓ ⇒ 继续 ✓；
+   * 疾跑标志丢了 **但**仍在向前跑（`horizontalForwardSpeed > 0.1` ✓）⇒ **宽限 20 tick** ✓（撞一下、下水、被弹一下都不会断 ✓）；
+   * **向前速度归零**（真的停下来了 ✓）⇒ 立刻结束 ✓；
+   * 20 tick 内疾跑一直没回来（饥饿见底 ✓、一直在水里 ✓）⇒ 结束 ✓（**饥饿仍是天然时长上限** ✓，不会变成无限冲锋 ✗）。
+   * 速度按**水平视线方向投影**算 ✓，先归一化水平分量 ✓ ⇒ **看着地面冲锋不会把投影压小** ✓。
+4. 顺手恢复 0.5.5 的写法 ✓：`KNOCKBACK_GRACE_PERIOD_TICKS`/`WALL_COLLISION_COOLDOWN_TICKS`/
+   `BANZAI_DAMAGE_COOLDOWN_TICKS`/`BANZAI_AOE_RADIUS`/`WALL_CHECK_DISTANCE` ✓ —— 移植版在 `handleBanzaiMode`
+   里把这些**常量退化成了字面量** ✗（`"KnockbackGracePeriod"`、`+ 5L`、`+ 20L`、`+ 25L`、`findTargetsInArea(player, 1.5)` ✓）。
+5. 任务不再堆积 ✓：起冲前 **cancel 上一个** ✓、冲锋结束后**自我取消** ✓（`self[0].cancel(false)` ✓）。
+
+### 82.23.5 新增审计 `tools/audit_banzai_charge.py`（第 34 个 ✓）
+* 六条硬规则 ✓：① 调度任务里**不得**再出现 `isSprinting` ✓（但**起手条件必须在** ✓）；
+  ② `handleBanzaiMode` **必须**用 `keepCharging(` ✓、且**不得**再出现裸 `!player.isSprinting()` ✓；
+  ③ **撞击判定必须在维持判定之前** ✓（顺序错 = 宽限期又成死代码 ✗，这条专门守住本次的根因 ✓）；
+  ④ `KNOCKBACK_GRACE_PERIOD_TICKS` **必须 > 7** ✓（原版 `sprintTriggerTime` ✓）；
+  ⑤ 四个 tag 字面量**只允许各出现一次**（即常量声明处 ✓）；⑥ 任务**必须**被 cancel ✓（不堆积 ✓）。
+* **注释剥离仍是状态机** ✓；**反向验证 6/6 全部被抓 ✓**（含第一次"顺序"对照写错、只把分支禁用没换位置的教训 ✓ —— 对照本身也得是对的 ✓）；
+  还原后 0 ✓。
+* `verify_installed_jar` **225/225** ✓（新增 3 条 ✓：`BANZAI_SPRINT_LOST_TOLERANCE_TICKS` ✓、
+  `BANZAI_MIN_FORWARD_SPEED` ✓、`C2SMessageMeleeAttack` 里的 `banzaiTask` ✓ —— 字段名会进 class 文件 ✓，
+  所以这能证明新逻辑真的**打进了 jar** ✓）。
+
+### 82.23.6 验收与**未实测** ✓
+* **34 个审计全 0** ✓（新增 `audit_banzai_charge.py` ✓）、`javac` 0 错误 ✓（1009 文件 ✓）、`build` ✓、
+  `verify_installed_jar` **225/225** ✓、已安装 ✓（探针脚本已删 ✓）。
+* **未实测** ✓（交给玩家 ✓）：① 带刺刀疾跑冲锋撞**墙/方块** ⇒ 冲锋**不该**立刻断 ✓（应被弹开并继续 ✓）；
+  ② 冲锋中把饥饿耗到 6 以下 ⇒ 约 1 秒后**应该**断 ✓（这是保留的天然上限 ✓）；
+  ③ 松开 W 停下 ⇒ **立刻**断 ✓；④ 连冲多次 ⇒ 伤害节奏不变 ✓（不再是 2 倍/3 倍频 ✓）。
+
+

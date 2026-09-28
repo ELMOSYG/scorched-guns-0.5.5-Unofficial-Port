@@ -973,3 +973,28 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 `resetOnDeath()` 的实现就是 `persistent = false`，而 `SyncedEntityData.onPlayerClone` 只在
 `wasDeath == false || key.persistent()` 时搬运旧值 ⇒ 死亡**和切维度**都回默认 false；默认 `syncMode = ALL`
 ⇒ 变化发给自己 + 追踪者（别人也能看到你冲锋）。全局单槽 `isBanzai`/`banzaiPlayer` 使"同时只能一人冲锋"是原始设计限制，本次未改。
+
+## §82.23 刺刀冲锋被"疾跑丢失"打断：维持条件自相矛盾（已修）
+
+**报告**：玩家"刺刀冲锋可能被疾跑打断，但是刺刀冲锋就是依赖疾跑的"。**不是移植引入**：0.5.5 原文相同。
+
+**根因①**：维持条件是 `!player.isSprinting() → stopBanzai()`。而原版 `LocalPlayer.aiStep` 会在
+**撞到方块**（`horizontalCollision && !minorHorizontalCollision`）、**水里**、**饥饿 ≤ 6**（`hasEnoughFoodToStartSprinting`）
+时丢掉疾跑标志；双点 W 疾跑的玩家还要 `sprintTriggerTime = 7` tick 后重新双点才能恢复。冲锋本来就靠撞东西打伤害 ⇒ 自己的玩法杀掉自己。
+
+**根因②（决定性）**：0.5.5 的撞击分支本来有 `KnockbackGracePeriod`（撞墙被弹开后 5 tick 不检查疾跑），
+但 50 ms 调度任务**先**做裸疾跑检查、**再**调 `handleBanzaiMode` ⇒ 宽限期**永远执行不到**（死代码）⇒ 撞到任何东西冲锋立刻结束。
+同一路径还有任务泄漏：每次起冲新开一个 50 ms 任务且从不取消 ⇒ 冲 N 次就有 N 个任务一起跑 `handleBanzaiMode`。
+
+**修法**：调度任务不再检查疾跑（只处理死亡/移除 + 调 `handleBanzaiMode`，**起手仍要求疾跑**）；
+`handleBanzaiMode` 顺序改为**先撞击判定、再维持判定**；宽限期 5 → **10 tick**（> 击退滞空 ~6 + 原版 7 tick 重取疾跑）；
+维持规则改为"**还在往前跑**"：疾跑中 ⇒ 继续；疾跑丢失但向前速度 > 0.1 ⇒ 宽限 **20 tick**；向前速度归零 ⇒ 立刻结束；
+20 tick 内疾跑没回来（饥饿见底/水里）⇒ 结束（饥饿仍是天然上限）。速度按水平视线方向投影、水平分量先归一化（低头冲锋不会误判）。
+顺带恢复 0.5.5 的常量写法（移植版在 `handleBanzaiMode` 里退化成字面量）与 `WALL_CHECK_DISTANCE`；任务改为起冲前 cancel 上一个 + 结束自我取消。
+
+**新增审计 `tools/audit_banzai_charge.py`**（第 34 个）六条规则：调度任务不得再出现 `isSprinting`（起手条件必须在）、
+`handleBanzaiMode` 必须用 `keepCharging(` 且不得有裸 `!isSprinting()`、**撞击判定必须在维持判定之前**、
+`KNOCKBACK_GRACE_PERIOD_TICKS > 7`、tag 字面量只允许出现在常量声明处、任务必须被 cancel。反向验证 6/6 被抓。
+
+**门禁**：34 个审计全 0 / `verify_installed_jar` **225/225**（新增 3 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：① 冲锋撞墙不该立刻断（应弹开继续）；② 饥饿耗到 6 以下约 1 秒后应断；③ 松开 W 立刻断；④ 连冲多次伤害节奏不变。

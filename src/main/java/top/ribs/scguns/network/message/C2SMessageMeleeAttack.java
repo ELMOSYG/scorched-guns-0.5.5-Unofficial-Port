@@ -3,6 +3,7 @@ package top.ribs.scguns.network.message;
 import com.mrcrayfish.framework.api.network.MessageContext;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,6 +16,13 @@ import top.ribs.scguns.network.PacketHandler;
 public class C2SMessageMeleeAttack {
    private static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1);
    private static final int BANZAI_CHECK_INTERVAL_MS = 50;
+   /**
+    * The repeating task that drives the charge. It is replaced (never duplicated) by a new charge and
+    * cancels itself once the charge is over: the original scheduled one task per charge start and never
+    * cancelled it, so a player who charged N times had N tasks calling {@code handleBanzaiMode} - each of
+    * them knocking the player back and scanning for targets every 50 ms (HANDOFF section 82.23).
+    */
+   private static ScheduledFuture<?> banzaiTask;
 
    public C2SMessageMeleeAttack() {
       super();
@@ -41,17 +49,7 @@ public class C2SMessageMeleeAttack {
 
                if (gunItem.hasBayonet(heldItem)) {
                   MeleeAttackHandler.startBanzai(player);
-                  scheduler.scheduleAtFixedRate(() -> {
-                     if (MeleeAttackHandler.isBanzaiActive()) {
-                        if (player.isRemoved() || !player.isAlive()) {
-                           MeleeAttackHandler.stopBanzai();
-                        } else if (!player.isSprinting()) {
-                           MeleeAttackHandler.stopBanzai();
-                        } else {
-                           MeleeAttackHandler.handleBanzaiMode(player);
-                        }
-                     }
-                  }, 0L, 50L, TimeUnit.MILLISECONDS);
+                  startBanzaiTicker(player);
                } else {
                   MeleeAttackHandler.performNormalMeleeAttack(player);
                }
@@ -61,6 +59,36 @@ public class C2SMessageMeleeAttack {
          }
       });
       context.setHandled(true);
+   }
+
+   /**
+    * Drives one charge. Sprinting is required to <em>start</em> a charge (above), but it is deliberately not
+    * re-checked here: the sprint flag drops on every block collision, in water and when the food bar empties,
+    * so a bare check here cancelled charges on the first wall the player ran into - before
+    * {@code handleBanzaiMode}, which owns that decision together with its knockback grace period, was ever
+    * reached. A charge ends there, not here (HANDOFF section 82.23).
+    */
+   private static void startBanzaiTicker(ServerPlayer player) {
+      ScheduledFuture<?> previous = banzaiTask;
+      if (previous != null) {
+         previous.cancel(false);
+      }
+
+      final ScheduledFuture<?>[] self = new ScheduledFuture<?>[1];
+      self[0] = scheduler.scheduleAtFixedRate(() -> {
+         if (!MeleeAttackHandler.isBanzaiActive()) {
+            self[0].cancel(false);
+            return;
+         }
+
+         if (player.isRemoved() || !player.isAlive()) {
+            MeleeAttackHandler.stopBanzai();
+            return;
+         }
+
+         MeleeAttackHandler.handleBanzaiMode(player);
+      }, 0L, BANZAI_CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS);
+      banzaiTask = self[0];
    }
 
    private void handleNormalMeleeAttack(ServerPlayer player) {
