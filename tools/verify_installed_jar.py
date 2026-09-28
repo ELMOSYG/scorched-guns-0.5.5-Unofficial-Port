@@ -1220,6 +1220,26 @@ def main():
             b"enemies_and_raids_can_spawn" not in zf.read("assets/scguns/lang/en_us.json")
             and b"enemies_and_raids_can_spawn" not in zf.read("assets/scguns/lang/zh_cn.json")))
 
+        # 82.30. Nether sulfur ore dropped itself because its loot table still used the 1.20.1 enchantment
+        # predicate key and therefore never loaded. Both halves of that are checked in the packaged files, and
+        # the "no 1.20.1 keys anywhere" check is tree-wide so a second table cannot reintroduce it.
+        checks.append(_check_resource_contains(
+            zf, "data/scguns/loot_table/blocks/nether_sulfur_ore.json", b'"enchantments": "minecraft:silk_touch"',
+            "the reported ore's loot table uses the 1.21 enchantment predicate spelling"))
+        checks.append(_check_resource_contains(
+            zf, "data/scguns/loot_table/chests/scguns_dungeon.json", b'"type": "minecraft:chest"',
+            "the injected chest tables declare a type, or they never load"))
+        checks.append((
+            "no packaged loot table still uses the 1.20.1 enchantment predicate key",
+            all(b'"enchantment": "minecraft:silk_touch"' not in zf.read(name)
+                for name in zf.namelist()
+                if name.startswith("data/scguns/loot_table/") and name.endswith(".json"))))
+        checks.append((
+            "no packaged loot table still uses the removed treasure field",
+            all(b'"treasure"' not in zf.read(name)
+                for name in zf.namelist()
+                if name.startswith("data/scguns/loot_table/") and name.endswith(".json"))))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

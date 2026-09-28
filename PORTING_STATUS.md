@@ -1121,3 +1121,18 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 
 **门禁**：38 个审计全 0 / `verify_installed_jar` **239/239**（新增 3 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：① 再解锁一级看第二行（新等级在最前、无"袭击"）；② **行为改动**：枪手现在真会拿最新等级枪械（以前永远不会）——若希望"敌人不要立刻跟上"，一句话即可改回只到上一级；③ 突袭行只在真有新增时出现。
+
+## §82.30 下界硫磺矿石"破坏掉本体"：掉落表根本没加载（1.20.1 字段名 + 缺 type）
+
+**根因**：`loot_table/blocks/nether_sulfur_ore.json` 存在且是合法 JSON，但附魔谓词写的是 1.20.1 的 **`"enchantment"`（单数）**，1.21 正确字段是 **`"enchantments"`**（对照原版 `diamond_ore.json`）。MC 用严格 codec 解析 ⇒ 一个未知字段使**整张表解析失败** ⇒ 表等于不存在 ⇒ 方块退回"掉自己"。
+同一错误在 **28 文件 / 29 处谓词**（三种硫磺矿、晶碳矿、硝石玻璃、富磷矿、补给箱、喷口…）；**10 张 Boss 表**用了 1.20.1 的 `"treasure": true`（1.21 为 `"options": "#minecraft:on_random_loot"`）。
+**反向提醒**：`"enchantment"`（单数）在 `apply_bonus`/`enchanted_count_increase` 里是**正确的**（原版数据 + 函数 codec 字节码 `fieldOf("enchantment")` 双证）⇒ 整词批量替换会改坏 25 处 fortune、18 处 looting ⇒ 必须结构化判断。
+**顺带查出（玩家还没遇到）**：**11 张箱子掉落表没有顶层 `type`**（原版箱子表都是 `"type": "minecraft:chest"`）⇒ 也从未加载 ⇒ 被 `loot_modifiers/add_loot_*.json` 注入原版箱子的枪械战利品一直是空的。**0.5.5 原版同样缺** ⇒ 本体 bug，非移植引入。
+
+**修法**（逐行替换、保留格式、改完全量重解析）：29 处谓词 → `enchantments`（按文件断言"文本次数 == 结构化次数"）；10 处 `treasure` → `options: "#minecraft:on_random_loot"`；11 张箱子表补 `"type": "minecraft:chest"`。**`bonusMultiplier` 保持原样**——原版 `deepslate_redstone_ore.json` 证明它在 1.21.1 仍正确（我先怀疑错了，靠原版数据挡住）。
+
+**新增审计 `tools/audit_loot_tables.py`**（第 39 个）：合法 JSON；附魔谓词不得用单数（结构化）；**mod 用到的每个键必须出现在原版 94 键词表里**（不需记字段名，改名/删除都会被抓住，`treasure` 正是这样被抓的）；引用的 `scguns:` 物品必须已注册；必须有顶层 `type` 且取值原版用过。
+反向验证 **7/7**（含"把谓词改回单数"= 玩家报的 bug、真弄坏 JSON）。过程中两次自己写偏：`register("id")` 漏了 `registerBurnable(`（3 个误报）、`type` 用首个正则匹配抓到池内 `minecraft:item`（10 个误报）⇒ **规则必须用解析后的结构**。
+
+**门禁**：39 个审计全 0 / `verify_installed_jar` **243/243**（新增 4 条，其中两条是**全树反向检查**：随包掉落表不得再有单数谓词、不得再有 `treasure`）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：① 下界硫磺矿石应掉 2–3 硫磺碎块（精准采集才掉本体）；② 其余 28 张表同样恢复；③ **地牢/要塞/远古城市/埋藏宝藏/末地城/矿井等箱子应开始出现枪械战利品**（以前一直为空）；④ 突袭 Boss 掉落附魔装备不再整表失效。
