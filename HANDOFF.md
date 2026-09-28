@@ -7205,3 +7205,47 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   已安装 ✓（`19422432` 字节 ✓，备份 `.bak-213840` ✓）。
 * **未实测** ✓（交给玩家 ✓）：① 持枪警卫的步速应与**拿剑的警卫一致** ✓、不再像在冲刺 ✓；
   ② 嫌慢/嫌快就调 `common.compat.guard_gun_move_speed` ✓（0.25–2.0 ✓，改完重启 ✓）。
+
+
+## 82.20 玩家报"区块重载时警卫的物品仍被换成枪"（§82.16 没堵干净 ✓，已修 ✓）
+
+### 82.20.1 根因：**`tickCount` 不落盘** ⇒ "生成窗口"每次重载都重开 ✓
+* §82.16 只堵了 **join 事件**那一条（`loadedFromDisk()` ✓），但警卫还有**第二条**补枪路径 ✗：
+  `GunnerMobSpawner.onLivingUpdate` 里的 `mob.tickCount < 2` ✓ —— 它本意是"生成后的最初两刻" ✓。
+* 而 **`Entity.tickCount` 根本不写进 NBT** ✓（vanilla 只拿它算水晶音效 ✓，已核对 `.refs` 源码 ✓）
+  ⇒ **区块重载后它从 0 重新开始** ✓ ⇒ 那条"最初两刻"的路径其实等于"**每次区块加载**" ✗
+  ⇒ 警卫一被重新加载就补枪 ✓：**空手就塞一把** ✓、**手里是剑就换掉** ✓ —— 正是玩家描述的 ✓。
+* 同一原因还影响 §82.16 的第二道闸门 ✓：`rearmReplacedGuardGun` 当时用 `mob.tickCount > 100` 量窗口 ✗
+  ⇒ 重载后窗口同样重开 ✓（GV 重载后重新装自己的装备时会触发 ✓）。
+* **会存盘的是 `getPersistentData()`** ✓（NeoForge 把 `NeoForgeData` 写进实体 NBT ✓，源码里
+  `compound.put("NeoForgeData", persistentData.copy())` ✓ / 读回在 1882 行 ✓）—— 这就是该放状态的地方 ✓。
+
+### 82.20.2 修法：把掷骰结果放进**会存盘**的实体数据 ✓
+1. `getPersistentData()` 里存三个键 ✓：`ScgunsGunRolled` ✓（是否已掷骰）、`ScgunsGunArmed` ✓（是否中签）、
+   `ScgunsGunRolledAt` ✓（掷骰时的 `level.getGameTime()` ✓）。静态 `WeakHashMap` **删除** ✓
+   （换存档/重启就丢 ✗，正是漏掉的那一环 ✓）。
+2. `equipGuardGun` 对**已掷骰**的警卫**直接 no-op** ✓ —— 枪是生成期属性 ✓：拿走就是拿走 ✓，重载不还 ✓；
+   没中签的就保持 GV 给它的装备 ✓。
+3. `rearmReplacedGuardGun` 的窗口改成与**存盘的掷骰时刻**比较 ✓（`getGameTime() - rolledAt <= 100` ✓）
+   ⇒ 重载后早已过期 ✓ ⇒ 不再补 ✓；生成期那 5 秒内 GV 覆盖时仍会补回来 ✓（§82 的原意 ✓）。
+4. **删掉** `onLivingUpdate` 里 `tickCount < 2` 的补枪路径 ✓（它就是重载时重跑的那条 ✓）。
+   生成期由两条覆盖 ✓：join（非重载 ✓）+ 装备变化（替换物非空且在窗口内 ✓）。
+
+### 82.20.3 审计 + 验证 ✓
+* `audit_guard_compat.py` 新增三条 ✓：① 兼容类**必须**把掷骰存进 `getPersistentData` ✓；
+  ② `rearmReplacedGuardGun` **必须**用存盘时间（`getGameTime`）且**不得**出现 `tickCount` ✓；
+  ③ 每 tick 钩子**不得**调用 `equipGuardGun` ✓。
+  **反向验证** ✓：把 `tickCount < 2` 那条补枪路径放回去 ⇒ 审计报
+  "the per-tick hook arms guards again" 并退出 1 ✓；删掉 ⇒ 0 ✓。
+* `verify_installed_jar` **215/215** ✓（新增 2 条 ✓：兼容类必须引用 `getPersistentData` ✓ 与
+  `ScgunsGunRolled` ✓）；**31 个审计全 0** ✓；`javac` 0 ✓、`build` ✓、
+  已安装 ✓（`19422496` 字节 ✓，备份 `.bak-132807` ✓）。
+* **顺带发现** ✓：安装时 mods 目录里还有一个**多余的 `scguns-0.5.5.2.jar`** ✓ —— 同 mod id 两份不会加载 ✓，
+  安装脚本已把它移走并备份 ✓。**如果你之前跑的是那份 jar** ✓，那么你现在跑的才是本仓库构建的这份 ✓。
+
+### 82.20.4 **未实测** ✓（交给玩家 ✓）
+* ① 拿走警卫的枪 ⇒ 走远再回来（**区块重载**）⇒ 手上依旧没有枪 ✓；
+* ② 手里是剑 / 空手的警卫重载后**不会**被换成枪 ✓；
+* ③ 刚生成的警卫照旧按数据文件的 25% 概率持枪 ✓，且生成后 5 秒内被 GV 覆盖时会补回来 ✓；
+* ④ **旧存档里的警卫** ✓：它们的存档里还没有那三个键 ✓ ⇒ 下次被加载时**只会掷一次骰** ✓
+  （中签的补枪 / 没中签的保持原样 ✓），此后不再重复 ✓。

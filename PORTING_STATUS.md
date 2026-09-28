@@ -909,3 +909,21 @@ navigation 并抢走移动，于是警卫该退不退、该压不进，站着随
 - **门禁**：31 个审计全 0 / `verify_installed_jar` **213/213** / `javac` 0 / `build` ✓ /
   已安装（19422432 字节，备份 `.bak-213840`）。
 - **未实测（交给玩家）**：① 持枪警卫步速应与拿剑的警卫一致、不再像冲刺；② 嫌慢/嫌快调 `guard_gun_move_speed`。
+## §82.20 玩家报"区块重载时警卫物品仍被换成枪"（§82.16 没堵干净，已修）
+
+**根因**：`Entity.tickCount` **不写进 NBT**（vanilla 只拿它算水晶音效，已核对源码）⇒ 区块重载后归零
+⇒ `onLivingUpdate` 里那条"生成后最初两刻"的补枪路径（`tickCount < 2`）其实等于"**每次区块加载**"：
+空手就塞一把、手里是剑就换掉。§82.16 的补枪窗口同样用 `tickCount` 量，所以也随重载重开。
+**会存盘的是 `getPersistentData()`**（NeoForge 写进实体 NBT 的 `NeoForgeData`）。
+
+- **修法**：掷骰结果改存 `getPersistentData()`（`ScgunsGunRolled` / `ScgunsGunArmed` / `ScgunsGunRolledAt`），
+  删掉静态 `WeakHashMap`（换存档就丢，正是漏洞）；`equipGuardGun` 对已掷骰的警卫直接 no-op（枪=生成期属性）；
+  `rearmReplacedGuardGun` 的窗口改与**存盘的掷骰时刻**比较；
+  **删掉**每 tick 的补枪路径（tick 钩子无法区分"刚生成"和"刚加载"）。
+- **审计**：新增三条并做反向验证（把 tick 路径放回去 ⇒ 报错退出 1）：掷骰必须在 `getPersistentData`、
+  rearm 必须用 `getGameTime` 且不得出现 `tickCount`、每 tick 钩子不得调用 `equipGuardGun`。
+- **门禁**：31 个审计全 0 / `verify_installed_jar` **215/215** / `javac` 0 / `build` ✓ /
+  已安装（19422496 字节，备份 `.bak-132807`）。
+- **顺带发现**：mods 里还有一个多余的 `scguns-0.5.5.2.jar`（同 mod id 两份不会加载），安装脚本已移走备份。
+- **未实测（交给玩家）**：① 拿走枪后重载区块依旧没有枪；② 拿剑/空手的警卫重载后不会被换成枪；
+  ③ 新警卫仍按 25% 持枪、生成后 5 秒内被 GV 覆盖会补回；④ 旧存档警卫下次加载只掷一次骰。

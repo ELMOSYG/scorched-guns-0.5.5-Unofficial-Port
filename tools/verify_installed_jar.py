@@ -1076,8 +1076,16 @@ def main():
                 "scguns.mixins.json lists " + guard_mixin,
                 ("common.compat.guardvillagers." + guard_mixin) in (read("scguns.mixins.json") or "")))
 
-        # 82.17/82.18 (a guard posed with the player's gun holding animation) were reverted by the player's
+        # 82.17/82.18 (a guard posed with the player's holding animation) were reverted by the player's
         # decision, so their checks are gone with the code.
+        # 82.20. The gun roll lives in the entity's saved data and the re-arm window is measured against the
+        # saved game time: tickCount is not saved, so a window measured against it reopened on every reload.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardVillagersCompat.class", b"getPersistentData",
+            "the guard gun roll survives a chunk reload"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/compat/guardvillagers/GuardVillagersCompat.class", b"ScgunsGunRolled",
+            "the guard gun roll is stored under its own key"))
         checks.append((
             "the mixin is listed in the packaged mixin config",
             "common.compat.guardvillagers.GuardProjectileHitMixin" in (read("scguns.mixins.json") or "")))

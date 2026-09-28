@@ -129,12 +129,12 @@ public class GunnerMobSpawner {
                   }
                }
 
-               // A guard's own equipment arrives after the join event, so this is the hook that really
-               // arms one (HANDOFF section 82). Non-guards fall straight through.
-               if (!(heldItem.getItem() instanceof GunItem)) {
-                  GuardVillagersCompat.equipGuardGun(mob);
-               }
-
+               // A guard is armed by the join hook, and by the equipment-change hook when Guard Villagers'
+               // own equipment lands on top of the gun - inside a spawn window that is measured against the
+               // gun roll's own saved game time (HANDOFF sections 82, 82.20). There is deliberately no
+               // "first ticks of the mob's life" path for guards any more: Entity.tickCount is not saved, so
+               // it restarts at zero on every chunk reload, and that path re-armed a guard every time it
+               // came back into view - replacing whatever it held, or filling an empty hand.
                if (mob.getMainHandItem().getItem() instanceof GunItem) {
                   reassessWeaponGoal(mob);
                }

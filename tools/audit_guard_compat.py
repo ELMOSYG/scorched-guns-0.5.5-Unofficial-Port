@@ -354,9 +354,23 @@ def check(files, gunner_json, mods_toml, mixin_config_text=""):
         problems.append("the equipment-change hook does not check whether the replacement is empty, so "
                         "taking a guard's gun hands it another one")
     rearm = method_body(compat, "rearmReplacedGuardGun")
-    if "tickCount" not in rearm:
-        problems.append("rearming a guard is not limited to the ticks around its spawn, so a guard re-arms "
-                        "long after the player disarmed it")
+    if "getPersistentData" not in rearm or "getGameTime" not in rearm:
+        problems.append("rearming a guard is not measured against the gun roll's saved game time, so the "
+                        "spawn window reopens on every chunk reload (HANDOFF section 82.20)")
+    if "tickCount" in rearm:
+        problems.append("rearming a guard uses tickCount, which is not saved and restarts at zero whenever a "
+                        "chunk reloads the guard")
+    # The roll itself has to live in the entity's saved data, or a reload forgets it and rolls again - which
+    # is how a guard whose gun a player had taken was handed a new one.
+    if "getPersistentData" not in compat:
+        problems.append("the guard gun roll is not stored in the entity's saved data, so a chunk reload "
+                        "forgets it and rolls the guard a new gun")
+    # ...and no per-tick hook may arm a guard, for the same reason: tickCount is 0 for two ticks after every
+    # reload, so a "first ticks of the mob's life" path is really an "every time the chunk loads" path.
+    update_hook = method_body(spawner, "onLivingUpdate")
+    if "GuardVillagersCompat.equipGuardGun" in update_hook:
+        problems.append("the per-tick hook arms guards again; it reruns on every chunk reload because "
+                        "tickCount resets, so it replaces whatever the guard is holding")
     # The join event also fires when a chunk brings an entity back, with a fresh instance and therefore a
     # fresh spawn roll. Arming there would let a player get a new gun by unloading the chunk and returning.
     join_hook = method_body(spawner, "onEntityJoinWorld")
