@@ -7429,4 +7429,73 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   ② 冲锋中把饥饿耗到 6 以下 ⇒ 约 1 秒后**应该**断 ✓（这是保留的天然上限 ✓）；
   ③ 松开 W 停下 ⇒ **立刻**断 ✓；④ 连冲多次 ⇒ 伤害节奏不变 ✓（不再是 2 倍/3 倍频 ✓）。
 
+---
+
+## 82.24 物品栏 / JEI / EMI 里的枪械渲染：先核对"是不是被移植修好了"，再砍掉确实存在的每帧开销 ✓
+
+### 82.24.1 玩家的观察 ✓
+* "在 1.21.1 移植版中，EMI 和 JEI 或者物品栏的枪械渲染导致严重掉帧的问题可能被修复了" ✓。
+
+### 82.24.2 核对结果：**没有证据指向"某处代码改动"** ✓（诚实结论 ✓）
+* **GUI 里那条路径到底是哪一条** ✓（沿用 §10.9 的结论 ✓）：枪的物品模型是 `"parent": "builtin/entity"` ✓、
+  `BuiltInModel.isCustomRenderer()` **恒真** ✓ ⇒ `ItemRenderer` 把绘制**直接交给 BEWLR** ✓
+  = 动画枪的 GeckoLib `AnimatedGunRenderer` ✓（**不经过** `GunRenderingHandler.renderGun` ✓）。
+* **GeckoLib 自己有没有 GUI 快路径** ✓：有 ✓ —— `GeoItemRenderer.renderByItem` 里
+  `if (displayContext == GUI) renderInGui(...)` ✓。**但这不是移植带来的差异** ✗：我把 1.20.1 用的
+  GeckoLib **4.8.4** 和 1.21.1 用的 **4.9.3** 各自 `javap -c` 出来逐条对照 ✓ —— 两个 `renderInGui`
+  **结构完全一致** ✓（`setupLightingForGuiRender` ✓ → 取 `BufferSource` ✓ → `getTextureLocation` ✓ →
+  `getFoilBufferDirect` ✓ → `pushPose` ✓ → `defaultRender(partialTick = 0)` ✓ → `endBatch` ✓ →
+  `enableDepthTest` ✓ → `popPose` ✓）⇒ "新版 GeckoLib 修好了" **不成立** ✗。
+* **0.5.5 与移植版在这条路径上的每帧工作也基本一样** ✓：`getModifiedGun` 的 `WeakHashMap` 缓存
+  **0.5.5 就有** ✓（不是移植加的 ✓）；"GUI 里不画玩家手臂"的 `currentDisplayContext != GUI` 守卫
+  **0.5.5 也有** ✓（第 315 行 ✓）。
+* ⇒ 所以**不能说**"是移植的某个改动修好了它" ✗。**最可能的解释是环境差异** ✓：EMI 会在物品列表里
+  **把物品当动画物件渲染** ✓，而你这套 1.21.1 整合里按记录是 **JEI 19.27.0.340** ✓（EMI 不在联动清单里 ✓）
+  —— 也就是"1.20.1 那边装了 EMI、1.21.1 这边只有 JEI"这类差异 ✓，与代码无关 ✓。
+  （要**真**下结论必须实测 ✓，见 82.24.5 的探针提议 ✓ —— 本节**不**声称"掉帧已解决" ✓。
+
+### 82.24.3 顺手查出的**真开销** ✓（本轮修掉 ✓）
+* `AnimatedGunRenderer.renderByItem` 在**GUI 分支之前**做了四件 GUI **根本不用**的事 ✓（**每个可见枪械、每一帧** ✓）：
+  1. `client.getItemRenderer().getModel(...)` ✓ —— 1.21.1 里它是
+     `ItemModelShaper.getItemModel` + **`ItemOverrides.resolve`** ✓（`.refs/nf-src/.../ItemRenderer.java` 第 213-225 行 ✓）；
+  2. `calculateBlockLight` + `player.level().getBrightness(LightLayer.SKY, BlockPos.containing(player.getEyePosition(...)))` ✓
+     —— 玩家眼睛位置的世界光照查询 ✓，而 GUI 分支下一行就把 `packedLight` 覆盖成 `LightTexture.pack(12, 12)` ✓；
+  3. `NbtHelper.getTag(stack)`（`Model` 覆盖用 ✓，GUI 里同样用不上 ✓）；
+  4. `Objects.requireNonNull(client.player)` ✓（GUI 渲染其实**不需要**活着的玩家 ✓）。
+  JEI/EMI/物品栏一屏可以同时显示**几十把**枪 ✓ ⇒ 这些都是"每格每帧"的纯浪费 ✓。
+* **修法** ✓：`renderByItem` 在设好 `currentDisplayContext`/`currentRenderStack`/`bufferSource` 三个字段之后
+  **立刻**从 GUI 快路径返回 ✓（新增 `renderGuiItem` ✓，它只做 `super.renderByItem(..., LightTexture.pack(12, 12), ...)` ✓）；
+  第一人称用的 `getModel`/transform 读取与 `localPlayer` 也**挪进**了第一人称分支 ✓（它们本来只在那里被用 ✓）。
+  **行为不变** ✓：GUI 之前也只用 `pack(12, 12)` ✓、也从不用那几个值 ✓。
+
+### 82.24.4 顺带修：三个"真覆写"却**没有 `@Override`** ✗（就是 §10.9.2 那类静默失效 ✓）
+* `AnimatedGunRenderer.renderByItem` ✓、`GunItemStackRenderer.renderByItem` ✓、`ExoSuitRenderer.renderRecursively` ✓
+  **都没有** `@Override` ✗ ⇒ 加上 ✓，**javac 编译通过 = 编译器替我们证明它们确实是覆写** ✓；
+  以后 GeckoLib 再改签名就是**编译错误**而不是"方法悄悄变死代码" ✓（§10.9.2 的教训 ✓）。
+* 注意 `audit_override_drift.py` **看不到这一类** ✗：它的规则是"同名但签名**漂移**才算问题" ✓，
+  而**完全匹配**却没写 `@Override` 的情况它会直接跳过 ✓（源码里带 `@Override` 的还会被排除 ✓）
+  ⇒ 这条规则需要独立审计 ✓（见下 ✓）。
+
+### 82.24.5 新增审计 `tools/audit_gui_render_cost.py`（第 35 个 ✓）
+* 三条规则 ✓：① `renderByItem` **必须**在碰 `getModel(`/`calculateBlockLight(`/`getModifiedGun(`/
+  `NbtHelper.getTag(`/`Objects.requireNonNull(` **之前**从 GUI 分支返回 ✓（按方法体内的**位置**判定 ✓，
+  注释先被状态机剥掉 ✓）；② GUI 分支**必须**仍然画枪 ✓（要调 `renderGuiItem` ✓，且它必须
+  `super.renderByItem` + `LightTexture.pack(12, 12)` ✓ —— 是快路径 ✓ **不是**"跳过不画" ✗）；
+  ③ 我们自己的 **GeckoLib 渲染钩子**（`renderByItem`/`renderRecursively`/`actuallyRender`/`defaultRender`/
+  `preRender`/`postRender`/`addRenderData` ✓）**必须**带 `@Override` ✓（mixin 豁免 ✓ —— 它们是注入目标 ✓ 从不标注 ✓）。
+* **反向验证 4/4 全部被抓 ✓**（模型读取挪到 GUI 判定之前 ✓、取消 GUI 分支 ✓、GUI 分支不画 ✓、摘掉 `@Override` ✓）；
+  还原后 0 ✓。
+* `verify_installed_jar` **226/226** ✓（新增 1 条 ✓：`AnimatedGunRenderer.class` 里必须有 `renderGuiItem` ✓ ——
+  方法名会进 class 文件 ✓ ⇒ 证明 GUI 快路径真的打进了 jar ✓）。
+
+### 82.24.6 验收与**未实测** ✓
+* **35 个审计全 0** ✓（新增 `audit_gui_render_cost.py` ✓）、`javac` 0 错误 ✓（1009 文件 ✓）、`build` ✓、
+  `verify_installed_jar` **226/226** ✓、已安装 ✓（探针脚本已删 ✓）。
+* **未实测** ✓：手感/画面**应当完全不变** ✓（GUI 里枪的亮度、模型、动画都走同一条 GeckoLib 路径 ✓）；
+  唯一可能被察觉的是**帧率** ✓。
+* **要真正测出数字** ✓（等玩家发话 ✓）：可以在 `renderGuiItem` 与 `super.renderByItem` 前后各取一次
+  `System.nanoTime()` ✓，每 100 tick 打一行"本窗口平均每帧枪械 GUI 渲染次数 / 总耗时 ms" ✓（临时探针 ✓，
+  测完删除 ✓）。玩家只要打开一次**装了枪的 JEI/EMI 页面**并把那几行发回来 ✓，就能知道这条路径到底占多少帧时间 ✓。
+
+
 

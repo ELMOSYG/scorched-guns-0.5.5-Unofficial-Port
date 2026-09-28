@@ -998,3 +998,26 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 
 **门禁**：34 个审计全 0 / `verify_installed_jar` **225/225**（新增 3 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：① 冲锋撞墙不该立刻断（应弹开继续）；② 饥饿耗到 6 以下约 1 秒后应断；③ 松开 W 立刻断；④ 连冲多次伤害节奏不变。
+
+## §82.24 物品栏/JEI/EMI 枪械渲染：先核对"是不是被移植修好了"，再砍掉真存在的每帧开销
+
+**玩家观察**："1.21.1 移植版里 EMI/JEI/物品栏的枪械渲染严重掉帧可能被修复了"。
+
+**核对（结论：没有证据指向某处代码改动）**：GUI 路径 = `ItemRenderer.render` → 因模型 `builtin/entity`（`BuiltInModel.isCustomRenderer()` 恒真）
+直接交给 BEWLR = GeckoLib `AnimatedGunRenderer`，不经过 `renderGun`（§10.9）。GeckoLib 的 GUI 快路径 `renderInGui` **4.8.4（1.20.1）与 4.9.3（1.21.1）逐条字节码结构一致**
+（`javap -c` 对照：setupLightingForGuiRender → BufferSource → getTextureLocation → getFoilBufferDirect → pushPose → defaultRender(partialTick=0) → endBatch → enableDepthTest → popPose）
+⇒ 不是 GeckoLib 的差异。0.5.5 与移植版在该路径的每帧工作也基本相同（`getModifiedGun` 的 WeakHashMap 缓存 0.5.5 就有；GUI 不画手臂的守卫 0.5.5 也有）
+⇒ **不能声称"移植修好了它"**；最可能是环境差异（EMI 会动画渲染列表物品，而这套整合按记录只有 JEI）。要真下结论必须实测（探针提议见 HANDOFF 82.24.6）。
+
+**顺手查出的真开销（本轮修掉）**：`AnimatedGunRenderer.renderByItem` 在 GUI 分支之前做了四件 GUI 不用的事（每可见枪械每帧）：
+`ItemRenderer.getModel`（= ItemModelShaper + `ItemOverrides.resolve`）、玩家眼睛位置的世界光照查询（下一行就被 `pack(12,12)` 覆盖）、gun NBT 读取、`Objects.requireNonNull(client.player)`。
+修法：设好三个字段后立即从 GUI 快路径 `renderGuiItem` 返回（只做 `super.renderByItem(..., LightTexture.pack(12,12), ...)`），第一人称用的 model/transform/localPlayer 挪进第一人称分支；行为不变。
+
+**顺带修**：`AnimatedGunRenderer.renderByItem`、`GunItemStackRenderer.renderByItem`、`ExoSuitRenderer.renderRecursively` 三个真覆写缺 `@Override` ⇒ 补上（javac 通过即证明），
+避免 §10.9.2 那类"签名一漂移就静默变死代码"。注意 `audit_override_drift.py` 看不到这一类（它只报签名漂移，完全匹配但缺注解会被跳过）。
+
+**新增审计 `tools/audit_gui_render_cost.py`**（第 35 个）：① `renderByItem` 必须在碰 getModel/calculateBlockLight/getModifiedGun/NbtHelper.getTag/requireNonNull **之前**从 GUI 返回（按方法体内位置判定，注释状态机剥离）；
+② GUI 分支必须仍画枪（`renderGuiItem` + `super.renderByItem` + `pack(12,12)`，是快路径不是跳过）；③ GeckoLib 渲染钩子必须带 `@Override`（mixin 豁免）。反向验证 4/4 被抓。
+
+**门禁**：35 个审计全 0 / `verify_installed_jar` **226/226**（新增：class 里必须有 `renderGuiItem`）/ `javac` 0 / `build` ✓ / 已安装 ✓。
+**未实测**：手感画面应完全不变，唯一可能被察觉的是帧率；如需数字，可加临时探针统计"每帧枪械 GUI 渲染次数/耗时"（等玩家发话）。

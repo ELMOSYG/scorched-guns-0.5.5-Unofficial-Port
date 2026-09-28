@@ -23,6 +23,7 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
       super(new ExoSuitModel());
    }
 
+   @Override
    public void renderRecursively(
       PoseStack poseStack,
       ExoSuitItem animatable,

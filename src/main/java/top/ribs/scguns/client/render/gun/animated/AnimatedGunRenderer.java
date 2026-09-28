@@ -159,6 +159,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       }
    }
 
+   @Override
    public void renderByItem(
       ItemStack stack, ItemDisplayContext transformType, PoseStack poseStack, MultiBufferSource bufferSource, int packedLight, int packedOverlay
    ) {
@@ -169,6 +170,16 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       this.currentDisplayContext = getEffectiveDisplayContext(stack, transformType, client);
       this.currentRenderStack = stack;
       this.bufferSource = bufferSource;
+
+      // A GUI slot is the one context that uses none of the work below (HANDOFF section 82.24): it is drawn
+      // with a fixed 12/12 light and no hand transforms, no muzzle flash and no held-item animation. JEI, EMI
+      // and the inventories draw every visible gun again on every frame, so resolving the item's baked model
+      // and its item overrides, reading the world light at the player's eye and parsing the gun's tag here was
+      // pure per-slot, per-frame work.
+      if (transformType == ItemDisplayContext.GUI) {
+         this.renderGuiItem(stack, poseStack, bufferSource, packedOverlay);
+         return;
+      }
 
       Player player = client.player;
       boolean actualFirstPersonHand = isFirstPersonHand(transformType);
@@ -182,7 +193,6 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          overrideModel = top.ribs.scguns.util.NbtHelper.itemFromTag(NbtHelper.getTag(stack).getCompound("Model"));
       }
 
-      LocalPlayer localPlayer = Objects.requireNonNull(client.player);
       BakedModel model = client.getItemRenderer().getModel(overrideModel.isEmpty() ? stack : overrideModel, player.level(), player, 0);
       ItemTransform firstPersonTransform = model.getTransforms().firstPersonRightHand;
       float scaleX = firstPersonTransform.scale.x();
@@ -192,6 +202,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       float translateY = firstPersonTransform.translation.y();
       float translateZ = firstPersonTransform.translation.z();
       if (stack.getItem() instanceof AnimatedGunItem && actualFirstPersonHand) {
+         LocalPlayer localPlayer = Objects.requireNonNull(client.player);
          Gun modifiedGun = ((GunItem)stack.getItem()).getModifiedGun(stack);
          if (AimingHandler.get().getNormalisedAdsProgress() > 0.0 && modifiedGun.canAimDownSight()) {
             this.applyAdsTransforms(poseStack, stack, modifiedGun, scaleX, scaleY, scaleZ, translateX, translateY, translateZ, right);
@@ -209,15 +220,20 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       }
 
       int blockLight = this.calculateBlockLight(player, stack);
-      if (transformType == ItemDisplayContext.GUI) {
-         packedLight = LightTexture.pack(12, 12);
-      } else {
-         packedLight = LightTexture.pack(
-            blockLight, player.level().getBrightness(LightLayer.SKY, BlockPos.containing(player.getEyePosition(client.getTimer().getGameTimeDeltaPartialTick(false))))
-         );
-      }
+      packedLight = LightTexture.pack(
+         blockLight, player.level().getBrightness(LightLayer.SKY, BlockPos.containing(player.getEyePosition(client.getTimer().getGameTimeDeltaPartialTick(false))))
+      );
 
       super.renderByItem(stack, transformType, poseStack, bufferSource, packedLight, packedOverlay);
+   }
+
+   /**
+    * Draws a gun in a GUI slot - the path JEI, EMI, the inventory and the creative tabs take, once per visible
+    * gun per frame (HANDOFF section 82.24). The only thing a GUI slot needs is GeckoLib's own GUI render: a
+    * fixed 12/12 light, no hand transforms and no muzzle flash.
+    */
+   private void renderGuiItem(ItemStack stack, PoseStack poseStack, MultiBufferSource bufferSource, int packedOverlay) {
+      super.renderByItem(stack, ItemDisplayContext.GUI, poseStack, bufferSource, LightTexture.pack(12, 12), packedOverlay);
    }
 
    /**

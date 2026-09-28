@@ -1161,6 +1161,13 @@ def main():
             zf, "top/ribs/scguns/network/message/C2SMessageMeleeAttack.class", b"banzaiTask",
             "one ticker per charge, replaced instead of stacked"))
 
+        # 82.24. The GUI item path is the per-frame path: JEI, EMI and the inventories draw every visible gun
+        # again on every frame. A GUI slot uses none of the hand work, so it must leave through the fast path
+        # before the item model, the world light and the stack tag are touched.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/render/gun/animated/AnimatedGunRenderer.class", b"renderGuiItem",
+            "a GUI slot goes through the dedicated GUI fast path"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

@@ -13,6 +13,7 @@ public class GunItemStackRenderer extends BlockEntityWithoutLevelRenderer {
       super(Minecraft.getInstance().getBlockEntityRenderDispatcher(), Minecraft.getInstance().getEntityModels());
    }
 
+   @Override
    public void renderByItem(ItemStack stack, ItemDisplayContext display, PoseStack poseStack, MultiBufferSource source, int light, int overlay) {
       poseStack.popPose();
       poseStack.pushPose();
