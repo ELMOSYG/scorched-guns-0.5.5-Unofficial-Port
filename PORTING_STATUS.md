@@ -1169,3 +1169,16 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 **门禁**：40 个审计全 0 / `verify_installed_jar` **256/256**（新增 4 条 + 修好 2 条）/ `javac` 0（1010 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：① 撞到敌人只伤那一个；② 伤害＝同枪普通捅击；③ 命中被弹开；④ 敌对血量<15 一刀处决（非敌对不会被处决，掉落/经验/击杀归属仍是玩家的）；⑤ 一次冲锋只刺一次（要连刺关 `endChargeOnHit`）。
 **还没做（等你点名）**：长矛的蓄力/前冲位移（`KineticWeapon.forwardMovement`）、穿刺冷却（`SpearUser.isInPiercingCooldown`）、下马、触及 min/max、以及"按住蓄力"的输入模型（现在是按键切换）——都能直接加进 `bayonet_charge`。
+
+## §82.34 两套机制并存：原区域冲锋是默认，单体突刺是选项（玩家要求）
+
+**玩家要求**："把这个做成一个可选项，默认关闭，原先的刺刀冲锋机制留着"⇒ 从"替换"改为"**并存 + 开关**"：
+- 默认 `singleTargetStab = false` = **原机制**：每次判定对 `hitRadius` 内所有目标造成伤害，伤害按**玩家速度**缩放（`damageScalingLevel1/2/3` 本轮已从 0.0 **恢复为 3.0/5.5/7.0**，因为那是原机制的一部分）；无弹开、无处决、命中不结束冲锋。
+- 开启 `singleTargetStab = true` = §82.33 的单体突刺：单体、枪械当前近战伤害（**不乘速度**）、命中弹开玩家、敌对血量<15 处决、命中结束冲锋。
+
+**实现**：`handleBanzaiMode` 伤害分支按 `isSingleTargetStab()` 分岔 ⇒ `stabWithBayonet(...)` 或 **`areaSweep(...)`**（原逻辑原样搬进：区域扫描＋速度倍率＋每目标粒子/击退/附魔，不含弹开与处决）；突刺那条不再调用 `getBanzaiDamageMultiplier`。配置注释写明两种模式各做什么，且 `execute*`/`knockPlayerBackOnHit`/`endChargeOnHit` 都标注"只在 `singleTargetStab` 模式下生效"。
+
+**审计同步**（`audit_banzai_charge.py`）：`singleTargetStab` 默认必须是 false；`handleBanzaiMode` 必须同时引用开关、`stabWithBayonet`、`areaSweep`（两条路都要在）；`areaSweep` 必须保留速度倍率；`stabWithBayonet` 不得有速度倍率；`damageScalingLevel*` 默认必须 >0（把上一节"必须 0.0"的规则**反向**过来——规则跟着机制走）；`handleBanzaiMode` 自身不得遍历目标（循环只能待在 `areaSweep`）。反向验证 **7/7**。
+
+**门禁**：40 个审计全 0 / `verify_installed_jar` **259/259**（新增 3 条）/ `javac` 0（1010 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：① 默认状态下手感应与改之前完全一致（区域伤害＋速度倍率；只保留 §82.23 的疾跑丢失容错，那是修 bug 不是机制）；② 打开 `singleTargetStab` ⇒ 单体突刺；③ 打开后 `execute*`/`knockPlayerBackOnHit`/`endChargeOnHit` 才生效。

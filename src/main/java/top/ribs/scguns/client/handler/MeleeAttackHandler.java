@@ -146,6 +146,14 @@ public class MeleeAttackHandler {
       return (Boolean)charge().endChargeOnHit.get();
    }
 
+   /**
+    * Which mechanic the charge uses (HANDOFF section 82.34). Off by default: the original area charge is what
+    * ships, and the single target thrust is an option.
+    */
+   public static boolean isSingleTargetStab() {
+      return (Boolean)charge().singleTargetStab.get();
+   }
+
    public MeleeAttackHandler() {
       super();
    }
@@ -312,13 +320,46 @@ public class MeleeAttackHandler {
    }
 
    /**
-    * One bayonet stab (HANDOFF section 82.33). The charge is single target: it damages the one enemy it runs
-    * into with the gun's own melee damage, throws the player back off it, and executes a hostile mob outright if
-    * the stab already left it below the configured health.
-    *
-    * <p>This replaced an area attack that damaged everything within {@code hitRadius} on every pass. The
-    * player asked for a single target thrust with the gun's current melee damage, so the speed damage scaling
-    * the old version applied is 0 by default - raising a level's factor in config restores it.</p>
+    * The original area charge (HANDOFF section 82.34): one pass damages everything within {@code hitRadius},
+    * with the damage scaled by the player's speed, and nothing else - no recoil, no execution, no end of the
+    * charge. This is what ships; {@code singleTargetStab} replaces it rather than adding to it.
+    */
+   private static void areaSweep(ServerPlayer player, CompoundTag playerData, long currentTime) {
+      ItemStack heldItem = player.getItemInHand(InteractionHand.MAIN_HAND);
+      if (!(heldItem.getItem() instanceof GunItem gunItem)) {
+         return;
+      }
+
+      List<LivingEntity> targets = findTargetsInArea(player, (Double)charge().hitRadius.get());
+      if (targets.isEmpty()) {
+         return;
+      }
+
+      playerData.putLong(BANZAI_DAMAGE_COOLDOWN_TAG, currentTime + (long)charge().damageIntervalTicks.get());
+      float attackDamage = meleeDamageOf(player, heldItem, gunItem, player) * getBanzaiDamageMultiplier(player, heldItem);
+      attackDamage = (float)((double)Math.round((double)attackDamage * 100.0) / 100.0);
+      DamageSource damageSource = player.serverLevel().damageSources().playerAttack(player);
+
+      for (LivingEntity target : targets) {
+         if (target == player || !target.isAlive()) {
+            continue;
+         }
+
+         if (target.hurt(damageSource, attackDamage)) {
+            spawnSuccessfulHitParticles(player, target);
+            player.level()
+               .playSound(null, target.getX(), target.getY(), target.getZ(), SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.PLAYERS, 1.0F, 1.0F);
+            applyKnockback(player, target, heldItem);
+            applySpecialEnchantmentsFromBayonet(heldItem, target, player, gunItem);
+            triggerBanzaiImpactIfNecessary(heldItem);
+         }
+      }
+   }
+
+   /**
+    * One bayonet stab (HANDOFF section 82.33), the {@code singleTargetStab} mechanic. It damages the one enemy
+    * it runs into with the gun's own melee damage - no speed scaling - throws the player back off it, and
+    * executes a hostile mob outright if the stab already left it below the configured health.
     */
    private static void stabWithBayonet(ServerPlayer player, LivingEntity target) {
       ItemStack heldItem = player.getItemInHand(InteractionHand.MAIN_HAND);
@@ -327,10 +368,6 @@ public class MeleeAttackHandler {
       }
 
       float attackDamage = meleeDamageOf(player, heldItem, gunItem, target);
-      float speedMultiplier = getBanzaiDamageMultiplier(player, heldItem);
-      if (speedMultiplier != 1.0F) {
-         attackDamage = (float)((double)Math.round((double)(attackDamage * speedMultiplier) * 100.0) / 100.0);
-      }
 
       DamageSource damageSource = player.serverLevel().damageSources().playerAttack(player);
       boolean executed = isExecutionTarget(target);
@@ -525,13 +562,18 @@ public class MeleeAttackHandler {
             } else if (!inGracePeriod && !keepCharging(player, playerData, currentTime)) {
                stopBanzai();
             } else if (!playerData.contains(BANZAI_DAMAGE_COOLDOWN_TAG) || currentTime >= playerData.getLong(BANZAI_DAMAGE_COOLDOWN_TAG)) {
-               // Single target (HANDOFF section 82.33): the charge damages the one enemy it runs into, not
-               // everything standing near it. The stab itself throws the player back and, by default, spends
-               // the charge, so this is one thrust rather than a repeated area sweep.
-               LivingEntity target = findChargeTarget(player);
-               if (target != null) {
-                  playerData.putLong(BANZAI_DAMAGE_COOLDOWN_TAG, currentTime + (long)charge().damageIntervalTicks.get());
-                  stabWithBayonet(player, target);
+               // Two mechanics share this charge (HANDOFF sections 82.33 and 82.34). The original area sweep
+               // is what ships, and it stays the default; singleTargetStab switches to the one target thrust,
+               // which deals the gun's own melee damage, throws the player back and can execute a weakened
+               // hostile mob.
+               if (isSingleTargetStab()) {
+                  LivingEntity target = findChargeTarget(player);
+                  if (target != null) {
+                     playerData.putLong(BANZAI_DAMAGE_COOLDOWN_TAG, currentTime + (long)charge().damageIntervalTicks.get());
+                     stabWithBayonet(player, target);
+                  }
+               } else {
+                  areaSweep(player, playerData, currentTime);
                }
             }
          }

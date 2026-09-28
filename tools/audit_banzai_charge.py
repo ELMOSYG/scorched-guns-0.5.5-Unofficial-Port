@@ -36,6 +36,7 @@ VANILLA_SPRINT_RETRIGGER_TICKS = 7
 KNOBS = (
     "enabled",
     "requireSprintToStart",
+    "singleTargetStab",
     "damageRadius",
     "hitRadius",
     "damageIntervalTicks",
@@ -214,21 +215,40 @@ def main() -> int:
                             "below the threshold - including the player's own pets and villagers")
         if "executeEnabled" not in decision or "executeHealthThreshold" not in decision:
             problems.append("the execution is not behind its two config options")
+    # --- both mechanics exist, and the original one is what ships (section 82.34) ----------------------
+    mode = re.search(r'\.define\(\s*"singleTargetStab"\s*,\s*(true|false)\s*\)', config)
+    if not mode:
+        problems.append("no singleTargetStab option: the two mechanics cannot be chosen between")
+    elif mode.group(1) != "false":
+        problems.append("singleTargetStab defaults to true: the original charge is the shipped mechanic and the "
+                        "thrust is meant to be the option")
+    if body and "isSingleTargetStab()" not in body:
+        problems.append("handleBanzaiMode never consults the mechanic switch")
     if body and "stabWithBayonet(" not in body:
-        problems.append("handleBanzaiMode never stabs")
-    if body and "performMeleeAttackOnTarget(" in body:
-        problems.append("handleBanzaiMode still calls performMeleeAttackOnTarget, the area attack the player "
-                        "asked to replace with a single target thrust")
+        problems.append("handleBanzaiMode never stabs, so the optional mechanic cannot be reached")
+    if body and "areaSweep(" not in body:
+        problems.append("handleBanzaiMode never sweeps, so the original area charge is gone")
+    sweep = method_body(handler, "private static void areaSweep(")
+    if not sweep:
+        problems.append("no areaSweep: the original area charge is missing")
+    elif "getBanzaiDamageMultiplier(" not in sweep:
+        problems.append("the area sweep no longer scales damage with speed, which is part of the original "
+                        "mechanic")
     if body and re.search(r"for\s*\(\s*LivingEntity", body):
-        problems.append("handleBanzaiMode loops over several targets again - that is the area attack back")
-    # the mechanic deals the gun's own melee damage, so the speed scaling the old version applied is off
+        problems.append("handleBanzaiMode loops over targets itself; the area sweep belongs in areaSweep")
+    if body and "performMeleeAttackOnTarget(" in body:
+        problems.append("handleBanzaiMode calls performMeleeAttackOnTarget, the retired area path")
+    # the speed scaling belongs to the original mechanic; the thrust deals the gun's own melee damage
+    if stab and "getBanzaiDamageMultiplier(" in stab:
+        problems.append("the single target stab applies the speed scaling, so it no longer deals the gun's own "
+                        "melee damage")
     for level in ("1", "2", "3"):
         factor = re.search(r'defineInRange\(\s*"damageScalingLevel%s"\s*,\s*([\d.]+)' % level, config)
         if not factor:
             problems.append("no damageScalingLevel%s default" % level)
-        elif float(factor.group(1)) != 0.0:
-            problems.append("damageScalingLevel%s defaults to %s: the mechanic deals the gun's current melee "
-                            "damage, and a non-zero speed bonus silently multiplies it"
+        elif float(factor.group(1)) <= 0.0:
+            problems.append("damageScalingLevel%s defaults to %s: the original area charge scales its damage "
+                            "with speed, so a zero factor changes the shipped mechanic"
                             % (level, factor.group(1)))
 
     # --- the switches are wired, not decorative -------------------------------------------------------

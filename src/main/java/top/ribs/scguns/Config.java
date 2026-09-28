@@ -685,6 +685,8 @@ public class Config {
    public static class BayonetCharge {
       public final BooleanValue enabled;
       public final BooleanValue requireSprintToStart;
+      /** Off by default: the original area charge stays the shipped mechanic (HANDOFF section 82.34). */
+      public final BooleanValue singleTargetStab;
       public final DoubleValue damageRadius;
       public final DoubleValue hitRadius;
       public final IntValue damageIntervalTicks;
@@ -724,20 +726,31 @@ public class Config {
             .defineInRange("hitRadius", 2.5, 0.0, 8.0);
          this.damageIntervalTicks = builder.comment("Ticks between two damage passes of a running charge")
             .defineInRange("damageIntervalTicks", 25, 1, 400);
-         this.damageScalingLevel1 = builder.comment(
+         this.singleTargetStab = builder.comment(
                new String[]{
-                  "Speed damage scaling per bayonet banzai level (1, 2, 3).",
-                  "The mechanic is single target and deals the gun's own melee damage, so these default to 0.0:",
-                  "damage multiplier = 1.0 + speed * factor. Raise one to give that banzai level a speed bonus."
+                  "OFF (the default) keeps the original charge: every pass damages everything within hitRadius,",
+                  "and the damage is scaled by the player's speed (the damageScalingLevel options below).",
+                  "ON switches to the single target thrust: one enemy, the gun's own melee damage with no speed",
+                  "scaling, the player thrown back off it, and a hostile mob below executeHealthThreshold is",
+                  "executed outright. See HANDOFF section 82.33 for that mechanic."
                }
             )
-            .defineInRange("damageScalingLevel1", 0.0, 0.0, 100.0);
-         this.damageScalingLevel2 = builder.comment("Speed damage scaling for banzai level 2 (0.0 = none)")
-            .defineInRange("damageScalingLevel2", 0.0, 0.0, 100.0);
-         this.damageScalingLevel3 = builder.comment("Speed damage scaling for banzai level 3 (0.0 = none)")
-            .defineInRange("damageScalingLevel3", 0.0, 0.0, 100.0);
+            .define("singleTargetStab", false);
+         this.damageScalingLevel1 = builder.comment(
+               new String[]{
+                  "Speed damage scaling per bayonet banzai level (1, 2, 3), used by the original area charge:",
+                  "damage multiplier = 1.0 + speed * factor. singleTargetStab ignores these on purpose - that",
+                  "mechanic deals the gun's own melee damage."
+               }
+            )
+            .defineInRange("damageScalingLevel1", 3.0, 0.0, 100.0);
+         this.damageScalingLevel2 = builder.comment("Speed damage scaling for banzai level 2")
+            .defineInRange("damageScalingLevel2", 5.5, 0.0, 100.0);
+         this.damageScalingLevel3 = builder.comment("Speed damage scaling for banzai level 3")
+            .defineInRange("damageScalingLevel3", 7.0, 0.0, 100.0);
          this.executeEnabled = builder.comment(
-               "If true, stabbing a hostile mob whose health is below executeHealthThreshold kills it outright")
+               "If true, stabbing a hostile mob whose health is below executeHealthThreshold kills it outright.",
+               "Only applies in singleTargetStab mode")
             .define("executeEnabled", true);
          this.executeHealthThreshold = builder.comment(
                "Health (not hearts) below which a stab executes a hostile mob. Vanilla mobs sit at 8 to 20,",

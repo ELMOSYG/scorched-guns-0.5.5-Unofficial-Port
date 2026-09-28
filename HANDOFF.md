@@ -8001,6 +8001,47 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   **穿刺冷却**（`SpearUser.isInPiercingCooldown` ✓）、**下马**（`dismounts` ✓）、**触及 min/max**（`AttackRange` ✓）、
   **按住蓄力的输入模型**（现在是按键切换 ✓ 不是长按 ✓）—— 这些都能直接加进 `bayonet_charge` ✓。
 
+### 82.33.5 补充（玩家要求 ✓）：**新机制改为可选、默认关闭，原机制保留** ✓（见 §82.34 ✓）
+* 玩家："把这个做成一个可选项，**默认关闭** ✓，**原先的刺刀冲锋机制留着** ✓" ✓ ⇒ 见下一节 ✓。
+
+---
+
+## 82.34 两套机制并存：原区域冲锋是**默认**，单体突刺是**选项** ✓
+
+### 82.34.1 玩家要求 ✓
+* "把这个做成一个可选项，默认关闭，原先的刺刀冲锋机制留着" ✓。
+* ⇒ 不再"替换"✓ 而是"**并存 + 开关**"✓：
+  * **默认（`singleTargetStab = false`）** ✓ = **0.5.5 原机制** ✓：每次判定对 `hitRadius` 内**所有**目标造成伤害 ✓，
+    伤害按**玩家速度**缩放 ✓（`damageScalingLevel1/2/3` ✓ = **3.0 / 5.5 / 7.0** ✓，本轮已从 0.0 **恢复** ✓，
+    因为它们是原机制的一部分 ✓）；没有命中弹开 ✓、没有处决 ✓、命中也不结束冲锋 ✓。
+  * **开启（`singleTargetStab = true`）** ✓ = §82.33 的单体突刺 ✓：单体 ✓、枪械当前近战伤害（**不乘速度** ✓）、
+    命中把玩家弹开 ✓、敌对且血量 < 15 处决 ✓、命中结束冲锋 ✓。
+* 实现 ✓：`handleBanzaiMode` 的伤害分支按 `isSingleTargetStab()` 分岔 ✓
+  ⇒ 走 `stabWithBayonet(...)` ✓ 或走 **`areaSweep(...)`** ✓（原逻辑原样搬进这个方法 ✓：
+  区域扫描 ✓ + 速度倍率 ✓ + 每个目标粒子/击退/附魔效果 ✓，**不含**弹开与处决 ✓）。
+  突刺那条**不再调用** `getBanzaiDamageMultiplier` ✓（否则就不是"枪械当前近战伤害"了 ✓）。
+* 配置注释写明 ✓：`singleTargetStab` 的说明直接列出两种模式各做什么 ✓，
+  且 `executeEnabled`/`executeHealthThreshold`/`knockPlayerBackOnHit`/`endChargeOnHit` 都标注"**只在 `singleTargetStab` 模式下生效**" ✓
+  ⇒ 默认关掉时它们**不改变**原机制 ✓。
+
+### 82.34.2 审计同步调整 ✓（第 40 个 ✓）
+* 规则随之改变 ✓：① `singleTargetStab` 默认**必须**是 `false` ✓（"原机制才是交付的那套" ✓）；
+  ② `handleBanzaiMode` **必须**同时引用 `isSingleTargetStab()` ✓、`stabWithBayonet(` ✓ 与 `areaSweep(` ✓（**两条路都必须在 ✓**）；
+  ③ **`areaSweep` 必须**保留速度倍率 ✓（那是原机制的一部分 ✓）；④ **`stabWithBayonet` 不得**出现速度倍率 ✓；
+  ⑤ `damageScalingLevel*` 默认**必须 > 0** ✓（本轮把上一节那条"必须 0.0"的规则**反向**过来 ✓ —— 规则是跟着机制走的 ✓）；
+  ⑥ `handleBanzaiMode` 自身**不得**出现目标遍历 ✗（循环必须待在 `areaSweep` 里 ✓）；
+  ⑦ 处决/弹开/结束冲锋仍必须在各自开关后 ✓ 且检查 `instanceof Enemy` ✓、用压倒性伤害 ✓。
+* **反向验证 7/7 全部被抓 ✓**：把新机制改成默认 ✓、删掉原区域逻辑 ✓、开关不被读取 ✓、
+  区域逻辑丢掉速度倍率 ✓、突刺又乘速度 ✓、把区域循环搬回 `handleBanzaiMode` ✓、速度倍率默认改回 0 ✓。
+* `verify_installed_jar` **259/259** ✓（新增 3 条 ✓：`singleTargetStab` ✓、`areaSweep` ✓、`isSingleTargetStab` ✓）。
+
+### 82.34.3 验收与**未实测** ✓
+* **40 个审计全 0** ✓、`javac` 0 错误 ✓（1010 文件 ✓）、`build` ✓、`verify_installed_jar` **259/259** ✓、已安装 ✓。
+* **未实测** ✓（交给玩家 ✓）：① **默认状态下**手感应与改之前**完全一致** ✓（区域伤害 + 速度倍率 ✓；
+  唯一保留的是 §82.23 的"疾跑丢失容错"✓ 那是修 bug ✓ 不是机制 ✓）；
+  ② 把 `singleTargetStab` 打开 ⇒ §82.33 的单体突刺 ✓；③ 打开后 `execute*`/`knockPlayerBackOnHit`/`endChargeOnHit` 才会生效 ✓。
+
+
 
 
 

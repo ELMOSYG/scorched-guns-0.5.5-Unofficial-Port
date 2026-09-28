@@ -1289,6 +1289,17 @@ def main():
             zf, "top/ribs/scguns/Config$BayonetCharge.class", b"endChargeOnHit",
             "whether a stab spends the charge is a config option"))
 
+        # 82.34. The thrust is an option, the original area charge is what ships, and both have to be there.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$BayonetCharge.class", b"singleTargetStab",
+            "the two charge mechanics can be chosen between in config"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"areaSweep",
+            "the original area charge is still shipped"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"isSingleTargetStab",
+            "the handler can switch between them"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))
