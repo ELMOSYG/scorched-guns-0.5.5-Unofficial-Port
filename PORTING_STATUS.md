@@ -1109,7 +1109,12 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 ③ 键 `enemies_and_raids_can_spawn` 改名 `enemies_can_spawn`（名字不再承诺突袭），EN `[%s] enemies may now appear!` / ZH `现在可能会出现【%s】的敌人！`（**去掉"和袭击"**），两语言文件逐行替换同步（§40.3 教训：不 re-serialize）；
 ④ `sendRaidUnlockedMessage` 只报本级新增（下界＝上一级们的最高 `raidLevel`），无新增则整行不出现。
 
-**修复后输出（脚本按真实表+语言文件模拟）**：边疆 → `你获得了【边疆】的枪械！/ 现在可能会出现【边疆、古典】的敌人！/（无新突袭，该行不出现）`；铁 → `【铁、铜、边疆、古典】的敌人！/ 铁突袭、海洋突袭、扫荡者突袭`；铜 → `【铜、边疆、古典】的敌人！/ 铜突袭`。
+**修复后输出（脚本按真实表+语言文件模拟）**：边疆 → `你获得了【边疆】的枪械！/ 现在可能会出现【边疆、古典】的敌人！/（无新突袭，该行不出现）`；联邦 → `【联邦、锈岭、边疆、古典】的敌人！/ 联邦突袭、海洋突袭、扫荡者突袭`；锈岭 → `【锈岭、边疆、古典】的敌人！/ 锈岭突袭`。
+（模拟脚本已提升为常驻工具 `tools/show_progression_messages.py`，改文案时不用进游戏即可核对。）
+
+**等级名/突袭名对齐阵营（玩家后续要求）**：`gun_tier.scguns.copper` 铜 → **锈岭**、`iron` 铁 → **联邦**；并把 `raid.scguns.copper` 铜突袭 → **锈岭突袭**、`raid.scguns.iron` 铁突袭 → **联邦突袭**（否则同一段文字里"【锈岭】的敌人 … 铜突袭"两名并存）。
+依据是原本就存在的矛盾：`raid.scguns.copper.name` = 召唤**锈岭**集体、`raid.scguns.iron.name` = 召唤**联邦**军备联合会 ⇒ 阵营名一直是锈岭/联邦，只有等级名与突袭标题没跟上。只改 zh_cn、逐行替换（不 re-serialize），键仍 1825/1825 对齐；这几个键同时被解锁消息与 `/scguns … progression` 指令使用 ⇒ 两处一起改名。**en_us 未动**（仍是 Copper/Iron/Copper Raid，英文那边有同样的不一致，需要英文用词再改）。
+（一次自造的错误：第一版改名脚本键名拼接写错导致 JSON 损坏 ⇒ `git checkout` 还原后改成整对 `"键": "值"` 替换 + 唯一性断言。）
 
 **新增审计 `tools/audit_progression_messages.py`**（第 38 个）：列表必须含本级且有 `level>0` 守卫；文案必须用 newest-first 且该方法按等级降序；**敌人句子的键名与文本都不许出现 raid/袭击**；突袭行必须用上一级最高 raidLevel 做下界且无新增时跳过。
 反向验证 **8/8** 被抓；一次是规则自己写松（只查 `previousRaidLevel` 名字出现 ⇒ 赋常量 `-999` 也能过，那等于"全部突袭都算新"）⇒ 改为必须匹配 `Math.max(..., getRaidLevel())`。**同类教训第三次。**
