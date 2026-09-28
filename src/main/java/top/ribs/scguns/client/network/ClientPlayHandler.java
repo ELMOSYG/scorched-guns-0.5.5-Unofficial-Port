@@ -56,7 +56,6 @@ import top.ribs.scguns.init.ModSyncedDataKeys;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.item.animated.AnimatedGunItem;
 import top.ribs.scguns.item.animated.ExoSuitItem;
-import top.ribs.scguns.init.ModSounds;
 import top.ribs.scguns.network.message.S2CMessageBeamPenetration;
 import top.ribs.scguns.network.message.S2CMessageBeamUpdate;
 import top.ribs.scguns.network.message.S2CMessageBlood;
@@ -77,14 +76,6 @@ import top.ribs.scguns.network.message.S2CMessageUpdateGuns;
 import top.ribs.scguns.particles.BulletHoleData;
 
 public class ClientPlayHandler {
-   /**
-    * Last tick each category of hit sound played, so a single shotgun burst - one hit packet per pellet -
-    * becomes one sound instead of a pile of overlapping ones (HANDOFF section 82.27).
-    */
-   private static long lastImpactSoundTick = -1L;
-   private static long lastCriticalSoundTick = -1L;
-   private static long lastHeadshotSoundTick = -1L;
-
    public ClientPlayHandler() {
       super();
    }
@@ -762,84 +753,31 @@ public class ClientPlayHandler {
       Minecraft mc = Minecraft.getInstance();
       Level world = mc.level;
       if (world != null) {
-         boolean headshot = message.isHeadshot();
-         boolean critical = message.isCritical();
-         HUDRenderHandler.playHitMarker(critical || headshot);
-         playHitFeedback(mc, world, critical, headshot, message.isPlayer());
-      }
-   }
-
-   /**
-    * The shooter's own hit feedback (HANDOFF section 82.27).
-    *
-    * <p>0.5.5 only made a sound for a critical or a headshot, and its headshot sound was
-    * {@code entity.player.attack.knockback} - a soft swing whoosh that says nothing about a hit. A plain body
-    * hit on a mob was completely silent, and that is the hit that happens most often. The gun's own
-    * {@code scguns:item.ping.ping} looks like a hit confirmation but is not one (it is a reload sound borrowed
-    * from another mod), so it stays unused.</p>
-    *
-    * <p>Now every category has its own sound and volume, and a headshot is a punchy impact plus a short
-    * confirmation layer, so it reads as a headshot and not merely as a hit. The sounds go through
-    * {@code SimpleSoundInstance.forUI}, which plays at the listener rather than at the target, so a hit 40
-    * blocks away reads as loudly as one at point blank.</p>
-    */
-   private static void playHitFeedback(Minecraft mc, Level world, boolean critical, boolean headshot, boolean player) {
-      Config.Sounds sounds = Config.CLIENT.sounds;
-      long tick = world.getGameTime();
-      // A shotgun sends one hit packet per pellet, so a whole burst can land in the same tick. Without this,
-      // 26 UI sounds overlap into clipping noise instead of one hit; rapid fire is unaffected because those
-      // hits are spread across different ticks. One sound per category per tick.
-      if (headshot) {
-         if (tick == lastHeadshotSoundTick) {
-            return;
-         }
-
-         lastHeadshotSoundTick = tick;
-         if ((Boolean)sounds.playSoundWhenHeadshot.get()) {
-            playHitSound(mc, world, sounds.headshotSound.get(), sounds.headshotSoundVolume.get().floatValue(), SoundEvents.ARROW_HIT_PLAYER);
-         }
-
-         if ((Boolean)sounds.playConfirmWhenHeadshot.get()) {
-            playHitSound(mc, world, sounds.headshotConfirmSound.get(), sounds.headshotConfirmVolume.get().floatValue(), ModSounds.HITMARKER.get());
-         }
-      } else if (critical) {
-         if (tick == lastCriticalSoundTick) {
-            return;
-         }
-
-         lastCriticalSoundTick = tick;
-         if ((Boolean)sounds.playSoundWhenCritical.get()) {
-            playHitSound(mc, world, sounds.criticalSound.get(), sounds.criticalSoundVolume.get().floatValue(), SoundEvents.PLAYER_ATTACK_CRIT);
-         }
-      } else {
-         if (tick == lastImpactSoundTick) {
-            return;
-         }
-
-         lastImpactSoundTick = tick;
-         if (player) {
-            // Hitting another player keeps 0.5.5's own hurt sound: that is the target's voice, not a hit marker.
-            playHitSound(mc, world, SoundEvents.PLAYER_HURT.getLocation().toString(), sounds.impactSoundVolume.get().floatValue(), SoundEvents.PLAYER_HURT);
-         } else if ((Boolean)sounds.playSoundWhenImpact.get()) {
-            playHitSound(mc, world, sounds.impactSound.get(), sounds.impactSoundVolume.get().floatValue(), SoundEvents.ARROW_HIT_PLAYER);
+         HUDRenderHandler.playHitMarker(message.isCritical() || message.isHeadshot());
+         SoundEvent event = getHitSound(message.isCritical(), message.isHeadshot(), message.isPlayer());
+         if (event != null) {
+            mc.getSoundManager().play(SimpleSoundInstance.forUI(event, 1.0F, 1.0F + world.random.nextFloat() * 0.2F));
          }
       }
    }
 
-   /**
-    * Plays one configured sound at the listener, falling back to a sound the game always has so that a typo in
-    * the config cannot silence the hit feedback completely.
-    */
-   private static void playHitSound(Minecraft mc, Level world, String id, float volume, SoundEvent fallback) {
-      if (volume <= 0.0F) {
-         return;
+   @Nullable
+   private static SoundEvent getHitSound(boolean critical, boolean headshot, boolean player) {
+      if (critical) {
+         if ((Boolean)Config.CLIENT.sounds.playSoundWhenCritical.get()) {
+            SoundEvent event = (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse((String)Config.CLIENT.sounds.criticalSound.get()));
+            return event != null ? event : SoundEvents.PLAYER_ATTACK_CRIT;
+         }
+      } else if (headshot) {
+         if ((Boolean)Config.CLIENT.sounds.playSoundWhenHeadshot.get()) {
+            SoundEvent event = (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse((String)Config.CLIENT.sounds.headshotSound.get()));
+            return event != null ? event : SoundEvents.PLAYER_ATTACK_KNOCKBACK;
+         }
+      } else if (player) {
+         return SoundEvents.PLAYER_HURT;
       }
 
-      ResourceLocation location = ResourceLocation.tryParse(id);
-      SoundEvent event = location != null && BuiltInRegistries.SOUND_EVENT.containsKey(location)
-         ? BuiltInRegistries.SOUND_EVENT.get(location)
-         : fallback;
-      mc.getSoundManager().play(SimpleSoundInstance.forUI(event, volume, 1.0F + world.random.nextFloat() * 0.2F));
+      return null;
    }
 
    public static void handleRemoveProjectile(S2CMessageRemoveProjectile message) {

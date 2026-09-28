@@ -7619,110 +7619,41 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
 
 ---
 
-## 82.27 命中音效 / 爆头音效反馈不够强 ✓
+## 82.27 命中 / 爆头音效改动：**试过、已按玩家决定全部回退** ✓
 
-### 82.27.1 玩家报告 ✓
-* "scgun 自带的命中音效和爆头音效反馈不够强" ✓。
-* 起手先看**现在到底响不响** ✓（全部来自源码 ✓，`ClientPlayHandler.handleProjectileHitEntity` ✓）：
-  ① **普通命中（打生物、非爆头非暴击）⇒ 完全没有声音** ✗✗ —— `getHitSound(...)` 直接 `return null` ✓，
-     只有命中标记闪一下 ✓（而这恰恰是**最常发生**的命中 ✓）；
-  ② **爆头音**是 `minecraft:entity.player.attack.knockback` ✗ —— 那是**挥空的"呼"声** ✓，听起来不像打中了 ✓；
-  ③ **暴击音**是 `minecraft:entity.player.attack.crit` ✓（这个还算清楚 ✓）；
-  ④ 音量写死 **1.0** ✗、没有任何可调项 ✓（只有 `playSoundWhen*` 开关与音效 id ✓）。
-* 另外发现 **`scguns:item.ping.ping`** ✓：asset 在 ✓、`sounds.json` 里有 ✓、`ModSounds.PING` 已注册 ✓，
-  但**全代码从未播放过** ✗（"看着像命中提示音" ✓ ⇒ 本来想拿来当爆头提示音 ✓）。
-  **玩家指出：那是亿宏的换弹音效** ✗ ⇒ **不能用** ✗（既是借来的素材 ✓、听起来也是"换弹"而不是"打中" ✓）✓。**改为不用它** ✓。
+### 82.27.1 做了什么、为什么回退 ✓
+* 玩家提出"scgun 自带的命中音效和爆头音效反馈不够强" ✓ ⇒ 本轮做了一版 ✓：
+  ① 给**普通命中生物**补上声音 ✓（0.5.5 原本 `return null` = 完全无声 ✓）；
+  ② 爆头改成"`entity.arrow.hit_player` 1.2 **+ 叠一层**确认音" ✓；
+  ③ 每个类别独立的音效 id 与音量 config ✓（共 8 个新键 ✓）；
+  ④ **每 tick 每类去重** ✓（霰弹枪一枪 26 个命中包 ⇒ 不然 26 个 UI 音一起响 ✓）；
+  ⑤ 之后玩家提供了 `E:\音效素材\Hitmarker.ogg` ✓ ⇒ 作为爆头确认音接入 ✓（新资源 + `sounds.json` + `ModSounds.HITMARKER` ✓）。
+* 玩家实测后判定**"没什么用"** ✓ ⇒ 按要求**全部回退** ✓：
+  `src/` 与 `src/main/resources/` 现在与改动前的 `e8d1306` **逐字节一致** ✓；
+  新增的 `tools/audit_hit_feedback.py` 删除 ✓、`verify_installed_jar` 的那 7 条检查撤销 ✓、
+  `Config` 的 8 个新键撤销 ✓、`sounds.json`/`ModSounds`/`.ogg` 全部撤销 ✓。
+  （`Hitmarker.ogg` **没有被删除** ✓ —— 我只是复制进过仓库 ✓，原文件仍在 `E:\音效素材\` ✓。）
 
-### 82.27.2 修法 ✓（全部可调 ✓，默认值比原来强 ✓）
-| 类别 | 0.5.5 | 现在（默认） |
-| --- | --- | --- |
-| 普通命中生物 | **无声** ✗ | `minecraft:entity.arrow.hit_player` ✓，音量 1.0 ✓（`playSoundWhenImpact` ✓ / `impactSound` ✓ / `impactSoundVolume` ✓） |
-| 命中玩家 | `PLAYER_HURT` ✓ 固定 1.0 ✗ | 仍是 `PLAYER_HURT` ✓（那是**被打者**的声音 ✓ 不是命中提示 ✓），音量走 `impactSoundVolume` ✓ |
-| 暴击 | `attack.crit` ✓ 1.0 ✗ | 不变 ✓ + `criticalSoundVolume` ✓ |
-| 爆头 | `attack.knockback` ✗ 1.0 ✗ | **`entity.arrow.hit_player` 1.2** ✓ **+ 叠一层** `minecraft:entity.experience_orb.pickup` **1.0** ✓（`playConfirmWhenHeadshot` ✓ / `headshotConfirmSound` ✓ / `headshotConfirmVolume` ✓） |
-
-* **爆头为什么叠两层** ✓：一层"打实了"的闷响 ✓ + 一层短促的确认音 ✓ ⇒ 一耳朵就能区分"打中"和"打头" ✓
-  （正是玩家说的"反馈不够强" ✓）。`player.attack.knockback` 这种挥空声不再用于任何命中 ✓。
-* **全在原版音效里选** ✓：不新增 asset ✓、也不碰借来的 `ping` ✓（想换随时改 config 里的音效 id ✓）。
-* **播放方式** ✓：仍是 `SimpleSoundInstance.forUI` ✓ —— **在听者身上播** ✓、不按"到目标的距离"衰减 ✓
-  ⇒ 40 格外的命中与贴脸命中**一样响** ✓（这条对"反馈强度"很关键 ✓）。
-* **加了每 tick 每类去重** ✓（新增 `last*SoundTick` ✓）：**霰弹枪是"每颗弹丸一个命中包"** ✓ ⇒
-  原来一枪最多 26 个 UI 音同时播 ✗ = 糊成噪声 ✓；现在一枪**一个**音 ✓（连发不受影响 ✓ —— 那是不同 tick ✓）。
-* **降级保护** ✓：config 里音效 id 打错/不存在时回落到内置原版音 ✓（**不会变成无声** ✓）；
-  音量为 0 视为关闭 ✓（不再"静音播放" ✗）。
-
-### 82.27.3 新增审计 `tools/audit_hit_feedback.py`（第 37 个 ✓）
-* 四条规则 ✓：① **每个命中类别都必须有声音** ✓（普通命中不许再变回静音 ✓）；
-  ② 爆头**必须是两层** ✓ 且第二层**必须有自己的开关** ✓（只写个音效名不算 ✓ —— 分支被改掉也要能发现 ✓）；
-  ③ 每类**必须**有 per-tick 去重字段与比较 ✓；④ **必须**走 `forUI`（听者侧 ✓）且音量来自 `*Volume` config ✓，
-  且 `playHitFeedback` 里**不得**出现位置性的 `playLocalSound`/`playSound` ✓。
-  另加一条**素材规则** ✓：借来的 `scguns:item.ping.ping` **不得**被用作爆头确认音的默认值 ✓。
-* **反向验证 9/9 全部被抓 ✓**。过程中**两次是审计规则自己写松了** ✗✓：
-  ① 爆头那条只查"有没有提到音效名" ✗ ⇒ 把开关改成 `false` 也能蒙混过关 ✓ ⇒ 改成**必须出现开关** ✓；
-  ② config 那条查的是**字段名** ✗ ⇒ `define` 的键被改名（玩家就没这个旋钮了 ✗）它发现不了 ✓ ⇒
-  改成必须出现**带引号的键名** ✓。另有一次**误报** ✓：`ping` 那个 id 写在我的 config **注释字符串**里 ✗，
-  而规则查的是整份文件文本 ✓ ⇒ 改成精确检查 `headshotConfirmSound` 的**定义值** ✓（注释里可以说明"为什么不用它" ✓）。
-  **结论：反向验证既验代码也验规则，而规则自己也会有假阳性与假阴性** ✓。
-* `verify_installed_jar` **232/232** ✓（新增 3 条 ✓：`Config$Sounds` 里有 `playSoundWhenImpact` ✓、
-  `headshotConfirmSound` ✓，`ClientPlayHandler` 里有 `lastImpactSoundTick` ✓ —— 字段名会进 class 文件 ✓）。
-
-### 82.27.4 验收与**未实测** ✓
-* **37 个审计全 0** ✓、`javac` 0 错误 ✓（1009 文件 ✓）、`build` ✓、`verify_installed_jar` **232/232** ✓、
-  已安装 ✓（探针脚本已删 ✓）。**注意**：这次改了 `Config` ⇒ 新增的键会写进配置文件 ✓（旧配置自动补默认值 ✓）。
-* **未实测** ✓（交给玩家 ✓）：① 打普通生物**应该有声音了** ✓（0.5.5 是完全没有 ✓）；
-  ② 爆头应是"闷响 + 短促确认音" ✓，与暴击**能听出区别** ✓；③ 霰弹枪一枪**只响一次** ✓（不再糊 ✓）；
-  ④ 远距离命中与贴脸**一样响** ✓；⑤ 音量不合口味直接改 `*Volume` ✓（0 即关闭 ✓）。
-* **顺带发现的、还没动的东西** ✓（等玩家发话 ✓）：HUD 那边已经有 4 张标记贴图 ✓
-  （`hit_marker` ✓、`special_hit_marker` ✓、`special_hit_marker2` ✓、**`special_crit_hit_marker` 完全没被用过** ✗）✓，
-  而 `playHitMarker(critical || headshot)` 只传一个布尔 ✓ ⇒ 爆头与暴击**画的是同一个标记** ✓。
-  ⇒ 可做（都**不需要新素材** ✓）：① 用上那张没用的 `special_crit_hit_marker` ✓ 让暴击/爆头有专属标记 ✓；
-  ② 或给**每次命中**都闪一下细标记 ✓。这两条是**视觉**反馈 ✓，与本次音效分开 ✓，要就说一声 ✓。
-
----
-
-## 82.28 玩家提供的 `Hitmarker.ogg` 接入 ✓（§82.27 的爆头确认音）
-
-### 82.28.1 素材可用性核对 ✓
-* 玩家给的目录里只有**一个**文件 ✓：`E:\音效素材\Hitmarker.ogg` ✓（5451 字节 ✓）——
-  **已经是 `.ogg`** ✓，而 Ogg Vorbis 正是 Minecraft **唯一**接受的格式 ✓ ⇒ **不需要转码** ✓、可以直接用 ✓。
-* 用脚本解析了容器与识别头（**不是**靠扩展名猜的 ✓）✓：
-  `OggS` magic ✓、Vorbis identification header ✓、**单声道** ✓、**48000 Hz** ✓、**时长 0.106 秒** ✓。
-  ⇒ 作为"命中提示"长度**正合适** ✓（提示音必须短 ✓ —— 长了在连发时前后叠在一起就糊了 ✗，
-  这也是 §82.27 里加 per-tick 去重的同一个理由 ✓）。
-* 与 §82.27 那个 `scguns:item.ping.ping` 的区别 ✓：那个是**亿宏的换弹音效**（借来的素材 ✗）⇒ 继续不用 ✓；
-  **本次这个**是玩家提供的素材 ✓ ⇒ 正式作为 mod 自带音效接入 ✓。
-
-### 82.28.2 接入方式 ✓
-* 资源 ✓：`assets/scguns/sounds/hit/hitmarker.ogg` ✓。
-* `sounds.json` 新增条目 `hit.hitmarker` ✓ —— **故意不写 subtitle** ✓：它叠在原版命中音之上 ✓，
-  而那些原版音**自带字幕** ✓；每次命中再刷一条字幕会在连发时**淹没字幕列表** ✗。
-* `ModSounds.HITMARKER = register("hit.hitmarker")` ✓（位置紧挨 `PING` ✓，附注释说明它是命中确认 ✓）。
-* `Config` ✓：`headshotConfirmSound` 默认值 `minecraft:entity.experience_orb.pickup` → **`scguns:hit.hitmarker`** ✓；
-  代码里的**降级回落**也改成 `ModSounds.HITMARKER` ✓（配置里写错 id 时回落到自家音效 ✓，不会变成无声 ✓）。
-* **用法** ✓：默认只在**爆头**时作为第二层响 ✓（第一层仍是 `entity.arrow.hit_player` 的"闷响" ✓）
-  ⇒ "打中"与"打头"一耳朵能分 ✓。**若想每次命中都响** ✓：把 `impactSound` 改成 `scguns:hit.hitmarker` 即可 ✓
-  —— **不用改代码** ✓（这就是 §82.27 把音效 id 做成 config 的意义 ✓）。
-
-### 82.28.3 审计 ✓：给"默认值必须真的存在"加一条硬规则 ✓
-* `tools/audit_hit_feedback.py` 新增规则 ✓（比之前那条"不许用借来的 ping"更通用 ✓）：
-  爆头确认音的**默认值必须真的存在** ✓ —— `minecraft:` 前缀视为原版可用 ✓；
-  `scguns:` 前缀**必须**在 `sounds.json` 里有条目 ✓ 且该条目指向的 `.ogg`**必须真的在磁盘上** ✓；
-  **其它命名空间直接报错** ✓。⇒ 这条规则**正好覆盖"拿别人的素材当默认值"**这类错误 ✓。
-* **反向验证 12/12 全部被抓 ✓**（本次新增 4 条 ✓）：默认值指向不存在的音 ✓、来自其它命名空间 ✓、
-  `sounds.json` 条目被删 ✓、`.ogg` 文件被移走 ✓（这条对照是**真的把文件移走**再移回来 ✓，并核对还原后文件仍在 ✓）。
-* `verify_installed_jar` **236/236** ✓（新增 4 条 ✓：`assets/scguns/sounds/hit/hitmarker.ogg` 在 jar 里 ✓、
-  `assets/scguns/sounds.json` 指向它 ✓、`ModSounds` 里注册了 `hit.hitmarker` ✓、键名一致 ✓）。
-  过程中**我自己写错了一次路径** ✗（写成了 jar 里不存在的 `sounds.json` ⇒ 那条 check FAIL ✓）⇒ 改成
-  `assets/scguns/sounds.json` ✓。**门禁会抓到我自己的错** ✓，这也说明反向/存在性检查值得写 ✓。
-
-### 82.28.4 验收与**未实测** ✓
-* **37 个审计全 0** ✓、`javac` 0 错误 ✓（1009 文件 ✓）、`build` ✓、`verify_installed_jar` **236/236** ✓、已安装 ✓。
-* **未实测** ✓（交给玩家 ✓）：① 爆头应是"闷响 + 这个 hitmarker" ✓，与暴击**能分** ✓；
-  ② 连发/霰弹枪时不会糊 ✓（每 tick 每类一个 ✓）；③ 想让**每次命中**都响 ⇒ `impactSound` 改 `scguns:hit.hitmarker` ✓；
-  ④ 音量不合口味改 `headshotConfirmVolume` / `impactSoundVolume` ✓（0 = 关闭 ✓）。
-* **素材来源与署名** ✓（提醒 ✓）：我**无法**核实这个文件本身的来源与许可 ✓ —— 如果它来自别处，
-  建议在 mod 里加一条注明 ✓。0.5.5 已经有一个**借来的**音效（那个 ping ✗），这类事容易越积越多 ✓。
-
+### 82.27.2 留下的结论 ✓（**要再做时的起点就在这里** ✓，都是与"改不改"无关的事实 ✓）
+1. **0.5.5 的普通命中本来就完全没有声音** ✓（`getHitSound(...)` 对"非暴击非爆头"直接 `return null` ✓）
+   ⇒ 当时玩家感觉"反馈弱"**有客观依据** ✓；爆头用的是 `entity.player.attack.knockback` ✓（**挥空**声 ✓），
+   音量全部写死 1.0 ✗、没有任何可调项 ✓。
+2. **霰弹枪是"每颗弹丸一个命中包"** ✓ ⇒ **任何**"每次命中播一个音/闪一次标记"的改动**都必须按 tick 去重** ✓，
+   否则一枪最多 26 个 UI 音同时播 = 糊成噪声 ✓。这条与音效本身无关 ✓，是通用结论 ✓。
+3. **命中包只发给射手** ✓（`PacketHandler...sendToPlayer(() -> (ServerPlayer)this.shooter, ...)` ✓）
+   ⇒ 射手上的**本地**反馈（音效 / HUD）是安全的 ✓，不会打扰别人 ✓。
+4. **`scguns:item.ping.ping` 不能用** ✓：玩家指出那是**亿宏的换弹音效** ✓ ⇒ 既是借来的素材 ✗、
+   听感也是"换弹"而不是"打中" ✗。以后想加命中提示音**别拿它** ✓。
+5. **`Hitmarker.ogg` 可用性已核实** ✓（脚本解析容器与识别头 ✓，不是看扩展名 ✓）：
+   Ogg Vorbis ✓、**单声道** ✓、**48000 Hz** ✓、**0.106 秒** ✓ ⇒ 以后要用可以直接复制进
+   `assets/scguns/sounds/` ✓ 并在 `sounds.json` 里登记 ✓（示例写法见本次回退前的提交 `c66e5c1` ✓）。
+6. **审计规则自己也会写错** ✓：这一次 9 条反向对照里有 **2 条是"规则写太松"** ✗
+   （只查"有没有提到音效名" ⇒ 把开关改成 `false` 也能蒙混 ✓；只查 config **字段名** ⇒
+   `define` 的键被改名、玩家丢了旋钮也发现不了 ✓），还有 **1 条误报** ✗（被禁的素材 id 写在我的**注释字符串**里 ✓，
+   而规则查的是整份文件 ✓）⇒ **反向验证同时也在验规则** ✓，规则会有假阳性也有假阴性 ✓。
+7. **"默认音效 id 必须真的存在"这条检查已随回退撤掉** ✓（`minecraft:` 视为原版 ✓；
+   `scguns:` 必须在 `sounds.json` 有条目 ✓ 且 `.ogg` 真在磁盘上 ✓；其它命名空间直接报错 ✓）——
+   如果以后再往 config 里加音效 id ✓，**值得把这条重新加回来** ✓（它正好能挡住"拿别人的素材当默认值" ✓）。
 
 
 
