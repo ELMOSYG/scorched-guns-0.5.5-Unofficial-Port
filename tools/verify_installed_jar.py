@@ -1240,6 +1240,21 @@ def main():
                 for name in zf.namelist()
                 if name.startswith("data/scguns/loot_table/") and name.endswith(".json"))))
 
+        # 82.31. A gunner's gun is worn on spawn, like the JSON-driven equipment files already did. The roll
+        # lives in a helper the code-driven path calls, and the JSON path must not call it.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$GunnerMobs.class", b"mobGunMinDurability",
+            "the mob gun durability floor is a config option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$GunnerMobs.class", b"mobGunMaxDurability",
+            "the mob gun durability ceiling is a config option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/util/MobGunDurability.class", b"roll",
+            "the durability roll helper ships"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"MobGunDurability",
+            "the code-driven gun path actually rolls the durability"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

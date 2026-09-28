@@ -35,6 +35,7 @@ import top.ribs.scguns.compat.guardvillagers.GuardGunAttackGoal;
 import top.ribs.scguns.compat.guardvillagers.GuardVillagersCompat;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.util.GunCurseUtil;
+import top.ribs.scguns.util.MobGunDurability;
 
 @EventBusSubscriber(
    modid = "scguns",
@@ -414,6 +415,13 @@ public class GunnerMobSpawner {
          NbtHelper.getOrCreateTag(gunStack)
             .putInt("AmmoCount", mob.getRandom().nextInt(gunModified.getReloads().getMaxAmmo()));
       }
+
+      // A gunner's gun spawns worn, the way the mod's own equipment files already handle it (HANDOFF section
+      // 82.31). Every code-driven path - thematic gunners, progression gunners, Guard Villagers guards - handed
+      // out a fresh ItemStack, so a gun pried off one of them was factory new, while the JSON-driven mobs
+      // (data/scguns/entity/equipment/*.json, 0.2 - 0.6) had always been worn. Firing does not wear a mob's gun
+      // either - there is no hurtAndBreak anywhere in the mob fire path - so nothing ever brought it down.
+      MobGunDurability.roll(gunStack, mob.getRandom());
 
       return gunStack;
    }

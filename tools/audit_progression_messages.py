@@ -39,12 +39,32 @@ RAID_WORDS = ("raid", "袭击")
 
 
 def strip_comments(text: str) -> str:
+    """Blank out comments, aware of string literals.
+
+    A `/*` inside a string is not a comment: this codebase has config comments naming file globs such as
+    `data/scguns/entity/equipment/*.json`, and a stripper that ignores string literals treats that `/*` as a
+    block comment start and deletes the code after it. That reads as "the thing does not exist" - a false
+    negative, which is the one failure an audit must not have.
+    """
     out = []
     i = 0
     n = len(text)
     while i < n:
         c = text[i]
-        if c == "/" and i + 1 < n and text[i + 1] == "/":
+        if c == '"':
+            out.append(c)
+            i += 1
+            while i < n:
+                if text[i] == "\\":
+                    out.append(text[i:i + 2])
+                    i += 2
+                    continue
+                out.append(text[i])
+                if text[i] == '"':
+                    i += 1
+                    break
+                i += 1
+        elif c == "/" and i + 1 < n and text[i + 1] == "/":
             while i < n and text[i] != "\n":
                 i += 1
         elif c == "/" and i + 1 < n and text[i + 1] == "*":
@@ -58,7 +78,6 @@ def strip_comments(text: str) -> str:
             out.append(c)
             i += 1
     return "".join(out)
-
 
 def method_body(text: str, signature: str) -> str:
     at = text.find(signature)

@@ -1136,3 +1136,19 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 
 **门禁**：39 个审计全 0 / `verify_installed_jar` **243/243**（新增 4 条，其中两条是**全树反向检查**：随包掉落表不得再有单数谓词、不得再有 `treasure`）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：① 下界硫磺矿石应掉 2–3 硫磺碎块（精准采集才掉本体）；② 其余 28 张表同样恢复；③ **地牢/要塞/远古城市/埋藏宝藏/末地城/矿井等箱子应开始出现枪械战利品**（以前一直为空）；④ 突袭 Boss 掉落附魔装备不再整表失效。
+
+## §82.31 枪手生物的枪"满耐久"（按玩家纠正缩小范围）+ 修掉审计工具的静默漏报隐患
+
+**玩家两次报告**：先"枪手生物手持的枪械都是满耐久的"，随后纠正：**"刷怪蛋放出来的**枪手生物枪械是满耐久的，**其他的貌似是有的"** ⇒ 我原本的"给所有生物枪加磨损"是过度推广（会覆盖已正确的路径），按纠正缩小。
+
+**两条装配路径（解释差异）**：**JSON 路径**（`data/scguns/entity/equipment/*.json`）给 mod 自己的生物（adjudicator/blunderer/cog_knight…）配枪并写了 `min_durability 0.2`/`max_durability 0.6`，`EntityEquipmentConfig` 会按比例扣耐久 ⇒ 这些生物的枪是旧的（玩家说"其他的有的"）。**代码路径**（主题枪手/进度枪手/警卫三条都走 `GunnerMobSpawner.createModifiedGun`）只填 `AmmoCount`、从不设耐久 ⇒ 刷怪蛋放出来的枪手是这条。另一证据：**生物开火不磨损枪械**（`MobGunFire`/`GunAttackGoal` 里没有 `hurtAndBreak`）⇒ 代码路径的枪永远不会变旧。
+
+**修法**（只动代码路径）：新增 `MobGunDurability.roll`，按 `Config.COMMON.gunnerMobs.mobGunMinDurability`/`mobGunMaxDurability`（默认 **0.2/0.6**，与 `entity/equipment/*.json` 同一套数值）随机剩余耐久比例，`Mth.clamp` 上限、不可损坏物品跳过、min/max 写反也容错。调用点只有一处：`GunnerMobSpawner.createModifiedGun`（正是三条路径共用的那份）。**JSON 路径故意不调用**（那些文件自带范围，再滚一次会覆盖）。
+
+**顺带修掉审计工具的静默漏报**：新审计初版报"Config 里没有该配置项"，而它就在文件里——因为我这次写的配置注释含 `data/scguns/entity/equipment/*.json`，这个 `/*` 在**字符串字面量**里，而剥离器不认识字符串 ⇒ 当成块注释开头 ⇒ 删掉其后代码 ⇒ 假阴性。全仓排查后：6 个审计的状态机剥离器 + 3 个用正则剥离器的（`audit_client_config_side`/`audit_guard_compat`/`audit_raid_cooldown`，危险形态是"字符串里的 `/*` + 后面某处的 `*/`"）全部替换为认识字符串的版本；替换后 40 个审计仍全 0（说明当前恰好没被抓到，但隐患消除）。**假阴性比报错危险得多。**
+
+**新增审计 `tools/audit_mob_gun_durability.py`**（第 40 个）：两个耐久比例必须是 config 且默认值必须 < 1.0（默认 1.0 = 复现玩家报的 bug）；`roll` 必须跳过不可损坏物品、必须**读两个键**、必须 clamp；代码路径必须调用它；JSON 路径不得调用。反向验证 **6/6**（含一条规则自己写松后的收紧：只查 `Config.COMMON` 出现过 ⇒ 一端写死也能过 ⇒ 改成两键都必须在 roll 里）。**同类教训第四次。**
+
+**门禁**：40 个审计全 0 / `verify_installed_jar` **247/247**（新增 4 条）/ `javac` 0（1010 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：① 刷怪蛋放出的枪手枪应是旧的（20%–60% 剩余耐久）；② mod 自己的生物保持原样（JSON 的 0.2–0.6，无叠加）；③ 调 `mobGunMinDurability`/`mobGunMaxDurability`（1.0/1.0 = 回到满耐久）。
+**没动、等发话**：突袭 Boss/随从武器走 `RaidManager.createModifiedGun`（同样无耐久）；本轮按住报告只改了枪手路径，若要 Boss 的枪也是旧的，一处调用即可。

@@ -630,6 +630,8 @@ public class Config {
       public final BooleanValue scaleToDifficulty;
       public final BooleanValue eliteSpawning;
       public final DoubleValue eliteChance;
+      public final DoubleValue mobGunMinDurability;
+      public final DoubleValue mobGunMaxDurability;
 
       public GunnerMobs(Builder builder) {
          super();
@@ -651,6 +653,16 @@ public class Config {
                new String[]{"Base chance for Elite Gunners to spawn (0.0 = never, 1.0 = always).", "This is the spawn chance on NORMAL difficulty."}
             )
             .defineInRange("eliteChance", 0.2, 0.0, 1.0);
+         this.mobGunMinDurability = builder.comment(
+               new String[]{
+                  "The fraction of its durability a spawned gunner's gun has left, at minimum.",
+                  "A mob gun used to spawn at full durability, so every gun taken off a gunner was factory new.",
+                  "The mod's own equipment files (data/scguns/entity/equipment/*.json) use 0.2 - 0.6 for the same job."
+               }
+            )
+            .defineInRange("mobGunMinDurability", 0.2, 0.0, 1.0);
+         this.mobGunMaxDurability = builder.comment("The fraction a spawned gunner's gun has left, at maximum")
+            .defineInRange("mobGunMaxDurability", 0.6, 0.0, 1.0);
          builder.pop();
       }
    }
