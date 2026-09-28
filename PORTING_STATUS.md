@@ -1021,3 +1021,26 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 
 **门禁**：35 个审计全 0 / `verify_installed_jar` **226/226**（新增：class 里必须有 `renderGuiItem`）/ `javac` 0 / `build` ✓ / 已安装 ✓。
 **未实测**：手感画面应完全不变，唯一可能被察觉的是帧率；如需数字，可加临时探针统计"每帧枪械 GUI 渲染次数/耗时"（等玩家发话）。
+
+**更正**：最初推测"这套整合只有 JEI、1.20.1 那边才有 EMI"——**错了**：`mods/` 里 EMI 1.1.24 与 JEI 19.57 **都装着**。所以"环境差异"这个解释不成立，本节结论仍然是"没有证据指向某处代码改动"；82.24.3 的每帧浪费是客观存在、已修。
+
+## §82.25 装 Better Combat / 铁魔法后：攻击完再切枪，手臂渲染错乱（已修）
+
+**报告**（玩家指出是 scgun 本体老 bug）：装 BC 用其攻击模块攻击后再切枪 ⇒ 手臂渲染错乱；铁魔法可能同样。
+现状：本实例**没装 BC**，但装了**铁魔法 3.16.3** 与其共用的动画库 **player-animation-lib 2.0.4** ⇒ 用铁魔法可立即验证。
+
+**机制（`javap -c` 证据）**：Player Animator 的 `AnimationApplier.updatePart(ModelPart)` 写四类状态：
+位置 `x/y/z`、旋转 `xRot/yRot/zRot`、**缩放 `xScale/yScale/zScale`**、经 bendylib 的**逐 cuboid bend**（`IBendHelper.bend(part, side, amount)`）。
+我们的枪械手臂（`AnimatedGunRenderer.renderRightArm/renderLeftArm`）直接对**同一个共享 `PlayerModel`** 调 `ModelPart.render`，却只重置了位置+旋转
+⇒ **缩放与 bend 泄漏**到枪的手臂上（拉伸/弯折 = 错乱）。第一人称下本地玩家模型不会重跑 `setupAnim` ⇒ 上次攻击动画的姿势无人清除，一直留到我们画手臂时。
+
+**修法**：新增 `resetArmPose(part, bone)` = `part.resetPose()`（恢复烘焙姿势，含 scale=1）+ `setPos(pivot)` + `PlayerAnimatorCompat.resetBend(part)`；右臂/右袖/左臂/左袖四个部件全部走这条路。
+`bend(part,0,0)` 即"清除"（`BendHelper.bend` 里 `|amount| < 1.0E-4` 走还原分支，库里没有单独 reset）。兼容隔离：新 `client/compat/PlayerAnimatorCompat`
+先查 mod id `playeranimator`、反射只解析一次并缓存 `INSTANCE`/`Method`（每帧每臂都调用，不能每帧 `Class.forName`）、失败只记一次并停用；渲染器内不出现任何 `dev.kosmx` 类型（§82.10 教训）。第三人称未动（那里动画库的姿势本就该生效）。
+
+**新增审计 `tools/audit_arm_render_reset.py`**（第 36 个）：四个部件必须 reset 后才 render；`resetArmPose` 必须含 `resetPose()`+`setPos(`+`resetBend(`；兼容类必须查 mod id、缓存反射 Method、渲染器不得出现 `dev.kosmx`。
+反向验证 6/6 被抓——其中"bend 不做 mod 检查"**第一次漏报**（审计规则当时允许用 `unusable` 替代 `isLoaded()`），收紧后通过：**反向验证也在验审计规则本身**。
+
+**门禁**：36 个审计全 0 / `verify_installed_jar` **228/228**（新增 2 条）/ `javac` 0（1010 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：① 铁魔法施法后切枪手臂应正常（现在就能测）；② 装 BC 后攻击再切枪；③ 无动画模组时手臂应与以前完全一致。
+**若仍不对的下一步抓手**：Player Animator 对第一人称还有独立通路（`FirstPersonMode` + `firstPerson.ItemInHandRendererMixin` 会取消原版手部渲染并/或用第三人称模型画整个人），那是"动画播放期间枪不见/手臂重叠"的另一条通路，需 API 级 `setFirstPersonMode(DISABLED)` 处理，等确认现象再动。

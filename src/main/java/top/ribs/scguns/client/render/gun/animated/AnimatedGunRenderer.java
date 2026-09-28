@@ -13,6 +13,7 @@ import javax.annotation.Nullable;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
@@ -51,6 +52,7 @@ import software.bernie.geckolib.util.RenderUtil;
 import top.ribs.scguns.Config;
 import top.ribs.scguns.client.GunRenderType;
 import top.ribs.scguns.client.SwayType;
+import top.ribs.scguns.client.compat.PlayerAnimatorCompat;
 import top.ribs.scguns.client.handler.AimingHandler;
 import top.ribs.scguns.client.handler.BeamHandler;
 import top.ribs.scguns.client.handler.DualWieldShotTracker;
@@ -598,12 +600,27 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    ) {
       poseStack.scale(0.66F, 0.78F, 0.66F);
       poseStack.translate(0.25, -0.1, 0.1625);
-      playerEntityModel.rightArm.setPos(bone.getPivotX(), bone.getPivotY(), bone.getPivotZ());
-      playerEntityModel.rightArm.setRotation(0.0F, 0.0F, 0.0F);
+      this.resetArmPose(playerEntityModel.rightArm, bone);
       playerEntityModel.rightArm.render(poseStack, this.bufferSource.getBuffer(RenderType.entitySolid(playerSkin)), packedLight, packedOverlay);
-      playerEntityModel.rightSleeve.setPos(bone.getPivotX(), bone.getPivotY(), bone.getPivotZ());
-      playerEntityModel.rightSleeve.setRotation(0.0F, 0.0F, 0.0F);
+      this.resetArmPose(playerEntityModel.rightSleeve, bone);
       playerEntityModel.rightSleeve.render(poseStack, this.bufferSource.getBuffer(RenderType.entityTranslucent(playerSkin)), packedLight, packedOverlay);
+   }
+
+   /**
+    * Puts an arm (or sleeve) part into the pose a gun draws it in, discarding whatever was left on it
+    * (HANDOFF section 82.25).
+    *
+    * <p>{@code resetPose()} is what makes this complete: a player animation library animates the shared player
+    * model and writes not only {@code x/y/z} and the rotations, but also {@code xScale/yScale/zScale} - which
+    * {@code setPos}/{@code setRotation} alone leave behind, so an attack animation's stretched arm stayed
+    * stretched when the player then drew a gun. {@code resetPose()} restores the baked pose (scale 1) and the
+    * pivot is applied on top of it. The animated bend lives outside the model part's fields and is cleared
+    * separately through the optional compat helper.</p>
+    */
+   private void resetArmPose(ModelPart part, GeoBone bone) {
+      part.resetPose();
+      part.setPos(bone.getPivotX(), bone.getPivotY(), bone.getPivotZ());
+      PlayerAnimatorCompat.resetBend(part);
    }
 
    private void renderLeftArm(
@@ -626,11 +643,9 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       this.checkAndHandleAnimations(animationController);
       poseStack.scale(0.66F, 0.79F, 0.66F);
       poseStack.translate(-0.25, -0.1, 0.1625);
-      playerEntityModel.leftArm.setPos(bone.getPivotX(), bone.getPivotY(), bone.getPivotZ());
-      playerEntityModel.leftArm.setRotation(0.0F, 0.0F, 0.0F);
+      this.resetArmPose(playerEntityModel.leftArm, bone);
       playerEntityModel.leftArm.render(poseStack, this.bufferSource.getBuffer(RenderType.entitySolid(playerSkin)), packedLight, packedOverlay);
-      playerEntityModel.leftSleeve.setPos(bone.getPivotX(), bone.getPivotY(), bone.getPivotZ());
-      playerEntityModel.leftSleeve.setRotation(0.0F, 0.0F, 0.0F);
+      this.resetArmPose(playerEntityModel.leftSleeve, bone);
       playerEntityModel.leftSleeve.render(poseStack, this.bufferSource.getBuffer(RenderType.entityTranslucent(playerSkin)), packedLight, packedOverlay);
    }
 

@@ -7449,10 +7449,11 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
 * **0.5.5 与移植版在这条路径上的每帧工作也基本一样** ✓：`getModifiedGun` 的 `WeakHashMap` 缓存
   **0.5.5 就有** ✓（不是移植加的 ✓）；"GUI 里不画玩家手臂"的 `currentDisplayContext != GUI` 守卫
   **0.5.5 也有** ✓（第 315 行 ✓）。
-* ⇒ 所以**不能说**"是移植的某个改动修好了它" ✗。**最可能的解释是环境差异** ✓：EMI 会在物品列表里
-  **把物品当动画物件渲染** ✓，而你这套 1.21.1 整合里按记录是 **JEI 19.27.0.340** ✓（EMI 不在联动清单里 ✓）
-  —— 也就是"1.20.1 那边装了 EMI、1.21.1 这边只有 JEI"这类差异 ✓，与代码无关 ✓。
-  （要**真**下结论必须实测 ✓，见 82.24.5 的探针提议 ✓ —— 本节**不**声称"掉帧已解决" ✓。
+* ⇒ 所以**不能说**"是移植的某个改动修好了它" ✗。**最初我猜是环境差异（以为这套整合只有 JEI）✗ —— 这条更正掉 ✓**：
+  查了玩家实例的 `mods/` ✓，**EMI 1.1.24 与 JEI 19.57 都装着** ✓（`emi-1.1.24+1.21.1+neoforge.jar` ✓、
+  `jei-1.21.1-neoforge-19.57.0.447.jar` ✓）⇒ "只装了 JEI" 不成立 ✗，**结论只能是"没有证据"** ✓，
+  要真下结论必须实测 ✓（见 82.24.6 的探针提议 ✓ —— 本节**不**声称"掉帧已解决" ✓）。
+  而 82.24.3 那部分是**客观存在**的每帧浪费 ✓（与"是谁修好的"无关 ✓），已修 ✓。
 
 ### 82.24.3 顺手查出的**真开销** ✓（本轮修掉 ✓）
 * `AnimatedGunRenderer.renderByItem` 在**GUI 分支之前**做了四件 GUI **根本不用**的事 ✓（**每个可见枪械、每一帧** ✓）：
@@ -7496,6 +7497,63 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
 * **要真正测出数字** ✓（等玩家发话 ✓）：可以在 `renderGuiItem` 与 `super.renderByItem` 前后各取一次
   `System.nanoTime()` ✓，每 100 tick 打一行"本窗口平均每帧枪械 GUI 渲染次数 / 总耗时 ms" ✓（临时探针 ✓，
   测完删除 ✓）。玩家只要打开一次**装了枪的 JEI/EMI 页面**并把那几行发回来 ✓，就能知道这条路径到底占多少帧时间 ✓。
+
+---
+
+## 82.25 装了 Better Combat / 铁魔法后：攻击完再切枪，手臂渲染错乱 ✓
+
+### 82.25.1 玩家报告 ✓
+* "scgun 本体就存在的 bug：装 bettercombat 后，用 BC 的攻击模块攻击后再切到枪械 ⇒ 玩家手臂渲染就会错乱 ✓
+  （铁魔法也可能存在这个 bug ✓）" ✓。
+* 现状核对 ✓：玩家实例里 **Better Combat 没装** ✗（我把 `mods/` 全列了一遍 ✓），但**铁魔法 `irons_spellbooks-1.21.1-3.16.3` 装了** ✓，
+  而且**两者共用的动画库 `player-animation-lib-2.0.4` 也装了** ✓ ⇒ 用铁魔法**现在就能复现/验证** ✓。
+
+### 82.25.2 机制（字节码证据 ✓）：动画库写的东西比"旋转"多得多 ✓
+* `player-animation-lib`（Player Animator）的 `AnimationApplier.updatePart(String, ModelPart)` ✓ 对模型部件写了四类东西 ✓：
+  ① `x/y/z`（位置 ✓）② `xRot/yRot/zRot`（旋转 ✓）③ **`xScale/yScale/zScale`（缩放 ✓）** ④ 经 bendylib 的
+  **逐 cuboid bend** ✓（`IBendHelper.bend(ModelPart, float side, float amount)` ✓）。全部来自 `javap -c` ✓。
+* 而**我们的枪械手臂渲染**（`AnimatedGunRenderer.renderRightArm/renderLeftArm` ✓）是直接对
+  **同一个共享 `PlayerModel`** 调 `ModelPart.render` ✓，当时只重置了 **位置 + 旋转** ✗ ⇒
+  **③ 缩放和 ④ bend 会原样泄漏到我们画的手臂上** ✓✓（拉伸/弯折 ✓ = "错乱" ✓）。
+* 为什么"攻击之后"才出现 ✓：动画库是给**共享模型**摆姿势 ✓，而**第一人称下本地玩家的模型不会重跑 `setupAnim`** ✗
+  ⇒ 上一次 BC/铁魔法攻击动画留下的姿势**没人清** ✓，一直留到我们下一次画手臂 ✓✓。
+* 根因一句话 ✓：**枪的手臂是"借用"了别的模组正在动画化的那个模型实例，却只擦了它写的四类状态里的两类** ✓。
+
+### 82.25.3 修法 ✓
+* 新增 `resetArmPose(ModelPart part, GeoBone bone)` ✓ = **`part.resetPose()`** ✓（恢复到烘焙姿势 ✓ ⇒ **含 scale = 1** ✓，
+  这正是 `setPos`/`setRotation` 覆盖不到的那一类 ✓）+ `setPos(pivot)` ✓ + **`PlayerAnimatorCompat.resetBend(part)`** ✓。
+  四个部件（右臂/右袖/左臂/左袖 ✓）**全部**走这条路 ✓。
+* **`bend(part, 0, 0)` 为什么等于"清除"** ✓：`BendHelper.bend` 的字节码里 `Math.abs(amount) < 1.0E-4` 走的是
+  **另一个分支** ✓（对 cuboid 调**无参** consumer = 还原 ✓）⇒ 传 0 就是还原 ✓（库里没有单独的 reset 方法 ✓）。
+* **兼容隔离** ✓（新 `client/compat/PlayerAnimatorCompat` ✓）：先查 mod id `playeranimator` ✓（`ModList.get().isLoaded` ✓）；
+  反射**只解析一次并缓存** `INSTANCE`/`Method` ✓（这段代码**每帧每条手臂**都会跑 ✓，绝不能每帧 `Class.forName` ✗）；
+  失败只记**一次**日志并置 `unusable` ✓（不再重试、不再刷屏 ✓）；**渲染器里不出现任何 `dev.kosmx` 类型** ✓
+  —— 否则没装动画库的客户端会直接崩 ✗（§82.10 的教训 ✓）。
+* **没有动第三人称** ✓：那里手臂由原版实体渲染器画 ✓，动画库摆的姿势**本来就该生效** ✓。
+
+### 82.25.4 新增审计 `tools/audit_arm_render_reset.py`（第 36 个 ✓）
+* 三条规则 ✓：① 四个被画的部件（含袖子 ✓）**必须**在 `render` 之前经过 `resetArmPose` ✓；
+  ② `resetArmPose` **必须**同时含 `resetPose()` ✓、`setPos(` ✓、`PlayerAnimatorCompat.resetBend(` ✓
+  （少任何一个都会漏掉一类状态 ✓）；③ 兼容类**必须**查 mod id ✓、反射 `Method` **必须**是静态缓存字段 ✓、
+  且渲染器里**不得**出现 `dev.kosmx` ✓。
+* **反向验证 6/6 全部被抓 ✓**。其中一条**第一次是漏报** ✗：对照把 `resetBend` 里的 `!isLoaded()` 去掉 ✓，
+  但审计当时允许用 `unusable` **替代** mod 检查 ✗ ⇒ **审计自己的规则写松了** ✓ ⇒ 收紧为"必须出现 `isLoaded()`" ✓。
+  **教训：反向验证不只是验代码，也在验审计规则本身** ✓。
+* `verify_installed_jar` **228/228** ✓（新增 2 条 ✓：`AnimatedGunRenderer` 里有 `resetArmPose` ✓、
+  `PlayerAnimatorCompat` 里有 `dev.kosmx...IBendHelper`（证明隔离真的打进了 jar ✓）。
+
+### 82.25.5 验收与**未实测** ✓
+* **36 个审计全 0** ✓（新增 `audit_arm_render_reset.py` ✓）、`javac` 0 错误 ✓（1010 文件 ✓）、`build` ✓、
+  `verify_installed_jar` **228/228** ✓、已安装 ✓（探针脚本已删 ✓）。
+* **未实测** ✓（交给玩家 ✓）：① **铁魔法**施法（用会摆手臂的法术 ✓）后切换/拿出枪械 ⇒ 手臂应是**正常**姿势 ✓
+  （现在就能测 ✓ 两个前置都在 ✓）；② 装 BC 后攻击再切枪 ✓；③ 顺带看**没装任何动画模组**时手臂是否与以前完全一样 ✓
+  （应当完全一样 ✓：`resetPose()` 在无动画时得到的就是烘焙姿势 ✓）。
+* **如果还是不对** ✓（下一步的抓手 ✓，我暂时不猜着改 ✗）：动画库对第一人称还有一条**独立的**通路 ——
+  `FirstPersonMode`（`NONE`/`VANILLA`/`THIRD_PERSON_MODEL`/`DISABLED` ✓）配 `firstPerson.ItemInHandRendererMixin` ✓：
+  它会在动画期间**取消原版手部渲染**并/或**用第三人称模型画整个人** ✓（BC 的挥砍就是这么做的 ✓）。
+  也就是说"动画**播放期间**枪可能整把不见 / 手臂重叠"是**另一条**通路 ✗，需要用
+  `setFirstPersonMode(DISABLED)` 这类 API 级处理 ✓ —— 等你确认现象属于哪一种再动 ✓。
+
 
 
 
