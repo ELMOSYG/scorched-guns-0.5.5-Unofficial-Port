@@ -847,10 +847,10 @@ public class Config {
             .defineInRange("headshotSoundVolume", 1.2, 0.0, 2.0);
          this.playConfirmWhenHeadshot = builder.comment(
                "If true, a second, short confirmation sound is layered over the headshot sound so a headshot is unmistakable. "
-                     + "The gun's own scguns:item.ping.ping is deliberately not used here: that asset is a reload sound taken from another mod")
+                     + "scguns:hit.hitmarker is the gun's own 0.106 s hit confirmation. The item.ping.ping asset is deliberately not used: that one is a reload sound taken from another mod")
             .define("playConfirmWhenHeadshot", true);
          this.headshotConfirmSound = builder.comment("The confirmation layered over a headshot")
-            .define("headshotConfirmSound", "minecraft:entity.experience_orb.pickup");
+            .define("headshotConfirmSound", "scguns:hit.hitmarker");
          this.headshotConfirmVolume = builder.comment("Volume of that confirmation")
             .defineInRange("headshotConfirmVolume", 1.0, 0.0, 2.0);
          this.playSoundWhenCritical = builder.comment("If true, a sound will play when you successfully hit a critical on a entity with a gun")

@@ -243,6 +243,13 @@
       }
     ]
   },
+  "hit.hitmarker": {
+    "sounds": [
+      {
+        "name": "scguns:hit/hitmarker"
+      }
+    ]
+  },
   "item.wither.wither": {
     "subtitle": "subtitle.scguns.wither",
     "sounds": [

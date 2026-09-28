@@ -1080,3 +1080,21 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 **门禁**：37 个审计全 0 / `verify_installed_jar` **232/232**（新增 3 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。注意本次改了 `Config`，新增键会写进配置文件（旧配置自动补默认）。
 **未实测（交给玩家）**：① 打普通生物应该有声音了；② 爆头"闷响+确认音"与暴击能听出区别；③ 霰弹枪一枪只响一次；④ 远近一样响；⑤ 音量不合口味改 `*Volume`（0 即关闭）。
 **顺带发现（未动，等发话）**：HUD 已有 4 张标记贴图，其中 `special_crit_hit_marker` **完全没用过**，而 `playHitMarker(critical || headshot)` 只传一个布尔 ⇒ 爆头与暴击画同一标记。可做（不需新素材）：用上那张贴图给暴击/爆头专属标记，或给每次命中都闪细标记。
+
+## §82.28 玩家提供的 `Hitmarker.ogg` 已接入（作为 §82.27 的爆头确认音）
+
+**素材核对**：`E:\音效素材\Hitmarker.ogg`（5451 字节）已是 Ogg Vorbis —— Minecraft 唯一接受的格式，无需转码。
+脚本解析容器与识别头（非按扩展名猜）：`OggS` ✓、Vorbis id 头 ✓、**单声道** ✓、**48 kHz** ✓、**0.106 s** ✓ ⇒ 长度正适合做命中提示（长了会在连发时糊，与 per-tick 去重同理）。
+与 §82.27 那个借来的 `item.ping.ping`（亿宏的换弹音）不同，这个可以用。
+
+**接入**：资源 `assets/scguns/sounds/hit/hitmarker.ogg`；`sounds.json` 条目 `hit.hitmarker`（**故意不写 subtitle**——它叠在自带字幕的原版命中音之上，连发时刷字幕会淹没字幕列表）；
+`ModSounds.HITMARKER = register("hit.hitmarker")`；`Config.headshotConfirmSound` 默认 `scguns:hit.hitmarker`，代码降级回落也改为自家音效（配置写错不会变无声）。
+默认只在爆头时作第二层响；**想每次命中都响**把 `impactSound` 改成 `scguns:hit.hitmarker` 即可（不改代码）。
+
+**审计**：`audit_hit_feedback.py` 新增更通用的硬规则——爆头确认音默认值**必须真的存在**：`minecraft:` 视为原版；`scguns:` 必须在 `sounds.json` 有条目且其 `.ogg` 在磁盘上；其它命名空间直接报错（正好覆盖"拿别人素材当默认值"）。
+反向验证 **12/12**（新增 4 条：指向不存在的音、其它命名空间、sounds.json 条目被删、**真把 .ogg 移走**再还原）。
+
+**门禁**：37 个审计全 0 / `verify_installed_jar` **236/236**（新增 4 条：文件在 jar 里、sounds.json 指向它、事件已注册、键名一致）/ `javac` 0 / `build` ✓ / 已安装 ✓。
+（过程中我自己把 check 的路径写错成 jar 里不存在的 `sounds.json` ⇒ 那条 FAIL 被抓，改成 `assets/scguns/sounds.json`。）
+**未实测（交给玩家）**：① 爆头"闷响 + hitmarker"与暴击能分；② 连发/霰弹枪不糊；③ 想让每次命中都响改 `impactSound`；④ 音量 `headshotConfirmVolume`/`impactSoundVolume`（0=关）。
+**素材署名提醒**：我无法核实该文件来源与许可，若来自别处建议加注明（0.5.5 已经有一个借来的音效了）。

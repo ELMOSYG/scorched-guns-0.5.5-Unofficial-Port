@@ -7678,6 +7678,52 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   ⇒ 可做（都**不需要新素材** ✓）：① 用上那张没用的 `special_crit_hit_marker` ✓ 让暴击/爆头有专属标记 ✓；
   ② 或给**每次命中**都闪一下细标记 ✓。这两条是**视觉**反馈 ✓，与本次音效分开 ✓，要就说一声 ✓。
 
+---
+
+## 82.28 玩家提供的 `Hitmarker.ogg` 接入 ✓（§82.27 的爆头确认音）
+
+### 82.28.1 素材可用性核对 ✓
+* 玩家给的目录里只有**一个**文件 ✓：`E:\音效素材\Hitmarker.ogg` ✓（5451 字节 ✓）——
+  **已经是 `.ogg`** ✓，而 Ogg Vorbis 正是 Minecraft **唯一**接受的格式 ✓ ⇒ **不需要转码** ✓、可以直接用 ✓。
+* 用脚本解析了容器与识别头（**不是**靠扩展名猜的 ✓）✓：
+  `OggS` magic ✓、Vorbis identification header ✓、**单声道** ✓、**48000 Hz** ✓、**时长 0.106 秒** ✓。
+  ⇒ 作为"命中提示"长度**正合适** ✓（提示音必须短 ✓ —— 长了在连发时前后叠在一起就糊了 ✗，
+  这也是 §82.27 里加 per-tick 去重的同一个理由 ✓）。
+* 与 §82.27 那个 `scguns:item.ping.ping` 的区别 ✓：那个是**亿宏的换弹音效**（借来的素材 ✗）⇒ 继续不用 ✓；
+  **本次这个**是玩家提供的素材 ✓ ⇒ 正式作为 mod 自带音效接入 ✓。
+
+### 82.28.2 接入方式 ✓
+* 资源 ✓：`assets/scguns/sounds/hit/hitmarker.ogg` ✓。
+* `sounds.json` 新增条目 `hit.hitmarker` ✓ —— **故意不写 subtitle** ✓：它叠在原版命中音之上 ✓，
+  而那些原版音**自带字幕** ✓；每次命中再刷一条字幕会在连发时**淹没字幕列表** ✗。
+* `ModSounds.HITMARKER = register("hit.hitmarker")` ✓（位置紧挨 `PING` ✓，附注释说明它是命中确认 ✓）。
+* `Config` ✓：`headshotConfirmSound` 默认值 `minecraft:entity.experience_orb.pickup` → **`scguns:hit.hitmarker`** ✓；
+  代码里的**降级回落**也改成 `ModSounds.HITMARKER` ✓（配置里写错 id 时回落到自家音效 ✓，不会变成无声 ✓）。
+* **用法** ✓：默认只在**爆头**时作为第二层响 ✓（第一层仍是 `entity.arrow.hit_player` 的"闷响" ✓）
+  ⇒ "打中"与"打头"一耳朵能分 ✓。**若想每次命中都响** ✓：把 `impactSound` 改成 `scguns:hit.hitmarker` 即可 ✓
+  —— **不用改代码** ✓（这就是 §82.27 把音效 id 做成 config 的意义 ✓）。
+
+### 82.28.3 审计 ✓：给"默认值必须真的存在"加一条硬规则 ✓
+* `tools/audit_hit_feedback.py` 新增规则 ✓（比之前那条"不许用借来的 ping"更通用 ✓）：
+  爆头确认音的**默认值必须真的存在** ✓ —— `minecraft:` 前缀视为原版可用 ✓；
+  `scguns:` 前缀**必须**在 `sounds.json` 里有条目 ✓ 且该条目指向的 `.ogg`**必须真的在磁盘上** ✓；
+  **其它命名空间直接报错** ✓。⇒ 这条规则**正好覆盖"拿别人的素材当默认值"**这类错误 ✓。
+* **反向验证 12/12 全部被抓 ✓**（本次新增 4 条 ✓）：默认值指向不存在的音 ✓、来自其它命名空间 ✓、
+  `sounds.json` 条目被删 ✓、`.ogg` 文件被移走 ✓（这条对照是**真的把文件移走**再移回来 ✓，并核对还原后文件仍在 ✓）。
+* `verify_installed_jar` **236/236** ✓（新增 4 条 ✓：`assets/scguns/sounds/hit/hitmarker.ogg` 在 jar 里 ✓、
+  `assets/scguns/sounds.json` 指向它 ✓、`ModSounds` 里注册了 `hit.hitmarker` ✓、键名一致 ✓）。
+  过程中**我自己写错了一次路径** ✗（写成了 jar 里不存在的 `sounds.json` ⇒ 那条 check FAIL ✓）⇒ 改成
+  `assets/scguns/sounds.json` ✓。**门禁会抓到我自己的错** ✓，这也说明反向/存在性检查值得写 ✓。
+
+### 82.28.4 验收与**未实测** ✓
+* **37 个审计全 0** ✓、`javac` 0 错误 ✓（1009 文件 ✓）、`build` ✓、`verify_installed_jar` **236/236** ✓、已安装 ✓。
+* **未实测** ✓（交给玩家 ✓）：① 爆头应是"闷响 + 这个 hitmarker" ✓，与暴击**能分** ✓；
+  ② 连发/霰弹枪时不会糊 ✓（每 tick 每类一个 ✓）；③ 想让**每次命中**都响 ⇒ `impactSound` 改 `scguns:hit.hitmarker` ✓；
+  ④ 音量不合口味改 `headshotConfirmVolume` / `impactSoundVolume` ✓（0 = 关闭 ✓）。
+* **素材来源与署名** ✓（提醒 ✓）：我**无法**核实这个文件本身的来源与许可 ✓ —— 如果它来自别处，
+  建议在 mod 里加一条注明 ✓。0.5.5 已经有一个**借来的**音效（那个 ping ✗），这类事容易越积越多 ✓。
+
+
 
 
 

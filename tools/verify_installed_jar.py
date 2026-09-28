@@ -1195,6 +1195,21 @@ def main():
             zf, "top/ribs/scguns/client/network/ClientPlayHandler.class", b"lastImpactSoundTick",
             "hit sounds are rate limited to one per category per tick"))
 
+        # 82.28. The headshot confirmation is the mod's own 0.106 s hitmarker, so the sound file, its
+        # sounds.json entry and the registered event all have to be in the jar - a missing asset would make the
+        # config's own default silently fall back to a built-in sound.
+        checks.append((
+            "the hitmarker sound file is packaged",
+            "assets/scguns/sounds/hit/hitmarker.ogg" in zf.namelist()))
+        checks.append(_check_resource_contains(
+            zf, "assets/scguns/sounds.json", b"scguns:hit/hitmarker",
+            "sounds.json points at that file"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/init/ModSounds.class", b"hit.hitmarker",
+            "the hitmarker sound event is registered"))
+        checks.append(_check_resource_contains(
+            zf, "assets/scguns/sounds.json", b"hit.hitmarker", "the sound event and its sounds.json entry agree"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

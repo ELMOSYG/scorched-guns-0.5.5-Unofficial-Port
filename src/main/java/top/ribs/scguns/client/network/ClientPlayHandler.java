@@ -56,6 +56,7 @@ import top.ribs.scguns.init.ModSyncedDataKeys;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.item.animated.AnimatedGunItem;
 import top.ribs.scguns.item.animated.ExoSuitItem;
+import top.ribs.scguns.init.ModSounds;
 import top.ribs.scguns.network.message.S2CMessageBeamPenetration;
 import top.ribs.scguns.network.message.S2CMessageBeamUpdate;
 import top.ribs.scguns.network.message.S2CMessageBlood;
@@ -799,7 +800,7 @@ public class ClientPlayHandler {
          }
 
          if ((Boolean)sounds.playConfirmWhenHeadshot.get()) {
-            playHitSound(mc, world, sounds.headshotConfirmSound.get(), sounds.headshotConfirmVolume.get().floatValue(), SoundEvents.EXPERIENCE_ORB_PICKUP);
+            playHitSound(mc, world, sounds.headshotConfirmSound.get(), sounds.headshotConfirmVolume.get().floatValue(), ModSounds.HITMARKER.get());
          }
       } else if (critical) {
          if (tick == lastCriticalSoundTick) {

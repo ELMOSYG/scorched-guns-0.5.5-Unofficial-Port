@@ -31,6 +31,9 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "src", "main", "java", "top", "ribs", "scguns")
 HANDLER = os.path.join(SRC, "client", "network", "ClientPlayHandler.java")
 CONFIG = os.path.join(SRC, "Config.java")
+ASSETS = os.path.join(ROOT, "src", "main", "resources", "assets", "scguns")
+SOUNDS_JSON = "sounds.json"
+SOUNDS_DIR = os.path.join(ASSETS, "sounds")
 
 CATEGORIES = ("Impact", "Critical", "Headshot")
 VOLUME_KEYS = ("impactSoundVolume", "criticalSoundVolume", "headshotSoundVolume", "headshotConfirmVolume")
@@ -117,6 +120,33 @@ def main() -> int:
     if confirm_default and confirm_default.group(1) == BORROWED_ASSET:
         problems.append("the borrowed %s asset is the headshot confirmation default" % BORROWED_ASSET)
 
+    # ... and whatever that default is, it has to exist: a sound this mod ships must have both a sounds.json
+    # entry and the .ogg behind it, and anything else has to be a vanilla sound. A default that resolves to
+    # nothing would be silently replaced by the fallback at runtime, i.e. the configured feedback would simply
+    # not be what the config says (this is the rule that would have caught offering a borrowed asset).
+    shipped = None
+    if confirm_default:
+        value = confirm_default.group(1)
+        if not value.startswith("minecraft:"):
+            namespace, _, path = value.partition(":")
+            if namespace != "scguns":
+                problems.append("the headshot confirmation default %s belongs to another namespace" % value)
+            else:
+                sounds_json = open(os.path.join(ASSETS, SOUNDS_JSON), encoding="utf-8", errors="replace").read()
+                entry = re.compile(r'"%s"\s*:\s*\{(.*?)\n  \}' % re.escape(path), re.S).search(sounds_json)
+                if not entry:
+                    problems.append('nothing in sounds.json defines "%s", so the configured confirmation would '
+                                    "fall back to a built-in sound instead" % path)
+                else:
+                    name = re.search(r'"name"\s*:\s*"scguns:([^"]+)"', entry.group(1))
+                    if not name:
+                        problems.append('the sounds.json entry for "%s" names no file' % path)
+                    else:
+                        shipped = os.path.join(SOUNDS_DIR, name.group(1) + ".ogg")
+                        if not os.path.isfile(shipped):
+                            problems.append("%s is referenced by sounds.json but the file is not there"
+                                            % os.path.relpath(shipped, ROOT))
+
     # 3. per-category, per-tick rate limiting
     for category in CATEGORIES:
         field = "last%sSoundTick" % category
@@ -155,6 +185,9 @@ def main() -> int:
                       for c in CATEGORIES))
     print("  playback                              %s"
           % ("listener-side forUI" if helper and "forUI(" in helper else "WRONG"))
+    print("  headshot confirmation                 %s"
+          % ("shipped asset" if shipped and os.path.isfile(shipped) else
+             (confirm_default.group(1) if confirm_default else "MISSING")))
     print("  borrowed ping asset                   %s"
           % ("not used as a value" if not (confirm_default and confirm_default.group(1) == BORROWED_ASSET)
              and BORROWED_ASSET not in handler else "USED"))

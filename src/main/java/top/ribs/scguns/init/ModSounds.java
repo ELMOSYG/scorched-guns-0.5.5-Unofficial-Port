@@ -31,6 +31,12 @@ public class ModSounds {
    public static final DeferredHolder<SoundEvent, SoundEvent> BLACKPOWDER_FIRE = register("item.blackpowder.fire");
    public static final DeferredHolder<SoundEvent, SoundEvent> RAIL_FIRE = register("item.rail.fire");
    public static final DeferredHolder<SoundEvent, SoundEvent> PING = register("item.ping.ping");
+   /**
+    * The hit confirmation a gun plays on a headshot (HANDOFF section 82.28). Deliberately carries no subtitle:
+    * it is layered over the vanilla impact sounds, which already have their own, and one more subtitle per hit
+    * would flood the subtitle list during rapid fire.
+    */
+   public static final DeferredHolder<SoundEvent, SoundEvent> HITMARKER = register("hit.hitmarker");
    public static final DeferredHolder<SoundEvent, SoundEvent> JETPACK = register("item.jetpack.fire");
    public static final DeferredHolder<SoundEvent, SoundEvent> JETPACK_LOOP = register("item.jetpack.loop");
    public static final DeferredHolder<SoundEvent, SoundEvent> CARABINE_FIRE = register("item.carabine.fire");
