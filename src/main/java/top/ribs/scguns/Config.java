@@ -825,8 +825,16 @@ public class Config {
    public static class Sounds {
       public final BooleanValue playSoundWhenHeadshot;
       public final ConfigValue<String> headshotSound;
+      public final DoubleValue headshotSoundVolume;
+      public final BooleanValue playConfirmWhenHeadshot;
+      public final ConfigValue<String> headshotConfirmSound;
+      public final DoubleValue headshotConfirmVolume;
       public final BooleanValue playSoundWhenCritical;
       public final ConfigValue<String> criticalSound;
+      public final DoubleValue criticalSoundVolume;
+      public final BooleanValue playSoundWhenImpact;
+      public final ConfigValue<String> impactSound;
+      public final DoubleValue impactSoundVolume;
       public final DoubleValue impactSoundDistance;
 
       public Sounds(Builder builder) {
@@ -834,10 +842,29 @@ public class Config {
          builder.comment("Control sounds triggered by guns").push("sounds");
          this.playSoundWhenHeadshot = builder.comment("If true, a sound will play when you successfully hit a headshot on a entity with a gun")
             .define("playSoundWhenHeadshot", true);
-         this.headshotSound = builder.comment("The sound to play when a headshot occurs").define("headshotSound", "minecraft:entity.player.attack.knockback");
+         this.headshotSound = builder.comment("The sound to play when a headshot occurs").define("headshotSound", "minecraft:entity.arrow.hit_player");
+         this.headshotSoundVolume = builder.comment("Volume of the headshot sound. Above 1.0 is louder than vanilla")
+            .defineInRange("headshotSoundVolume", 1.2, 0.0, 2.0);
+         this.playConfirmWhenHeadshot = builder.comment(
+               "If true, a second, short confirmation sound is layered over the headshot sound so a headshot is unmistakable. "
+                     + "The gun's own scguns:item.ping.ping is deliberately not used here: that asset is a reload sound taken from another mod")
+            .define("playConfirmWhenHeadshot", true);
+         this.headshotConfirmSound = builder.comment("The confirmation layered over a headshot")
+            .define("headshotConfirmSound", "minecraft:entity.experience_orb.pickup");
+         this.headshotConfirmVolume = builder.comment("Volume of that confirmation")
+            .defineInRange("headshotConfirmVolume", 1.0, 0.0, 2.0);
          this.playSoundWhenCritical = builder.comment("If true, a sound will play when you successfully hit a critical on a entity with a gun")
             .define("playSoundWhenCritical", true);
          this.criticalSound = builder.comment("The sound to play when a critical occurs").define("criticalSound", "minecraft:entity.player.attack.crit");
+         this.criticalSoundVolume = builder.comment("Volume of the critical sound")
+            .defineInRange("criticalSoundVolume", 1.0, 0.0, 2.0);
+         this.playSoundWhenImpact = builder.comment(
+               "If true, every ordinary hit on a mob plays a sound. 0.5.5 played nothing at all for a plain body hit, so the only feedback a shot gave was the hit marker")
+            .define("playSoundWhenImpact", true);
+         this.impactSound = builder.comment("The sound to play when a bullet hits a mob without being a headshot or a critical")
+            .define("impactSound", "minecraft:entity.arrow.hit_player");
+         this.impactSoundVolume = builder.comment("Volume of that impact sound")
+            .defineInRange("impactSoundVolume", 1.0, 0.0, 2.0);
          this.impactSoundDistance = builder.comment("The maximum distance impact sounds from bullet can be heard")
             .defineInRange("impactSoundDistance", 32.0, 0.0, 32.0);
          builder.pop();

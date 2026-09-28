@@ -1183,6 +1183,18 @@ def main():
             b"getEntityRenderDispatcher" not in zf.read(
                 "top/ribs/scguns/client/render/gun/animated/AnimatedGunRenderer.class")))
 
+        # 82.27. Hit feedback: 0.5.5 was silent for an ordinary body hit and rate limited nothing, so a
+        # shotgun burst stacked one UI sound per pellet.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$Sounds.class", b"playSoundWhenImpact",
+            "an ordinary mob hit has a sound option of its own"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$Sounds.class", b"headshotConfirmSound",
+            "a headshot is an impact plus a confirmation layer"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/network/ClientPlayHandler.class", b"lastImpactSoundTick",
+            "hit sounds are rate limited to one per category per tick"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

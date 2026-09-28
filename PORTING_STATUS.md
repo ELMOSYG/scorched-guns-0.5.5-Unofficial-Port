@@ -1060,3 +1060,23 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 **门禁**：36 个审计全 0 / `verify_installed_jar` **229/229**（新增 2 条，其中一条是**反向检查**：class 里不得有 `getEntityRenderDispatcher`）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：① 装该资源包（+EMF）后切枪手臂应正常；② BC 攻击后切枪；③ 铁魔法施法后切枪；④ **瘦皮肤手臂应仍细**；⑤ 无动画模组/资源包时与以前完全一致。
 **仍未动的另一条通路**：动画库/资源包可能在动画**播放期间**自己画一套第一人称模型（`FirstPersonMode` 等）⇒ 可能出现两套手臂/枪不见，这是独立问题，需 API 级处理，等确认现象再动。
+
+## §82.27 命中音效 / 爆头音效反馈不够强（已改）
+
+**现状（源码证据，`ClientPlayHandler.handleProjectileHitEntity`）**：① **普通命中生物完全没有声音**——`getHitSound(...)` 直接 `return null`，只有命中标记闪一下，而这正是最常发生的命中；
+② 爆头音是 `minecraft:entity.player.attack.knockback`（挥空的"呼"声，不像打中）；③ 暴击音 `attack.crit` 尚可；④ 音量写死 1.0、无任何可调项。
+另：`scguns:item.ping.ping` asset/sounds.json/`ModSounds.PING` 俱全但**全代码从未播放过**，看着像命中提示音——**玩家指出那是亿宏的换弹音效** ⇒ 不能用（借来素材 + 听感不对），已改为不使用。
+
+**修法（全部可调，默认更强）**：普通命中生物 → `minecraft:entity.arrow.hit_player` 音量 1.0（`playSoundWhenImpact`/`impactSound`/`impactSoundVolume`）；
+命中玩家仍 `PLAYER_HURT`（那是被打者的声音）音量走 `impactSoundVolume`；暴击不变 + `criticalSoundVolume`；
+爆头 → `entity.arrow.hit_player` 1.2 **+ 叠一层** `minecraft:entity.experience_orb.pickup` 1.0（`playConfirmWhenHeadshot`/`headshotConfirmSound`/`headshotConfirmVolume`），一耳朵区分"打中"与"打头"。
+全部用原版音效，不新增 asset。播放仍走 `SimpleSoundInstance.forUI`（**听者侧、不按到目标的距离衰减** ⇒ 40 格外与贴脸一样响）。
+新增**每 tick 每类去重**（`last*SoundTick`）：霰弹枪每颗弹丸一个命中包，原来一枪最多 26 个 UI 音糊成噪声，现在一枪一个（连发不受影响）。
+降级保护：音效 id 打错时回落内置原版音（不会变无声），音量 0 视为关闭。
+
+**新增审计 `tools/audit_hit_feedback.py`**（第 37 个）：每个命中类别必须有声音；爆头必须两层且第二层必须有自己的开关；每类必须有 per-tick 去重字段与比较；必须走 `forUI` 且音量来自 config，`playHitFeedback` 不得用位置性播放；借来的 `ping` 不得作为爆头确认音默认值。
+反向验证 **9/9** 被抓——其中**两次是审计规则自己写松了**（爆头只查音效名 ⇒ 开关改 false 也蒙混；config 只查字段名 ⇒ `define` 键改名发现不了），一次**误报**（`ping` id 写在我的 config 注释字符串里，而规则查整份文本）⇒ 改为精确检查定义值。**反向验证既验代码也验规则。**
+
+**门禁**：37 个审计全 0 / `verify_installed_jar` **232/232**（新增 3 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。注意本次改了 `Config`，新增键会写进配置文件（旧配置自动补默认）。
+**未实测（交给玩家）**：① 打普通生物应该有声音了；② 爆头"闷响+确认音"与暴击能听出区别；③ 霰弹枪一枪只响一次；④ 远近一样响；⑤ 音量不合口味改 `*Volume`（0 即关闭）。
+**顺带发现（未动，等发话）**：HUD 已有 4 张标记贴图，其中 `special_crit_hit_marker` **完全没用过**，而 `playHitMarker(critical || headshot)` 只传一个布尔 ⇒ 爆头与暴击画同一标记。可做（不需新素材）：用上那张贴图给暴击/爆头专属标记，或给每次命中都闪细标记。

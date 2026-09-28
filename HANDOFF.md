@@ -7617,6 +7617,68 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   （PlayerAnimator 的 `FirstPersonMode` / EMF 的同类行为 ✓）⇒ 那时可能看到**两套手臂 / 枪不见** ✗ ——
   这是**独立**问题 ✓（不是"姿势泄漏" ✗），需要 API 级处理 ✓，等你确认现象再动 ✓。
 
+---
+
+## 82.27 命中音效 / 爆头音效反馈不够强 ✓
+
+### 82.27.1 玩家报告 ✓
+* "scgun 自带的命中音效和爆头音效反馈不够强" ✓。
+* 起手先看**现在到底响不响** ✓（全部来自源码 ✓，`ClientPlayHandler.handleProjectileHitEntity` ✓）：
+  ① **普通命中（打生物、非爆头非暴击）⇒ 完全没有声音** ✗✗ —— `getHitSound(...)` 直接 `return null` ✓，
+     只有命中标记闪一下 ✓（而这恰恰是**最常发生**的命中 ✓）；
+  ② **爆头音**是 `minecraft:entity.player.attack.knockback` ✗ —— 那是**挥空的"呼"声** ✓，听起来不像打中了 ✓；
+  ③ **暴击音**是 `minecraft:entity.player.attack.crit` ✓（这个还算清楚 ✓）；
+  ④ 音量写死 **1.0** ✗、没有任何可调项 ✓（只有 `playSoundWhen*` 开关与音效 id ✓）。
+* 另外发现 **`scguns:item.ping.ping`** ✓：asset 在 ✓、`sounds.json` 里有 ✓、`ModSounds.PING` 已注册 ✓，
+  但**全代码从未播放过** ✗（"看着像命中提示音" ✓ ⇒ 本来想拿来当爆头提示音 ✓）。
+  **玩家指出：那是亿宏的换弹音效** ✗ ⇒ **不能用** ✗（既是借来的素材 ✓、听起来也是"换弹"而不是"打中" ✓）✓。**改为不用它** ✓。
+
+### 82.27.2 修法 ✓（全部可调 ✓，默认值比原来强 ✓）
+| 类别 | 0.5.5 | 现在（默认） |
+| --- | --- | --- |
+| 普通命中生物 | **无声** ✗ | `minecraft:entity.arrow.hit_player` ✓，音量 1.0 ✓（`playSoundWhenImpact` ✓ / `impactSound` ✓ / `impactSoundVolume` ✓） |
+| 命中玩家 | `PLAYER_HURT` ✓ 固定 1.0 ✗ | 仍是 `PLAYER_HURT` ✓（那是**被打者**的声音 ✓ 不是命中提示 ✓），音量走 `impactSoundVolume` ✓ |
+| 暴击 | `attack.crit` ✓ 1.0 ✗ | 不变 ✓ + `criticalSoundVolume` ✓ |
+| 爆头 | `attack.knockback` ✗ 1.0 ✗ | **`entity.arrow.hit_player` 1.2** ✓ **+ 叠一层** `minecraft:entity.experience_orb.pickup` **1.0** ✓（`playConfirmWhenHeadshot` ✓ / `headshotConfirmSound` ✓ / `headshotConfirmVolume` ✓） |
+
+* **爆头为什么叠两层** ✓：一层"打实了"的闷响 ✓ + 一层短促的确认音 ✓ ⇒ 一耳朵就能区分"打中"和"打头" ✓
+  （正是玩家说的"反馈不够强" ✓）。`player.attack.knockback` 这种挥空声不再用于任何命中 ✓。
+* **全在原版音效里选** ✓：不新增 asset ✓、也不碰借来的 `ping` ✓（想换随时改 config 里的音效 id ✓）。
+* **播放方式** ✓：仍是 `SimpleSoundInstance.forUI` ✓ —— **在听者身上播** ✓、不按"到目标的距离"衰减 ✓
+  ⇒ 40 格外的命中与贴脸命中**一样响** ✓（这条对"反馈强度"很关键 ✓）。
+* **加了每 tick 每类去重** ✓（新增 `last*SoundTick` ✓）：**霰弹枪是"每颗弹丸一个命中包"** ✓ ⇒
+  原来一枪最多 26 个 UI 音同时播 ✗ = 糊成噪声 ✓；现在一枪**一个**音 ✓（连发不受影响 ✓ —— 那是不同 tick ✓）。
+* **降级保护** ✓：config 里音效 id 打错/不存在时回落到内置原版音 ✓（**不会变成无声** ✓）；
+  音量为 0 视为关闭 ✓（不再"静音播放" ✗）。
+
+### 82.27.3 新增审计 `tools/audit_hit_feedback.py`（第 37 个 ✓）
+* 四条规则 ✓：① **每个命中类别都必须有声音** ✓（普通命中不许再变回静音 ✓）；
+  ② 爆头**必须是两层** ✓ 且第二层**必须有自己的开关** ✓（只写个音效名不算 ✓ —— 分支被改掉也要能发现 ✓）；
+  ③ 每类**必须**有 per-tick 去重字段与比较 ✓；④ **必须**走 `forUI`（听者侧 ✓）且音量来自 `*Volume` config ✓，
+  且 `playHitFeedback` 里**不得**出现位置性的 `playLocalSound`/`playSound` ✓。
+  另加一条**素材规则** ✓：借来的 `scguns:item.ping.ping` **不得**被用作爆头确认音的默认值 ✓。
+* **反向验证 9/9 全部被抓 ✓**。过程中**两次是审计规则自己写松了** ✗✓：
+  ① 爆头那条只查"有没有提到音效名" ✗ ⇒ 把开关改成 `false` 也能蒙混过关 ✓ ⇒ 改成**必须出现开关** ✓；
+  ② config 那条查的是**字段名** ✗ ⇒ `define` 的键被改名（玩家就没这个旋钮了 ✗）它发现不了 ✓ ⇒
+  改成必须出现**带引号的键名** ✓。另有一次**误报** ✓：`ping` 那个 id 写在我的 config **注释字符串**里 ✗，
+  而规则查的是整份文件文本 ✓ ⇒ 改成精确检查 `headshotConfirmSound` 的**定义值** ✓（注释里可以说明"为什么不用它" ✓）。
+  **结论：反向验证既验代码也验规则，而规则自己也会有假阳性与假阴性** ✓。
+* `verify_installed_jar` **232/232** ✓（新增 3 条 ✓：`Config$Sounds` 里有 `playSoundWhenImpact` ✓、
+  `headshotConfirmSound` ✓，`ClientPlayHandler` 里有 `lastImpactSoundTick` ✓ —— 字段名会进 class 文件 ✓）。
+
+### 82.27.4 验收与**未实测** ✓
+* **37 个审计全 0** ✓、`javac` 0 错误 ✓（1009 文件 ✓）、`build` ✓、`verify_installed_jar` **232/232** ✓、
+  已安装 ✓（探针脚本已删 ✓）。**注意**：这次改了 `Config` ⇒ 新增的键会写进配置文件 ✓（旧配置自动补默认值 ✓）。
+* **未实测** ✓（交给玩家 ✓）：① 打普通生物**应该有声音了** ✓（0.5.5 是完全没有 ✓）；
+  ② 爆头应是"闷响 + 短促确认音" ✓，与暴击**能听出区别** ✓；③ 霰弹枪一枪**只响一次** ✓（不再糊 ✓）；
+  ④ 远距离命中与贴脸**一样响** ✓；⑤ 音量不合口味直接改 `*Volume` ✓（0 即关闭 ✓）。
+* **顺带发现的、还没动的东西** ✓（等玩家发话 ✓）：HUD 那边已经有 4 张标记贴图 ✓
+  （`hit_marker` ✓、`special_hit_marker` ✓、`special_hit_marker2` ✓、**`special_crit_hit_marker` 完全没被用过** ✗）✓，
+  而 `playHitMarker(critical || headshot)` 只传一个布尔 ✓ ⇒ 爆头与暴击**画的是同一个标记** ✓。
+  ⇒ 可做（都**不需要新素材** ✓）：① 用上那张没用的 `special_crit_hit_marker` ✓ 让暴击/爆头有专属标记 ✓；
+  ② 或给**每次命中**都闪一下细标记 ✓。这两条是**视觉**反馈 ✓，与本次音效分开 ✓，要就说一声 ✓。
+
+
 
 
 
