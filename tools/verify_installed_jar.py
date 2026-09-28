@@ -1129,6 +1129,25 @@ def main():
             zf, "top/ribs/scguns/client/handler/BulletTrailRenderingHandler.class",
             b"bulletTrailLengthMultiplier", "the drawn trail length goes through that multiplier"))
 
+        # 82.22. The bayonet charge is decided server side. Its client half has to travel through a synced
+        # data key - read off the server's static field it is always false on a dedicated server, so the
+        # charge animation never plays there (it looked fine in single player, where one JVM is both sides).
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/init/ModSyncedDataKeys.class", b"banzai",
+            "the bayonet charge state is a synced data key"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/ScorchedGuns.class", b"BANZAI",
+            "that key is actually registered, or nothing is ever sent"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"isBanzaiCharging",
+            "the client has a synced way to read the charge state"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/handler/GunRenderingHandler.class", b"isBanzaiCharging",
+            "the pose drives off the synced state, not the server's field"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/item/animated/AnimatedGunItem.class", b"isBanzaiCharging",
+            "the animation check drives off the synced state too"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

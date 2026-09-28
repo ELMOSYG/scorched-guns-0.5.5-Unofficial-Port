@@ -406,7 +406,7 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
          this.handleInspectState(animationController, stack);
       }
 
-      if (MeleeAttackHandler.isBanzaiActive()
+      if (MeleeAttackHandler.isBanzaiCharging(player)
          && (this.isAnimationPlaying(animationController, "inspect") || this.isAnimationPlaying(animationController, "carbine_inspect"))) {
          animationController.setAnimationSpeed(1.0);
          if (this.isInCarbineMode(stack)) {

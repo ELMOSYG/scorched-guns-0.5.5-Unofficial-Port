@@ -239,7 +239,7 @@ public class GunRenderingHandler {
       this.updateCustomMeleeAnimation();
       this.prevSprintToBanzaiProgress = this.sprintToBanzaiProgress;
       this.prevBanzaiImpactProgress = this.banzaiImpactProgress;
-      if (MeleeAttackHandler.isBanzaiActive()) {
+      if (MeleeAttackHandler.isBanzaiCharging(Minecraft.getInstance().player)) {
          this.banzaiProgress = Mth.clamp(this.banzaiProgress + 0.3F, 0.0F, 1.0F);
          this.sprintToBanzaiProgress = Mth.clamp(this.sprintToBanzaiProgress + 0.2F, 0.0F, 1.0F);
       } else {

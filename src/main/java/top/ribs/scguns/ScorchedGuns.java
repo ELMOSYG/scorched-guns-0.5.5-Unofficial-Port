@@ -282,6 +282,7 @@ public class ScorchedGuns {
             FrameworkAPI.registerSyncedDataKey(ModSyncedDataKeys.BURSTCOUNT);
             FrameworkAPI.registerSyncedDataKey(ModSyncedDataKeys.ONBURSTCOOLDOWN);
             FrameworkAPI.registerSyncedDataKey(ModSyncedDataKeys.MELEE);
+            FrameworkAPI.registerSyncedDataKey(ModSyncedDataKeys.BANZAI);
             ModCauldronInteraction.register();
             // Framework 0.13 removed registerLoginData; the gun registry is pushed
             // to each player when they join instead (see NetworkGunManager).

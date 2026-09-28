@@ -81,13 +81,28 @@ public class MeleeAttackHandler {
    private static final int BANZAI_DAMAGE_COOLDOWN_TICKS = 25;
    private static final double BANZAI_AOE_RADIUS = 1.5;
    private static ItemStack banzaiActiveItem = ItemStack.EMPTY;
+   /** Who is charging, so the state below can be synced to that player's client (HANDOFF section 82.22). */
+   private static ServerPlayer banzaiPlayer;
 
    public MeleeAttackHandler() {
       super();
    }
 
+   /**
+    * The server's own view of the charge. Not the client's - see {@link #isBanzaiCharging(Player)}.
+    */
    public static boolean isBanzaiActive() {
       return isBanzai;
+   }
+
+   /**
+    * Whether this player is charging with a bayonet, as the client knows it (HANDOFF section 82.22).
+    *
+    * <p>The animation lives on the client and the decision lives on the server, so it is carried by
+    * {@link ModSyncedDataKeys#BANZAI}. Reading the static field instead only ever worked in single player.</p>
+    */
+   public static boolean isBanzaiCharging(Player player) {
+      return player != null && Boolean.TRUE.equals(ModSyncedDataKeys.BANZAI.getValue(player));
    }
 
    public static void startBanzai(ServerPlayer player) {
@@ -98,11 +113,18 @@ public class MeleeAttackHandler {
          } else {
             isBanzai = true;
             banzaiActiveItem = heldItem.copy();
+            banzaiPlayer = player;
+            ModSyncedDataKeys.BANZAI.setValue(player, true);
          }
       }
    }
 
    public static void stopBanzai() {
+      if (banzaiPlayer != null) {
+         ModSyncedDataKeys.BANZAI.setValue(banzaiPlayer, false);
+         banzaiPlayer = null;
+      }
+
       isBanzai = false;
       banzaiActiveItem = ItemStack.EMPTY;
    }

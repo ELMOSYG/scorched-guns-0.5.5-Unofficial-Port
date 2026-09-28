@@ -7292,3 +7292,56 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
 * **未实测** ✓（交给玩家 ✓）：① 石磨把**硫磺碎块**磨成 3 硫磺粉 ✓（+5% 额外粉 ✓ +5% 黄染料 ✓、时长 100 ✓）；
   ② 搅拌机的"超热"配方现在**真的要求超热** ✓；③ Create Addition 的充能配方可用 ✓；
   ④ 不装 Create 时那两条烧炼配方仍然存在 ✓。
+
+---
+
+## 82.22 刺刀冲锋动画不播放：客户端读了**只有服务端会写**的静态字段 ✓
+
+### 82.22.1 复现与现象 ✓
+* 玩家（**在服务器上玩** ✓）："刺刀冲锋的动画没有正常播放" ✓。
+* 关键词是**动画**（不是"冲不动" ✗）：`bayonet`/`banzai` 的**位移**是在服务端判定并执行的 ✓（`C2SMessageMeleeAttack` ✓），
+  所以人在冲 ✓ —— 只有**客户端那一半**（姿势/进度）没动 ✗。
+
+### 82.22.2 根因：静态字段跨不过线 ✓
+* 冲锋状态由**服务端**决定 ✓：`MeleeAttackHandler.startBanzai(...)` ✓（入口是 `C2SMessageMeleeAttack` ✓），
+  结果写进 **`static` 的 `MeleeAttackHandler.isBanzai`** ✗。
+* 而客户端**直接读这个静态字段** ✗：
+  * `client/handler/GunRenderingHandler.updateMelee()` ✓ —— 用 `isBanzaiActive()` 推 `banzaiProgress` / `sprintToBanzaiProgress` ✓
+    ⇒ 进而决定 `applyBanzaiTransforms` ✓；
+  * `item/animated/AnimatedGunItem` ✓（约 409 行 ✓）—— 决定播不播冲锋动画 ✓。
+* **一个 JVM 里的静态字段不是"同步过的状态"** ✗：单人存档时客户端和集成服务端**同一个 JVM** ✓ ⇒ 看起来一切正常 ✓；
+  在服务器上 ✗ 客户端那份**永远是 false** ✓ ⇒ 进度恒为 0 ✓ ⇒ **冲锋动画一次都不播** ✓✓。
+  （和 §82.x 那族"静态字段写服务端、客户端看不见"是同一个坑 ✓；本次是第二个实例 ✓。）
+* **排除法** ✓：0.5.5 原始资源里**根本没有** melee/bayonet 的 GeckoLib 动画 ✗（只有 3 把枪的模型带 `melee` ✓、
+  2 把带 `bayonet` ✓，且 `usesCustomMeleeAnimation: true` 恰好只有那 3 把 ✓）⇒ 普通枪走的是**姿势变换**这条路 ✓，
+  所以"没有动画资源"✗ 不是原因 ✓；`ClientMeleeAttackHandler`/`MeleeAttackHandler` 相对 0.5.5 的 diff 里
+  **也没有丢调用** ✗ ⇒ 不是移植时删掉的 ✓，是**一直如此、只在服务器上暴露** ✓。
+
+### 82.22.3 修法：走本 mod 已有的同步数据键 ✓
+* `ModSyncedDataKeys` 新增 **`BANZAI`** ✓（`scguns:banzai` ✓、Boolean ✓、PLAYER ✓、`.resetOnDeath()` ✓），
+  并在 `ScorchedGuns` 里 **`FrameworkAPI.registerSyncedDataKey(...)`** ✓（和 `AIMING`/`RELOADING`/`MELEE` 同一处 ✓）。
+* `MeleeAttackHandler` 新增 **`isBanzaiCharging(Player)`** ✓ = `Boolean.TRUE.equals(ModSyncedDataKeys.BANZAI.getValue(player))` ✓；
+  `startBanzai`/`stopBanzai` 里同步地写这个键 ✓（**服务端**写 ✓，Framework 负责发给客户端 ✓）。
+* 两个**客户端**读点改成 `isBanzaiCharging(...)` ✓（`GunRenderingHandler:242` ✓、`AnimatedGunItem:409` ✓）。
+* **保留**读 `isBanzaiActive()` 的三处 ✓（它们本来就是服务端调用方 ✓）：`network/message/C2SMessageMeleeAttack` ✓、
+  `event/GunEventBus` ✓（物品换掉时停冲 ✓）、以及 `MeleeAttackHandler` 自己 ✓。
+* 没有改动画本身 ✗（§82.17/§82.18 的持枪动画仍然按玩家要求**保持回退** ✓）——这次只修**状态怎么过线** ✓。
+
+### 82.22.4 新增审计 `tools/audit_synced_state.py`（第 33 个 ✓）
+* 这一族（"客户端读了只有服务端会写的状态" ✗）会复发 ✓，所以给它一个专门的审计 ✓，三条规则 ✓：
+  ① 除**服务端调用方白名单**（`C2SMessageMeleeAttack` ✓、`GunEventBus` ✓、`MeleeAttackHandler` 自身 ✓）之外，
+  **任何文件都不得**调用 `MeleeAttackHandler.isBanzaiActive()` ✓；
+  ② 客户端两个读点**必须**用 `isBanzaiCharging(` ✓（少了就退回"只有单人能看" ✗）；
+  ③ `ModSyncedDataKeys` **必须**定义 `BANZAI` ✓ 且 `ScorchedGuns` **必须**注册它 ✓（**注册漏了 ⇒ 值永远不发送 ⇒ 静静退回默认值** ✗，
+  这一条是最容易漏、最难从现象看出来的 ✓）。
+* **注释剥离用状态机** ✓（上一轮踩过：`/* ... */` 朴素正则会被注释里的 `.../*.json` 这种路径骗到、吞掉上百行真代码 ✗）；
+  本次第一版只剥 `//` ✗ ⇒ 被 `ModSyncedDataKeys` 的 javadoc（里面提到了 `isBanzaiActive()` ✓）**误报** ✓ ⇒ 改成状态机后归零 ✓。
+* **反向验证** ✓（三条各来一次 ✓）：把 `AnimatedGunItem` 改回 `isBanzaiActive()` ⇒ 报 2 条 ✓；
+  把键名改成 `banzaiX` ⇒ 报"没有 BANZAI 键" ✓；注释掉注册 ⇒ 报"没有注册" ✓；全部还原 ⇒ 0 ✓。
+
+### 82.22.5 验收与**未实测** ✓
+* **33 个审计全 0** ✓（新增 `audit_synced_state.py` ✓）、`javac` 0 错误 ✓（1009 文件 ✓）、`build` ✓、
+  `verify_installed_jar` **222/222** ✓（新增 5 条 ✓：键在 ✓、注册在 ✓、`isBanzaiCharging` 在 ✓、
+  两个客户端读点都在 ✓）、已安装 ✓。
+* **未实测** ✓（交给玩家 ✓）：在**服务器**上拿带刺刀的枪冲锋 ✓ —— 期望**能看到**冲锋姿势/动画 ✓
+  （单人存档本来就正常 ✓，所以请务必在服务器上验 ✓）。

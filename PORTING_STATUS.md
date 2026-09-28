@@ -945,3 +945,26 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 
 **门禁**：32 个审计全 0 / `verify_installed_jar` 217/217 / `javac` 0 / `build` ✓。
 **顺带发现（未改，等决定）**：`block.scguns.sulfur` 缺 lang 键（显示原始键）；`sulfur_chunk` 与 `sulfur_block` 中文同名易混。
+
+## §82.22 刺刀冲锋动画不播放：客户端读了只有服务端会写的静态字段（已修）
+
+**现象**：服务器上刺刀冲锋"动画没播放"（位移本身是服务端执行的，所以人在冲，只有客户端那一半不动）。
+
+**根因**：冲锋状态由服务端决定（`MeleeAttackHandler.startBanzai`，入口 `C2SMessageMeleeAttack`），写进 **`static` 的 `isBanzai`**；
+客户端的 `GunRenderingHandler.updateMelee()` 与 `AnimatedGunItem`（约 409 行）**直接读这个静态**。静态字段不是同步过的状态：
+单人时两边同一 JVM ⇒ 正常；服务器上客户端那份恒为 false ⇒ `banzaiProgress` 恒 0 ⇒ 冲锋动画一次都不播。
+排除法：0.5.5 原始资源里根本没有 melee/bayonet 的 GeckoLib 动画（普通枪走姿势变换路径），且
+`ClientMeleeAttackHandler`/`MeleeAttackHandler` 相对 0.5.5 没有丢调用 ⇒ 不是移植删掉的，是一直如此、只在服务器上暴露。
+
+**修法**：`ModSyncedDataKeys.BANZAI`（`scguns:banzai`，Boolean/PLAYER/`resetOnDeath`）+ 在 `ScorchedGuns` 注册；
+`MeleeAttackHandler.isBanzaiCharging(Player)` 读同步键，`startBanzai`/`stopBanzai` 写它；两个客户端读点改用它。
+保留读 `isBanzaiActive()` 的三处服务端调用方（melee 包处理器、`GunEventBus`、`MeleeAttackHandler` 自身）。
+动画本身未动（§82.17/§82.18 的持枪动画保持回退）。
+
+**新增审计 `tools/audit_synced_state.py`**（第 33 个）：① 除服务端白名单外不得调用 `MeleeAttackHandler.isBanzaiActive()`；
+② 客户端两个读点必须用 `isBanzaiCharging(`；③ `BANZAI` 必须定义**且必须注册**（漏注册 ⇒ 值永不发送 ⇒ 静默退回默认值）。
+注释剥离改用状态机（第一版只剥 `//`，被 `ModSyncedDataKeys` 的 javadoc 里提到的 `isBanzaiActive()` 误报）。
+反向验证三条各一次（改回静态读⇒2 条、改键名⇒1 条、注释掉注册⇒1 条），还原后 0。
+
+**门禁**：33 个审计全 0 / `verify_installed_jar` **222/222**（新增 5 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：在**服务器**上用带刺刀的枪冲锋，应能看到冲锋动画（单人生效不算验证）。
