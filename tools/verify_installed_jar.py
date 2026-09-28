@@ -1183,6 +1183,31 @@ def main():
             b"getEntityRenderDispatcher" not in zf.read(
                 "top/ribs/scguns/client/render/gun/animated/AnimatedGunRenderer.class")))
 
+        # 82.28. Hit feedback was inaudible because it played in the shot's own tick, under fire sounds that
+        # measure about 1 s on average. The fix queues it, drains the queue on the client tick, and ships the
+        # mod's own 0.106 s click - so the queue, the drain, the config knobs and the asset all have to be there.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/network/ClientPlayHandler.class", b"tickHitSounds",
+            "queued hit sounds are drained on the client tick"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/network/ClientPlayHandler.class", b"PendingHitSound",
+            "hit sounds are queued rather than played in the shot's tick"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$Sounds.class", b"hitSoundDelayTicks",
+            "the anti-masking delay is a client option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$Sounds.class", b"hitSoundPitch",
+            "the anti-masking pitch lift is a client option"))
+        checks.append((
+            "the hitmarker sound file is packaged",
+            "assets/scguns/sounds/hit/hitmarker.ogg" in zf.namelist()))
+        checks.append(_check_resource_contains(
+            zf, "assets/scguns/sounds.json", b"scguns:hit/hitmarker",
+            "sounds.json points at that file"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/init/ModSounds.class", b"hit.hitmarker",
+            "the hitmarker sound event is registered"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

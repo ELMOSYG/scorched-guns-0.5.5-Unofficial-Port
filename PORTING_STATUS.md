@@ -1074,3 +1074,23 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 5. **`Hitmarker.ogg` 可用性已核实**（解析容器/识别头，非看扩展名）：Ogg Vorbis、单声道、48 kHz、0.106 s ⇒ 以后要用可直接复制进 `assets/scguns/sounds/` 并登记 `sounds.json`（写法见回退前的 `c66e5c1`）。
 6. **审计规则自己也会写错**：本次 9 条反向对照中 2 条是规则写太松（只查音效名⇒开关改 false 也蒙混；只查 config 字段名⇒`define` 键改名发现不了）、1 条误报（被禁素材 id 写在我的注释字符串里）⇒ 反向验证同时在验规则。
 7. "默认音效 id 必须真的存在"这条检查随回退撤掉了；以后再往 config 加音效 id 值得重新加回来（能挡住"拿别人素材当默认值"）。
+
+## §82.28 命中音效真正的问题：被枪声掩蔽（玩家找到的原因）——按该原因重做
+
+**玩家给的原因**："实际上爆头的音效被枪声盖过去了，所以听起来没有反馈"。⇒ §82.27 失败的原因清楚了：它只加声音/加音量键/加去重，**没有处理同刻响的枪声**——声音一直在播，只是**听不见**；瓶颈不在"有没有音效"，而在**可听性**。
+
+**量化（两处测量）**：解析 45 个 `item/*/fire.ogg` 的 Ogg 页 granule ⇒ 枪声**中位 1.000 s**、平均 1.258 s、**卡宾 3.767 s**、火箭筒 4.920 s；
+`GunModifierHelper.getFireSoundVolume` **从 1.0 起**（只有配件能改），射手那发是 `Attenuation.NONE` 本地播放 ⇒ **枪声就是 1.0**，旧命中音也是 1.0 ⇒ 响度不吃亏，吃的是**时长+频谱**：短点击被 1~4 秒宽带枪声**时间+频率掩蔽**。
+⇒ "延迟"救不了（枪声太长），**主要手段是抬高音调**（把能量搬到枪声频段之上）+ **提高音量**（不能只是"相等"），延迟是次要（躲开起爆瞬态）。
+
+**修法（只针对可听性，不重做反馈系统）**：① `handleProjectileHitEntity` 改为 `scheduleHitSound(...)`（命中包与开火同一 tick 就是问题本身）；
+② 新增每 client tick 排空的队列（`pendingHitSounds` + `tickHitSounds()`，由既有 `ClientHandler.onClientTick` 驱动；记录 `dueTick`；**上限 8**；无 level 清空）；
+③ 三个 config 键：`hitSoundDelayTicks` 默认 **3**、`hitSoundVolume` 默认 **2.0**（0–8）、`hitSoundPitch` 默认 **1.8**（0.5–2.0）+ 0.1 随机抖动；
+④ 玩家给的 `scguns:hit.hitmarker`（0.106 s 短点击）作为 `headshotSound` 默认值，配置写错仍回落到原版音。
+**没有**重新引入 §82.27 的"给普通命中补声音/每类独立音量/叠层"；普通命中保持 0.5.5 的无声。
+
+**新增审计 `tools/audit_hit_masking.py`**（第 37 个）：命中音必须经 `scheduleHitSound` 排队且收包处不得直接 play；队列必须每 tick 排空（含 dueTick 比较、无 level 清空）且上限必须是小的具体数字；三个默认值必须越过失衡点（延迟≥1、音量≥1.5、音调≥1.5）；配置的命中音必须真的存在。
+反向验证 **11/11** 被抓，过程两次踩坑：① 第一版对照脚本用 LF 而这三个文件在磁盘上是 **CRLF** ⇒ 4 条对照根本没生效（好在那版会打印 SETUP FAILED 才没默默放过）⇒ 改成不含换行的模式；② "队列上限"规则只查字段名 ⇒ 值改成 `Integer.MAX_VALUE` 也能过 ⇒ 改为解析数值并要求 ≤ 64。**规则比代码更容易写松。**
+
+**门禁**：37 个审计全 0 / `verify_installed_jar` **236/236**（新增 7 条）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：① 爆头点击应能听出来；② 仍偏弱 ⇒ 先加 `hitSoundPitch`（对付频率掩蔽最有效）；③ 延迟明显 ⇒ 降 `hitSoundDelayTicks` 到 1–2（0=立即=回到被掩蔽）；④ 更响 ⇒ `hitSoundVolume`（0–8）；⑤ `headshotSound` 可换回原版音。

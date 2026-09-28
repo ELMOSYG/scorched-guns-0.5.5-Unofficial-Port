@@ -2,6 +2,7 @@ package top.ribs.scguns.client.network;
 
 
 import top.ribs.scguns.util.NbtHelper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -76,6 +77,15 @@ import top.ribs.scguns.network.message.S2CMessageUpdateGuns;
 import top.ribs.scguns.particles.BulletHoleData;
 
 public class ClientPlayHandler {
+   /**
+    * Hit sounds waiting for their delay to elapse, drained once per client tick in {@link #tickHitSounds()}.
+    * Bounded, so a stalled client tick cannot grow it without limit (HANDOFF section 82.28).
+    */
+   private static final List<PendingHitSound> pendingHitSounds = new ArrayList<>();
+   private static final int MAX_PENDING_HIT_SOUNDS = 8;
+   /** Random spread on the hit sound's pitch, so repeated hits do not sound like one clipped sample. */
+   private static final float HIT_SOUND_PITCH_JITTER = 0.1F;
+
    public ClientPlayHandler() {
       super();
    }
@@ -756,9 +766,74 @@ public class ClientPlayHandler {
          HUDRenderHandler.playHitMarker(message.isCritical() || message.isHeadshot());
          SoundEvent event = getHitSound(message.isCritical(), message.isHeadshot(), message.isPlayer());
          if (event != null) {
-            mc.getSoundManager().play(SimpleSoundInstance.forUI(event, 1.0F, 1.0F + world.random.nextFloat() * 0.2F));
+            scheduleHitSound(mc, event, world);
          }
       }
+   }
+
+   /**
+    * Queues a hit sound a few ticks after the shot that caused it (HANDOFF section 82.28).
+    *
+    * <p>Playing it in the same instant as the gunshot is why hit feedback reads as "no feedback": the mod's own
+    * fire sounds are long - measured, the median is about 1.0 s and a carbine's is 3.77 s - and they are
+    * broadband, so a 0.1 s click underneath is simply masked. The gunshot volume is not the problem (it starts
+    * at 1.0, exactly like this sound): the click is inaudible because it is short, quiet relative to the blast's
+    * onset, and low in pitch compared to it.</p>
+    *
+    * <p>Three levers, all configurable: a short delay so the confirmation lands after the muzzle blast's
+    * transient rather than inside it, a pitch above 1.0 so its energy sits above the gunshot's band, and a
+    * volume above 1.0 so it is not merely equal to what is drowning it. A delay alone cannot fix this - the
+    * fire sounds are too long for any delay that would still feel immediate - so the raised pitch is the
+    * primary fix and the delay is the secondary one.</p>
+    */
+   private static void scheduleHitSound(Minecraft mc, SoundEvent event, Level world) {
+      int delay = (Integer)Config.CLIENT.sounds.hitSoundDelayTicks.get();
+      float volume = Config.CLIENT.sounds.hitSoundVolume.get().floatValue();
+      float pitch = Config.CLIENT.sounds.hitSoundPitch.get().floatValue()
+         + world.random.nextFloat() * HIT_SOUND_PITCH_JITTER;
+      if (delay <= 0) {
+         playHitSound(mc, event, volume, pitch);
+         return;
+      }
+
+      // Bounded: the queue is drained by the client tick, and a level change clears it, so a stalled tick
+      // cannot turn this into an unbounded list.
+      if (pendingHitSounds.size() < MAX_PENDING_HIT_SOUNDS) {
+         pendingHitSounds.add(new PendingHitSound(world.getGameTime() + (long)delay, event, volume, pitch));
+      }
+   }
+
+   /** Plays whatever hit sounds are due. Called once per client tick. */
+   public static void tickHitSounds() {
+      if (pendingHitSounds.isEmpty()) {
+         return;
+      }
+
+      Minecraft mc = Minecraft.getInstance();
+      if (mc.level == null) {
+         pendingHitSounds.clear();
+         return;
+      }
+
+      long now = mc.level.getGameTime();
+      pendingHitSounds.removeIf(pending -> {
+         if (pending.dueTick() > now) {
+            return false;
+         }
+
+         playHitSound(mc, pending.event(), pending.volume(), pending.pitch());
+         return true;
+      });
+   }
+
+   private static void playHitSound(Minecraft mc, SoundEvent event, float volume, float pitch) {
+      // forUI plays at the listener, so the distance to whatever was hit does not change how loud the
+      // shooter's own feedback is.
+      mc.getSoundManager().play(SimpleSoundInstance.forUI(event, volume, pitch));
+   }
+
+   /** One queued hit sound: what to play, and the client tick it is due on. */
+   private record PendingHitSound(long dueTick, SoundEvent event, float volume, float pitch) {
    }
 
    @Nullable

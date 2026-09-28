@@ -827,6 +827,9 @@ public class Config {
       public final ConfigValue<String> headshotSound;
       public final BooleanValue playSoundWhenCritical;
       public final ConfigValue<String> criticalSound;
+      public final IntValue hitSoundDelayTicks;
+      public final DoubleValue hitSoundVolume;
+      public final DoubleValue hitSoundPitch;
       public final DoubleValue impactSoundDistance;
 
       public Sounds(Builder builder) {
@@ -834,10 +837,21 @@ public class Config {
          builder.comment("Control sounds triggered by guns").push("sounds");
          this.playSoundWhenHeadshot = builder.comment("If true, a sound will play when you successfully hit a headshot on a entity with a gun")
             .define("playSoundWhenHeadshot", true);
-         this.headshotSound = builder.comment("The sound to play when a headshot occurs").define("headshotSound", "minecraft:entity.player.attack.knockback");
+         this.headshotSound = builder.comment(
+               "The sound to play when a headshot occurs. scguns:hit.hitmarker is the gun's own 0.106 s click, which was made for this")
+            .define("headshotSound", "scguns:hit.hitmarker");
          this.playSoundWhenCritical = builder.comment("If true, a sound will play when you successfully hit a critical on a entity with a gun")
             .define("playSoundWhenCritical", true);
          this.criticalSound = builder.comment("The sound to play when a critical occurs").define("criticalSound", "minecraft:entity.player.attack.crit");
+         this.hitSoundDelayTicks = builder.comment(
+               "Ticks to wait before playing a hit sound. The gun's own fire sounds are long (about 1 s on average, 3.8 s for a carbine), so a hit sound played in the same tick as the shot is masked by it and reads as no feedback at all. 0 plays it immediately")
+            .defineInRange("hitSoundDelayTicks", 3, 0, 20);
+         this.hitSoundVolume = builder.comment(
+               "Volume of hit sounds. The gunshot itself starts at 1.0, so a hit sound at equal volume is the one that loses; above 1.0 makes it stand out")
+            .defineInRange("hitSoundVolume", 2.0, 0.0, 8.0);
+         this.hitSoundPitch = builder.comment(
+               "Pitch of hit sounds, on top of a small random spread. Above 1.0 lifts the click above the gunshot's frequency band, which is what makes it audible under a long fire sound")
+            .defineInRange("hitSoundPitch", 1.8, 0.5, 2.0);
          this.impactSoundDistance = builder.comment("The maximum distance impact sounds from bullet can be heard")
             .defineInRange("impactSoundDistance", 32.0, 0.0, 32.0);
          builder.pop();

@@ -37,6 +37,7 @@ import net.neoforged.fml.util.ObfuscationReflectionHelper;
 import top.ribs.scguns.ScorchedGuns;
 import top.ribs.scguns.client.handler.AimingHandler;
 import top.ribs.scguns.client.handler.BulletTrailRenderingHandler;
+import top.ribs.scguns.client.network.ClientPlayHandler;
 import top.ribs.scguns.client.handler.ControllerHandler;
 import top.ribs.scguns.client.handler.CrosshairHandler;
 import top.ribs.scguns.client.handler.EntityMuzzleFlashHandler;
@@ -306,6 +307,8 @@ public class ClientHandler {
    @SubscribeEvent
    public static void onClientTick(ClientTickEvent.Post event) {
       {
+         // Hit feedback is queued so it lands after the muzzle blast instead of under it (HANDOFF 82.28).
+         ClientPlayHandler.tickHitSounds();
          Minecraft mc = Minecraft.getInstance();
          if (mc.player != null && mc.screen == null && KeyBinds.KEY_MELEE.consumeClick()) {
             ItemStack heldItem = mc.player.getMainHandItem();
