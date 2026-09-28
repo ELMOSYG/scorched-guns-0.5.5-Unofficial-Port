@@ -1044,3 +1044,19 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 **门禁**：36 个审计全 0 / `verify_installed_jar` **228/228**（新增 2 条）/ `javac` 0（1010 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：① 铁魔法施法后切枪手臂应正常（现在就能测）；② 装 BC 后攻击再切枪；③ 无动画模组时手臂应与以前完全一致。
 **若仍不对的下一步抓手**：Player Animator 对第一人称还有独立通路（`FirstPersonMode` + `firstPerson.ItemInHandRendererMixin` 会取消原版手部渲染并/或用第三人称模型画整个人），那是"动画播放期间枪不见/手臂重叠"的另一条通路，需 API 级 `setFirstPersonMode(DISABLED)` 处理，等确认现象再动。
+
+## §82.26 第三次同类报告（资源包）：改为自己烘焙手臂模型（取代 §82.25 的做法）
+
+**玩家补充 + 更正**：Fresh Move 这类是**资源包**（不是 mod）；资源包改实体模型/动画要靠 EMF/OptiFine 那套，而它改的模型/动画**同样绑在渲染器持有的那个 `PlayerModel` 实例**上 ⇒ 与 BC/铁魔法撞同一个实例。
+
+**为什么 §82.25 的补丁原理上不可能完整**：它是"逐个动画系统把它写脏的状态擦干净"（位置/旋转/缩放 + 反射清 bend），但①每个动画系统有私有状态（资源包/EMF 的根本不知道）②只要它从 `ModelPart.render` 钩子写，改字段就擦不到 ③每加一个模组/资源包都要再查一遍实现——不是工程做法。
+真正的问题是**借用**：`renderPlayerArms` 取的是 `getEntityRenderDispatcher().getRenderer(player).getModel()`，正是全游戏所有玩家动画都在动画化的那个实例；加上第一人称不重跑 `setupAnim` ⇒ 上次的姿势原封不动留在手臂上。
+
+**修法**：新增 `armModel(AbstractClientPlayer)`，按皮肤选层并**与原版 `PlayerRenderer` 逐字一致**（`javap -c` 核对：`new PlayerModel<>(bakeLayer(slim ? PLAYER_SLIM : PLAYER), slim)`，变体读 `getSkin().model() == PlayerSkin.Model.SLIM`），两种变体各缓存一份懒烘焙；只有我们持有 ⇒ 外部无引用 ⇒ 谁也动画不到它（整类 bug 消失，而非修好某一个模组）。
+资源包改的**几何**照旧生效（用 `bakeLayer`），只有**动画**到不了我们这里——正是想要的。**瘦皮肤必须仍变窄**，请务必实测。据此**删除** `PlayerAnimatorCompat` 与反射调用（§82.25 定向补丁被取代），`resetArmPose` 保留作防御。第三人称未动。
+
+**审计更新**（仍是第 36 个 `tools/audit_arm_render_reset.py`，改为 4 条规则）：四部件必须 reset 后画；reset = 烘焙姿势 + 轴心；**手臂模型必须自己烘焙**（`bakeLayer(`/两个层/皮肤变体/`armModel(`，且 **不得**出现 `getEntityRenderDispatcher(` 与 `.getModel()`）；渲染器不得出现动画库类型。反向验证 **7/7** 被抓（含"退回借用渲染器模型""去掉 slim 变体/层"）。
+
+**门禁**：36 个审计全 0 / `verify_installed_jar` **229/229**（新增 2 条，其中一条是**反向检查**：class 里不得有 `getEntityRenderDispatcher`）/ `javac` 0（1009 文件）/ `build` ✓ / 已安装 ✓。
+**未实测（交给玩家）**：① 装该资源包（+EMF）后切枪手臂应正常；② BC 攻击后切枪；③ 铁魔法施法后切枪；④ **瘦皮肤手臂应仍细**；⑤ 无动画模组/资源包时与以前完全一致。
+**仍未动的另一条通路**：动画库/资源包可能在动画**播放期间**自己画一套第一人称模型（`FirstPersonMode` 等）⇒ 可能出现两套手臂/枪不见，这是独立问题，需 API 级处理，等确认现象再动。

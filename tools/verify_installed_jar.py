@@ -1168,16 +1168,20 @@ def main():
             zf, "top/ribs/scguns/client/render/gun/animated/AnimatedGunRenderer.class", b"renderGuiItem",
             "a GUI slot goes through the dedicated GUI fast path"))
 
-        # 82.25. Player Animator (Better Combat, Iron's Spells) animates the *shared* player model, including
-        # the arm scale and a per-cuboid bend. The gun draws its arms from that model, so it must reset them
-        # and clear the bend - through an optional helper, since a dev.kosmx type must never be needed.
+        # 82.25 / 82.26. The arms are drawn from a model this mod bakes itself, because the player renderer's
+        # own model is the instance every player-animation feature animates (Player Animator for Better Combat
+        # and Iron's Spells, and resource-pack model/animation mods), and in first person nothing re-runs
+        # setupAnim for the local player - so the last animation's pose was still on the arms.
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/client/render/gun/animated/AnimatedGunRenderer.class", b"resetArmPose",
             "the gun's arms are put back into this mod's own pose"))
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/client/compat/PlayerAnimatorCompat.class",
-            b"dev.kosmx.playerAnim.impl.animation.IBendHelper",
-            "the animated arm bend is cleared reflectively, so the mod stays optional"))
+            zf, "top/ribs/scguns/client/render/gun/animated/AnimatedGunRenderer.class", b"bakeLayer",
+            "the arms come from a model this mod baked, not from the animated player renderer model"))
+        checks.append((
+            "nothing borrows the player renderer's model for the gun arms",
+            b"getEntityRenderDispatcher" not in zf.read(
+                "top/ribs/scguns/client/render/gun/animated/AnimatedGunRenderer.class")))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:

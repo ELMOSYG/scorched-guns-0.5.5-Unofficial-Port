@@ -13,6 +13,7 @@ import javax.annotation.Nullable;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -21,8 +22,8 @@ import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.model.ItemTransform;
-import net.minecraft.client.renderer.entity.player.PlayerRenderer;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.SimpleParticleType;
@@ -52,7 +53,6 @@ import software.bernie.geckolib.util.RenderUtil;
 import top.ribs.scguns.Config;
 import top.ribs.scguns.client.GunRenderType;
 import top.ribs.scguns.client.SwayType;
-import top.ribs.scguns.client.compat.PlayerAnimatorCompat;
 import top.ribs.scguns.client.handler.AimingHandler;
 import top.ribs.scguns.client.handler.BeamHandler;
 import top.ribs.scguns.client.handler.DualWieldShotTracker;
@@ -78,6 +78,13 @@ import top.ribs.scguns.util.GunModifierHelper;
 public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implements GeoRenderer<AnimatedGunItem> {
    private static final ResourceLocation custom_path = null;
    private static AnimatedGunRenderer instance;
+   /**
+    * The arms are drawn from this mod's own player models, one per skin variant, baked on first use
+    * (HANDOFF section 82.26). Nothing else in the game holds a reference to them, so no animation from a mod
+    * or a resource pack can reach them.
+    */
+   private PlayerModel<AbstractClientPlayer> wideArmModel;
+   private PlayerModel<AbstractClientPlayer> slimArmModel;
    private final AttachmentRenderer attachmentRenderer = new AttachmentRenderer(this);
    private MultiBufferSource bufferSource;
    private ItemDisplayContext currentDisplayContext;
@@ -563,8 +570,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
 
    private void renderPlayerArms(Minecraft client, PoseStack poseStack, GeoBone bone, AnimatedGunItem animatable, int packedLight, int packedOverlay) {
       if (client.player != null) {
-         PlayerRenderer playerEntityRenderer = (PlayerRenderer)client.getEntityRenderDispatcher().getRenderer(client.player);
-         PlayerModel<AbstractClientPlayer> playerEntityModel = (PlayerModel<AbstractClientPlayer>)playerEntityRenderer.getModel();
+         PlayerModel<AbstractClientPlayer> playerEntityModel = this.armModel(client.player);
          this.setupArmTransforms(poseStack, bone);
          // Same as the working 1.21.1 port: hand the skin down and let each arm resolve
          // its own RenderType from it, instead of pre-building buffers up here.
@@ -575,6 +581,43 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
             this.renderLeftArm(poseStack, playerEntityModel, playerSkin, bone, packedLight, packedOverlay, client.player, animatable);
          }
       }
+   }
+
+   /**
+    * The model the gun's arms are drawn from: one this mod baked itself, never the one the player renderer
+    * owns (HANDOFF section 82.26).
+    *
+    * <p>Borrowing {@code EntityRenderDispatcher.getRenderer(player).getModel()} meant drawing our arms from
+    * the exact model instance that every player-animation feature in the game animates. Better Combat and
+    * Iron's Spells animate it through Player Animator (position, rotation, scale and a per-cuboid bend), and a
+    * resource pack that changes the player's animations - the Entity Model Features kind - animates the same
+    * instance. In first person nothing re-runs {@code setupAnim} for the local player, so whatever the last
+    * third-person or attack animation left on the arms was still there the next time a gun drew them, and the
+    * arms came out stretched, bent or twisted.</p>
+    *
+    * <p>Resetting those fields is a patch per animation system and can never be complete - a pack or mod may
+    * keep its own state, or write the part from a {@code ModelPart.render} hook where no field reset reaches.
+    * Owning the instance removes the whole class of bug: nobody else holds a reference to it, so nothing can
+    * animate it, and the arms always render in the pose this mod sets.</p>
+    *
+    * <p>The variant has to match the skin, exactly as vanilla chooses it: the slim mesh for slim skins,
+    * otherwise wide players would get wide arms.</p>
+    */
+   private PlayerModel<AbstractClientPlayer> armModel(AbstractClientPlayer player) {
+      boolean slim = player.getSkin().model() == PlayerSkin.Model.SLIM;
+      PlayerModel<AbstractClientPlayer> model = slim ? this.slimArmModel : this.wideArmModel;
+      if (model == null) {
+         model = new PlayerModel<>(
+            Minecraft.getInstance().getEntityModels().bakeLayer(slim ? ModelLayers.PLAYER_SLIM : ModelLayers.PLAYER), slim
+         );
+         if (slim) {
+            this.slimArmModel = model;
+         } else {
+            this.wideArmModel = model;
+         }
+      }
+
+      return model;
    }
 
    private void setupArmTransforms(PoseStack poseStack, GeoBone bone) {
@@ -607,20 +650,16 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    }
 
    /**
-    * Puts an arm (or sleeve) part into the pose a gun draws it in, discarding whatever was left on it
-    * (HANDOFF section 82.25).
+    * Puts an arm (or sleeve) part into the pose a gun draws it in (HANDOFF sections 82.25/82.26).
     *
-    * <p>{@code resetPose()} is what makes this complete: a player animation library animates the shared player
-    * model and writes not only {@code x/y/z} and the rotations, but also {@code xScale/yScale/zScale} - which
-    * {@code setPos}/{@code setRotation} alone leave behind, so an attack animation's stretched arm stayed
-    * stretched when the player then drew a gun. {@code resetPose()} restores the baked pose (scale 1) and the
-    * pivot is applied on top of it. The animated bend lives outside the model part's fields and is cleared
-    * separately through the optional compat helper.</p>
+    * <p>{@code resetPose()} restores the baked pose and the gun's pivot is applied on top of it, so the part
+    * can never depend on what a previous draw left behind. The parts belong to this mod's own model (see
+    * {@link #armModel(AbstractClientPlayer)}), so nothing outside this class writes to them; this is the guard
+    * that keeps it that way if the model is ever reused.</p>
     */
    private void resetArmPose(ModelPart part, GeoBone bone) {
       part.resetPose();
       part.setPos(bone.getPivotX(), bone.getPivotY(), bone.getPivotZ());
-      PlayerAnimatorCompat.resetBend(part);
    }
 
    private void renderLeftArm(
