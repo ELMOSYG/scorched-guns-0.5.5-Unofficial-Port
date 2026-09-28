@@ -6,14 +6,17 @@
       "modid": "createaddition"
     }
   ],
-  "input": {
-    "item": "minecraft:redstone_block",
-    "count": 1
-  },
-  "result": {
-    "id": "scguns:plasma_block",
-    "count": 1
-  },
+  "ingredients": [
+    {
+      "item": "minecraft:redstone_block"
+    }
+  ],
+  "results": [
+    {
+      "id": "scguns:plasma_block",
+      "count": 1
+    }
+  ],
   "energy": 26000,
-  "maxChargeRate": 2400
+  "max_charge_rate": 2400
 }

@@ -11,7 +11,7 @@
       "item": "scguns:anthralite_ore"
     }
   ],
-  "processingTime": 250,
+  "processing_time": 250,
   "results": [
     {
       "id": "scguns:crushed_raw_anthralite"

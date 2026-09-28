@@ -11,7 +11,7 @@
       "item": "scguns:homemaker"
     }
   ],
-  "processingTime": 250,
+  "processing_time": 250,
   "results": [
     {
       "id": "scguns:treated_iron_ingot",

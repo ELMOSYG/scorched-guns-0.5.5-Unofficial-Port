@@ -11,7 +11,7 @@
       "item": "minecraft:nether_star"
     }
   ],
-  "processingTime": 100,
+  "processing_time": 100,
   "results": [
     {
       "id": "scguns:nether_star_fragment",

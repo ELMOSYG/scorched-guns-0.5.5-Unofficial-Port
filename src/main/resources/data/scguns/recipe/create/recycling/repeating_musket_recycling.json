@@ -11,7 +11,7 @@
       "item": "scguns:repeating_musket"
     }
   ],
-  "processingTime": 250,
+  "processing_time": 250,
   "results": [
     {
       "id": "minecraft:flint_and_steel",

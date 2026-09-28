@@ -11,7 +11,7 @@
       "item": "scguns:m3_carabine"
     }
   ],
-  "processingTime": 250,
+  "processing_time": 250,
   "results": [
     {
       "id": "minecraft:iron_ingot",

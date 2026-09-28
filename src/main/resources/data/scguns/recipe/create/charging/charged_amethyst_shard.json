@@ -6,14 +6,17 @@
       "modid": "createaddition"
     }
   ],
-  "input": {
-    "item": "minecraft:amethyst_shard",
-    "count": 1
-  },
-  "result": {
-    "id": "scguns:charged_amethyst_shard",
-    "count": 1
-  },
+  "ingredients": [
+    {
+      "item": "minecraft:amethyst_shard"
+    }
+  ],
+  "results": [
+    {
+      "id": "scguns:charged_amethyst_shard",
+      "count": 1
+    }
+  ],
   "energy": 3200,
-  "maxChargeRate": 400
+  "max_charge_rate": 400
 }

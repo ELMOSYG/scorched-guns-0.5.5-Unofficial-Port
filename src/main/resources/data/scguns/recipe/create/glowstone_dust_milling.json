@@ -11,7 +11,7 @@
       "item": "minecraft:glowstone_dust"
     }
   ],
-  "processingTime": 100,
+  "processing_time": 100,
   "results": [
     {
       "id": "scguns:phosphor_dust",

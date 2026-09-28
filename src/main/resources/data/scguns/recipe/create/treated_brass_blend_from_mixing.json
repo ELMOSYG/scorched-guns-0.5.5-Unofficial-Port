@@ -6,7 +6,7 @@
       "modid": "create"
     }
   ],
-  "heatRequirement": "heated",
+  "heat_requirement": "heated",
   "ingredients": [
     {
       "tag": "c:ingots/brass"

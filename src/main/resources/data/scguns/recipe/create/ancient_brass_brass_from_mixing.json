@@ -1,6 +1,6 @@
 {
   "type": "create:mixing",
-  "heatRequirement": "heated",
+  "heat_requirement": "heated",
   "neoforge:conditions": [
     {
       "type": "neoforge:mod_loaded",

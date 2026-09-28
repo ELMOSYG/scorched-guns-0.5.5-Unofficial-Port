@@ -6,7 +6,7 @@
       "modid": "create"
     }
   ],
-  "heatRequirement": "superheated",
+  "heat_requirement": "superheated",
   "ingredients": [
     {
       "item": "scguns:nether_star_fragment"

@@ -11,7 +11,7 @@
       "item": "scguns:treated_iron_ingot"
     }
   ],
-  "processingTime": 250,
+  "processing_time": 250,
   "results": [
     {
       "id": "create:crushed_raw_iron",

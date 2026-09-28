@@ -6,14 +6,17 @@
       "modid": "createaddition"
     }
   ],
-  "input": {
-    "item": "scguns:empty_cell",
-    "count": 1
-  },
-  "result": {
-    "id": "scguns:shock_cell",
-    "count": 1
-  },
+  "ingredients": [
+    {
+      "item": "scguns:empty_cell"
+    }
+  ],
+  "results": [
+    {
+      "id": "scguns:shock_cell",
+      "count": 1
+    }
+  ],
   "energy": 12000,
-  "maxChargeRate": 200
+  "max_charge_rate": 200
 }

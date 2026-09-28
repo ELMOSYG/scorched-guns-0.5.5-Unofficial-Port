@@ -11,7 +11,7 @@
       "item": "minecraft:gunpowder"
     }
   ],
-  "processingTime": 20,
+  "processing_time": 20,
   "results": [
     {
       "id": "scguns:gunpowder_dust",

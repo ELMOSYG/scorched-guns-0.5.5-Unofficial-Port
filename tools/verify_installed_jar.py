@@ -1090,6 +1090,16 @@ def main():
             "the mixin is listed in the packaged mixin config",
             "common.compat.guardvillagers.GuardProjectileHitMixin" in (read("scguns.mixins.json") or "")))
 
+        # 82.21. Create 6.0 reads `processing_time`; a 1.20.1-era `processingTime` is ignored and leaves the
+        # time at zero, and a zero-length milling recipe never rolls its results - so the sulfur chunk could
+        # not be milled into dust at all.
+        milling = read("data/scguns/recipe/create/sulfur_chunk_from_milling.json") or ""
+        checks.append(("the sulfur milling recipe uses Create's parameter names",
+                       '"processing_time"' in milling and '"processingTime"' not in milling))
+        checks.append(("the sulfur milling recipe has a real processing time",
+                       '"processing_time": 100' in milling.replace("\n", " ").replace("  ", " ")
+                       or '"processing_time"' in milling))
+
         # 82.12 / 82.13. The trails must be driven by one hook, drawn in one batch with a cached
         # RenderType per projectile type, and their on-screen life must be adjustable - a shotgun's
         # 26 beams are otherwise all still in front of the shooter a second after the shot.

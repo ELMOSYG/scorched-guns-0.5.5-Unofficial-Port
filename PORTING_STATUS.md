@@ -927,3 +927,21 @@ navigation 并抢走移动，于是警卫该退不退、该压不进，站着随
 - **顺带发现**：mods 里还有一个多余的 `scguns-0.5.5.2.jar`（同 mod id 两份不会加载），安装脚本已移走备份。
 - **未实测（交给玩家）**：① 拿走枪后重载区块依旧没有枪；② 拿剑/空手的警卫重载后不会被换成枪；
   ③ 新警卫仍按 25% 持枪、生成后 5 秒内被 GV 覆盖会补回；④ 旧存档警卫下次加载只掷一次骰。
+
+## §82.21 Create 联动配方：硫磺碎块在石磨磨不出硫磺粉（已修）
+
+**澄清**：`item.scguns.sulfur_chunk` 的 zh_cn 名就是"硫磺块"（与方块 `sulfur_block` 同名），玩家说的"硫磺碎块"= 该物品；
+配方 `create/sulfur_chunk_from_milling.json` 存在、随包、且**无解析错误** ⇒ 问题是**参数被静默忽略**。
+
+**根因**：Create 6.0 用蛇形 `processing_time`/`heat_requirement`，移植版留的是驼峰 `processingTime`/`heatRequirement`，
+未知键被忽略且不报错。`processing_time` 缺失 ⇒ 时长默认 0 ⇒ 石磨 `tick` 里 `if (timer <= 0) 跳过递减分支`，
+而产出（`MillingRecipe.rollResults`）就在该分支内 ⇒ **永远不产出**（字节码级证据）。同理"超热"要求失效。
+Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`max_charge_rate`），我们那 6 条直接解析失败。
+
+**修法**：167 个 create 系配方改名（只动 `type` 为 `create:*` 的文件）；6 条 charging 按 1.7.1 schema 重写；
+两条被 `create` 条件误卡的原版烧炼配方去掉条件。**新增审计 `tools/audit_create_recipes.py`**（第 32 个）：
+非原版类型必须门禁在拥有该类型的 mod 上、禁止驼峰键、**键若在该 mod 自己的配方里从未出现即阻断**（静默忽略探测器）、
+同类型差异仅作汇总提示（已核对 mixing 的 `results.chance` 合法，`BasinRecipe` 会 roll）。反向验证：种回 `processingTime` ⇒ 退出 1。
+
+**门禁**：32 个审计全 0 / `verify_installed_jar` 217/217 / `javac` 0 / `build` ✓。
+**顺带发现（未改，等决定）**：`block.scguns.sulfur` 缺 lang 键（显示原始键）；`sulfur_chunk` 与 `sulfur_block` 中文同名易混。

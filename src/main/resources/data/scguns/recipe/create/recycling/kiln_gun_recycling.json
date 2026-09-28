@@ -11,7 +11,7 @@
       "item": "scguns:kiln_gun"
     }
   ],
-  "processingTime": 250,
+  "processing_time": 250,
   "results": [
     {
       "id": "scguns:heavy_gun_parts",

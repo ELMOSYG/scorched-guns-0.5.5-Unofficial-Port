@@ -7249,3 +7249,46 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
 * ③ 刚生成的警卫照旧按数据文件的 25% 概率持枪 ✓，且生成后 5 秒内被 GV 覆盖时会补回来 ✓；
 * ④ **旧存档里的警卫** ✓：它们的存档里还没有那三个键 ✓ ⇒ 下次被加载时**只会掷一次骰** ✓
   （中签的补枪 / 没中签的保持原样 ✓），此后不再重复 ✓。
+
+
+## 82.21 玩家报"Create 联动配方有问题：硫磺碎块在石磨磨不出硫磺粉"（已修 ✓）
+
+### 82.21.1 先澄清一个命名坑 ✓
+* `item.scguns.sulfur_chunk` 的 **zh_cn 名就是"硫磺块"** ✓（和方块 `block.scguns.sulfur_block` 同名 ✗）⇒ 玩家说的"硫磺碎块"指的就是这个**物品** ✓，对应配方 `create/sulfur_chunk_from_milling.json` ✓（它**存在**、也在 jar 里 ✓、**且没有任何解析错误** ✓）——所以问题不在"缺配方" ✗，而在**参数被静默忽略** ✓。
+
+### 82.21.2 根因：Create 6.0 的参数名换了，而"未识别的键不报错" ✓
+* Create 6.0（1.21.1）读的是**蛇形**：`processing_time` ✓、`heat_requirement` ✓；移植版留的是 1.20.1 时代的**驼峰** `processingTime` ✗、`heatRequirement` ✗。未知键**被直接忽略** ✓（日志里那条配方确实没有任何错误 ✓）。
+* **石磨为什么彻底不出货** ✓（字节码证据 ✓）：`processing_time` 缺失 ⇒ 时长取默认 **0** ✓；而 `MillstoneBlockEntity.tick` 是
+  `if (timer <= 0) 跳过递减分支` ✓，而产出就在那个分支里（`MillingRecipe.rollResults` ✓）
+  ⇒ **0 时长的配方永远走不到产出那一步** ✓✓ = "磨不出来" ✓。
+* 同一原因：**"超热"要求失效** ✓（`heat_requirement` 被忽略 ⇒ 搅拌机在任何温度都能做 ✓）。
+* Create Addition 1.7.1 的 `charging` schema 也变了 ✓（`energy` + `ingredients` + `max_charge_rate` + `results` ✓），我们写的
+  `input`/`result`/`maxChargeRate` ✗ ⇒ 那 6 条配方**解析直接失败** ✓（玩家日志里正是 6 条
+  `No key max_charge_rate ... ; No key results ...` ✓）⇒ 能量核心在 Create Addition 里根本没法充能 ✓。
+
+### 82.21.3 修法 ✓
+1. **167 个 Create 系配方**：`processingTime` → `processing_time` ✓、`heatRequirement` → `heat_requirement` ✓
+   （脚本只改 `type` 以 `create:` 开头的文件 ✓ —— 我们自己的配方类型（`scguns:macerating` 等 ✓）有自己的 codec ✓ 保持原样 ✓）。
+2. **6 条 `createaddition:charging`** 按 1.7.1 的 schema 重写 ✓（`ingredients`/`results`/`max_charge_rate` ✓）。
+3. **两条原版配方**（`minecraft:smelting` / `minecraft:blasting`）原本被 `create` 条件卡着 ✗ ⇒ 去掉条件 ✓
+   （否则不装 Create 的玩家会凭空少两条配方 ✓）。
+
+### 82.21.4 新增审计 `tools/audit_create_recipes.py`（第 32 个 ✓）
+* ① 非原版类型的配方**必须**门禁在"拥有该类型的那个 mod"上 ✓（缺了会被静默丢弃 ✓、写错了会解析报错 ✓）；
+  ② **不得出现驼峰键** ✓（这一族 schema 全是蛇形 ✓）；
+  ③ 我们用的键若在**该 mod 自己的所有配方里从未出现** ⇒ **阻断** ✓（这就是 `processingTime` 这类"静默忽略"的探测器 ✓）；
+  ④ 与**同类型**自带配方的差异只作**汇总提示** ✓（这一族共用一套 schema ✓；例如 mixing 用 `results.chance` 是合法的 ✓ —— 已核对
+  `BasinRecipe` 确实调用 `rollResults` ✓）。
+* **反向验证** ✓：把 `processingTime` 种回硫磺磨粉配方 ⇒ 审计报 BROKEN 并退出 1 ✓；改回 ⇒ 0 ✓。
+* `verify_installed_jar` **217/217** ✓（新增 2 条 ✓：随包的硫磺磨粉配方必须用 `processing_time` ✓ 且不得出现 `processingTime` ✓）。
+
+### 82.21.5 顺带发现（已记录 ✓，等玩家决定 ✓）
+* `block.scguns.sulfur`（硫磺**层**方块）**缺 lang 键** ✗ ⇒ 游戏里会显示原始翻译键 ✓；它的掉落是硫磺粉 ✓（按层数 1–8 ✓）。
+* `item.scguns.sulfur_chunk` 的中文名与方块 `sulfur_block` **同名**"硫磺块" ✗ ⇒ 容易混淆 ✓（玩家这次就是靠"碎块"来区分的 ✓）。
+
+### 82.21.6 验收与**未实测** ✓
+* **32 个审计全 0** ✓、`verify_installed_jar` **217/217** ✓、`javac` 0 ✓、`build` ✓、
+  已安装 ✓（见下 ✓）。
+* **未实测** ✓（交给玩家 ✓）：① 石磨把**硫磺碎块**磨成 3 硫磺粉 ✓（+5% 额外粉 ✓ +5% 黄染料 ✓、时长 100 ✓）；
+  ② 搅拌机的"超热"配方现在**真的要求超热** ✓；③ Create Addition 的充能配方可用 ✓；
+  ④ 不装 Create 时那两条烧炼配方仍然存在 ✓。

@@ -11,7 +11,7 @@
       "item": "minecraft:netherite_scrap"
     }
   ],
-  "processingTime": 100,
+  "processing_time": 100,
   "results": [
     {
       "id": "scguns:netherite_scrap_chunk",

@@ -24,7 +24,7 @@
           "item": "scguns:unfinished_gun_parts"
         }
       ],
-      "processingTime": 50,
+      "processing_time": 50,
       "results": [
         {
           "id": "scguns:unfinished_gun_parts"
