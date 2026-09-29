@@ -1411,3 +1411,33 @@ if (world.getGameTime() % 4L == 0L) {
 **未查明（如实记录，玩家若要再谈再说）**：服务端确实发出了 `playNotifySound` ⇒ 客户端应能收到；听不到的可能原因有两个方向：① 被**光束自身的持续开火音**盖住（与 §82.32 那条"命中音被枪声盖过"同类 ✓）；② 音量为原版挖掘音的量级 `(volume+1)/8`（草方块 ≈ 0.25）本身就偏轻 ✓。要再尝试的话，建议先查①（开火循环音的音量/衰减）而不是加大挖掘音 ✓。
 
 **门禁**：**49 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-221149` ✓）。
+
+## §82.46 版本号改为 **`0.5.5-v1.0.2`**（玩家提议，已落地并实测）
+
+**改哪儿：只有一处** —— `gradle.properties` 的 **`mod_version`** ✓（已在文件里写成注释：这是**唯一**的版本来源 ✓，别在别处改 ✓）。它自动决定：
+| 跟着变的东西 | 机制 |
+|---|---|
+| jar 名 `build/libs/scguns-<version>.jar` | Gradle 用它命名 ✓ |
+| 主 mod 与女仆兼容的 `neoforge.mods.toml` | 两处模板都写 `version="${mod_version}"` ✓（`src/main/templates/…` 与 `maid-compat/src/main/templates/…` ✓） |
+| 安装脚本 | `install_jar.py` 按新名安装，并**把旧的 `scguns-*.jar` 备份后删除** ✓（同名 mod id 两份 = 加载错误 ✓） |
+| 打包校验 | `verify_installed_jar._check_declared_version` 是**读 `gradle.properties` 再比对包内 `version`** ✓ ⇒ **不需要改脚本** ✓ |
+
+**实测（不是推断）**：`runServer` 启动 ⇒ 日志 `Scorched Guns 0.5.5-v1.0.2 (scguns)` ✓、FML 记录升级 `scguns (version 0.5.5.1 -> 0.5.5-v1.0.2)` ✓、**女仆兼容的强制依赖 `scguns [0.5.0,)` 仍然满足**（`Scorched Guns: Maid Compat 1.0.8` 正常加载 ✓）、`Done (0.954s)!` ✓。安装后实例里是 `scguns-0.5.5-v1.0.2.jar` ✓，旧的 `0.5.5.1` 已备份移除 ✓。
+**已装**：`D:\MCJAVA\...\mods\scguns-0.5.5-v1.0.2.jar` ✓ + `verify_installed_jar` 首行确认"installed jar is byte-identical to build\libs\scguns-0.5.5-v1.0.2.jar" ✓。
+
+**一个需要知道的取舍**（写进 `gradle.properties` 注释与女仆兼容模板 ✓）：`-v1.0.2` 在**严格 semver** 里算**预发布**（排在 `0.5.5` **之前** ✗），而 **FML 用 Maven 规则比较**（数字部分 0.5.5 > 0.5.0 先决 ⇒ 排在 `0.5.5` **之后** ✓）⇒ 本模组内部与女仆兼容都满足 ✓；但如果将来**别的模组**写 `scguns >= 0.5.5`，严格按 semver 读的工具可能判不满足 ✓。想让所有读法一致，用 `0.5.5.1`（旧）或 `0.5.5-1.0.2` 这类不带前导 v 的也可以 ✓ —— 玩家拍板即可 ✓。
+
+## §82.47 顺带修：两张**没有加载守卫**的配方（由上面那次服务器启动查出来）
+
+**发现方式**：为了核对版本号而启动 `runServer` ✓，日志里出现两条**配方解析错误** ✓：
+```
+Parsing error loading recipe scguns:mech_press/depleted_diamond_steel
+  ... Unknown registry key in ResourceKey[minecraft:root / minecraft:item]: create:experience_nugget
+```
+⇒ `mech_press/depleted_diamond_steel` 与 `powered_mech_press/powered_depleted_diamond_steel` 都用了 **Create 的经验粒** ✓，却**没有** `neoforge:conditions` 的 `mod_loaded` 守卫 ✗（同目录的 `create/deploying/depleted_diamond_steel` 有 ✓）⇒ **没装 Create 的玩家**会：该配方整条解析失败 + 日志报错 ✓✓（本项目的门禁是"配方零错误" ✓ ⇒ 这确实是缺陷 ✓）。
+**修法**：两张配方各加 `{"type": "neoforge:mod_loaded", "modid": "create"}` ✓（`modid` 已从 `libs/create-1.21.1-6.0.10.jar` 的 `mods.toml` 实测确认是 `create` ✓ ⇒ 装了 Create 时照常加载 ✓）。
+**新增审计 `tools/audit_recipe_conditions.py`（第 50 个）**：凡是配方里出现**非 minecraft / 非 scguns / 非跨模组标签**命名空间的物品，就必须有对应 `mod_loaded` 守卫 ✓。
+**这条规则自己返工过一次** ✓：初版把"本移植发布了 `data/<ns>/` 目录"当成豁免 ✗ —— 而本移植**恰好**发布了 `data/create/…` ✓ ⇒ `create` 被错误豁免 ⇒ **反向验证直接 MISS** ✓✓（拿那两张真配方测都报"没问题" ✗）。改为**只按命名空间归属判断**（不看谁发布了数据 ✓）后：干净树 **418 条**受检全过 ✓、反向验证 **2/2** ✓。
+**实测**：`-PnoIntegrationRuntime=true`（不含 Create ✓）启动 ⇒ **`Parsing error` 0 条** ✓、`Done (0.945s)!` ✓。
+
+**门禁**：**50 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（`scguns-0.5.5-v1.0.2.jar` ✓）。
