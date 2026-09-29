@@ -1443,3 +1443,25 @@ Parsing error loading recipe scguns:mech_press/depleted_diamond_steel
 **实测**：`-PnoIntegrationRuntime=true`（不含 Create ✓）启动 ⇒ **`Parsing error` 0 条** ✓、`Done (0.945s)!` ✓。
 
 **门禁**：**50 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（`scguns-0.5.5-v1.0.2.jar` ✓）。
+
+## §82.48 解锁提示"冒号后面没有内容"：**不是 mod 的问题，是玩家自己的汉化包掉了 `%s`**
+
+**玩家报告**（截图）：解锁提示三行里，第一行正常（`枪械等级解锁: 铁` ✓），后两行只有 `敌人现在可生成携带:` 与 `这些突袭现在将针对你:`，**冒号后面什么都没有** ✗，并判断"上个ai给这个改坏了"。
+
+**排查结论**：**显示的是玩家汉化包里的文本，而包里这两条丢了格式占位符** ✓✓ —— 证据：
+| key | mod 自带 zh_cn（`%s` 正常 ✓） | 玩家的 `Scorched Guns_v0.5.5-汉化v1.3.zip` |
+|---|---|---|
+| `progression.scguns.tier_unlocked` | `获得了「%s」级枪械！` | `枪械等级解锁: %s` ✓ **有占位符 ⇒ 所以"铁/钻石钢"显示正常** ✓ |
+| `progression.scguns.enemies_can_spawn` | `现在可能会出现「%s」的敌人！` | `敌人现在可生成携带:` ✗ **没有 `%s`** |
+| `progression.scguns.raids_can_spawn` | `现在可能针对你的突袭：%s` | `这些突袭现在将针对你:` ✗ **没有 `%s`** |
+
+⇒ 代码传进去的**等级列表/突袭列表**没有地方可放 ⇒ 冒号后面空着 ✓✓（第一行有 `%s` ⇒ 正常 ⇒ 三条症状**同一个原因** ✓）。**mod 侧没问题**：`GunProgressionEventHandler` 两行都有"列表为空就整行不发"的判断 ✓（`availableTiers.isEmpty()` ✓ / `newRaids.isEmpty()` ✓），`audit_lang_values.py`（第 30 个左右就有 ✓）也一直在盯 en_us/zh_cn 之间的占位符一致性 ✓ —— **漏的是仓库外的那份包** ✗。
+
+**已修**（包的文件名保持不变 ⇒ 玩家既有的"已启用"选择不会丢 ✓，三处都改 ✓，原件留 `.bak` ✓）：
+1. 源文件 `E:\mod\汉化\scguns_v13_zh_cn.json` ✓（下次重新打包也会带着修好的文本 ✓）
+2. 成品包 `E:\mod\汉化\Scorched Guns_v0.5.5-汉化v1.3.zip` ✓
+3. 实例内 `D:\MCJAVA\...\resourcepacks\Scorched Guns_v0.5.5-汉化v1.3.zip` ✓
+两条改成 `敌人现在可生成携带: %s` / `这些突袭现在将针对你: %s` ✓ ⇒ 复测：**占位符不一致 = 0** ✓（措辞仍是玩家包的措辞 ✓，只是把列表接回去了 ✓）。**生效方式**：`F3+T` 重载资源包（或重开游戏 ✓）。
+
+**新增工具 `tools/check_lang_pack.py`**（按需对拍，不进审计循环 ✓）：拿任意汉化包与 mod 自带 `zh_cn.json` 对比 —— **键的缺失/多余** + **每条文本的格式占位符** ✓。这次就是它一锤定音的 ✓。
+**顺带记录**（玩家自己决定要不要补 ✓）：该包比 mod 少 **33 个键**（几乎全是新增的 `commands.scguns.*` 命令输出 ✓ ⇒ 这些地方会显示 mod 自带的中文 ✓），另有 **2 个已废弃的键**（`commands.scguns.progression.check` / `.check_none` ✓，命令改结构后已无用 ✓）。
