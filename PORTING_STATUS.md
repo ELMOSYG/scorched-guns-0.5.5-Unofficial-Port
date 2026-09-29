@@ -1309,3 +1309,15 @@ this.lifetime = (int)(12.0F / (this.random.nextFloat() * 0.9F + 0.1F));
 
 **门禁**：46 个审计全 0 ✓ / `verify_installed_jar` **286/286** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-210027` ✓）。
 **待办**：采矿枪（`scguns:shard_culler` / `scguns:cr4k_mining_laser`）"没有挖掘方块的纹理"——需要玩家确认指的是**挖掘裂纹（破坏阶段贴图）**还是**破坏时的方块碎屑粒子**（两者在代码里是两条不同路径 ✓）；已核对的部分：两者都与 0.5.5 逐字相同 ✓、`enableBeamMining` 在玩家配置里是 true ✓、1.21.1 客户端确认**会渲染**裂纹且**不按 id 过滤** ✓、服务端 `destroyBlockProgress` 会**跳过 breakerId 等于自己 id 的玩家**（所以假 id 反而让挖掘者能收到 ✓）。
+
+## §82.41 顺带查实：光束代码里两处 `forge:` 标签在 1.21.1 **根本不存在**（已修）
+
+追查上一条（采矿枪的"裂纹"）时，把整条**光束采矿/破坏**路径逐方法对比了 1.20.1 与 1.21.1 的引擎实现 —— `ServerLevel.destroyBlockProgress`、`ClientPacketListener.handleBlockDestruction`、`ClientLevel.destroyBlockProgress`、`LevelRenderer.destroyBlockProgress` **四处的指令流完全相同** ✓（连"跳过 id 等于 breakerId 的玩家"这条过滤都一样 ✓），mod 自己的 `BeamHandlerCommon` / `BeamWeaponHandler` / 枪数据 / `fragile` 标签也与 0.5.5 等价 ✓ ⇒ **裂纹这条链路上没有找到移植差异** ✓（详见上一条待办 ✓）。
+
+**但顺手查出两处真问题**：NeoForge 21.1 把跨模组通用标签从 `forge:` 改名成 `c:` ✓，本移植的数据文件早就迁移了（自己的 `scguns:fragile` 里写的是 `#c:glass_blocks` / `#c:glass_panes` ✓），**但 Java 里还有两处按老名字查标签** ✗ —— 而"没人定义的 `TagKey`"不会报错，它只会**对一切方块恒为 false** ✓：
+- `BeamHandlerCommon.isGlassBlock` 里的 `#forge:glass` ✗ ⇒ **带标签的玻璃（染色玻璃、其它模组的玻璃）不再算玻璃** ⇒ 光束不会穿过它 ✓（0.5.5 里会 ✓）；改用 `Tags.Blocks.GLASS_BLOCKS`（= `c:glass_blocks` ✓，NeoForge 21.1 的同一个标签 ✓）。
+- `#forge:ores` ✗ ⇒ 已改 `Tags.Blocks.ORES` ✓；这一处**本来也不影响行为**（0.5.5 的 if/else 两个分支**写得一模一样** ✓），如实注明 ✓。
+
+**新增审计 `tools/audit_tag_namespaces.py`（第 47 个）**：扫描所有 `BlockTags/ItemTags/TagKey.create(...)` 里的命名空间，要求它属于 `minecraft` / `c` / `neoforge` / `scguns` / **本移植自己发布了 `data/<ns>/tags/` 的命名空间** ✓；另禁止源码里再出现 `"forge:..."` 字面量 ✓。反向验证 **3/3** ✓（`#forge:glass` ✓ / `#forge:ores` ✓ / 一个本移植没有数据的命名空间 ✓，且都报在该行 ✓）；干净树 **7 处查找全过** ✓。
+
+**门禁**：**47 个审计全 0** ✓ / `verify_installed_jar` **286/286** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-210709` ✓）。

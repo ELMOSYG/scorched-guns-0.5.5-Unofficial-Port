@@ -11,11 +11,10 @@ import java.util.UUID;
 import java.util.Map.Entry;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.BlockTags;
 import net.minecraft.util.Mth;
+import net.neoforged.neoforge.common.Tags;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -106,7 +105,12 @@ public class BeamHandlerCommon {
       }
 
       private static boolean isGlassBlock(BlockState state) {
-         return state.is(BlockTags.create(ResourceLocation.fromNamespaceAndPath("forge", "glass")))
+         // 0.5.5 asked for `#forge:glass`. That tag does not exist in 1.21.1: NeoForge renamed the
+         // common tags to `c:`, which is also what this port's own data files use, so the old key
+         // resolved to nothing and every tagged glass (stained glass, modded glass) stopped counting
+         // as glass - the beam refused to pass through it instead of continuing. Tags.Blocks is the
+         // 1.21.1 spelling of the same tag.
+         return state.is(Tags.Blocks.GLASS_BLOCKS)
             || state.is(Blocks.GLASS)
             || state.is(Blocks.GLASS_PANE)
             || state.is(Blocks.TINTED_GLASS);
@@ -218,7 +222,7 @@ public class BeamHandlerCommon {
                   .withOptionalParameter(LootContextParams.THIS_ENTITY, player)
                   .withOptionalParameter(LootContextParams.BLOCK_ENTITY, blockEntity);
                List<ItemStack> drops = blockState.getDrops(builder);
-               if (blockState.is(BlockTags.create(ResourceLocation.fromNamespaceAndPath("forge", "ores")))) {
+               if (blockState.is(Tags.Blocks.ORES)) {
                   for (ItemStack drop : drops) {
                      net.minecraft.world.level.block.Block.popResource(world, pos, drop);
                   }
