@@ -46,13 +46,15 @@ def raid_name(raid):
     return lang.get("raid.scguns." + raid, raid)
 
 
-print("放出来的三行（修复后）：")
+print("三行的实际输出（模拟自真实表 + 语言文件）：")
 for tier in order:
     info = tiers[tier]
     if info["level"] == 0:
         continue
-    available = [p for p in info["prev"]] + [tier]
-    # mirrors GunTier#getAvailableMobTiersNewestFirst: sorted by level, descending
+    # mirrors GunTier#getAvailableMobTiersNewestFirst: the spawner's own list, i.e. the tiers
+    # BELOW this one, ordered by level descending. It must not include this tier - mobs lag the
+    # player, so promising mobs with the guns just obtained announces enemies that never spawn.
+    available = [p for p in info["prev"]]
     available.sort(key=lambda name: -tiers[name]["level"])
     previous_max = max([tiers[p]["raid"] for p in info["prev"]] or [0])
     new_raids = [r for level in range(previous_max + 1, info["raid"] + 1) for r in raids.get(level, [])]
@@ -60,8 +62,11 @@ for tier in order:
     print("")
     print("  解锁【%s】" % tier_name(tier))
     print("    " + unlock.replace("%s", tier_name(tier)))
-    print("    " + mobs.replace("%s", sep.join(tier_name(t) for t in available)))
+    if available:
+        print("    " + mobs.replace("%s", sep.join(tier_name(t) for t in available)))
+    else:
+        print("    （本层级还没有任何能带枪的敌人 ⇒ 这一行不出现）")
     if new_raids:
         print("    " + raid_line.replace("%s", sep.join(raid_name(r) for r in new_raids)))
     else:
-        print("    （本层级没有新突袭，这一行不再出现）")
+        print("    （本层级没有新突袭 ⇒ 这一行不出现）")

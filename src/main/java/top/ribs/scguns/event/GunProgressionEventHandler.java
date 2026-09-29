@@ -183,13 +183,18 @@ public class GunProgressionEventHandler {
                .withStyle(new ChatFormatting[]{ChatFormatting.GOLD, ChatFormatting.BOLD});
             Component message = Component.translatable("progression.scguns.tier_unlocked", new Object[]{tierName}).withStyle(ChatFormatting.YELLOW);
             player.sendSystemMessage(message);
-            List<GunTier> availableTiers = tier.getUnlockedTiersNewestFirst();
+            // The tiers a gunner can now actually be equipped from - the same list the spawner
+            // reads. It must not include the tier just obtained, because mobs lag a tier behind
+            // the player; promising them here would announce enemies that never spawn. The notice
+            // is skipped entirely when the list is empty, which is what the antique tier gets:
+            // nothing armed appears until the next tier is reached.
+            List<GunTier> availableTiers = tier.getAvailableMobTiersNewestFirst();
             if (!availableTiers.isEmpty()) {
-               // Enemies only: these are gun tiers, and a tier says nothing about which raids exist - that is
-               // what the raid line below is for. "【copper】 enemies and raids" claimed copper raids exist.
-               Component mobMessage = Component.translatable("progression.scguns.enemies_can_spawn",
-                  new Object[]{joinTierNames(availableTiers)}).withStyle(ChatFormatting.RED);
-               player.sendSystemMessage(mobMessage);
+                // Enemies only: these are gun tiers, and a tier says nothing about which raids exist - that is
+                // what the raid line below is for. "【copper】 enemies and raids" claimed copper raids exist.
+                Component mobMessage = Component.translatable("progression.scguns.enemies_can_spawn",
+                   new Object[]{joinTierNames(availableTiers)}).withStyle(ChatFormatting.RED);
+                player.sendSystemMessage(mobMessage);
             }
 
             sendRaidUnlockedMessage(player, tier);

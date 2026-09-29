@@ -58,10 +58,11 @@ public class GunTier {
     * tier made the mobs keep pace with the player instead - the report that prompted this asked
     * for exactly that lag back.</p>
     *
-    * <p>This method used to add {@code this} at the end (section 82.29), which was right for the
-    * unlock message and wrong here, because {@code GunnerMobSpawner} reads this same list. The
-    * two questions now have their own methods: this one answers "what may a mob carry", and
-    * {@link #getUnlockedTiersNewestFirst()} answers "what has just become possible".</p>
+    * <p>This method used to add {@code this} at the end (section 82.29), on the theory that a
+    * gunner should be able to carry the newest tier. The player rejected that: mobs lag a tier
+    * behind, and 0.5.5 always had them do so. The notice was built on the same wrong theory and
+    * has been corrected to match - see {@link #getAvailableMobTiersNewestFirst()}, which orders
+    * this same list for display and adds nothing.</p>
     */
    public List<GunTier> getAvailableMobTiers() {
       List<GunTier> tiers = new ArrayList<>();
@@ -77,24 +78,22 @@ public class GunTier {
    }
 
    /**
-    * The tiers this unlock has made reachable, <b>including this one</b>, newest first: the tier
-    * just obtained should read first in a sentence about what just became possible.
+    * The same tiers, <b>newest first</b>, for the unlock notice: the same set
+    * {@link #getAvailableMobTiers()} gives, only ordered for a sentence.
     *
-    * <p>Separate from {@link #getAvailableMobTiers()} on purpose. The notice says "you may now
-    * see 【X】 enemies" about the tier just picked up, so it needs this tier; the spawner must
-    * not have it, or enemies would match the player's tier the moment it is reached.</p>
+    * <p>It deliberately does <b>not</b> add this tier, because mobs carrying the tier you have
+    * just obtained do not exist: the spawner equips from {@link #getAvailableMobTiers()}, which
+    * is 0.5.5's "the tiers below the one you have reached". A notice that added this tier would
+    * be promising enemies that never spawn - at the antique tier, where the previous list is
+    * empty, it announced antique enemies would appear and none ever do. The player caught that
+    * one on screen.</p>
     *
-    * <p>Sorted by level rather than by the declared previous-tier order: that order happens to be
-    * newest first today, but the message must not depend on how the table was typed.</p>
+    * <p>So this is a display ordering, not a second answer to a second question. Sorting by level
+    * rather than by the declared previous-tier order: that order happens to be newest first today,
+    * but the sentence must not depend on how the table was typed.</p>
     */
-   public List<GunTier> getUnlockedTiersNewestFirst() {
+   public List<GunTier> getAvailableMobTiersNewestFirst() {
       List<GunTier> tiers = this.getAvailableMobTiers();
-
-      // The "none" tier (level 0) has no weapons and must never be announced.
-      if (this.level > 0) {
-         tiers.add(this);
-      }
-
       tiers.sort(Comparator.comparingInt(GunTier::getLevel).reversed());
       return tiers;
    }

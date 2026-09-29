@@ -1283,24 +1283,40 @@ def main():
             zf, "top/ribs/scguns/init/ModSounds.class", b"hit.hitmarker",
             "the hitmarker sound event is registered"))
 
-        # 82.29. The unlock message named the tier below the one obtained and promised raids for a gun tier.
+        # 82.29 / 83.3 / 83.7. The notice used to name the tier below the one obtained, promised
+        # raids for a gun tier, and then - after 82.29 "fixed" it by adding the tier to the
+        # spawner's list - announced mobs that never spawn. The player caught that last one on
+        # screen: mobs lag a tier behind, so the notice must list exactly what a gunner can now
+        # carry, and the two methods now differ only in ordering.
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/entity/player/GunTier.class", b"getUnlockedTiersNewestFirst",
-            "the message reads its own, newest-first list"))
-        # 83.3. The spawner's list and the message's list must be two different methods, and only
-        # the spawner's may be what a mob is equipped from. getAvailableMobTiers has to keep
-        # 0.5.5's meaning - the tiers below the one unlocked - or mobs match the player exactly.
+            zf, "top/ribs/scguns/entity/player/GunTier.class", b"getAvailableMobTiersNewestFirst",
+            "the notice reads a newest-first ordering of the spawner's list"))
+        # 83.3. The spawner's list has to keep 0.5.5's meaning - the tiers below the one unlocked
+        # - or mobs match the player exactly.
         tier_bytes = _class_bytes(zf, "top/ribs/scguns/entity/player/GunTier.class") or b""
         checks.append((
             "the spawner's tier list is 0.5.5's (previous tiers only)",
             b"getAvailableMobTiers" in tier_bytes
-            and b"getUnlockedTiersNewestFirst" in tier_bytes))
+            and b"getAvailableMobTiersNewestFirst" in tier_bytes))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getAvailableMobTiers",
             "the spawner reads the previous-tiers-only list"))
         checks.append(_check_class_lacks(
-            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getUnlockedTiersNewestFirst",
-            "the spawner does not read the self-inclusive list"))
+            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getAvailableMobTiersNewestFirst",
+            "the spawner does not read the sorted copy, whose order would break its weighting"))
+        # 83.7.7. The container trigger exists: a gun taken out of a chest, a loot bag or a villager
+        # trade must count, which 0.5.5 did not do. Its absence is easy to miss because the class
+        # is PlayerContainerEvent, not InventoryEvent - which is how this was once reported as a bug.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/event/GunProgressionEventHandler.class", b"onContainerClose",
+            "guns taken out of a container raise the tier"))
+        # 83.7.6. Blueprints deliberately do not count, so no blueprint may appear in a tier tag.
+        checks.append((
+            "no blueprint is in a gun tier tag, as 0.5.5 had it",
+            not any(b"_blueprint" in zf.read(name)
+                    for name in zf.namelist()
+                    if name.startswith("data/scguns/tags/item/")
+                    and name.endswith("_gun_tier.json"))))
         # 83.1. The 14 blending recipes were the only genuinely 0-tick ones; the types Create
         # rejects must not carry the key at all, or those recipes are dropped on load.
         checks.append(_check_resource_contains(
