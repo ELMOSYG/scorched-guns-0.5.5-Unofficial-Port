@@ -75,6 +75,61 @@ def _check_neoforge_floor(zf, floor, label):
     return (label + " [neoforge dependency missing]", False)
 
 
+def _class_bytes(zf, entry):
+    """The packaged class file's bytes, or None when it is not in the jar."""
+    try:
+        return zf.read(entry)
+    except KeyError:
+        return None
+
+
+# Create 6 drops any recipe that carries a processing_time while canSpecifyDuration() is false,
+# which is every type outside AbstractCrushingRecipe / BasinRecipe / CuttingRecipe
+# (HANDOFF 83.1). A packaged recipe of one of these types with the key is a lost recipe.
+REJECTED_DURATION_TYPES = (b"create:pressing", b"create:filling",
+                           b"create:splashing", b"create:deploying")
+ACCEPTING_DURATION_TYPES = (b"create:crushing", b"create:milling", b"create:mixing",
+                            b"create:compacting", b"create:cutting")
+
+
+def _duration_owners(text):
+    """The recipe type each `processing_time` in this text belongs to.
+
+    A whole-file search cannot answer that: two of the sequenced assemblies have a cutting step
+    (which takes 50 ticks) alongside pressing steps (which take none), and they live in the same
+    file - a file-level check reads that as a rejected duration on a cutting step. These files are
+    machine written with each object's `"type"` as its first key, and an object and its own keys
+    share an indent, so the owner of a `processing_time` is the most recent `"type"` line at the
+    *same* indent. Reading it as "indented less than" instead would attribute the step's duration
+    to the enclosing assembly, which then hides a real violation on any step - verified by turning
+    one cutting step into a deploying one and watching the owner stay put.
+    """
+    last_type_at = {}
+    owners = []
+    for line in text.splitlines():
+        indent = len(line) - len(line.lstrip(" "))
+        stripped = line.strip()
+        if stripped.startswith('"type": "'):
+            last_type_at[indent] = stripped[len('"type": "'):].split('"')[0]
+        elif stripped.startswith('"processing_time"'):
+            owners.append(last_type_at.get(indent, ""))
+    return owners
+
+
+def _no_rejected_create_durations(zf):
+    """True when no packaged Create recipe carries a duration its own machine type rejects."""
+    for name in zf.namelist():
+        if not name.startswith("data/scguns/recipe/create/") or not name.endswith(".json"):
+            continue
+        text = zf.read(name).decode("utf-8", "replace")
+        if '"processing_time"' not in text:
+            continue
+        for owner in _duration_owners(text):
+            if owner.encode() in REJECTED_DURATION_TYPES:
+                return False
+    return True
+
+
 def _check_class_contains(zf, entry, needle, label):
     """True when the packaged class's constant pool contains *needle*."""
     try:
@@ -376,10 +431,15 @@ def main():
 
         # 13. turret aiming inside a physics structure (HANDOFF section 21). A structure's
         # block entities report plot coordinates while entities report world ones, so the
-        # aim/muzzle/effects have to be converted between the two frames.
+        # aim/muzzle/effects have to be converted between the two frames. The conversions
+        # themselves live in SablePhysicsBridge (section 83.2); the helper only fronts them,
+        # because naming a Sable type in an unconditionally linked class is a crash.
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/util/PhysicsStructureHelper.class", b"transformPositionInverse",
+            zf, "top/ribs/scguns/compat/SablePhysicsBridge.class", b"transformPositionInverse",
             "physics structure frame helper is packaged"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/util/PhysicsStructureHelper.class", b"SablePhysicsBridge",
+            "the frame helper fronts the Sable bridge"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/blockentity/TurretBlockEntity.class", b"PhysicsStructureHelper",
             "turret aims and fires in the world frame"))
@@ -389,7 +449,7 @@ def main():
 
         # 14. shots push physics structures (HANDOFF section 22).
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/util/PhysicsStructureHelper.class", b"applyImpulseAtPoint",
+            zf, "top/ribs/scguns/compat/SablePhysicsBridge.class", b"applyImpulseAtPoint",
             "physics structures can be pushed by shots"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/entity/projectile/ProjectileEntity.class", b"applyShotImpulse",
@@ -404,21 +464,34 @@ def main():
         # 15. the impulse is computed in the STRUCTURE's frame (HANDOFF section 22.6). Sable
         # asks for the normal mass at a point in its own coordinates; feeding it world
         # coordinates made the shot do nothing at all (verified: 3.4e11 instead of 0.014,
-        # i.e. an impulse of ~1e-11). So the helper must invert both the point and the
+        # i.e. an impulse of ~1e-11). So the bridge must invert both the point and the
         # normal, and must use Sable's own punch curve and multiplier for the strength.
-        helper = "top/ribs/scguns/util/PhysicsStructureHelper.class"
+        bridge = "top/ribs/scguns/compat/SablePhysicsBridge.class"
         checks.append(_check_class_contains(
-            zf, helper, b"transformNormalInverse",
+            zf, bridge, b"transformNormalInverse",
             "impulse normal is converted into the structure frame"))
         checks.append(_check_class_contains(
-            zf, helper, b"punchCurve",
+            zf, bridge, b"punchCurve",
             "impulse strength comes from Sable's own punch curve"))
         checks.append(_check_class_contains(
-            zf, helper, b"SUB_LEVEL_PUNCH_STRENGTH_MULTIPLIER",
+            zf, bridge, b"SUB_LEVEL_PUNCH_STRENGTH_MULTIPLIER",
             "impulse uses Sable's punch strength multiplier"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/Config$Gameplay.class", b"physicsStructureMaxSpeed",
             "structure speed limit is configurable"))
+
+        # 15b. the helper that turrets call on every tick must not name Sable at all: a JVM
+        # links and verifies a whole class before any of its methods run, and the verifier
+        # resolves the types it checks assignability between, so a Sable type in a signature
+        # there is a NoClassDefFoundError on a machine without Sable (section 83.2). It is
+        # the only entry point these classes have, so it is worth a reverse check.
+        helper_bytes = _class_bytes(zf, "top/ribs/scguns/util/PhysicsStructureHelper.class")
+        checks.append((
+            "the unconditionally linked frame helper names no Sable type in a descriptor",
+            helper_bytes is not None and b"Ldev/ryanhcode" not in helper_bytes))
+        checks.append((
+            "the Sable bridge is packaged",
+            "top/ribs/scguns/compat/SablePhysicsBridge.class" in names))
 
         # 16. the vertex colour reaches the model parts (HANDOFF section 23). 1.21.1 moved the
         # colour into renderToBuffer(..., int color) and added a five argument ModelPart.render.
@@ -1212,8 +1285,30 @@ def main():
 
         # 82.29. The unlock message named the tier below the one obtained and promised raids for a gun tier.
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/entity/player/GunTier.class", b"getAvailableMobTiersNewestFirst",
+            zf, "top/ribs/scguns/entity/player/GunTier.class", b"getUnlockedTiersNewestFirst",
             "the message reads its own, newest-first list"))
+        # 83.3. The spawner's list and the message's list must be two different methods, and only
+        # the spawner's may be what a mob is equipped from. getAvailableMobTiers has to keep
+        # 0.5.5's meaning - the tiers below the one unlocked - or mobs match the player exactly.
+        tier_bytes = _class_bytes(zf, "top/ribs/scguns/entity/player/GunTier.class") or b""
+        checks.append((
+            "the spawner's tier list is 0.5.5's (previous tiers only)",
+            b"getAvailableMobTiers" in tier_bytes
+            and b"getUnlockedTiersNewestFirst" in tier_bytes))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getAvailableMobTiers",
+            "the spawner reads the previous-tiers-only list"))
+        checks.append(_check_class_lacks(
+            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getUnlockedTiersNewestFirst",
+            "the spawner does not read the self-inclusive list"))
+        # 83.1. The 14 blending recipes were the only genuinely 0-tick ones; the types Create
+        # rejects must not carry the key at all, or those recipes are dropped on load.
+        checks.append(_check_resource_contains(
+            zf, "data/scguns/recipe/create/gunpowder_from_mixing.json", b'"processing_time": 100',
+            "the blending recipes have a real processing time"))
+        checks.append((
+            "no packaged Create recipe carries a duration its machine type rejects",
+            _no_rejected_create_durations(zf)))
         checks.append(_check_resource_contains(
             zf, "assets/scguns/lang/en_us.json", b"progression.scguns.enemies_can_spawn",
             "the enemies sentence says enemies only"))
