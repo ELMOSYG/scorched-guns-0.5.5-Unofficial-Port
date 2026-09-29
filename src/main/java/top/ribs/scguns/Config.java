@@ -827,6 +827,7 @@ public class Config {
       public final IntValue bloodParticleCount;
       public final DoubleValue bloodParticleSpread;
       public final DoubleValue bloodParticleSpeed;
+      public final BooleanValue bloodDebugLog;
       public final DoubleValue impactParticleDistance;
       public final BooleanValue enableWaterImpactParticles;
       public final BooleanValue enableLavaImpactParticles;
@@ -854,10 +855,22 @@ public class Config {
          this.bloodParticleSpread = builder.comment("Radius in blocks the droplets are scattered over when they spawn")
             .defineInRange("bloodParticleSpread", 0.15, 0.0, 1.0);
          this.bloodParticleSpeed = builder.comment(
-               "Multiplier on how hard the droplets are thrown. 1.0 is the tuned default; 0 makes them drop",
-               "straight down from the hit, which is what the effect looked like before."
-               )
+               new String[]{
+                  "Multiplier on how hard the droplets are thrown.",
+                  "1.0 is 0.5.5's own motion to the value - the speed 1.20.1 has - so anything below it is weaker",
+                  "than the original and anything above it is stronger. 0 makes the droplets drop straight down."
+               }
+            )
             .defineInRange("bloodParticleSpeed", 1.0, 0.0, 4.0);
+         this.bloodDebugLog = builder.comment(
+               new String[]{
+                  "Log every blood droplet to latest.log: where the packet spawned it, the velocity it was given,",
+                  "its position and onGround state every four ticks, and the sprite and alpha it drew with.",
+                  "This is how a report of \"the blood looks wrong\" gets answered with numbers instead of guesses,",
+                  "so it is off by default - it writes thousands of lines per fight."
+               }
+            )
+            .define("bloodDebugLog", false);
          this.impactParticleDistance = builder.comment("The maximum distance impact particles can be seen from the player")
             .defineInRange("impactParticleDistance", 32.0, 0.0, 64.0);
          this.enableWaterImpactParticles = builder.comment("If true, particles will spawn when projectiles impact water")

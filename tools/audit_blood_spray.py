@@ -239,6 +239,20 @@ def main() -> int:
     if "bloodParticleSpeed" not in source:
         problems.append("BloodParticle does not read bloodParticleSpeed, so the burst cannot be tuned")
 
+    # The droplet diagnostics write thousands of lines per fight, so they must stay behind their option.
+    # This is checked because the way the "blood appears on the ground" report was settled was by turning
+    # them on, and an edit that drops the guard would quietly spam every player's log instead.
+    if not re.search(r'define\(\s*"bloodDebugLog"\s*,\s*false\s*\)', config):
+        problems.append("no bloodDebugLog option, or it no longer defaults to off")
+    for path, name in ((PARTICLE, "BloodParticle"), (HANDLER, "ClientPlayHandler")):
+        text = strip_comments(open(path, encoding="utf-8", errors="replace").read())
+        for call in re.finditer(r"SCGUNS-BLOOD", text):
+            window = text[max(0, call.start() - 400):call.start()]
+            if "bloodDebugLog" not in window:
+                problems.append("%s logs SCGUNS-BLOOD without checking bloodDebugLog, so every player "
+                                "would get the diagnostic in their log" % name)
+                break
+
     for problem in problems:
         print("BROKEN %s" % problem)
     if problems:

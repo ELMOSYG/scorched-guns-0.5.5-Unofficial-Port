@@ -1506,6 +1506,14 @@ def main():
         checks.append(_check_class_float(
             zf, "top/ribs/scguns/client/particle/BloodParticle.class", 1.5,
             "the droplet's gravity matches 0.5.5's"))
+        # 82.38. The droplet diagnostic is what turns a "the blood looks wrong" report into numbers, so it
+        # ships - but it has to be opt-in, or every player's log fills with thousands of lines per fight.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/Config$Particle.class", b"bloodDebugLog",
+            "the blood diagnostic is a config option"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/particle/BloodParticle.class", b"bloodDebugLog",
+            "the droplet checks that option before logging"))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:

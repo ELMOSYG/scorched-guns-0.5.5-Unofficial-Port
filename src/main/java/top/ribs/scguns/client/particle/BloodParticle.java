@@ -67,10 +67,14 @@ public class BloodParticle extends TextureSheetParticle {
       this.gravity = 1.5F;
       this.quadSize = 0.1F;
       this.lifetime = (int)(12.0F / (this.random.nextFloat() * 0.9F + 0.1F));
-      // TEMPORARY PROBE (removed before the commit): what the client actually does with a droplet.
-      top.ribs.scguns.ScorchedGuns.LOGGER.info(
-         "SCGUNS-BLOOD drop spawn y={} xd={} yd={} zd={} gravity={} life={}",
-         this.y, this.xd, this.yd, this.zd, this.gravity, this.lifetime);
+      // Opt-in diagnostic (Config bloodDebugLog). This is what answered the report that "the blood
+      // appears on the ground": the droplets do spawn at the hit point and do fly - they are simply in
+      // the air for 6-10 ticks and then lie flat on the ground for the remaining 80% of their life.
+      if (Config.CLIENT.particle.bloodDebugLog.get()) {
+         top.ribs.scguns.ScorchedGuns.LOGGER.info(
+            "SCGUNS-BLOOD drop spawn y={} xd={} yd={} zd={} gravity={} life={}",
+            this.y, this.xd, this.yd, this.zd, this.gravity, this.lifetime);
+      }
    }
 
    public void setCustomColor(float r, float g, float b, float a) {
@@ -104,8 +108,8 @@ public class BloodParticle extends TextureSheetParticle {
 
    public void tick() {
       super.tick();
-      // TEMPORARY PROBE (removed before the commit): does the droplet move, and does it land?
-      if (this.age % 4 == 0) {
+      // Opt-in diagnostic (Config bloodDebugLog): does the droplet move, and does it land?
+      if (Config.CLIENT.particle.bloodDebugLog.get() && this.age % 4 == 0) {
          top.ribs.scguns.ScorchedGuns.LOGGER.info(
             "SCGUNS-BLOOD tick age={} y={} xd={} yd={} zd={} onGround={} quad={} removed={} renderType={}",
             this.age, this.y, this.xd, this.yd, this.zd, this.onGround, this.quadSize, this.removed,
@@ -119,9 +123,9 @@ public class BloodParticle extends TextureSheetParticle {
    }
 
    public void render(VertexConsumer buffer, Camera renderInfo, float partialTicks) {
-      // TEMPORARY PROBE (removed before the commit): is the quad really being drawn, with a real
-      // sprite? A degenerate sprite (u0 == u1) or a zero alpha would make it invisible.
-      if (this.age <= 1 && this.sprite != null) {
+      // Opt-in diagnostic (Config bloodDebugLog): is the quad really being drawn, with a real sprite?
+      // A degenerate sprite (u0 == u1) or a zero alpha would make it invisible.
+      if (Config.CLIENT.particle.bloodDebugLog.get() && this.age <= 1 && this.sprite != null) {
          top.ribs.scguns.ScorchedGuns.LOGGER.info(
             "SCGUNS-BLOOD render age={} pos={},{},{} quad={} sprite={} u={}-{} v={}-{} light={} alpha={} rCol={}",
             this.age, this.x, this.y, this.z, this.getQuadSize(partialTicks), this.sprite.contents().name(),
@@ -137,9 +141,11 @@ public class BloodParticle extends TextureSheetParticle {
       }
 
       Quaternionf rotation = Direction.NORTH.getRotation();
+      boolean cameraFacing = this.roll != 0.0F;
       if (this.roll == 0.0F) {
          if (!this.onGround) {
             rotation = renderInfo.rotation();
+            cameraFacing = true;
          }
       } else {
          rotation = new Quaternionf(renderInfo.rotation());
@@ -164,26 +170,26 @@ public class BloodParticle extends TextureSheetParticle {
       float minV = this.getV0();
       float maxV = this.getV1();
       int light = this.getLightColor(partialTicks);
-      buffer.addVertex((float)vertices[0].x(), (float)vertices[0].y(), (float)vertices[0].z())
-         .setUv(maxU, maxV)
-         .setColor(this.rCol, this.gCol, this.bCol, this.alpha)
-         .setLight(light)
-         ;
-      buffer.addVertex((float)vertices[1].x(), (float)vertices[1].y(), (float)vertices[1].z())
-         .setUv(maxU, minV)
-         .setColor(this.rCol, this.gCol, this.bCol, this.alpha)
-         .setLight(light)
-         ;
-      buffer.addVertex((float)vertices[2].x(), (float)vertices[2].y(), (float)vertices[2].z())
-         .setUv(minU, minV)
-         .setColor(this.rCol, this.gCol, this.bCol, this.alpha)
-         .setLight(light)
-         ;
-      buffer.addVertex((float)vertices[3].x(), (float)vertices[3].y(), (float)vertices[3].z())
-         .setUv(minU, maxV)
-         .setColor(this.rCol, this.gCol, this.bCol, this.alpha)
-         .setLight(light)
-         ;
+      float[] us = {maxU, maxU, minU, minU};
+      float[] vs = {maxV, minV, minV, maxV};
+      // 0.5.5 hands the four corners over clockwise, which puts the quad's front face on -Z. That is
+      // what the flat, landed orientation wants - measured with the game's own classes, Direction.NORTH's
+      // rotation turns that face to (0, 1, 0), straight up, so a droplet lying on the ground is seen from
+      // above. But a droplet still in the air is turned by the camera's rotation instead, and that same
+      // -Z face ends up pointing away from the viewer: the particle pass leaves face culling on, so
+      // every airborne droplet was culled and only the landed ones survived. That is exactly what the
+      // player reported - blood on the ground, nothing at the wound - and what their own log showed:
+      // 0.41 s after a hit, with eleven of the twelve droplets still in the air, the picture had only
+      // ground blood. Vanilla emits the corners counter-clockwise (front face +Z, which camera.rotation()
+      // turns towards the viewer), so the camera-facing pass emits them in the reverse order.
+      int[] order = cameraFacing ? new int[]{3, 2, 1, 0} : new int[]{0, 1, 2, 3};
+      for (int i : order) {
+         Vector3f vertex = vertices[i];
+         buffer.addVertex((float)vertex.x(), (float)vertex.y(), (float)vertex.z())
+            .setUv(us[i], vs[i])
+            .setColor(this.rCol, this.gCol, this.bCol, this.alpha)
+            .setLight(light);
+      }
    }
 
    @OnlyIn(Dist.CLIENT)
