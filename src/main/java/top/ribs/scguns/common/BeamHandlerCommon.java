@@ -45,7 +45,16 @@ public class BeamHandlerCommon {
    public static class BeamMiningManager {
       private static final Map<UUID, Integer> playerBreakingIds = new HashMap<>();
       private static final Map<BlockPos, BeamHandlerCommon.BeamMiningManager.MiningProgress> miningProgress = new HashMap<>();
-      private static int nextBreakerId = 1;
+      // Breaker ids count downwards so they can never equal an entity id. That matters because
+      // ServerLevel#destroyBlockProgress skips the player whose entity id equals the breaker id - vanilla
+      // does not have to send a miner their own crack, since the client tracks its own mining locally -
+      // and entity ids are only ever >= 0. With the old counter starting at 1, the first player to fire a
+      // mining gun was handed the id 1, and a world where that player's own entity id is also 1 gets no
+      // crack packets at all: the server still deepens the stage (the SCGUNS-MINE probe shows 1, 3, 5,
+      // 6, 8, 9 going out) and nothing is ever drawn, which is the player's report. Negative ids also
+      // keep clear of the ids the client uses for its own mining, which is why the id is not simply the
+      // player's.
+      private static int nextBreakerId = -1;
       private static final long RESET_TIMEOUT = 1000L;
       private static final double GLASS_PENETRATION_DAMAGE_REDUCTION = 0.15;
 
@@ -169,9 +178,10 @@ public class BeamHandlerCommon {
                // a beam mines, while vanilla mining shows one, so this prints what the server side of the
                // path computes and sends each tick.
                top.ribs.scguns.ScorchedGuns.LOGGER.info(
-                  "SCGUNS-MINE pos={} block={} hardness={} speed={} progress={} before={} newStage={} breakerId={} level={}",
+                  "SCGUNS-MINE pos={} block={} hardness={} speed={} progress={} before={} newStage={} breakerId={} playerId={} skipped={} level={}",
                   pos, state.getBlock(), hardness, miningSpeed, progress.progress, stageBeforeUpdate,
-                  newStage, progress.breakerId, world.getClass().getSimpleName());
+                  newStage, progress.breakerId, player.getId(), player.getId() == progress.breakerId,
+                  world.getClass().getSimpleName());
                if (newStage != progress.lastStage) {
                   progress.lastStage = newStage;
                   if (world instanceof ServerLevel serverLevel) {
@@ -329,7 +339,7 @@ public class BeamHandlerCommon {
             super();
             this.minerId = minerId;
             this.breakerId = BeamHandlerCommon.BeamMiningManager.playerBreakingIds
-               .computeIfAbsent(minerId, k -> BeamHandlerCommon.BeamMiningManager.nextBreakerId++);
+               .computeIfAbsent(minerId, k -> BeamHandlerCommon.BeamMiningManager.nextBreakerId--);
             this.isActive = true;
             this.lastStage = -1;
          }

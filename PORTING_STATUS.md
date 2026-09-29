@@ -1346,3 +1346,29 @@ return !stack.is(ModTags.Items.MINING_GUN) || enchantment != Enchantments.BLOCK_
 **待实测（交给玩家）**：① 附魔台现在应该能对 `shard_culler` / `cr4k_mining_laser` 提供时运/精准（需要重进世界让标签重载 ✓）；② 铁砧用书依旧可以 ✓。
 **仍未解决（本轮装了探针）**：光束采矿**看不到裂纹**（原版挖掘正常 ✓ ⇒ 客户端渲染没问题 ⇒ 差异在光束路径 ✓）；已把服务端每 tick 的 `pos/方块/硬度/枪/速度/进度/阶段/breakerId` 打进日志 ✓，请用采矿枪挖一格方块后告诉我，我直接读 `latest.log` 定位 ✓。
 **另记（本轮未动）**：0.5.5 的同一个重写里还有"**半自动类附魔不得附到全自动枪上**"这一条（`enchantment.category == SEMI_AUTO_GUN` 且 `fireMode != AUTOMATIC` ✓），1.21.1 里同样只能靠标签表达 ✓，本移植的附魔 `supported_items` 是按"枪/非枪"生成的 ⇒ 这条**目前没有体现** ✓；是否补上属于行为对齐，等玩家拍板 ✓。
+
+## §82.43 **采矿枪看不到裂纹的真因：假 breakerId 撞上玩家实体 id，包被服务端自己过滤掉了**（玩家判断正确）
+
+**玩家提示**："原版的挖掘和破坏方块是正常的" ✓ + "查看日志，我觉得也是渲染bug" ✓。
+
+**一、日志先证明"服务端一切正常"**（182 行 `SCGUNS-MINE` ✓，玩家用的是 `cr4k_mining_laser`（speed 14.0）与 `shard_culler`（speed 1.0）✓）：
+- 快枪（14.0）挖草方块：**第 1 tick 进度就到 2.33** ⇒ `newStage = min(23, 9) = 9` ✓，第 2 tick 破坏 ⇒ **裂纹最多存在 1 tick（50 ms）** ✓ ⇒ 看不见是**公式本身**决定的 ✓（0.5.5 亦然 ✓）。
+- **慢枪（1.0）挖泥土：阶段序列是 `1 → 3 → 5 → 6 → 8 → 9`，跨约 7 tick** ✓✓ —— **服务端确实在一个阶段一个阶段地发包** ✓。
+⇒ **服务端没问题 ⇒ 玩家的判断对：问题在客户端一侧** ✓（准确说是"客户端根本没被告知" ✓）。
+
+**二、真因：`ServerLevel.destroyBlockProgress` 会跳过"实体 id == breakerId"的那个玩家**
+1.21.1 反汇编实测（合并 jar ✓）：
+```java
+if (player != null && player.level() == this && player.getId() != breakerId
+    && player.blockPosition().distSqr(pos) < 1024.0D) player.connection.send(new ClientboundBlockDestructionPacket(...));
+```
+**原版挖矿不需要把裂纹发回给挖掘者本人** ✓（客户端用 `MultiPlayerGameMode` 自己在本地记 ✓）；而**光束挖矿不是客户端自己的挖掘** ⇒ 完全依赖这个包 ✓。
+而本移植的 `nextBreakerId` **从 1 开始自增** ✗ ⇒ **第一个用采矿枪的玩家拿到 id = 1** ✓ ⇒ **只要该玩家的实体 id 也是 1，服务端就把他自己过滤掉** ⇒ 永远收不到裂纹包 ✓✓✓（实体 id 只会 ≥ 0 ✓，而每次开游戏计数器都会重置 ⇒ 单机里玩家 id 很小的概率很高 ✓）。
+
+**三、修法**：把 breaker id 改成**只可能为负**的计数器（`nextBreakerId = -1` 且 `nextBreakerId--` ✓）⇒ **永远不可能等于任何实体 id** ✓✓。**刻意不用玩家真实 id**：客户端自己的挖掘状态是**按 id 存**的 ✓，用玩家 id 会让"手动挖任何方块"顺手清掉光束的裂纹 ✗ ⇒ 保持假 id、但保证不撞 ✓。
+
+**新增审计 `tools/audit_beam_mining_crack.py`（第 49 个）**：breaker id 计数器必须从负数开始并递减 ✓、阶段包必须按存下来的 `breakerId` 发送 ✓、阶段变化必须发包 ✓（理由里带上了上面那段原版字节码 ✓）。反向验证 **2/2** ✓（退回 `= 1` + 自增 ✓ / 只把初值改成正数 ✓）。
+
+**门禁**：**49 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-214227` ✓）。
+**待实测（交给玩家）**：用 **`shard_culler`**（慢枪，1.0）挖一格石头/泥土 ⇒ **应该能看到一格一格加深的裂纹** ✓；快枪（14.0）因为一 tick 就破坏到位 ⇒ 裂纹仍然只有一帧 ✓（如需放慢属平衡改动 ✓，`cr4k` 的 `miningSpeed` 就在枪的 JSON 里 ✓）。日志里新加了 `playerId=` 与 `skipped=` 两列 ✓，正好可以核对这次是否命中 ✓。
+**探针仍在**（`SCGUNS-MINE` ✓，下一轮删 ✓）。
