@@ -1372,3 +1372,30 @@ if (player != null && player.level() == this && player.getId() != breakerId
 **门禁**：**49 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-214227` ✓）。
 **待实测（交给玩家）**：用 **`shard_culler`**（慢枪，1.0）挖一格石头/泥土 ⇒ **应该能看到一格一格加深的裂纹** ✓；快枪（14.0）因为一 tick 就破坏到位 ⇒ 裂纹仍然只有一帧 ✓（如需放慢属平衡改动 ✓，`cr4k` 的 `miningSpeed` 就在枪的 JSON 里 ✓）。日志里新加了 `playerId=` 与 `skipped=` 两列 ✓，正好可以核对这次是否命中 ✓。
 **探针仍在**（`SCGUNS-MINE` ✓，下一轮删 ✓）。
+
+## §82.44 裂纹**已实测正常** ✓；补上光束挖掘的**敲击音效**（玩家要求）
+
+**玩家实测**："正常了" ✓ ✓ ⇒ §82.43 的假 breakerId 就是根因 ✓（探针已删除 ✓）。
+
+**一、先查清"破坏音效到底有没有"**：0.5.5 的 `breakBlockWithEnchantments` 在两条分支里都调 `world.levelEvent(2001, pos, Block.getId(blockState))` ✓，本移植**逐字相同** ✓。逐层核对 1.21.1：
+- `LevelAccessor.levelEvent(int, BlockPos, int)`（default）→ `levelEvent(null, type, pos, data)` ✓；
+- `ServerLevel.levelEvent(Player, int, BlockPos, int)` → 向 64 格内玩家广播 `ClientboundLevelEventPacket` ✓；
+- 客户端 `LevelRenderer.levelEvent` 的 `case 2001` → 非空气方块 → `getSoundType(...).getBreakSound()` + `playLocalSound` ✓ **并且** `addDestroyBlockEffect`（碎屑粒子）✓。
+⇒ **"破坏"那一下的粒子与音效本来就是通的** ✓，所以缺的不是它 ✓。
+
+**二、真正缺的是"敲击音效"（挖的过程中那声"咚、咚"）**：原版这颗音由**客户端**播放 —— `MultiPlayerGameMode.continueDestroyBlock`（反汇编实测 ✓）：每 **4 tick** 一次、`state.getSoundType(level,pos,entity).getHitSound()`、音量 `(volume + 1) / 8`、音高 `pitch * 0.5`，并用 `level.playLocalSound` 只放给挖掘者自己 ✓。**光束是服务端驱动的 ⇒ 客户端这段代码永远不会跑 ⇒ 挖方块全程无声** ✓✓。
+
+**修法（照抄原版数值 ✓）**：在 `handleBeamMining` 里
+```java
+if (world.getGameTime() % 4L == 0L) {
+   SoundType soundType = state.getSoundType(world, pos, player);
+   player.playNotifySound(soundType.getHitSound(), SoundSource.BLOCKS,
+      (soundType.getVolume() + 1.0F) / 8.0F, soundType.getPitch() * 0.5F);
+}
+```
+✓ 用 `playNotifySound` **只发给挖掘者** ✓（与原版"只有自己听得见"一致 ✓）；**不额外播放破坏音** ✓（2001 已经在放 ✓，再放一次会变成双响 ✗）。
+
+**审计同步**（`tools/audit_beam_mining_crack.py` 扩成"光束挖掘反馈" ✓）：新增 5 条 —— 必须播放 `getHitSound` ✓、间隔必须是 4 tick ✓、音量必须是 `(volume+1)/8` ✓、音高必须是 `pitch*0.5` ✓、必须只发给挖掘者（`playNotifySound`）✓，并要求破坏仍走 `levelEvent(2001)` ✓。反向验证 **5/5** ✓（换成别的音效 ✓ / 间隔改成 20 tick ✓ / 音量改成 /2 ✓ / 去掉音高 0.5 ✓ / 改成 `world.playSound` 放给所有人 ✓）。
+
+**门禁**：**49 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-215223` ✓）；探针已清空（`SCGUNS-MINE` / `TEMPORARY` 命中数 **0** ✓）。
+**待实测（交给玩家）**：用采矿枪挖方块时应该能听到**持续的四拍敲击声**（与原版手感同频同音），破坏那一下仍是方块自身的破坏音 ✓。

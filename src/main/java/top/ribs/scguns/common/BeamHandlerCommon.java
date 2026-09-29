@@ -13,6 +13,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.neoforged.neoforge.common.Tags;
 import net.minecraft.world.entity.Entity;
@@ -24,6 +25,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ClipContext.Block;
 import net.minecraft.world.level.ClipContext.Fluid;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams.Builder;
@@ -50,8 +52,8 @@ public class BeamHandlerCommon {
       // does not have to send a miner their own crack, since the client tracks its own mining locally -
       // and entity ids are only ever >= 0. With the old counter starting at 1, the first player to fire a
       // mining gun was handed the id 1, and a world where that player's own entity id is also 1 gets no
-      // crack packets at all: the server still deepens the stage (the SCGUNS-MINE probe shows 1, 3, 5,
-      // 6, 8, 9 going out) and nothing is ever drawn, which is the player's report. Negative ids also
+      // crack packets at all: the server still deepens the stage (a probe run while diagnosing this
+      // printed 1, 3, 5, 6, 8, 9 going out) and nothing is ever drawn, which is what the player saw. Negative ids also
       // keep clear of the ids the client uses for its own mining, which is why the id is not simply the
       // player's.
       private static int nextBreakerId = -1;
@@ -174,14 +176,19 @@ public class BeamHandlerCommon {
                int stageBeforeUpdate = progress.lastStage;
                progress.progress += progressIncrement;
                int newStage = Math.min((int)(progress.progress * 10.0F), 9);
-               // TEMPORARY PROBE (removed before the next round): the player reports no crack on any block
-               // a beam mines, while vanilla mining shows one, so this prints what the server side of the
-               // path computes and sends each tick.
-               top.ribs.scguns.ScorchedGuns.LOGGER.info(
-                  "SCGUNS-MINE pos={} block={} hardness={} speed={} progress={} before={} newStage={} breakerId={} playerId={} skipped={} level={}",
-                  pos, state.getBlock(), hardness, miningSpeed, progress.progress, stageBeforeUpdate,
-                  newStage, progress.breakerId, player.getId(), player.getId() == progress.breakerId,
-                  world.getClass().getSimpleName());
+               // Vanilla plays the block's hit sound every four ticks while you dig - the "tap tap" that
+               // tells you the block is coming apart - but the client does that for its own mining
+               // (MultiPlayerGameMode.continueDestroyBlock builds a SimpleSoundInstance from
+               // getSoundType(...).getHitSound() with volume (v + 1) / 8 and pitch p * 0.5). A beam is
+               // server-driven, so nothing ever plays it and the beam chews through blocks in silence.
+               // Same interval and same numbers, sent to the miner only, who is the one who hears it in
+               // vanilla. The break itself is not handled here: it goes out as vanilla's level event
+               // 2001, which the client turns into both the break particles and the break sound.
+               if (world.getGameTime() % 4L == 0L) {
+                  SoundType soundType = state.getSoundType(world, pos, player);
+                  player.playNotifySound(soundType.getHitSound(), SoundSource.BLOCKS,
+                     (soundType.getVolume() + 1.0F) / 8.0F, soundType.getPitch() * 0.5F);
+               }
                if (newStage != progress.lastStage) {
                   progress.lastStage = newStage;
                   if (world instanceof ServerLevel serverLevel) {
