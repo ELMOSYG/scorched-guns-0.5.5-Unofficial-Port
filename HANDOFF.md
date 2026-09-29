@@ -8624,3 +8624,114 @@ SCG Extra 是 1.20.1 Forge 附属 mod、当前 1.21.1 实例里也没有，所�
 ⇒ **"这个 API 被谁引用"比"我以为的目录在哪"更靠得住。**
 这与前五次是同一个错误的第六个变体：**先定搜索面，再下结论**。
 本轮两次都栽在同一件事上，值得单独记。
+
+---
+
+## 83.10 玩家报两条：光束命中后**随机方向**击退 / 全自动光束挖方块**没有破坏纹理**
+
+两条都是"读 mod 喂给它的**原版**代码"才查出来的，不是 mod 自己的逻辑写错。
+
+### 83.10.1 随机方向击退：1.21 的伤害来源**没有位置**
+
+`BeamWeaponHandler:152`（改前）：
+
+```java
+DamageSource damageSource = ModDamageTypes.Sources.projectile(player.server.registryAccess(), null, player);
+```
+
+0.5.5 传的是**一模一样**的三参数调用（已对过反编译产物第 146 行）⇒ **不是 mod 改坏的**。
+
+链子全在 1.21.1 原版侧：
+
+1. `DamageSource#getSourcePosition()`（`DamageSource.java:120-126`）**只看 direct 实体，从不看 causing**：
+
+   ```java
+   if (this.damageSourcePosition != null) return this.damageSourcePosition;
+   else return this.directEntity != null ? this.directEntity.position() : null;
+   ```
+
+   光束是 hitscan，**没有射弹实体**；direct 传 `null` ⇒ **来源位置为 null**（causing 那个 `player` 被完全忽略）。
+
+2. `LivingEntity#hurt`（1241-1253）据此填击退方向：
+
+   ```java
+   if (source.getDirectEntity() instanceof Projectile p) { ...直接用射弹方向 }
+   else if (source.getSourcePosition() != null) { d0 = sourcePos.x - this.getX(); ... }
+   this.knockback(0.4F, d0, d1);        // 两个分支都没进 ⇒ d0 = d1 = 0.0
+   ```
+
+3. `LivingEntity#knockback`（1540-1543）把**近乎零的向量换成随机方向**：
+
+   ```java
+   while (x * x + z * z < 1.0E-5F) {
+       x = (Math.random() - Math.random()) * 0.01;
+       z = (Math.random() - Math.random()) * 0.01;
+   }
+   ```
+
+⇒ **"随机方向"是原版对一个没有来源位置的伤害来源的既定行为**，mod 只是没给它位置。
+全 mod **只有这一处**这样构造伤害来源：另外 20 处射弹全都传 `this`（`AdvancedRound`/`Gibbs`/
+`Plasma`/`Shotball`/`Lightning`…）。**未核实**：1.20.1 的 `getSourcePosition()` 是否也只看 direct
+（本地没有 1.20.1 的 MC，本仓库的 1.20.1 侧只有 mod 自身源码）⇒ **不猜**，
+但无论 1.20.1 是什么行为，现在这样一定是对的。
+
+**改法**：`ModDamageTypes.Sources` 新增带位置的工厂 + `BulletDamageSource` 新增转发 4 参构造
+（`DamageSource` 有 `protected (Holder, Entity, Entity, Vec3)` 可用），调用处传
+**`entityHitResult.getLocation()`**（命中点）。用命中点而不是射手位置：命中点在生物**近侧**，
+`命中点 - 生物位置` 即指向射手 ⇒ 击退方向正确；顺带也修了 `indicateDamage` 的受击倾斜方向
+（它用同一对参数）。
+
+### 83.10.2 没有破坏纹理：**只有"挖得快的那把"会这样**
+
+先把能挖的枪全找出来（数据实测，只有 3 把，全是 `fireMode: scguns:beam`）：
+
+| 枪 | miningSpeed | 石头(1.5)每 tick 进度 | 表现 |
+|---|---|---|---|
+| `cr4k_mining_laser` | **14.0** | 0.933 ⇒ **第 1 tick 阶段就 9** | 几乎看不见 |
+| `flayed_god` | 1.0 | 0.067 | 15 tick，正常 |
+| `shard_culler` | 1.0 | 0.067 | 15 tick，正常 |
+
+进度公式 `progressIncrement = miningSpeed / (hardness * 10.0F)`，完成条件 `progress >= 1.0F`。
+**泥土**(0.5) 时 `cr4k_mining_laser` 是 `14/5 = 2.8` ⇒ **第 1 tick 就 ≥1.0**，于是同一个 tick 里
+先发 `destroyBlockProgress(…, 9)`、再发 `-1` 清除、紧接着破坏方块 ⇒ **裂纹一帧都没渲染**。
+慢的那两把石头要 15 tick，所以一直正常 ⇒ 这就是"只有全自动/快的那把没有纹理"的原因。
+
+**先排除掉几个看似可疑、实则无关的点**（都查过）：
+* `BeamHandlerCommon` 与 0.5.5 **只差 API 重命名**（`getEnchantmentLevel`→`ScEnchants.level`、
+  `new ResourceLocation`→`fromNamespaceAndPath`），挖掘进度逻辑**逐字相同** ⇒ 不是移植回归；
+* 阶段已用 `Math.min(…, 9)` 夹住，**不会**碰到 1.21.1 新增的
+  `LevelRenderer#destroyBlockProgress` 把 `progress >= 10` 当作移除的规则；
+* `lastStage` 初值 `-1` ⇒ 首帧就会发包；
+* `breakerId` 是假的（`nextBreakerId++`）**无妨**：1.21.1 的 `ServerLevel#destroyBlockProgress`
+  过滤条件是"同世界 ∧ 离方块 8 格内 ∧ `player.getId() != breakerId`"，假 id 只是让所有人都收到；
+* 客户端渲染路径**没有**"仅限挖掘者"的门禁。
+
+**改法**：破坏方块的前提加上"阶段 9 已经发出过"，即
+`if (progress.progress >= 1.0F && progress.lastStage >= 9)`。
+阶段 9 本来就是**上一个 tick**算出来的，所以客户端有整整一帧能渲染它。
+**挖掘速度完全不变**（只延后一 tick）。
+另一种做法是把阶段增量也匀速化，但那是**改平衡**，不是修 bug，故未采用。
+
+### 83.10.3 新增审计 **`tools/audit_beam_knockback_and_crack.py`**（第 43 个）
+
+钉住：hitscan 伤害来源必须带位置、必须用命中点、`ModDamageTypes` 必须有带位置的工厂与转发构造、
+挖掘不得同 tick 清进度+破坏、阶段必须仍夹在 9。
+另打印 3 把挖掘枪的速度表，`>= 2.0` 的会提示"一 tick 延迟在这里是必要的"。
+
+* **反向验证 2/2** ✓：退回三参数调用 → 报 `passes a null direct entity and no source position` ✓；
+  去掉 `&& lastStage >= 9` → 报 `can clear the crack and break the block in the same tick` ✓。
+* **这条审计自己被返工了三次**才真正抓得住（都记在提交信息里）：
+  ① 参数正则被 `registryAccess()` 的嵌套括号截断；
+  ② 括号计数起点已在调用括号之后，深度差一层；
+  ③ 修好提取后仍不报 —— 因为我把 **direct 实体当成了第 1 个参数，实际是第 2 个**
+  （第 1 个是 `RegistryAccess`）。
+  ⇒ 前两次"反向验证通过"是**假通过**，与 §83.2 那个静态注入器、
+  §83.9 那个映射名/SRG 名属于同一类：**验证脚本自身出错时的表现，和"检查通过"一模一样。**
+
+### 83.10.4 验收
+
+* **43 审计 + 12 selftest 全 0**、`javac` 0（1013）、`build` ✓、
+  服务器 `Done` 且配方/标签错误 0、ERROR/FATAL 0、mixin 0 ✓。
+* **未实测**（只能玩家在客户端/游戏里看）：① 光束命中后生物沿射线方向飞出；
+  ② `cr4k_mining_laser` 挖方块能看到裂纹（哪怕只有一帧）；
+  ③ 挖掘速度与改前一致（不应有任何可感差异）。

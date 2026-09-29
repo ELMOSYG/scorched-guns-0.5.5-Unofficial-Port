@@ -14,6 +14,7 @@ import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.phys.Vec3;
 import top.ribs.scguns.entity.projectile.ProjectileEntity;
 import top.ribs.scguns.util.GunModifierHelper;
 
@@ -38,6 +39,23 @@ public class ModDamageTypes {
          return new DamageSource(getHolder(access, ModDamageTypes.BULLET), directEntity, causingEntity);
       }
 
+      /**
+       * A damage source that carries an explicit position, for damage that has no projectile entity behind it.
+       *
+       * <p>Needed because 1.21's {@code DamageSource#getSourcePosition} reads
+       * <b>only the direct entity</b> and never the causing entity:
+       * {@code damageSourcePosition != null ? damageSourcePosition : (directEntity != null ? directEntity.position() : null)}.
+       * A hitscan beam has no projectile, so with a null direct entity the position is null - and
+       * then {@code LivingEntity#hurt} has neither branch to fill its knockback direction in and
+       * calls {@code knockback(0.4, 0, 0)}. Vanilla's {@code knockback} replaces a near-zero vector
+       * with {@code (random() - random()) * 0.01}, so the mob was shoved in a <b>random</b>
+       * direction (HANDOFF 83.10). Passing the hit point gives it the direction the beam came
+       * from, and also fixes the direction of the damage-tilt flash, which uses the same pair.</p>
+       */
+      public static DamageSource projectile(RegistryAccess access, @Nullable Entity directEntity, @Nullable Entity causingEntity, @Nullable Vec3 sourcePosition) {
+         return new ModDamageTypes.Sources.BulletDamageSource(getHolder(access, ModDamageTypes.BULLET), directEntity, causingEntity, sourcePosition);
+      }
+
       private static DamageSource source(
          RegistryAccess access, ResourceKey<DamageType> damageTypeKey, @Nullable Entity directEntity, @Nullable Entity causingEntity
       ) {
@@ -59,6 +77,10 @@ public class ModDamageTypes {
 
          public BulletDamageSource(Holder<DamageType> pType, Entity pDirectEntity, Entity pCausingEntity) {
             super(pType, pDirectEntity, pCausingEntity);
+         }
+
+         public BulletDamageSource(Holder<DamageType> pType, @Nullable Entity pDirectEntity, @Nullable Entity pCausingEntity, @Nullable Vec3 pSourcePosition) {
+            super(pType, pDirectEntity, pCausingEntity, pSourcePosition);
          }
 
          public Component getLocalizedDeathMessage(LivingEntity pLivingEntity) {

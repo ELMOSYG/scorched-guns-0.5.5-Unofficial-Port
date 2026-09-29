@@ -149,7 +149,14 @@ public class BeamWeaponHandler {
          }
 
          float damage = calculateBeamDamage(weapon, modifiedGun, player, damageMultiplier, entityHitResult);
-         DamageSource damageSource = ModDamageTypes.Sources.projectile(player.server.registryAccess(), null, player);
+         // The hit point, not null. 1.21's DamageSource#getSourcePosition reads only the direct
+         // entity, never the causing one, and a hitscan beam has no projectile - so a null direct
+         // entity means no position, and LivingEntity#hurt then calls knockback(0.4, 0, 0), which
+         // vanilla turns into a RANDOM direction (its knockback replaces a near-zero vector with
+         // (random() - random()) * 0.01). This is the only damage source in the mod built that way;
+         // every projectile passes itself. The same pair also orients the damage-tilt flash.
+         DamageSource damageSource = ModDamageTypes.Sources.projectile(
+            player.server.registryAccess(), null, player, entityHitResult.getLocation());
          boolean damaged = hitEntity.hurt(damageSource, damage);
          if (damaged) {
             hitEntity.invulnerableTime = 0;
