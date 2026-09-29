@@ -1,19 +1,23 @@
-"""Progression messages must say something true (HANDOFF 82.29).
+"""Progression messages must say something true, and mob spawning must not (HANDOFF 82.29, 83).
 
 The unlock message read: "你获得了【铁】的枪械！ / 现在可能会出现【铜、边疆、古典】的敌人和袭击！" - two problems in
 one line. It named the tiers *below* the one just obtained, and it promised raids for a gun tier.
 
-  * `GunTier.getAvailableMobTiers()` returned `previousTierIds` only, leaving the tier itself out. The spawner
-    reads that same list, so a gunner could never be equipped with the player's newest tier: the newest tier
-    was permanently unreachable, and the sentence announced the tier below instead.
+  * the message listed `previousTierIds` only, leaving out the tier just obtained. Fixing that by
+    making `getAvailableMobTiers()` include itself was the wrong repair: `GunnerMobSpawner` reads
+    that same list, so mobs started carrying the player's newest tier the instant it was reached -
+    the world kept pace with the player step for step, which is not what a progression is for
+    (0.5.5 deliberately lagged: at 古典 the list is empty and no gunner spawns at all). The two
+    questions now have their own methods, and this audit exists to stop them being merged again.
   * the sentence attached raids to tier names. Raids are not tier-bound - they are named on their own line,
     from the raid level - so "【铜】的袭击" claims something that does not exist.
 
 Rules:
 
-  1. the mob tier list includes the tier itself, so the newest tier is reachable and the message can name it,
-  2. the message lists tiers newest first, and separately from the spawner's own ordering (which puts the
-     newest last so it stays the rare pick),
+  1. `getAvailableMobTiers()` (the spawner's list) is the previous tiers only - 0.5.5's rule, and
+     the reason a player at 古典 sees no armed mobs,
+  2. `getUnlockedTiersNewestFirst()` (the message's list) includes this tier, guards the level 0
+     "none" tier, and sorts by level descending,
   3. the enemies sentence mentions enemies only - neither its key nor its text may promise raids,
   4. the raid line announces only raids this tier actually adds, so a tier that unlocks none says nothing.
 
@@ -30,6 +34,8 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "src", "main", "java", "top", "ribs", "scguns")
 TIER = os.path.join(SRC, "entity", "player", "GunTier.java")
 EVENT = os.path.join(SRC, "event", "GunProgressionEventHandler.java")
+SPAWNER = os.path.join(SRC, "config", "GunnerMobSpawner.java")
+COMMANDS = os.path.join(SRC, "init", "ModCommands.java")
 LANG = os.path.join(ROOT, "src", "main", "resources", "assets", "scguns", "lang")
 
 ENEMIES_KEY = "progression.scguns.enemies_can_spawn"
@@ -102,32 +108,55 @@ def main() -> int:
 
     tier = strip_comments(open(TIER, encoding="utf-8", errors="replace").read())
     event = strip_comments(open(EVENT, encoding="utf-8", errors="replace").read())
+    spawner = strip_comments(open(SPAWNER, encoding="utf-8", errors="replace").read())
+    commands = strip_comments(open(COMMANDS, encoding="utf-8", errors="replace").read())
     en = json.load(open(os.path.join(LANG, "en_us.json"), encoding="utf-8"))
     zh = json.load(open(os.path.join(LANG, "zh_cn.json"), encoding="utf-8"))
 
-    # 1. the tier itself has to be in its own list
+    # 1. the spawner's list must stay 0.5.5's: previous tiers only, and no `this`
     available = method_body(tier, "public List<GunTier> getAvailableMobTiers(")
     if not available:
         problems.append("GunTier has no getAvailableMobTiers")
-    else:
-        if "tiers.add(this)" not in available:
-            problems.append("getAvailableMobTiers still returns only the previous tiers: the newest tier can "
-                            "never be equipped on a gunner, and the unlock message names the tier below the "
-                            "one just obtained")
-        if not re.search(r"level\s*>\s*0", available):
-            problems.append("the tier itself is added without a level guard, so the level 0 \"none\" tier would "
-                            "be offered to the spawner")
+    elif "tiers.add(this)" in available:
+        problems.append("getAvailableMobTiers adds the tier itself again: GunnerMobSpawner reads this "
+                        "list, so mobs would carry the player's newest tier the moment it is reached "
+                        "instead of lagging a tier behind as in 0.5.5")
+    if available and "previousTierIds" not in available:
+        problems.append("getAvailableMobTiers no longer derives from previousTierIds")
 
-    # 2. message order is its own thing
-    newest_first = method_body(tier, "public List<GunTier> getAvailableMobTiersNewestFirst(")
+    # 1b. and the spawner has to be reading that list, not the message's
+    if "getAvailableMobTiers()" not in spawner:
+        problems.append("GunnerMobSpawner no longer reads getAvailableMobTiers(): whatever it reads now "
+                        "decides which guns mobs spawn with")
+    if "getUnlockedTiersNewestFirst" in spawner:
+        problems.append("GunnerMobSpawner reads getUnlockedTiersNewestFirst, which includes the player's "
+                        "newest tier - mobs would match the player's tier the moment it is reached")
+    # The two diagnostic commands print what mobs can carry, so they follow the spawner, not the message.
+    for command_body in ("executeCheckProgression", "executeInfoTier"):
+        body = method_body(commands, "private static int %s(" % command_body)
+        if body and "getUnlockedTiersNewestFirst" in body:
+            problems.append("/scguns %s reports the message's list, so it would print a tier that no mob "
+                            "can actually carry" % command_body.replace("execute", ""))
+
+    # 2. the message's own list includes this tier, and is ordered for a sentence
+    newest_first = method_body(tier, "public List<GunTier> getUnlockedTiersNewestFirst(")
     if not newest_first:
-        problems.append("no getAvailableMobTiersNewestFirst helper: the message would print the spawner's order, "
-                        "which puts the newest tier last")
-    elif "getLevel" not in newest_first or "reversed" not in newest_first:
-        problems.append("getAvailableMobTiersNewestFirst does not sort by level descending")
+        problems.append("no getUnlockedTiersNewestFirst helper: the message would have to print the "
+                        "spawner's list, which by design leaves the tier just obtained out")
+    else:
+        if "tiers.add(this)" not in newest_first:
+            problems.append("getUnlockedTiersNewestFirst leaves out the tier just obtained, so the "
+                            "notice names the tier below the one the player just picked up")
+        if not re.search(r"level\s*>\s*0", newest_first):
+            problems.append("the tier itself is added without a level guard, so the level 0 \"none\" "
+                            "tier would be announced")
+        if "getLevel" not in newest_first or "reversed" not in newest_first:
+            problems.append("getUnlockedTiersNewestFirst does not sort by level descending")
     unlock = method_body(event, "public static void sendTierUnlockedMessage(")
-    if unlock and "getAvailableMobTiersNewestFirst(" not in unlock:
-        problems.append("the unlock message does not use the newest-first list")
+    if unlock and "getUnlockedTiersNewestFirst(" not in unlock:
+        problems.append("the unlock message does not use the self-inclusive newest-first list")
+    if unlock and "getAvailableMobTiers(" in unlock:
+        problems.append("the unlock message reads the spawner's list; the two must not be the same list")
 
     # 3. enemies only
     if unlock and ENEMIES_KEY not in unlock:
@@ -161,8 +190,10 @@ def main() -> int:
             problems.append("the raid line does not skip itself when the tier adds no raid")
 
     print("=== progression messages ===")
-    print("  mob tier list includes itself          %s"
-          % ("yes" if available and "tiers.add(this)" in available else "NO"))
+    print("  spawner list (previous tiers only)     %s"
+          % ("yes" if available and "tiers.add(this)" not in available else "NO - includes itself"))
+    print("  message list (self-inclusive)          %s"
+          % ("yes" if newest_first and "tiers.add(this)" in newest_first else "NO"))
     print("  message order                          %s"
           % ("newest first" if newest_first else "spawner order (wrong for a message)"))
     print("  enemies sentence                       %s"
@@ -175,7 +206,8 @@ def main() -> int:
             print("BROKEN %s" % problem)
         print("\n%d problem(s)" % len(problems))
         return 1
-    print("0 problem(s): the unlock message names the tier just obtained, and mentions no raids")
+    print("0 problem(s): mobs lag a tier behind the player as in 0.5.5, the unlock message names the "
+          "tier just obtained, and it mentions no raids")
     return 0
 
 

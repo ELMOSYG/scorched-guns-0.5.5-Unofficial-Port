@@ -1,5 +1,6 @@
 {
   "type": "create:mixing",
+  "processing_time": 100,
   "heat_requirement": "heated",
   "neoforge:conditions": [
     {

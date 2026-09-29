@@ -1,5 +1,6 @@
 {
   "type": "create:mixing",
+  "processing_time": 100,
   "neoforge:conditions": [
     {
       "type": "neoforge:mod_loaded",

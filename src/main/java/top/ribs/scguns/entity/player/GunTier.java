@@ -49,16 +49,19 @@ public class GunTier {
    }
 
    /**
-    * Every tier a gunner mob may be equipped from once this tier is unlocked: the previous tiers, then this
-    * one (HANDOFF section 82.29).
+    * Every tier a gunner mob may be equipped from once this tier is unlocked: <b>the previous
+    * tiers, and not this one</b> (HANDOFF section 83).
     *
-    * <p>This used to return {@code previousTierIds} alone, leaving the tier itself out. Two things followed:
-    * unlocking a tier announced the tier <em>below</em> it - "【antique】 enemies may now appear" immediately
-    * after obtaining frontier guns - and the spawner, which reads this same list, could never equip a gunner
-    * with the newest tier's weapons, so the newest tier was permanently unreachable.</p>
+    * <p>That is 0.5.5's rule, unchanged, and the spawner depends on it: a player who has only
+    * reached 古典 has an empty list here, so no gunner spawns at all, and a gunner that does
+    * appear carries a weapon from a tier the player has already worked through. Including this
+    * tier made the mobs keep pace with the player instead - the report that prompted this asked
+    * for exactly that lag back.</p>
     *
-    * <p>This tier goes last on purpose: {@code equipProgressionGun} weights the list by position, taking the
-    * front half most of the time and the tail rarely, which keeps the newest tier the rare one.</p>
+    * <p>This method used to add {@code this} at the end (section 82.29), which was right for the
+    * unlock message and wrong here, because {@code GunnerMobSpawner} reads this same list. The
+    * two questions now have their own methods: this one answers "what may a mob carry", and
+    * {@link #getUnlockedTiersNewestFirst()} answers "what has just become possible".</p>
     */
    public List<GunTier> getAvailableMobTiers() {
       List<GunTier> tiers = new ArrayList<>();
@@ -70,23 +73,28 @@ public class GunTier {
          }
       }
 
-      // The "none" tier (level 0) has no weapons and must never be offered to the spawner.
-      if (this.level > 0) {
-         tiers.add(this);
-      }
-
       return tiers;
    }
 
    /**
-    * The same tiers, newest first, for the unlock message: the tier just obtained should read first in a
-    * sentence about what just became possible (HANDOFF section 82.29).
+    * The tiers this unlock has made reachable, <b>including this one</b>, newest first: the tier
+    * just obtained should read first in a sentence about what just became possible.
     *
-    * <p>Sorted by level rather than by the declared previous-tier order: that order happens to be newest first
-    * today, but the message must not depend on how the table was typed.</p>
+    * <p>Separate from {@link #getAvailableMobTiers()} on purpose. The notice says "you may now
+    * see 【X】 enemies" about the tier just picked up, so it needs this tier; the spawner must
+    * not have it, or enemies would match the player's tier the moment it is reached.</p>
+    *
+    * <p>Sorted by level rather than by the declared previous-tier order: that order happens to be
+    * newest first today, but the message must not depend on how the table was typed.</p>
     */
-   public List<GunTier> getAvailableMobTiersNewestFirst() {
+   public List<GunTier> getUnlockedTiersNewestFirst() {
       List<GunTier> tiers = this.getAvailableMobTiers();
+
+      // The "none" tier (level 0) has no weapons and must never be announced.
+      if (this.level > 0) {
+         tiers.add(this);
+      }
+
       tiers.sort(Comparator.comparingInt(GunTier::getLevel).reversed());
       return tiers;
    }

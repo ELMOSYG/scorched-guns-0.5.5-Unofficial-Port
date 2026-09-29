@@ -1,7 +1,9 @@
 """Tripwire for the frame of the physics-structure impulse.
 
-`PhysicsStructureHelper.applyPunchAt` has to hand Sable the impact point and direction in the
-STRUCTURE'S OWN frame. Sable's punch handler builds exactly that pair
+`SablePhysicsBridge.applyPunchAt` (it used to live in `PhysicsStructureHelper`, until the split
+that keeps Sable out of an unconditionally linked class - HANDOFF 83) has to hand Sable the
+impact point and direction in the STRUCTURE'S OWN frame. Sable's punch handler builds exactly
+that pair
 (`localPosition = pose.transformPositionInverse(player.position())`,
 `localDirection = pose.transformNormalInverse(direction)`) and passes those two to
 `PhysicsPipeline.applyImpulse`, so that is the frame the pipeline reads - its coordinates are
@@ -26,7 +28,10 @@ import pathlib
 import re
 import sys
 
-SOURCE = pathlib.Path("src/main/java/top/ribs/scguns/util/PhysicsStructureHelper.java")
+# The Sable-facing half. `PhysicsStructureHelper` must not be the target here: it is the
+# unconditionally linked half, and anything it named would already be a crash on a machine
+# without Sable (tools/audit_optional_api_refs.py).
+SOURCE = pathlib.Path("src/main/java/top/ribs/scguns/compat/SablePhysicsBridge.java")
 
 # Anything that looks like a world-space name must not reach the impulse call.
 BAD_POINT_NAMES = ("worldHitPoint", "worldForcePoint", "hitPoint", "hitVec", "getLocation")

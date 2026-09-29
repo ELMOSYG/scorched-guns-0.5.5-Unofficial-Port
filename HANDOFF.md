@@ -8041,13 +8041,260 @@ shots=2 ammo=3 (IgnoreAmmo 打开：打了 2 发，弹药一发没少)
   唯一保留的是 §82.23 的"疾跑丢失容错"✓ 那是修 bug ✓ 不是机制 ✓）；
   ② 把 `singleTargetStab` 打开 ⇒ §82.33 的单体突刺 ✓；③ 打开后 `execute*`/`knockPlayerBackOnHit`/`endChargeOnHit` 才会生效 ✓。
 
+---
 
+# 83. 玩家报的三件事：Create 配方 0 tick / 没装 Sable 进存档崩 / 敌人枪械等级跟着玩家涨
 
+三条互不相关，但撞上了同一类判断错误：**"方法里有个 mod 标志位的判断"和"0.5.5 是什么样"都不能靠读代码想当然**，
+三条都要靠外部真值才能定 —— Create 的字节码、JVM 的链接期行为、0.5.5 的反编译产物。
 
+## 83.1 Create 联动配方"全是 0 tick"：真正的 0 tick 只有 14 条，而**加错了会丢 45 条配方**
 
+### 83.1.1 机制（全部 `javap` 实测，不是推断）
 
+Create 6 用**一个**共享 codec 读这个字段，默认值是 **0**：
 
+    ProcessingRecipeParams.CODEC  ->  Codec.INT.optionalFieldOf("processing_time", 0)
 
+`ProcessingRecipe#getProcessingDuration()` 原样返回该字段，**没有任何机器会夹紧它**
+⇒ 没写就是真的 0 tick。
 
+**但同一份代码还会校验它**（这是第一版漏掉的一半）：
 
+    ProcessingRecipe#validate  ->  if (processingDuration > 0 && !canSpecifyDuration())
+                                    problems.add("Recipe specified a duration. Durations have no
+                                                   impact on this type of recipe.")
 
+`canSpecifyDuration()` 默认 `false`，只在**三处**被覆写：`AbstractCrushingRecipe`、
+`processing/basin/BasinRecipe`、`kinetics/saw/CuttingRecipe`。所以：
+
+| 类型 | 接受 `processing_time`？ | 原因（class 继承链） |
+|---|---|---|
+| `create:crushing` | **是** | `CrushingRecipe extends AbstractCrushingRecipe` |
+| `create:milling` | **是** | `MillingRecipe extends AbstractCrushingRecipe` |
+| `create:mixing` | **是** | `MixingRecipe extends BasinRecipe` |
+| `create:compacting` | **是** | `CompactingRecipe extends BasinRecipe` |
+| `create:cutting` | **是** | `CuttingRecipe` 自己覆写 |
+| `create:pressing` | 否 | `extends StandardProcessingRecipe`（默认 false） |
+| `create:filling` | 否 | 同上 |
+| `create:splashing` | 否 | 同上 |
+| `create:deploying` | 否 | `ItemApplicationRecipe extends ProcessingRecipe`（没覆写） |
+| `create:mechanical_crafting` | **字段已被 Create 6 删除** | 见 83.1.4 |
+
+### 83.1.2 我第一版写错了 218 个文件，`runServer` 立刻抓出来
+
+第一版只查了 `mechanical_crafting` 与 `sequenced_assembly` 两个类型，得出"218 个文件缺字段"，
+给**所有**处理类型都补了值。跑一次 `runServer` 就炸了 **45 条**：
+
+    Parsing error loading recipe scguns:create/deploying/empty_cell
+      JsonParseException: Recipe specified a duration. Durations have no impact on this type of recipe.
+
+16 条 `create:deploying` + 26 条 `create:sequenced_assembly`（每个含 deploying/pressing 步骤）
++ 3 条 `create:splashing`。还有 1 条 `create:filling` **没报** —— 它被 `create_enchantment_industry`
+条件门禁着，本机没装那个 mod，所以**只有玩家装了 Create AEI 才会看到这条配方消失**（§11.8 修过它的条件）。
+
+⇒ **教训：这条数据不能靠"哪个类型看起来该有时长"来填，要按 class 继承链判**，
+而继承链在 jar 里，不在 JSON 里。
+
+### 83.1.3 真正的 0 tick 只有 14 条，而且**不是移植造成的**
+
+逐类型点数（`tools/audit_create_processing_time.py` 现在会打印这张表）：
+
+| 类型 | 数量 | 原本有没有 `processing_time` |
+|---|---|---|
+| `create:crushing` | 150 | **全都有**（250/350/400/150/100） |
+| `create:milling` | 7 | **全都有**（20/100） |
+| `create:mixing` | 15 | **14 条没有** ← 唯一真正的 0 tick |
+| `create:cutting`（seq 步骤） | 2 | 都有（50） |
+| `create:deploying` / `pressing` / `filling` / `splashing` | 64/30/1/3 | 不能有，给了就被丢 |
+
+`create:mixing` 那 14 条是**火药 / 硝化火药 / 铜与钢的两种 blend / 铁的两种 blend / soul_soil / peal** 等，
+即**所有"搅拌"工序**。0.5.5 的 jar 里同样一个都没有 ⇒ **0.5.5 就是 0 tick**，不是移植回归，
+但玩家要求修，就修。
+
+### 83.1.4 `create:mechanical_crafting`（138 条 = 全 mod 的枪）**根本没有这个字段**
+
+Create 6 把它删了：`MechanicalCraftingRecipe` 现在只是 `ShapedRecipe` 的薄壳，codec 只读 `accept_mirrored`；
+工作台的时长在运行期由网格大小算出来（`MechanicalCrafterBlockEntity#tick`：
+网格格数 × 16 + 0.5 的转速单位）。**所以那 138 条枪械配方无从可改，也不需要改。**
+
+### 83.1.5 改动与工具
+
+* `tools/fix_create_processing_time.py`（幂等，`--selftest`）：**加**到接受该字段的类型、
+  **删掉**在拒绝该字段的类型上的值。手术式单行插入/删除，不 re-serialize（§16.1/§40.3 的教训）。
+  最终 diff = **14 个文件 +14 行**。
+* 取值：Create 6 自己的众数（crushing 122/168 用 350、milling 205/241 用 50、cutting 30/35 用 50），
+  mixing 100 —— 而**我们自己数据里本来就有的两个值**（`nitro_powder_mixing.json` = 100、
+  两个 cutting 步骤 = 50）与该表一致，这是"表没错"的一个旁证。
+* 新增审计 **`tools/audit_create_processing_time.py`**（第 41 个）：**不信任任何硬编码表**，
+  自己解析 `libs/create-*.jar` 的 class 文件头（常量池 → `super_class` 字段）沿继承链找
+  `canSpecifyDuration` 的三个根，再回头检查我们的数据。Create 升级若移动了覆写，审计会失败，
+  而不是安静地丢一批配方。
+  **反向验证 2/2**：去掉 mixing 的时长 → 报 `has no processing_time => 0 ticks`；
+  给 deploying 加时长 → 报 `which Create rejects`。
+
+### 83.1.6 验收
+
+* **42 个审计全 0**、`javac` 0 错误（1011 文件）、`build`、`verify_installed_jar` **259/259**。
+* **专用服务器实测**：`Done (1.093s)!`、**`Parsing error loading recipe` = 0**、
+  `Couldn't load tag` = 0、**ERROR/FATAL = 0**。
+* **未实测**（纯手感）：搅拌 100 tick（5 秒）是否合意 ⇒ 觉得慢就改
+  `fix_create_processing_time.py` 的 `ACCEPTS["create:mixing"]`，重跑即可（表里只有这一处）。
+
+## 83.2 没装 Sable 时进存档就崩：**方法里的守卫挡不住链接期的校验**
+
+### 83.2.1 症状与根因（用最小 JVM 实验**证明**，不是推理）
+
+玩家报"缺失 Sable 时进入存档会导致游戏崩溃"。`PhysicsStructureHelper` 里每个方法都有
+`if (!ScorchedGuns.physicsStructuresLoaded) return null;` ⇒ 看起来是安全的。
+
+**但 JVM 链接一个类时会校验它的每一个方法**，而类型检查校验器必须解析它要判断可赋值性的那些类型：
+
+    // PhysicsStructureHelper（改之前）
+    private static Pose3dc poseAt(Level level, BlockPos pos) {   // 返回 Sable 的接口 Pose3dc
+        if (!ScorchedGuns.physicsStructuresLoaded || level == null) { return null; }
+        ...
+        return subLevel.logicalPose();      // 表达式类型是 Sable 的 Pose3d（实现类）
+    }
+
+`areturn` 时校验器要判断 `Pose3d` 能否赋给 `Pose3dc` ⇒ **必须加载这两个类**。
+所以 `PhysicsStructureHelper` **被链接**的那一刻（也就是炮塔第一次 tick 调它时，
+因为 `toWorld` 是无条件调用的）就抛：
+
+    java.lang.NoClassDefFoundError: dev/ryanhcode/sable/companion/math/Pose3dc
+      Caused by: Could not initialize class top.ribs.scguns.util.PhysicsStructureHelper
+
+**守卫根本没机会执行** —— 类在第一个方法跑之前就已经死了。
+
+最小实验（两个等效的 class 文件，依赖缺席）：
+
+| 形状 | 缺依赖时的结果 |
+|---|---|
+| 方法返回接口、值由实现它的类算出，**同一个类里** | `NoClassDefFoundError: p/I`，包在 "Could not initialize class" 里 |
+| 同样的代码，但经**嵌套 holder**、守卫先 return | 正常打印，**不崩** |
+
+⇒ **规律：可选模组的类型不能出现在"会被无条件链接的类"的签名里**（返回类型/参数/字段）。
+只出现在 `instanceof` 里是安全的（校验器推迟到那条指令）；只作为调用的中间值也安全
+（局部变量被赋成产出表达式的类型，两边同名，不需要解析）。
+本仓库里这三类的正例分别是 `GuardFriendlyRules`（`instanceof Guard`）与
+`AirSourceHelper`（`BacktankUtil`，返回基本类型与 `List<ItemStack>`）。
+
+### 83.2.2 改法：把 Sable 的调用整体搬进一个**只有守卫后才链接**的类
+
+* 新增 `compat/SablePhysicsBridge.java`：**唯一**允许出现 `dev.ryanhcode.*` 的类，逻辑整体搬过来。
+* `util/PhysicsStructureHelper.java` 现在**只含 vanilla 类型**，每个公开方法先判守卫，
+  再经一个**嵌套 holder** 取桥：
+
+        private static final class Sable {
+            static final SablePhysicsBridge BRIDGE = SablePhysicsBridge.INSTANCE;
+        }
+
+  嵌套类是独立的类，因此**独立校验**；只有守卫放行后第一次读 `BRIDGE` 才会链接桥。
+
+### 83.2.3 新增审计 **`tools/audit_optional_api_refs.py`**（第 42 个）
+
+1. 可选模组的包（`dev.ryanhcode` / `com.simibubi` / `tallestegg` / `it.crystalnest` /
+   `org.antarcticgardens` / `me.shedaniel`）出现在**签名**（返回/参数/字段）里时，
+   所在类必须是登记过的 bridge；局部变量**不算**（理由见上）。
+2. bridge 只准碰自己那一个模组（两个模组是独立安装的，需要各自的守卫）。
+3. bridge 的每个引用者都必须看得见 `ScorchedGuns.*` 守卫。
+4. **字节码层**：产物 jar 里，可选包出现在**描述符**（`Ldev/ryanhcode/...;`）里的类只能是 bridge。
+   区分描述符与普通方法体引用，靠的就是那个 `L` 前缀 —— 正好是 JVM 校验器自己的区分方式。
+* **反向验证**：对着**改之前的旧 jar** 跑，它准确报出
+  `PhysicsStructureHelper.class has dev/ryanhcode in a field or method descriptor`；
+  改完重建后 **0 problem**（jar 里 `dev/ryanhcode` 只剩 1 个 class 文件，即桥）。
+* 顺带修正了 `compat/guardvillagers/GuardFriendlyRules` 的类注释：它写着
+  "Java resolves a class when the instruction naming it first executes" —— **这句话就是本轮这个 bug 的由来**，
+  它对 `instanceof` 成立，对签名不成立。已改成上面那条准确表述。
+
+### 83.2.4 验收
+
+* `javac` 0、`build`、**42 个审计全 0**、`verify_installed_jar` **259/259**。
+* **未实测**：需要玩家在**没装 Sable** 的实例里进一个**有炮塔的存档**（炮塔是触发点）。
+  §19.3 那套"临时把 `localRuntime` 过滤掉再跑一次"的办法可以复用，但要注意炮塔要真的存在。
+
+## 83.3 刷新的敌人枪械等级"错误地跟着玩家同步"
+
+### 83.3.1 玩家原话
+
+"刷新的敌人枪械阶段错误的与玩家进行了同步，例如现在只有古典枪械阶段，那么就不应该刷新出带枪械的敌人。"
+
+### 83.3.2 根因：**§82.29 的一次修复顺带改了生成器**
+
+§82.29 修的是"解锁【边疆】后第二行却写【古典】的敌人"这行**文案**，做法是让
+`GunTier.getAvailableMobTiers()` **把本级也加进去**。
+但 `GunnerMobSpawner.equipProgressionGun` 与 `onSpecialSpawn` **读的是同一个列表**
+⇒ **敌人立刻就拿到了玩家刚解锁的那一级枪**。§82.29.6 当时其实已经预警过：
+
+> "新增的行为改动：枪手**现在真的会拿最新等级的枪**（以前永远不会）
+> 若你觉得'敌人不该立刻跟上玩家的等级'，说一声即可改回'只到上一级'（一行）"
+
+**本轮就是那句"说一声"。**
+
+### 83.3.3 0.5.5 的语义（对着反编译产物逐行核对）
+
+    // 0.5.5 GunTier.getAvailableMobTiers()
+    for (String id : this.previousTierIds) { ... tiers.add(tier); }
+    return tiers;                       // 只有"更低的等级"，不含自己
+
+`GunTiers` 里 `ANTIQUE` 的 `previousTierIds` 是**空的**
+⇒ **玩家只有古典阶段时，列表为空 ⇒ `hasValidTiers` 为假 ⇒ 一只带枪的敌人都不刷**
+⇒ **与玩家举的例子完全一致**。0.5.5 的设计就是**敌人慢玩家一级**。
+
+### 83.3.4 改法：两个问题，两个方法（不要再合并）
+
+| 方法 | 语义 | 谁在用 |
+|---|---|---|
+| `getAvailableMobTiers()` | **只含更低的等级**（0.5.5 原样） | `GunnerMobSpawner`（2 处）、`/scguns progression check`、`/scguns progression info` |
+| `getUnlockedTiersNewestFirst()`（新） | 含本级，`level > 0` 守卫，按 level 降序 | 只有解锁提示那一行 |
+
+指令输出跟着**生成器**而不是文案，因为那两条命令的标签就是"会出现什么敌人"，
+必须和实际行为一致 —— 否则玩家按提示核对时会发现对不上。
+
+### 83.3.5 审计 `tools/audit_progression_messages.py` 已改成双向（第 38 个，规则重写）
+
+规则从"必须含自己"翻成"生成器那份**不许**含自己 + 文案那份**必须**含自己"，
+并新增两条把调用点钉住：`GunnerMobSpawner` 必须读前者、**不许**读后者；
+两条 `/progression` 指令也不许读后者。
+
+* **反向验证 3/3 全部被抓**：把生成器改读 `getUnlockedTiersNewestFirst` → 2 条报错；
+  把 `tiers.add(this)` 塞回 `getAvailableMobTiers` → 1 条报错。
+* `tools/show_progression_messages.py` 的模拟输出与 §82.29.4 记录**逐字一致**
+  ⇒ 文案侧没有回归（这正是不能简单"回退 §82.29"的原因）。
+
+### 83.3.6 玩家确认过、因此**保持 0.5.5 原样**的两条带枪路径
+
+按玩家决定，这两条**不动**（它们与玩家等级无关，是 0.5.5 的设计）：
+
+* `data/scguns/entity/gunner_mobs.json`（掠夺者固定拿边疆枪 `pax`/`winnie`、猪灵拿猪灵枪 `freyr`……）
+* `data/scguns/entity/equipment/*.json`（6 个本模组生物，`equipment_chance` 1.0，钻石钢级）
+
+⇒ 所以"古典阶段仍然可能有掠夺者拿着边疆枪"是**预期行为**，不是回归。
+若要一并按等级门禁，说一声即可（`onSpecialSpawn` 的 `else` 分支已经握着 `availableTiers`）。
+
+### 83.3.7 验收
+
+* **42 个审计全 0**、`javac` 0、`build`、`verify_installed_jar` **259/259**。
+* **未实测**（需玩家）：① 古典阶段 ⇒ **不再刷出带枪手**；
+  ② 边疆阶段 ⇒ 只出现拿古典枪的手；③ 解锁提示仍然写【边疆、古典】且没有"袭击"二字。
+
+## 83.4 这一轮的三条通用教训
+
+1. **"方法里有 mod 标志位判断"不等于安全** —— 只对 `instanceof` 和调用的中间值成立；
+   出现在**签名**里就必须搬进单独的类（83.2）。这条以前被写反过，还写进了注释。
+2. **"给数据补一个字段"必须先查对方代码真的会读它** —— Create 会**主动拒绝**它不认的字段，
+   补错方向的代价是丢配方而不是变慢（83.1）。判据在 jar 里，不在 JSON 里。
+3. **修文案时改到了共享的列表** —— 同一个 getter 同时喂给"显示"和"行为"时，
+   修一边就会动另一边。拆成两个方法，并让审计钉住各自的调用点（83.3）。
+
+## 83.5 本轮的环境坑（又一条 `cmd` 的坑，省得下轮再踩）
+
+在 git-bash 里跑 gradle，**`cmd /c` 会被 MSYS 改写成路径**，于是命令没按预期执行：
+
+* `cmd /c "gradlew.bat ..."` ⇒ 打印 Windows 横幅、`:clean` 任务根本没跑、
+  产物时间戳还是前一天的，而 gradle 仍打印 `BUILD SUCCESSFUL` ⇒ **一个"成功"的假构建**。
+* 正确写法是 **`cmd //c "gradlew.bat ..."`**（双斜杠），并且 `JAVA_HOME` 要用正斜杠或先 `export`：
+  `export PATH="/d/jdk-21.0.3/bin:$PATH"`（`export JAVA_HOME='D:\jdk-21.0.3'` 里的反斜杠会被 bash 吃掉）。
+
+⇒ 判定依据不能只有 `BUILD SUCCESSFUL`，**要看 `:clean` 有没有出现、产物时间戳有没有更新**
+（本轮就是靠这个发现"构建没生效"的）。

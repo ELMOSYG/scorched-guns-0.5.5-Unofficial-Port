@@ -183,7 +183,7 @@ public class GunProgressionEventHandler {
                .withStyle(new ChatFormatting[]{ChatFormatting.GOLD, ChatFormatting.BOLD});
             Component message = Component.translatable("progression.scguns.tier_unlocked", new Object[]{tierName}).withStyle(ChatFormatting.YELLOW);
             player.sendSystemMessage(message);
-            List<GunTier> availableTiers = tier.getAvailableMobTiersNewestFirst();
+            List<GunTier> availableTiers = tier.getUnlockedTiersNewestFirst();
             if (!availableTiers.isEmpty()) {
                // Enemies only: these are gun tiers, and a tier says nothing about which raids exist - that is
                // what the raid line below is for. "【copper】 enemies and raids" claimed copper raids exist.
