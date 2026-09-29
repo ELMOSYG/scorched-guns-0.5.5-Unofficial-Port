@@ -28,10 +28,9 @@ config="scg2_maid_compat.mixins.json"
     side="BOTH"
 
 # Scorched Guns itself. [0.5.0,) is what the 1.20.1 build of this compat asked for, and this port
-# reports 0.5.5-v1.0.2 (see gradle.properties: upstream version plus this port's own), so it is
-# satisfied - FML compares Maven-style, where the numeric part 0.5.5 beats 0.5.0 before the qualifier
-# is looked at. (The abandoned 1.21 attempt asked for [1.2.0,), which no 0.5.5-based port can ever
-# satisfy - that is why it never loaded.)
+# reports 0.5.5.2 (see gradle.properties: upstream version plus this port's own release counter), so it
+# is satisfied - FML compares Maven-style, where 0.5.5.2 beats 0.5.0. (The abandoned 1.21 attempt asked
+# for [1.2.0,), which no 0.5.5-based port can ever satisfy - that is why it never loaded.)
 [[dependencies.${mod_id}]]
     modId="scguns"
     type="required"

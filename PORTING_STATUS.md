@@ -1412,20 +1412,22 @@ if (world.getGameTime() % 4L == 0L) {
 
 **门禁**：**49 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-221149` ✓）。
 
-## §82.46 版本号改为 **`0.5.5-v1.0.2`**（玩家提议，已落地并实测）
+## §82.46 版本号：**先 `0.5.5-v1.0.2`，后按玩家要求定为 `0.5.5.2`**（已落地并实测）
 
 **改哪儿：只有一处** —— `gradle.properties` 的 **`mod_version`** ✓（已在文件里写成注释：这是**唯一**的版本来源 ✓，别在别处改 ✓）。它自动决定：
 | 跟着变的东西 | 机制 |
 |---|---|
 | jar 名 `build/libs/scguns-<version>.jar` | Gradle 用它命名 ✓ |
 | 主 mod 与女仆兼容的 `neoforge.mods.toml` | 两处模板都写 `version="${mod_version}"` ✓（`src/main/templates/…` 与 `maid-compat/src/main/templates/…` ✓） |
-| 安装脚本 | `install_jar.py` 按新名安装，并**把旧的 `scguns-*.jar` 备份后删除** ✓（同名 mod id 两份 = 加载错误 ✓） |
+| 安装脚本 | `install_jar.py` 按新名安装，并**把旧的 `scguns-*.jar` 备份后删除** ✓（同一个 mod id 两份 = 加载错误 ✓） |
 | 打包校验 | `verify_installed_jar._check_declared_version` 是**读 `gradle.properties` 再比对包内 `version`** ✓ ⇒ **不需要改脚本** ✓ |
 
 **实测（不是推断）**：`runServer` 启动 ⇒ 日志 `Scorched Guns 0.5.5-v1.0.2 (scguns)` ✓、FML 记录升级 `scguns (version 0.5.5.1 -> 0.5.5-v1.0.2)` ✓、**女仆兼容的强制依赖 `scguns [0.5.0,)` 仍然满足**（`Scorched Guns: Maid Compat 1.0.8` 正常加载 ✓）、`Done (0.954s)!` ✓。安装后实例里是 `scguns-0.5.5-v1.0.2.jar` ✓，旧的 `0.5.5.1` 已备份移除 ✓。
-**已装**：`D:\MCJAVA\...\mods\scguns-0.5.5-v1.0.2.jar` ✓ + `verify_installed_jar` 首行确认"installed jar is byte-identical to build\libs\scguns-0.5.5-v1.0.2.jar" ✓。
 
-**一个需要知道的取舍**（写进 `gradle.properties` 注释与女仆兼容模板 ✓）：`-v1.0.2` 在**严格 semver** 里算**预发布**（排在 `0.5.5` **之前** ✗），而 **FML 用 Maven 规则比较**（数字部分 0.5.5 > 0.5.0 先决 ⇒ 排在 `0.5.5` **之后** ✓）⇒ 本模组内部与女仆兼容都满足 ✓；但如果将来**别的模组**写 `scguns >= 0.5.5`，严格按 semver 读的工具可能判不满足 ✓。想让所有读法一致，用 `0.5.5.1`（旧）或 `0.5.5-1.0.2` 这类不带前导 v 的也可以 ✓ —— 玩家拍板即可 ✓。
+**玩家随后改为 `0.5.5.2`** ✓（第四位 = 本移植自己的发布计数 ✓）⇒ 同一套流程再走一遍 ✓：`build` ✓ / `install`（旧的 `-v1.0.2` 备份移除 ✓）/ `verify_installed_jar` 首行确认与 `build/libs/scguns-0.5.5.2.jar` **字节一致** ✓ / **`runServer` 实测**：`Scorched Guns 0.5.5.2 (scguns)` ✓、女仆兼容正常加载（依赖满足 ✓）、**`Parsing error` 0 条** ✓、`Done (0.907s)!` ✓。
+**当前已装**：`D:\MCJAVA\.minecraft\versions\1.21.1-NeoForge_21.1.250\mods\scguns-0.5.5.2.jar` ✓。
+
+**关于 `-v1.0.2` 那个取舍（现在是历史记录）**：`-v1.0.2` 在严格 semver 里算**预发布**（排在 `0.5.5` **之前** ✗），而 FML 用 Maven 规则比较（排在之后 ✓）；换成 `0.5.5.2` 后两边读法都不再有歧义 ✓（`0.5.5.1` 与 `0.5.5.2` 都是同一个套路 ✓）。
 
 ## §82.47 顺带修：两张**没有加载守卫**的配方（由上面那次服务器启动查出来）
 
