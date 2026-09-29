@@ -33,47 +33,44 @@ public class BloodParticle extends TextureSheetParticle {
     * <p><b>The spray is decided here, not by the caller.</b> Both call sites pass the three
     * "speed" parameters as something else entirely - the projectile path passes {@code 0.5, 0, 0.5}
     * and the beam path passes the weapon's beam colour - and the factory turns them into the
-    * particle's <em>colour</em> via {@code setColor}, not into motion. So the motion used to come
-    * from a hardcoded {@code 0.1, 0.1, 0.1} here: a barely-visible isotropic scatter under
-    * {@code gravity = 1.5}, which reads as the blood simply falling to the ground the instant it
-    * appears. 0.5.5 does exactly the same thing, so this has never had a splash - it is not a port
-    * regression, it was just never noticed because "no spray" looks like a working particle.</p>
+    * particle's <em>colour</em> via {@code setColor}, not into motion. So 0.5.5's motion is not
+    * those numbers: it passes {@code 0.1, 0.1, 0.1} to the base constructor, and the base
+    * constructor adds the vanilla {@code +-0.4} random spread to every axis. That is what the
+    * droplets in 1.20.1 actually do.</p>
     *
-    * <p>So the velocity is set after {@code super} (the base class's {@code random} only exists by
-    * then, and its speed arguments are consumed inside the base constructor): a random horizontal
-    * direction, a spread that varies per particle so the spray has depth, and an upward bias so the
-    * droplets arc and come back down instead of falling straight out of the hit.</p>
+    * <p><b>This class now reproduces exactly that (PORTING_STATUS section 82.37).</b> The player
+    * compared the two platforms back to back - their 1.20.1 instance runs the very same
+    * {@code ScorchedGuns-0.5.5-1.20.1.jar} this port is built from - and reported the spray working
+    * there and missing here. Everything that could differ was checked and does not: the mod's own
+    * blood code, the hit position, the packet and the assets are identical, and 1.21.1's
+    * {@code Particle}, {@code SingleQuadParticle} and {@code TextureSheetParticle} are
+    * instruction-for-instruction the 1.20.1 classes. So the distribution here is written out
+    * explicitly - {@code 0.1 + (random * 2 - 1) * 0.4} on each axis, {@code gravity = 1.5}, and
+    * {@code lifetime = 12 / (random * 0.9 + 0.1)} - which is 0.5.5's motion to the value, not an
+    * approximation of it.</p>
     *
-    * <p>The player still read the result as "blood appears on the ground" (PORTING_STATUS section 82.35), and
-    * the numbers say why: the whole fan was 0.12 - 0.30 blocks per tick, and
-    * {@code lifetime = 12 / (0.1 .. 1.0)} let a droplet live up to <em>120</em> ticks, so a few long
-    * lived ones hung around after landing and the burst read as one clump dropping. The fan is wider
-    * now, gravity is gentler so the arc is visible, and the life is capped at half a second or so -
-    * the splatter is the first few ticks, and what stays afterwards is the droplets lying on the
-    * ground.</p>
-    *
-    * <p><b>The shape, not the size, was what was still wrong (PORTING_STATUS section 82.36).</b> Every
-    * droplet used to be thrown almost flat and gravity pulled it down within a quarter of a second, so
-    * there was never anything to see fall. Measured by {@code tools/audit_blood_trajectory.py}, which
-    * replays the vanilla tick from these very constants: 0.5.5 (and the official 1.21.1 1.5.2, and
-    * every other port - they are all the same here) rises <b>0.10</b> blocks above the wound and stays
-    * airborne for <b>5.5</b> ticks, while travelling 1.5 blocks sideways. That is a horizontal squirt
-    * that is already lying on the ground before the eye can follow it. The droplets are now thrown
-    * mostly <em>upward</em> - 0.25 - 0.50 against 0.06 - 0.26 sideways, under gravity 1.0 - so they
-    * rise about <b>1.4</b> blocks, hang and arc for <b>17.5</b> ticks (0.9 s) and come down 2.6 blocks
-    * out, with nine of the twelve landing while they are still alive.</p>
+    * <p>The only addition is the {@code bloodParticleSpeed} multiplier: at its default of 1.0 this
+    * is 0.5.5 exactly, and the player can scale the whole burst up if they want more of it. It is
+    * applied to the finished velocity rather than to the {@code 0.1} seed, because the spread the
+    * base constructor adds is not affected by the seed - scaling only the seed would leave the fan
+    * at full width and quietly do nothing.</p>
     */
    public BloodParticle(ClientLevel world, double x, double y, double z) {
       super(world, x, y, z, 0.0, 0.0, 0.0);
       float speedMultiplier = Config.CLIENT.particle.bloodParticleSpeed.get().floatValue();
-      double angle = this.random.nextDouble() * Math.PI * 2.0;
-      double spread = (0.06 + this.random.nextDouble() * 0.20) * speedMultiplier;
-      this.xd = Math.cos(angle) * spread;
-      this.zd = Math.sin(angle) * spread;
-      this.yd = (0.25 + this.random.nextDouble() * 0.25) * speedMultiplier;
-      this.gravity = 1.0F;
+      // Each axis exactly as the vanilla Particle constructor would have set it from a 0.1 seed,
+      // then scaled: the three draws are independent, which is what gives 0.5.5 its chaotic burst
+      // rather than a neat ring.
+      this.xd = (0.1 + (this.random.nextDouble() * 2.0 - 1.0) * 0.4) * speedMultiplier;
+      this.yd = (0.1 + (this.random.nextDouble() * 2.0 - 1.0) * 0.4) * speedMultiplier;
+      this.zd = (0.1 + (this.random.nextDouble() * 2.0 - 1.0) * 0.4) * speedMultiplier;
+      this.gravity = 1.5F;
       this.quadSize = 0.1F;
-      this.lifetime = 16 + this.random.nextInt(14);
+      this.lifetime = (int)(12.0F / (this.random.nextFloat() * 0.9F + 0.1F));
+      // TEMPORARY PROBE (removed before the commit): what the client actually does with a droplet.
+      top.ribs.scguns.ScorchedGuns.LOGGER.info(
+         "SCGUNS-BLOOD drop spawn y={} xd={} yd={} zd={} gravity={} life={}",
+         this.y, this.xd, this.yd, this.zd, this.gravity, this.lifetime);
    }
 
    public void setCustomColor(float r, float g, float b, float a) {
@@ -107,6 +104,13 @@ public class BloodParticle extends TextureSheetParticle {
 
    public void tick() {
       super.tick();
+      // TEMPORARY PROBE (removed before the commit): does the droplet move, and does it land?
+      if (this.age % 4 == 0) {
+         top.ribs.scguns.ScorchedGuns.LOGGER.info(
+            "SCGUNS-BLOOD tick age={} y={} xd={} yd={} zd={} onGround={} quad={} removed={} renderType={}",
+            this.age, this.y, this.xd, this.yd, this.zd, this.onGround, this.quadSize, this.removed,
+            this.getRenderType());
+      }
       if (this.onGround) {
          this.xd = 0.0;
          this.zd = 0.0;
@@ -115,6 +119,15 @@ public class BloodParticle extends TextureSheetParticle {
    }
 
    public void render(VertexConsumer buffer, Camera renderInfo, float partialTicks) {
+      // TEMPORARY PROBE (removed before the commit): is the quad really being drawn, with a real
+      // sprite? A degenerate sprite (u0 == u1) or a zero alpha would make it invisible.
+      if (this.age <= 1 && this.sprite != null) {
+         top.ribs.scguns.ScorchedGuns.LOGGER.info(
+            "SCGUNS-BLOOD render age={} pos={},{},{} quad={} sprite={} u={}-{} v={}-{} light={} alpha={} rCol={}",
+            this.age, this.x, this.y, this.z, this.getQuadSize(partialTicks), this.sprite.contents().name(),
+            this.getU0(), this.getU1(), this.getV0(), this.getV1(), this.getLightColor(partialTicks),
+            this.alpha, this.rCol);
+      }
       Vec3 projectedView = renderInfo.getPosition();
       float x = (float)(Mth.lerp((double)partialTicks, this.xo, this.x) - projectedView.x());
       float y = (float)(Mth.lerp((double)partialTicks, this.yo, this.y) - projectedView.y());

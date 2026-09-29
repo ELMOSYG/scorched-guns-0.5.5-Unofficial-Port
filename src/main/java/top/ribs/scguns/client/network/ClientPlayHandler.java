@@ -622,6 +622,14 @@ public class ClientPlayHandler {
             EntityType<?> entityType = message.getEntityType();
             int count = (Integer)Config.CLIENT.particle.bloodParticleCount.get();
             double spread = (Double)Config.CLIENT.particle.bloodParticleSpread.get();
+            // TEMPORARY PROBE (removed before the commit): what the packet carries and how the level
+            // below the hit point looks, which decides whether the burst starts on the ground.
+            top.ribs.scguns.ScorchedGuns.LOGGER.info(
+               "SCGUNS-BLOOD packet x={} y={} z={} entity={} count={} spread={} speed={} below={}",
+               message.getX(), message.getY(), message.getZ(), entityType, count, spread,
+               Config.CLIENT.particle.bloodParticleSpeed.get(),
+               world.getBlockState(net.minecraft.core.BlockPos.containing(message.getX(),
+                  message.getY() - 0.5, message.getZ())));
 
             // Scattered around the hit point (PORTING_STATUS section 82.35): every droplet used to spawn on the
             // exact same coordinate, so the burst left as one clump and read as blood appearing on the ground

@@ -42,10 +42,14 @@ BEAM = os.path.join(ROOT, "src", "main", "java", "top", "ribs", "scguns", "clien
 CONFIG = os.path.join(ROOT, "src", "main", "java", "top", "ribs", "scguns", "Config.java")
 
 MAX_LIFETIME_TICKS = 40
-# 0.5.5 (and the official 1.21.1 1.5.2, and every other port) ships gravity 1.5, which pulls the
-# droplets down before an arc can be seen. The line is drawn below that on purpose, so going back to
-# the upstream value is a failure here rather than a pass.
-MAX_GRAVITY = 1.2
+# 0.5.5's own motion, which this build must reproduce exactly (PORTING_STATUS section 82.37). The
+# player compared 1.20.1 and this port back to back and wants the same burst on both, so these are
+# parity values rather than taste: the seed and the spread are the ones the vanilla Particle
+# constructor applied to 0.5.5's `super(..., 0.1, 0.1, 0.1)`, and the lifetime is its own formula.
+UPSTREAM_SEED = 0.1
+UPSTREAM_SPREAD = 0.4
+UPSTREAM_GRAVITY = 1.5
+UPSTREAM_LIFE = (12.0, 0.9, 0.1)
 
 
 def strip_comments(text: str) -> str:
@@ -149,27 +153,40 @@ def main() -> int:
         if not re.search(r"this\.random", body):
             problems.append("the spray is no longer randomised per particle, so all ten drops fly "
                             "the same way")
-        if not re.search(r"yd\s*=\s*\(?([\d.]+)", body) and "this.yd" in body:
-            problems.append("this.yd is set but not to a positive constant, so there is no upward "
-                            "bias and the droplets do not arc")
-        else:
-            upward = re.search(r"yd\s*=\s*\(?([\d.]+)", body)
-            if upward and float(upward.group(1)) <= 0.0:
-                problems.append("this.yd starts at %s: a droplet with no upward speed drops straight out of the "
-                                "hit instead of arcing" % upward.group(1))
+        # Parity with 0.5.5 is the requirement (PORTING_STATUS section 82.37): the player compared
+        # 1.20.1 and this port side by side and wants the same burst. 0.5.5's motion is the vanilla
+        # one - every axis gets 0.1 + (random * 2 - 1) * 0.4 - so each axis must read that way and
+        # read the multiplier.
+        velocity = re.compile(
+            r"this\.(xd|yd|zd)\s*=\s*\(\s*([\d.]+)\s*\+\s*\(\s*this\.random\.nextDouble\(\)\s*\*\s*"
+            r"([\d.]+)\s*-\s*([\d.]+)\s*\)\s*\*\s*([\d.]+)\s*\)\s*\*\s*speedMultiplier")
+        axes = {m.group(1): (float(m.group(2)), float(m.group(5))) for m in velocity.finditer(body)}
+        for axis, (seed, spread) in axes.items():
+            if abs(seed - UPSTREAM_SEED) > 1e-9:
+                problems.append("this.%s starts from %s; 0.5.5's seed is %s"
+                                % (axis, seed, UPSTREAM_SEED))
+            if abs(spread - UPSTREAM_SPREAD) > 1e-9:
+                problems.append("this.%s spreads by %s; 0.5.5 gets +-%s from the vanilla constructor"
+                                % (axis, spread, UPSTREAM_SPREAD))
+        for axis in ("xd", "yd", "zd"):
+            if axis not in axes:
+                problems.append("this.%s is not written as 0.5.5's "
+                                "(0.1 + (random * 2 - 1) * 0.4) * speedMultiplier, so its motion is "
+                                "no longer the reference one" % axis)
         gravity = re.search(r"this\.gravity\s*=\s*([\d.]+)F", body)
         if not gravity:
             problems.append("the constructor does not set gravity")
-        elif float(gravity.group(1)) > MAX_GRAVITY:
-            problems.append("gravity is %s: the droplets hit the floor before the arc can be seen"
-                            % gravity.group(1))
-        life = re.search(r"this\.lifetime\s*=\s*(\d+)\s*\+\s*this\.random\.nextInt\((\d+)\)", body)
+        elif abs(float(gravity.group(1)) - UPSTREAM_GRAVITY) > 1e-9:
+            problems.append("gravity is %s; 0.5.5 uses %s" % (gravity.group(1), UPSTREAM_GRAVITY))
+        life = re.search(r"this\.lifetime\s*=\s*\(int\)\(\s*([\d.]+)F\s*/\s*\(\s*"
+                         r"this\.random\.nextFloat\(\)\s*\*\s*([\d.]+)F\s*\+\s*([\d.]+)F", body)
         if not life:
-            problems.append("the lifetime is no longer a short bounded range: a long lived droplet hangs around "
-                            "after it has landed and the burst reads as one clump")
-        elif int(life.group(1)) + int(life.group(2)) > MAX_LIFETIME_TICKS:
-            problems.append("the lifetime can reach %d ticks, long enough to look like static blood"
-                            % (int(life.group(1)) + int(life.group(2))))
+            problems.append("the lifetime is no longer 0.5.5's 12 / (random * 0.9 + 0.1)")
+        elif (abs(float(life.group(1)) - UPSTREAM_LIFE[0]) > 1e-9
+              or abs(float(life.group(2)) - UPSTREAM_LIFE[1]) > 1e-9
+              or abs(float(life.group(3)) - UPSTREAM_LIFE[2]) > 1e-9):
+            problems.append("the lifetime reads %s / (random * %s + %s); 0.5.5's is 12 / (random * "
+                            "0.9 + 0.1)" % (life.group(1), life.group(2), life.group(3)))
 
     # The factory must keep feeding the caller's three parameters to setColor: the beam path
     # relies on it for the weapon's beam colour. Removing it would silently recolour that effect.
@@ -227,8 +244,8 @@ def main() -> int:
     if problems:
         print("\n%d problem(s)" % len(problems))
         return 1
-    print("0 problem(s): blood throws a scattered, arcing, short lived burst - and the beam path's "
-          "colour-by-parameter behaviour is intact")
+    print("0 problem(s): the burst is 0.5.5's motion to the value, scaled only by the config "
+          "multiplier - and the beam path's colour-by-parameter behaviour is intact")
     return 0
 
 

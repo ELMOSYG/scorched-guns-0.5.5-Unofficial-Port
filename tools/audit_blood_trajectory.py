@@ -1,34 +1,29 @@
-"""Does the blood burst actually read as a spray? Measured, by replaying the vanilla tick.
+"""Does this port's blood burst move exactly like 0.5.5's? Measured, by replaying the vanilla tick.
 
-The player reported that the droplets "appear directly on the ground" with "no falling process", and
-this is the audit that decides that question with numbers instead of opinion. It reads the motion
-constants out of BloodParticle.java, replays 1.21.1's own particle tick, and reports what a player
-can see: how far the droplets rise above the wound, how long they are airborne, and how far they
-travel.
+The player compared the two platforms back to back - their 1.20.1 instance runs the same
+ScorchedGuns-0.5.5-1.20.1.jar this port is built from - and reported the spray working there and
+missing here. The mod's own blood code, the hit position, the packet and the assets all turned out to
+be identical, and so are 1.21.1's Particle, SingleQuadParticle and TextureSheetParticle when
+disassembled next to the 1.20.1 ones. That leaves the motion itself as the only thing that can be
+wrong, so this audit measures it instead of arguing about it.
 
-The tick being replayed, taken from the merged 1.21.1 jar rather than from memory:
+It reads the motion constants out of BloodParticle.java, replays 1.21.1's own particle tick for both
+this build and 0.5.5's, and requires the two to agree. The tick being replayed, taken from the merged
+1.21.1 jar's bytecode rather than from memory:
 
-  Particle.<init>(level, x, y, z, xs, ys, zs):
-      xd = xs + (Math.random() * 2 - 1) * 0.4          // vanilla spreads every axis by +-0.4
   Particle.tick():
       if (age++ >= lifetime) remove();
       else { yd -= 0.04 * gravity; move(xd, yd, zd);
              xd *= friction; yd *= friction; zd *= friction;      // friction is 0.98
              if (onGround) { xd *= 0.7; zd *= 0.7; } }
+  Particle.move():
+      blocked by blocks;  onGround = (moving down) && (movement was blocked)
   BloodParticle.tick():
       super.tick(); if (onGround) { xd = 0; zd = 0; quadSize *= 0.95F; }
 
-The last line matters most: a droplet that lands is frozen and shrinks, so everything the player
-sees after that is a stain. "Falling" is therefore only visible if the droplet is still in the air
-long enough - which is exactly what upstream fails at.
-
-Upstream (0.5.5, the official 1.21.1 1.5.2, and every other port - their particle is identical):
-    rises 0.10 blocks, airborne 5.5 ticks, travels 1.5 blocks.
-    A horizontal squirt that is on the ground in a quarter of a second.
-
-So the rule is: the burst must rise at least RISE blocks above the wound and stay airborne at least
-AIRBORNE ticks, and the upstream numbers must FAIL both thresholds - if they ever stop failing, this
-audit has stopped measuring anything.
+0.5.5's motion, which is what this must reproduce: the base constructor is handed 0.1, 0.1, 0.1 and
+adds the vanilla +-0.4 spread to each axis independently, gravity is 1.5 and the lifetime is
+12 / (random * 0.9 + 0.1).
 
 usage: python tools/audit_blood_trajectory.py [--detail] [--height 1.2]
 """
@@ -46,17 +41,16 @@ PARTICLE = os.path.join(ROOT, "src", "main", "java", "top", "ribs", "scguns", "c
                         "BloodParticle.java")
 CONFIG = os.path.join(ROOT, "src", "main", "java", "top", "ribs", "scguns", "Config.java")
 
-# What the burst has to do to be worth calling a spray, at the shipped default speed.
-MIN_RISE = 0.6           # blocks above the wound
-MIN_AIRBORNE = 14        # ticks in the air, out of 20 per second
-MIN_TRAVEL = 0.5         # blocks outwards; below this it is a puff, not a splatter
-MAX_TRAVEL = 5.0         # above this the blood flies across the room
+# 0.5.5's own numbers. The audit exists to keep this build on them.
+UPSTREAM = {"gravity": 1.5, "seed": 0.1, "spread": 0.4, "life_a": 12.0, "life_b": 0.9, "life_c": 0.1}
+TOLERANCE = 0.12         # how far the observable numbers may drift from 0.5.5's, in relative terms
+COUNT = 10               # 0.5.5 spawns ten droplets per hit
 
 FRICTION = 0.98
 GROUND_FRICTION = 0.7
 HALF_SIZE = 0.1
 GRAVITY_PER_TICK = 0.04
-TICKS = 80
+TICKS = 200
 
 
 def strip_comments(src: str) -> str:
@@ -99,16 +93,20 @@ def read_constants(particle: str, config: str) -> dict:
     body = strip_comments(open(particle, encoding="utf-8", errors="replace").read())
     cfg = strip_comments(open(config, encoding="utf-8", errors="replace").read())
     found = {}
+    velocity = re.compile(
+        r"this\.(xd|yd|zd)\s*=\s*\(\s*([\d.]+)\s*\+\s*\(\s*this\.random\.nextDouble\(\)\s*\*\s*"
+        r"([\d.]+)\s*-\s*([\d.]+)\s*\)\s*\*\s*([\d.]+)\s*\)\s*\*\s*speedMultiplier")
+    for axis, seed, mult, one, spread in velocity.findall(body):
+        found["seed_" + axis] = float(seed)
+        found["spread_" + axis] = float(spread)
+        found["mult_%s_ok" % axis] = abs(float(mult) - 2.0) < 1e-9 and abs(float(one) - 1.0) < 1e-9
     patterns = {
         "gravity": r"this\.gravity\s*=\s*([\d.]+)F",
-        "life_min": r"this\.lifetime\s*=\s*(\d+)\s*\+\s*this\.random\.nextInt\(",
-        "life_span": r"this\.lifetime\s*=\s*\d+\s*\+\s*this\.random\.nextInt\((\d+)\)",
-        "horizontal_lo": r"double\s+spread\s*=\s*\(([\d.]+)\s*\+\s*this\.random\.nextDouble\(\)",
-        "horizontal_span": r"double\s+spread\s*=\s*\(\s*[\d.]+\s*\+\s*this\.random\.nextDouble\(\)"
-                           r"\s*\*\s*([\d.]+)\s*\)",
-        "upward_lo": r"this\.yd\s*=\s*\(([\d.]+)\s*\+\s*this\.random\.nextDouble\(\)",
-        "upward_span": r"this\.yd\s*=\s*\(\s*[\d.]+\s*\+\s*this\.random\.nextDouble\(\)"
-                       r"\s*\*\s*([\d.]+)\s*\)",
+        "life_a": r"this\.lifetime\s*=\s*\(int\)\(\s*([\d.]+)F\s*/",
+        "life_b": r"this\.lifetime\s*=\s*\(int\)\(\s*[\d.]+F\s*/\s*\(\s*this\.random\.nextFloat\(\)"
+                  r"\s*\*\s*([\d.]+)F",
+        "life_c": r"this\.lifetime\s*=\s*\(int\)\(\s*[\d.]+F\s*/\s*\(\s*this\.random\.nextFloat\(\)"
+                  r"\s*\*\s*[\d.]+F\s*\+\s*([\d.]+)F",
         "speed_default": r'defineInRange\(\s*"bloodParticleSpeed"\s*,\s*([\d.]+)',
         "count_default": r'defineInRange\(\s*"bloodParticleCount"\s*,\s*(\d+)',
     }
@@ -123,7 +121,6 @@ def simulate(gravity: float, lifetime: int, vx: float, vy: float, vz: float, hei
     x, y, z = 0.0, height, 0.0
     xd, yd, zd = vx, vy, vz
     peak, travelled, airborne, landed_at = y, 0.0, 0, None
-    path = []
     for age in range(TICKS):
         if age >= lifetime:
             break
@@ -145,58 +142,36 @@ def simulate(gravity: float, lifetime: int, vx: float, vy: float, vz: float, hei
             airborne += 1
         travelled += math.hypot(x - xo, z - zo)
         peak = max(peak, y)
-        path.append((age, y, math.hypot(x, z), on_ground))
-    return {"path": path, "peak": peak, "airborne": airborne, "landed_at": landed_at,
-            "travelled": travelled, "lifetime": lifetime}
+    return {"peak": peak, "airborne": airborne, "landed_at": landed_at, "travelled": travelled,
+            "lifetime": lifetime}
 
 
-def burst(gravity, life_min, life_span, h_lo, h_span, u_lo, u_span, speed, count, height,
-          seed: int = 7) -> list:
-    rng = random.Random(seed)
+def burst(gravity: float, life: tuple, seed: float, spread: float, speed: float, count: int,
+          height: float, rng: random.Random) -> list:
+    """One hit, with the draws in the order the game performs them: three axes, then the lifetime."""
     rows = []
     for _ in range(count):
-        angle = rng.random() * math.tau
-        radius = (h_lo + rng.random() * h_span) * speed
-        rows.append(simulate(gravity, int(life_min) + rng.randrange(int(life_span)),
-                             math.cos(angle) * radius,
-                             (u_lo + rng.random() * u_span) * speed, math.sin(angle) * radius,
-                             height))
+        xd = (seed + (rng.random() * 2.0 - 1.0) * spread) * speed
+        yd = (seed + (rng.random() * 2.0 - 1.0) * spread) * speed
+        zd = (seed + (rng.random() * 2.0 - 1.0) * spread) * speed
+        lifetime = int(life[0] / (rng.random() * life[1] + life[2]))
+        rows.append(simulate(gravity, lifetime, xd, yd, zd, height))
     return rows
 
 
-def burst_upstream(count: int, height: float, seed: int = 7) -> list:
-    """0.5.5's own burst: super(..., 0.1, 0.1, 0.1) plus the vanilla per-axis +-0.4 spread.
-
-    Every axis gets its own independent draw, so this is not a fan, and the life is the real
-    12 / (random * 0.9 + 0.1) rather than a flat range. The official 1.21.1 1.5.2 and every other
-    port ship this exact constructor.
-    """
-    rng = random.Random(seed)
-    rows = []
-    for _ in range(count):
-        rows.append(simulate(1.5, int(12.0 / (rng.random() * 0.9 + 0.1)),
-                             0.1 + (rng.random() * 2 - 1) * 0.4,
-                             0.1 + (rng.random() * 2 - 1) * 0.4,
-                             0.1 + (rng.random() * 2 - 1) * 0.4, height))
-    return rows
-
-
-def measure(rows: list, height: float, count: int) -> dict:
+def measure(rows: list, height: float) -> dict:
     n = len(rows)
     return {
         "rise": sum(max(0.0, r["peak"] - height) for r in rows) / n,
         "airborne": sum(r["airborne"] for r in rows) / n,
         "travel": sum(r["travelled"] for r in rows) / n,
-        "still_airborne": sum(1 for r in rows if r["landed_at"] is None),
-        "count": count,
+        "life": sum(r["lifetime"] for r in rows) / n,
     }
 
 
 def line(label: str, stats: dict) -> str:
-    return ("%-30s rise %5.2f blocks   airborne %5.1f ticks   travel %5.2f blocks   "
-            "in the air when it expired: %d/%d"
-            % (label, stats["rise"], stats["airborne"], stats["travel"],
-               stats["still_airborne"], stats["count"]))
+    return ("%-28s rise %5.2f   airborne %5.1f ticks   travel %5.2f   mean life %5.1f ticks"
+            % (label, stats["rise"], stats["airborne"], stats["travel"], stats["life"]))
 
 
 def main() -> int:
@@ -208,58 +183,77 @@ def main() -> int:
     height = args.height
 
     values = read_constants(PARTICLE, CONFIG)
-    missing = [k for k, v in values.items() if v is None]
+    missing = [k for k, v in values.items() if v is None and not k.endswith("_ok")]
     if missing:
         print("BROKEN the particle no longer has a readable value for: %s" % ", ".join(missing))
         return 1
 
-    count = int(values["count_default"])
     speed = values["speed_default"]
-    now = measure(burst(values["gravity"], values["life_min"], values["life_span"],
-                        values["horizontal_lo"], values["horizontal_span"],
-                        values["upward_lo"], values["upward_span"], speed, count, height),
-                  height, count)
-    # Upstream: 0.5.5's constructor, which the official 1.21.1 1.5.2 and every other port also ship.
-    upstream = measure(burst_upstream(10, height), height, 10)
+    count = int(values["count_default"])
+    shaped = [axis for axis in ("xd", "yd", "zd")
+              if values.get("mult_%s_ok" % axis) and values.get("seed_%s" % axis) is not None]
+    ours = {"gravity": values["gravity"],
+            "life": (values["life_a"], values["life_b"], values["life_c"])}
+    spread = {axis: values.get("spread_%s" % axis) for axis in ("xd", "yd", "zd")}
 
-    print("the wound is %.2f blocks above the ground; a landed droplet is frozen and shrinks\n" % height)
-    print(line("upstream (0.5.5, 1.5.2, ...)", upstream))
-    print(line("this build, speed %.1f (default)" % speed, now))
+    print("wound %.2f blocks above the ground; the base constructor's +-0.4 spread is replayed too\n"
+          % height)
+    at_default = measure(burst(ours["gravity"], ours["life"], UPSTREAM["seed"], UPSTREAM["spread"],
+                               speed, count, height, random.Random(7)), height)
+    upstream = measure(burst(UPSTREAM["gravity"], (UPSTREAM["life_a"], UPSTREAM["life_b"],
+                                                   UPSTREAM["life_c"]), UPSTREAM["seed"],
+                             UPSTREAM["spread"], 1.0, COUNT, height, random.Random(7)), height)
+    print(line("0.5.5 (1.20.1 reference)", upstream))
+    print(line("this build, speed %.1f" % speed, at_default))
     for other in (0.5, 2.0):
         print(line("this build, speed %.1f" % other,
-                   measure(burst(values["gravity"], values["life_min"], values["life_span"],
-                                 values["horizontal_lo"], values["horizontal_span"],
-                                 values["upward_lo"], values["upward_span"], other, count, height),
-                           height, count)))
+                   measure(burst(ours["gravity"], ours["life"], UPSTREAM["seed"], UPSTREAM["spread"],
+                                 other, count, height, random.Random(7)), height)))
     print("")
 
     problems = []
-    if now["rise"] < MIN_RISE:
-        problems.append("the droplets rise only %.2f blocks above the wound (want %.2f): there is "
-                        "nothing to watch fall" % (now["rise"], MIN_RISE))
-    if now["airborne"] < MIN_AIRBORNE:
-        problems.append("a droplet is airborne for only %.1f ticks (want %d): it is on the ground "
-                        "before the eye can follow it" % (now["airborne"], MIN_AIRBORNE))
-    if not MIN_TRAVEL <= now["travel"] <= MAX_TRAVEL:
-        problems.append("the droplets travel %.2f blocks (want %.2f - %.2f)"
-                        % (now["travel"], MIN_TRAVEL, MAX_TRAVEL))
-    if now["still_airborne"] >= count:
-        problems.append("no droplet ever lands while it is still visible, so the burst never shows "
-                        "blood coming down onto the ground")
-    # The thresholds have to be able to fail: upstream must miss both of them.
-    if upstream["rise"] >= MIN_RISE or upstream["airborne"] >= MIN_AIRBORNE:
-        problems.append("upstream now passes this audit's own thresholds, so it has stopped "
-                        "measuring the difference")
+    lives = {values["life_a"], values["life_b"], values["life_c"]}
+    if abs(ours["gravity"] - UPSTREAM["gravity"]) > 1e-9:
+        problems.append("gravity is %s; 0.5.5 uses %s, so the droplets fall at a different rate"
+                        % (ours["gravity"], UPSTREAM["gravity"]))
+    if lives != {UPSTREAM["life_a"], UPSTREAM["life_b"], UPSTREAM["life_c"]}:
+        problems.append("the lifetime is not 0.5.5's 12 / (random * 0.9 + 0.1): it reads %s"
+                        % sorted(str(v) for v in lives))
+    if len(shaped) < 3:
+        problems.append("only %d of the three axes is written as 0.5.5's "
+                        "(0.1 + (random * 2 - 1) * 0.4) * speed multiplier" % len(shaped))
+    if any(abs(spread[axis] - UPSTREAM["spread"]) > 1e-9 for axis in ("xd", "yd", "zd")
+           if spread[axis] is not None):
+        problems.append("the per-axis spread is %s; 0.5.5 gets +-%s from the vanilla constructor"
+                        % (sorted({str(v) for v in spread.values()}), UPSTREAM["spread"]))
+    for key, label in (("rise", "rise"), ("airborne", "time in the air"), ("travel", "travel")):
+        if upstream[key] > 0 and abs(at_default[key] - upstream[key]) / upstream[key] > TOLERANCE:
+            problems.append("the %s differs from 0.5.5 by more than %.0f%%: %.3f against %.3f"
+                            % (label, TOLERANCE * 100, at_default[key], upstream[key]))
+    # The knob has to do something, and in the right direction.
+    if not at_default["travel"] < measure(burst(ours["gravity"], ours["life"], UPSTREAM["seed"],
+                                                UPSTREAM["spread"], 2.0, count, height,
+                                                random.Random(7)), height)["travel"]:
+        problems.append("raising bloodParticleSpeed does not throw the droplets any further")
 
     if args.detail:
-        print("one droplet of this build, at the default speed (age, height, distance, state):")
-        row = simulate(values["gravity"], int(values["life_min"]) + 6,
-                       (values["horizontal_lo"] + values["horizontal_span"] * 0.5),
-                       (values["upward_lo"] + values["upward_span"] * 0.5),
-                       (values["horizontal_lo"] + values["horizontal_span"] * 0.5), height)
-        for age, y, dist, ground in row["path"]:
-            print("   tick %2d   height %.3f   distance %.3f %s"
-                  % (age, y, dist, "LANDED" if ground else ""))
+        print("one droplet of this build, tick by tick (age, height, distance, state):")
+        rng = random.Random(7)
+        xd = (UPSTREAM["seed"] + (rng.random() * 2 - 1) * UPSTREAM["spread"]) * speed
+        yd = (UPSTREAM["seed"] + (rng.random() * 2 - 1) * UPSTREAM["spread"]) * speed
+        zd = (UPSTREAM["seed"] + (rng.random() * 2 - 1) * UPSTREAM["spread"]) * speed
+        life = int(values["life_a"] / (rng.random() * values["life_b"] + values["life_c"]))
+        x, y, z, vx, vy, vz, landed = 0.0, height, 0.0, xd, yd, zd, False
+        for age in range(min(life, 14)):
+            if not landed:
+                vy -= GRAVITY_PER_TICK * ours["gravity"]
+                x, y, z = x + vx, y + vy, z + vz
+                vx, vy, vz = vx * FRICTION, vy * FRICTION, vz * FRICTION
+                if y - HALF_SIZE <= 0.0:        # the vanilla move stops it at the ground
+                    y, landed = HALF_SIZE, True
+                    vx, vz = vx * GROUND_FRICTION, vz * GROUND_FRICTION
+            print("   tick %2d   height %.3f   distance %.3f%s"
+                  % (age, y, math.hypot(x, z), "  LANDED (frozen from here)" if landed else ""))
         print("")
 
     for problem in problems:
@@ -267,8 +261,7 @@ def main() -> int:
     if problems:
         print("\n%d problem(s)" % len(problems))
         return 1
-    print("0 problem(s): the burst rises, hangs long enough to be seen falling, and still lands "
-          "near the target")
+    print("0 problem(s): this build's burst moves exactly like 0.5.5's on 1.20.1")
     return 0
 
 
