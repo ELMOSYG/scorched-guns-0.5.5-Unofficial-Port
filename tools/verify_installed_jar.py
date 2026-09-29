@@ -1515,6 +1515,13 @@ def main():
             zf, "top/ribs/scguns/client/particle/BloodParticle.class", b"bloodDebugLog",
             "the droplet checks that option before logging"))
 
+        # 82.42. 0.5.5 let mining guns take Fortune and Silk Touch in a GunItem override; 1.21.1 deleted
+        # that method, so the rule has to be in the tag both enchantments declare as their
+        # supported_items. Without it the table silently stops offering them.
+        checks.append(_check_resource_contains(
+            zf, "data/minecraft/tags/item/enchantable/mining_loot.json", b"scguns:mining_gun",
+            "the mining guns are in the tag Fortune and Silk Touch are built on"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

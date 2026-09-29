@@ -1321,3 +1321,28 @@ this.lifetime = (int)(12.0F / (this.random.nextFloat() * 0.9F + 0.1F));
 **新增审计 `tools/audit_tag_namespaces.py`（第 47 个）**：扫描所有 `BlockTags/ItemTags/TagKey.create(...)` 里的命名空间，要求它属于 `minecraft` / `c` / `neoforge` / `scguns` / **本移植自己发布了 `data/<ns>/tags/` 的命名空间** ✓；另禁止源码里再出现 `"forge:..."` 字面量 ✓。反向验证 **3/3** ✓（`#forge:glass` ✓ / `#forge:ores` ✓ / 一个本移植没有数据的命名空间 ✓，且都报在该行 ✓）；干净树 **7 处查找全过** ✓。
 
 **门禁**：**47 个审计全 0** ✓ / `verify_installed_jar` **286/286** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-210709` ✓）。
+
+## §82.42 **采矿枪不能附时运/精准采集：0.5.5 写在 Java 里的规则在 1.21.1 被删了**（玩家报告，已修）
+
+**玩家报告**："这类可以挖掘方块的武器不能正常附魔时运和精准采集" ✓。
+
+**根因（0.5.5 有、移植丢）**：0.5.5 的 `GunItem` 重写了 **`canApplyAtEnchantingTable`**（反编译源码 `:278-287` ✓）：
+```java
+return !stack.is(ModTags.Items.MINING_GUN) || enchantment != Enchantments.BLOCK_FORTUNE && enchantment != Enchantments.SILK_TOUCH
+   ? super.canApplyAtEnchantingTable(stack, enchantment) : true;      // ← 采矿枪恒可附时运/精准
+```
+而 **1.21.1 直接删掉了这个方法** ✗ —— "某附魔能否附到某物品"改由**附魔自身 JSON 的 `supported_items` 标签**决定 ✓。从玩家客户端的原版 jar 里实测（`data/minecraft/enchantment/fortune.json` / `silk_touch.json` ✓）：
+```json
+"supported_items": "#minecraft:enchantable/mining_loot"
+```
+而该标签默认只有 `#axes / #pickaxes / #shovels / #hoes` ✓ ⇒ 我们的枪**不在里面** ⇒ 附魔台**静默不再提供**时运/精准 ✓✓（`isBookEnchantable` 里那条"采矿枪收任何书"的规则还在 ✓，所以铁砧那条路是通的 ✓ —— 也解释了为什么表现为"不能**正常**附魔" ✓）。
+
+**修法（把 Java 规则改写成数据）**：新增 `data/minecraft/tags/item/enchantable/mining_loot.json` = `{"replace": false, "values": ["#scguns:mining_gun"]}` ✓（`#scguns:mining_gun` 里正是 `cr4k_mining_laser` + `shard_culler` ✓，与 0.5.5 的 `enableMining` 集合一致 ✓）。
+**刻意不加 `#minecraft:enchantable/mining`（效率）** ✓：0.5.5 对效率走的是 `super` ⇒ 1.20.1 的 `EnchantmentCategory.DIGGER.canEnchant` = `item instanceof DiggerItem` ⇒ 枪**从来就不能附效率** ✓ ⇒ 保持原样 ✓（写在审计的理由里 ✓）。
+
+**新增审计 `tools/audit_enchant_applicability.py`（第 48 个）**：要求该标签存在、含 `#scguns:mining_gun`、且**不是 `replace: true`**（否则会把原版工具全废掉 ✓）；并要求 `mining_gun` 标签非空、`GunItem.isBookEnchantable` 那条特例仍在 ✓。反向验证 **4/4** ✓（标签文件缺失 ✓ / 条目被删 ✓ / 改成 replace ✓ / 铁砧特例被改 ✓）。`verify_installed_jar` 新增 1 项（打包后的标签里确实有 `scguns:mining_gun` ✓）⇒ **287/287** ✓。
+
+**门禁**：**48 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-211227` ✓）。
+**待实测（交给玩家）**：① 附魔台现在应该能对 `shard_culler` / `cr4k_mining_laser` 提供时运/精准（需要重进世界让标签重载 ✓）；② 铁砧用书依旧可以 ✓。
+**仍未解决（本轮装了探针）**：光束采矿**看不到裂纹**（原版挖掘正常 ✓ ⇒ 客户端渲染没问题 ⇒ 差异在光束路径 ✓）；已把服务端每 tick 的 `pos/方块/硬度/枪/速度/进度/阶段/breakerId` 打进日志 ✓，请用采矿枪挖一格方块后告诉我，我直接读 `latest.log` 定位 ✓。
+**另记（本轮未动）**：0.5.5 的同一个重写里还有"**半自动类附魔不得附到全自动枪上**"这一条（`enchantment.category == SEMI_AUTO_GUN` 且 `fireMode != AUTOMATIC` ✓），1.21.1 里同样只能靠标签表达 ✓，本移植的附魔 `supported_items` 是按"枪/非枪"生成的 ⇒ 这条**目前没有体现** ✓；是否补上属于行为对齐，等玩家拍板 ✓。

@@ -165,6 +165,13 @@ public class BeamHandlerCommon {
                int stageBeforeUpdate = progress.lastStage;
                progress.progress += progressIncrement;
                int newStage = Math.min((int)(progress.progress * 10.0F), 9);
+               // TEMPORARY PROBE (removed before the next round): the player reports no crack on any block
+               // a beam mines, while vanilla mining shows one, so this prints what the server side of the
+               // path computes and sends each tick.
+               top.ribs.scguns.ScorchedGuns.LOGGER.info(
+                  "SCGUNS-MINE pos={} block={} hardness={} speed={} progress={} before={} newStage={} breakerId={} level={}",
+                  pos, state.getBlock(), hardness, miningSpeed, progress.progress, stageBeforeUpdate,
+                  newStage, progress.breakerId, world.getClass().getSimpleName());
                if (newStage != progress.lastStage) {
                   progress.lastStage = newStage;
                   if (world instanceof ServerLevel serverLevel) {
