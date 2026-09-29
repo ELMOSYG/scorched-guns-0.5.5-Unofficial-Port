@@ -18,9 +18,10 @@ assumed:
   * BloodParticle, flat (landed): rotated by Direction.NORTH.getRotation(). A counter-clockwise quad
     there points its front face at (0, -1, 0) - into the ground, which is why the fix keeps the
     clockwise order here; the clockwise one gives (0, 1, 0), straight up, and the player sees it.
-  * BulletHoleParticle: rotated by the hit face's getRotation(); clockwise puts the front face inside
-    the block for every face (up gives (0, -1, 0), north gives (0, 0, 1)), reversed it lands on the
-    face that was hit.
+  * BulletHoleParticle: **not** the same case, and this is checked the other way round. It draws
+    through ParticleRenderType.TERRAIN_SHEET rather than the particle sheet, so it is not culled the
+    same way; reversing its order was tried on 2026-09-29 and broke the holes, so the rule here is
+    that it keeps 0.5.5's original emission order.
 
 usage: python tools/audit_particle_winding.py
 """
@@ -140,22 +141,22 @@ def main() -> int:
         if not re.search(r"for\s*\(\s*int\s+\w+\s*:\s*order\s*\)", blood):
             problems.append("the blood no longer emits the corners through the chosen order")
 
-    # --- bullet hole: its quad lives in the XZ plane and must face out of the block ---------------
+    # --- bullet hole: leave it exactly as 0.5.5 wrote it -------------------------------------------
+    # The blood's fix does NOT transfer here, and this rule exists because I tried it and broke the
+    # holes: this particle draws through ParticleRenderType.TERRAIN_SHEET, not the particle sheet the
+    # blood uses, so it is not culled the same way. Reversing the order points its front face into the
+    # block and the hole vanishes, which is what the player saw.
     hole_corners = corners(hole, r"Vector3f\[\]\s+points")
     hole_order = emitted_order(hole, "points")
     if len(hole_corners) != 4:
         problems.append("BulletHoleParticle's four corners could not be read (%d found)" % len(hole_corners))
-    elif sorted(hole_order) != [0, 1, 2, 3]:
-        problems.append("BulletHoleParticle emits its corners as %s, not all four once" % hole_order)
-    else:
-        area = winding(hole_corners, hole_order, (0, 2))
-        if area <= 0:
-            problems.append("the bullet hole's quad is still clockwise in its own plane, so its front "
-                            "face points into the block (measured: up gives (0, -1, 0), north gives "
-                            "(0, 0, 1)) and the hole is culled from the side you are on")
-        if "direction.getRotation()" not in hole:
-            problems.append("the bullet hole no longer orients itself by the face it hit, so the "
-                            "orientation this check reasons about is gone")
+    elif hole_order != [0, 1, 2, 3]:
+        problems.append("BulletHoleParticle emits its corners as %s; it must stay in 0.5.5's original "
+                        "order - reversing it was tried and broke the holes, see the comment in the "
+                        "file" % hole_order)
+    if "direction.getRotation()" not in hole:
+        problems.append("the bullet hole no longer orients itself by the face it hit, so the "
+                        "orientation this check reasons about is gone")
 
     for problem in problems:
         print("BROKEN %s" % problem)

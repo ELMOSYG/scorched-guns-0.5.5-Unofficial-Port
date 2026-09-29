@@ -125,18 +125,14 @@ public class BulletHoleParticle extends TextureSheetParticle {
          : 1.0F
             - Math.max((float)this.age - (float)this.lifetime * ((Double)Config.CLIENT.particle.bulletHoleFadeThreshold.get()).floatValue(), 0.0F)
                / ((float)this.lifetime - (float)this.lifetime * ((Double)Config.CLIENT.particle.bulletHoleFadeThreshold.get()).floatValue());
-      // The corners go over in reverse: 0.5.5's order is clockwise seen from +Y, so its front face
-      // points into the block and the particle pass culls it - the hole would be invisible from the
-      // side you are standing on. Measured with the game's own classes: the reversed order puts the
-      // front face along the face that was hit (up for a floor, down for a ceiling, north for a
-      // north face). See the same fix and the same reasoning in BloodParticle.
-      buffer.addVertex((float)points[3].x(), (float)points[3].y(), (float)points[3].z())
-         .setUv(f7, f6)
-         .setColor(this.rCol, this.gCol, this.bCol, this.alpha * fade)
-         .setLight(j)
-         ;
-      buffer.addVertex((float)points[2].x(), (float)points[2].y(), (float)points[2].z())
-         .setUv(f7, f5)
+      // Emitted in 0.5.5's original order, and it must stay that way: reversing it was tried on
+      // 2026-09-29 along with the blood fix, and it broke the holes - the player reported it. This
+      // particle draws through ParticleRenderType.TERRAIN_SHEET, which does not cull the way the
+      // particle-sheet type the blood uses does, so the winding argument that fixes the blood does not
+      // apply here: reversing points the front face into the block (measured: up gives (0, -1, 0) and
+      // north gives (0, 0, 1) with the reversed order) and the hole disappears.
+      buffer.addVertex((float)points[0].x(), (float)points[0].y(), (float)points[0].z())
+         .setUv(f8, f6)
          .setColor(this.rCol, this.gCol, this.bCol, this.alpha * fade)
          .setLight(j)
          ;
@@ -145,8 +141,13 @@ public class BulletHoleParticle extends TextureSheetParticle {
          .setColor(this.rCol, this.gCol, this.bCol, this.alpha * fade)
          .setLight(j)
          ;
-      buffer.addVertex((float)points[0].x(), (float)points[0].y(), (float)points[0].z())
-         .setUv(f8, f6)
+      buffer.addVertex((float)points[2].x(), (float)points[2].y(), (float)points[2].z())
+         .setUv(f7, f5)
+         .setColor(this.rCol, this.gCol, this.bCol, this.alpha * fade)
+         .setLight(j)
+         ;
+      buffer.addVertex((float)points[3].x(), (float)points[3].y(), (float)points[3].z())
+         .setUv(f7, f6)
          .setColor(this.rCol, this.gCol, this.bCol, this.alpha * fade)
          .setLight(j)
          ;
