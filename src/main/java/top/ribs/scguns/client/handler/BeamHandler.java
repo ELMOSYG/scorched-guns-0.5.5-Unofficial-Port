@@ -1,5 +1,7 @@
 package top.ribs.scguns.client.handler;
 
+import top.ribs.scguns.Config;
+
 import com.mojang.blaze3d.vertex.PoseStack;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -331,10 +333,13 @@ public class BeamHandler {
          Gun modifiedGun = gunItem.getModifiedGun(heldItem);
          float[] interpolatedColor = getBeamColorForWeapon(heldItem, modifiedGun);
 
-         for (int i = 0; i < 10; i++) {
-            double offsetX = (world.random.nextDouble() - 0.5) * 0.2;
-            double offsetY = (world.random.nextDouble() - 0.5) * 0.2;
-            double offsetZ = (world.random.nextDouble() - 0.5) * 0.2;
+         int bloodCount = (Integer)Config.CLIENT.particle.bloodParticleCount.get();
+         double bloodSpread = (Double)Config.CLIENT.particle.bloodParticleSpread.get();
+
+         for (int i = 0; i < bloodCount; i++) {
+            double offsetX = (world.random.nextDouble() - 0.5) * 2.0 * bloodSpread;
+            double offsetY = (world.random.nextDouble() - 0.5) * 2.0 * bloodSpread;
+            double offsetZ = (world.random.nextDouble() - 0.5) * 2.0 * bloodSpread;
             world.addParticle(
                (ParticleOptions)ModParticleTypes.BLOOD.get(),
                false,

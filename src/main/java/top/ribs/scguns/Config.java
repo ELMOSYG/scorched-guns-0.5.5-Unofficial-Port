@@ -824,6 +824,9 @@ public class Config {
       public final IntValue bulletHoleLifeMax;
       public final DoubleValue bulletHoleFadeThreshold;
       public final BooleanValue enableBlood;
+      public final IntValue bloodParticleCount;
+      public final DoubleValue bloodParticleSpread;
+      public final DoubleValue bloodParticleSpeed;
       public final DoubleValue impactParticleDistance;
       public final BooleanValue enableWaterImpactParticles;
       public final BooleanValue enableLavaImpactParticles;
@@ -840,6 +843,21 @@ public class Config {
             )
             .defineInRange("bulletHoleFadeThreshold", 0.98, 0.0, 1.0);
          this.enableBlood = builder.comment("If true, blood will will spawn from entities that are hit from a projectile").define("enableBlood", true);
+         this.bloodParticleCount = builder.comment(
+               new String[]{
+                  "How many blood droplets a hit throws out.",
+                  "All of them used to spawn at the exact hit point, so they left as one clump and read as blood",
+                  "appearing on the ground rather than spattering off the target."
+               }
+            )
+            .defineInRange("bloodParticleCount", 12, 1, 64);
+         this.bloodParticleSpread = builder.comment("Radius in blocks the droplets are scattered over when they spawn")
+            .defineInRange("bloodParticleSpread", 0.15, 0.0, 1.0);
+         this.bloodParticleSpeed = builder.comment(
+               "Multiplier on how hard the droplets are thrown. 1.0 is the tuned default; 0 makes them drop",
+               "straight down from the hit, which is what the effect looked like before."
+               )
+            .defineInRange("bloodParticleSpeed", 1.0, 0.0, 4.0);
          this.impactParticleDistance = builder.comment("The maximum distance impact particles can be seen from the player")
             .defineInRange("impactParticleDistance", 32.0, 0.0, 64.0);
          this.enableWaterImpactParticles = builder.comment("If true, particles will spawn when projectiles impact water")

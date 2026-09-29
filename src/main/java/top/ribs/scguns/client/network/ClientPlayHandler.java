@@ -620,11 +620,24 @@ public class ClientPlayHandler {
          Level world = Minecraft.getInstance().level;
          if (world != null) {
             EntityType<?> entityType = message.getEntityType();
+            int count = (Integer)Config.CLIENT.particle.bloodParticleCount.get();
+            double spread = (Double)Config.CLIENT.particle.bloodParticleSpread.get();
 
-            for (int i = 0; i < 10; i++) {
+            // Scattered around the hit point (PORTING_STATUS section 82.35): every droplet used to spawn on the
+            // exact same coordinate, so the burst left as one clump and read as blood appearing on the ground
+            // rather than spattering off the target.
+            for (int i = 0; i < count; i++) {
                Particle particle = Minecraft.getInstance()
                   .particleEngine
-                  .createParticle((ParticleOptions)ModParticleTypes.BLOOD.get(), message.getX(), message.getY(), message.getZ(), 0.5, 0.0, 0.5);
+                  .createParticle(
+                     (ParticleOptions)ModParticleTypes.BLOOD.get(),
+                     message.getX() + (world.random.nextDouble() - 0.5) * 2.0 * spread,
+                     message.getY() + (world.random.nextDouble() - 0.5) * 2.0 * spread,
+                     message.getZ() + (world.random.nextDouble() - 0.5) * 2.0 * spread,
+                     0.5,
+                     0.0,
+                     0.5
+                  );
                if (particle instanceof BloodParticle) {
                   ((BloodParticle)particle).setColorBasedOnEntity(entityType);
                }

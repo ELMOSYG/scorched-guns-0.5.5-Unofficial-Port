@@ -1186,3 +1186,27 @@ Create Addition 1.7.1 的 charging schema 也变了（`ingredients`/`results`/`m
 
 **门禁**：40 个审计全 0 / `verify_installed_jar` **259/259**（新增 3 条）/ `javac` 0（1010 文件）/ `build` ✓ / 已安装 ✓。
 **未实测（交给玩家）**：① 默认状态下手感应与改之前完全一致（区域伤害＋速度倍率；只保留 §82.23 的疾跑丢失容错，那是修 bug 不是机制）；② 打开 `singleTargetStab` ⇒ 单体突刺；③ 打开后 `execute*`/`knockPlayerBackOnHit`/`endChargeOnHit` 才生效。
+
+## §82.35 血液"直接出现在地上"：喷溅从来就不存在（玩家报告）
+
+**玩家报告**："血液粒子没有喷溅效果，直接出现在地上"。
+
+**先定性：不是移植改坏的** —— 0.5.5 与移植逐字相同（构造器 `super(world,x,y,z, 0.1, 0.1, 0.1)` + `gravity = 1.5`，`lifetime = 12 / (0.1..1.0)`，两个调用点都是"同一个坐标刷 10 个"✓）⇒ "没喷溅"从 1.20.1 时代就是这样，只是一直没人报 ✓（和 §48 同一个教训：先确认"0.5.5 里它是工作的吗" —— 这里答案是**不工作的** ✓）。
+
+**三条根因**（逐行读源码核对，不是猜）：
+1. **同一个坐标刷 10 滴**：`ClientPlayHandler.handleMessageBlood` 循环 10 次、坐标一字不改（`message.getX/Y/Z` ✓）；`BeamHandler.spawnBeamImpactParticles` 虽然算了 `offsetX/Y/Z`，但幅度只有 **±0.1**（`(rand-0.5)*0.2` ✓）⇒ 视觉上仍是一团 ✓。
+2. **液滴的运动是粒子自己写死的 0.1**，而**调用方传的三个"速度"参数根本不是速度** ✓：`BloodParticle.Factory.createParticle` 把它们交给 `setColor((float)xSpeed, (float)ySpeed, (float)zSpeed)` ✓ —— 投射物路径传 `0.5, 0.0, 0.5`（= 颜色 ✓），光束路径传**武器光束颜色** ✓（behaviour 必须留着，删了光束的血会变色 ✓）。所以 `0.1,0.1,0.1` 各向同性 + `gravity 1.5` ⇒ 一 tick 贴地 ✓。
+3. **寿命没有上界**：`lifetime = 12 / random(0.1..1.0)` ⇒ **最长 120 tick（6 秒）** ✓ ⇒ 少数长寿液滴落地后还挂着，"整团慢慢落到地上"读起来就是"血直接出现在地上" ✓。
+
+**改动**（`Config.CLIENT.particle` 新增 3 个选项；两条生成路径共用）：
+- `bloodParticleCount`（默认 **12**，1..64）：一次命中喷几滴。
+- `bloodParticleSpread`（默认 **0.15** 格，0..1）：出生点散布半径 —— 两条路径都按 ±spread 在**三个轴**上撒开 ✓。
+- `bloodParticleSpeed`（默认 **1.0**，0..4）：喷射力度乘数（**0 = 垂直落下 = 改动前的观感** ✓，方便对照）。
+- 粒子本体：在 `super` **之后**设速度 ✓（基类的 `random` 那时才存在，且 `super` 的速度参数已被基类吃掉 ✓）—— 随机水平方向 `cos/sin(angle)`、速率 `(0.10 + rand*0.45) * speed`、**向上偏置** `(0.15 + rand*0.30) * speed` ⇒ 有弧线 ✓；`gravity` **1.5 → 1.2F**（弧线看得见 ✓，落地仍快 ✓）；寿命改成 **`10 + rand(14)`** = 10–23 tick ✓。
+
+**审计**（新增 `tools/audit_blood_spray.py`）：构造器仍设三轴速度、喷射必须随机、`yd` 必须为正、`gravity` 不得超上限、寿命必须是**短的有界区间**、`setColor((float)xSpeed, ...)` 这条"颜色走参数"的行为必须保留（光束染色依赖它 ✓）、两条生成路径的 count/spread 必须被读、三个选项必须存在、粒子必须读 speed。
+**规则本身修过一次** ✓：初版"整个文件里 `random.nextDouble()` 少于 3 个就报错"**抓不住**"算了偏移量却传裸坐标"✗（偏移算了不用，计数照样够 ✓）⇒ 改成**在生成调用内部**数轴 ✓（内联写法，以及本方法内由 `nextDouble()` 赋值的局部变量，都算 ✓），并把作用域从整文件收到**方法体** ✓。反向验证 **8/8** ✓，其中 2 条专测新规则，并**逐条确认失败原因就是新规则本身** ✓（"BROKEN ... passes fewer than three offset axes to createParticle/addParticle" ✓）。
+`verify_installed_jar` 新增 **11 项**：3 个选项在包里 ✓、粒子读 speed ✓、两条路径各读 count/spread ✓，以及 **`1.2F` 的 IEEE-754 常量池字节检查** ✓（打包后的**数字**只能这么查 ✓）；该条自身也做了反向验证 —— 同法查 `1.5` / `2.5` 都**查不到** ✓。
+
+**门禁**：**44 个审计全 0** ✓ / `verify_installed_jar` **283/283**（新增 11 条 ✓）/ `javac` 0 错误（1013 文件 ✓）/ `build` ✓（`build/libs/scguns-0.5.5.1.jar` 19,444,072 B ✓，并逐类核对过新选项名确实进了常量池 ✓）/ 已安装 ✓（上一版备份 `.bak-194453` ✓；注释调整后重编的 jar **字节数完全一致** ✓ = 改动只动了注释 ✓）。
+**未实测（交给玩家）**：① 打中生物时血是**先喷出去再落地**、不再是原地出现；② `12 / 0.15 / 1.0` 的手感 —— 嫌少嫌淡直接改配置（`bloodParticleCount` / `bloodParticleSpread` / `bloodParticleSpeed`，改完要重开会话 ✓）。

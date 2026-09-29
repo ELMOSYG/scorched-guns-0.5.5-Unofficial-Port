@@ -1,5 +1,7 @@
 package top.ribs.scguns.client.particle;
 
+import top.ribs.scguns.Config;
+
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
@@ -22,11 +24,45 @@ import top.ribs.scguns.init.ModTags;
 
 @OnlyIn(Dist.CLIENT)
 public class BloodParticle extends TextureSheetParticle {
+   /**
+    * @param world client level
+    * @param x spawn x
+    * @param y spawn y
+    * @param z spawn z
+    *
+    * <p><b>The spray is decided here, not by the caller.</b> Both call sites pass the three
+    * "speed" parameters as something else entirely - the projectile path passes {@code 0.5, 0, 0.5}
+    * and the beam path passes the weapon's beam colour - and the factory turns them into the
+    * particle's <em>colour</em> via {@code setColor}, not into motion. So the motion used to come
+    * from a hardcoded {@code 0.1, 0.1, 0.1} here: a barely-visible isotropic scatter under
+    * {@code gravity = 1.5}, which reads as the blood simply falling to the ground the instant it
+    * appears. 0.5.5 does exactly the same thing, so this has never had a splash - it is not a port
+    * regression, it was just never noticed because "no spray" looks like a working particle.</p>
+    *
+    * <p>So the velocity is set after {@code super} (the base class's {@code random} only exists by
+    * then, and its speed arguments are consumed inside the base constructor): a random horizontal
+    * direction, a spread that varies per particle so the spray has depth, and an upward bias so the
+    * droplets arc and come back down instead of falling straight out of the hit.</p>
+    *
+    * <p>The player still read the result as "blood appears on the ground" (PORTING_STATUS section 82.35), and
+    * the numbers say why: the whole fan was 0.12 - 0.30 blocks per tick, and
+    * {@code lifetime = 12 / (0.1 .. 1.0)} let a droplet live up to <em>120</em> ticks, so a few long
+    * lived ones hung around after landing and the burst read as one clump dropping. The fan is wider
+    * now, gravity is gentler so the arc is visible, and the life is capped at half a second or so -
+    * the splatter is the first few ticks, and what stays afterwards is the droplets lying on the
+    * ground.</p>
+    */
    public BloodParticle(ClientLevel world, double x, double y, double z) {
-      super(world, x, y, z, 0.1, 0.1, 0.1);
-      this.gravity = 1.5F;
+      super(world, x, y, z, 0.0, 0.0, 0.0);
+      float speedMultiplier = Config.CLIENT.particle.bloodParticleSpeed.get().floatValue();
+      double angle = this.random.nextDouble() * Math.PI * 2.0;
+      double spread = (0.10 + this.random.nextDouble() * 0.45) * speedMultiplier;
+      this.xd = Math.cos(angle) * spread;
+      this.zd = Math.sin(angle) * spread;
+      this.yd = (0.15 + this.random.nextDouble() * 0.30) * speedMultiplier;
+      this.gravity = 1.2F;
       this.quadSize = 0.1F;
-      this.lifetime = (int)(12.0F / (this.random.nextFloat() * 0.9F + 0.1F));
+      this.lifetime = 10 + this.random.nextInt(14);
    }
 
    public void setCustomColor(float r, float g, float b, float a) {

@@ -13,6 +13,7 @@ import json
 import os
 import pathlib
 import re
+import struct
 import zipfile
 
 MODS = pathlib.Path(r"D:\MCJAVA\.minecraft\versions\1.21.1-NeoForge_21.1.250\mods")
@@ -153,6 +154,21 @@ def _check_class_lacks(zf, entry, needle, label):
     except KeyError:
         return (label + " [class missing]", False)
     return (label, needle not in data)
+
+
+def _check_class_float(zf, entry, value, label):
+    """True when the class's constant pool holds the given float constant.
+
+    A float literal lives in the pool as its four IEEE-754 bytes, so this is the only way to
+    check a *number* in packaged bytecode without disassembling it. Used for the blood
+    particle's gravity, whose old value left the droplets on the floor before the arc showed.
+    """
+    try:
+        data = zf.read(entry)
+    except KeyError:
+        return (label + " [class missing]", False)
+    packed = struct.pack(">f", value)
+    return (label, packed in data)
 
 
 def _check_packaged_tree_lacks(zf, needle, label):
@@ -1447,6 +1463,29 @@ def main():
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/client/handler/MeleeAttackHandler.class", b"isSingleTargetStab",
             "the handler can switch between them"))
+
+        # 82.35. The blood burst used to leave every droplet on the hit coordinate under a gravity that
+        # flattened the arc, so the player read it as blood appearing on the ground. The three numbers are
+        # now config options, both spawn paths scatter over the spread, and gravity is gentle enough to see
+        # the arc - so all of that has to be in the packaged classes, not only in the source tree.
+        for option in (b"bloodParticleCount", b"bloodParticleSpread", b"bloodParticleSpeed"):
+            checks.append(_check_class_contains(
+                zf, "top/ribs/scguns/Config$Particle.class", option,
+                "the %s option ships" % option.decode()))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/particle/BloodParticle.class", b"bloodParticleSpeed",
+            "the droplet reads the spray speed option"))
+        for entry, name in (("top/ribs/scguns/client/network/ClientPlayHandler.class", "the projectile"),
+                            ("top/ribs/scguns/client/handler/BeamHandler.class", "the beam")):
+            checks.append(_check_class_contains(
+                zf, entry, b"bloodParticleSpread",
+                "%s blood spawn scatters over the spread" % name))
+            checks.append(_check_class_contains(
+                zf, entry, b"bloodParticleCount",
+                "%s blood spawn reads the droplet count" % name))
+        checks.append(_check_class_float(
+            zf, "top/ribs/scguns/client/particle/BloodParticle.class", 1.2,
+            "the droplet's gravity lets the arc be seen"))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
