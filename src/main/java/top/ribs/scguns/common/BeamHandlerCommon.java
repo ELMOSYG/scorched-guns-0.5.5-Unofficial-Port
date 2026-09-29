@@ -13,7 +13,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.neoforged.neoforge.common.Tags;
 import net.minecraft.world.entity.Entity;
@@ -25,7 +24,6 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.ClipContext.Block;
 import net.minecraft.world.level.ClipContext.Fluid;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.world.level.block.SoundType;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams.Builder;
@@ -176,19 +174,6 @@ public class BeamHandlerCommon {
                int stageBeforeUpdate = progress.lastStage;
                progress.progress += progressIncrement;
                int newStage = Math.min((int)(progress.progress * 10.0F), 9);
-               // Vanilla plays the block's hit sound every four ticks while you dig - the "tap tap" that
-               // tells you the block is coming apart - but the client does that for its own mining
-               // (MultiPlayerGameMode.continueDestroyBlock builds a SimpleSoundInstance from
-               // getSoundType(...).getHitSound() with volume (v + 1) / 8 and pitch p * 0.5). A beam is
-               // server-driven, so nothing ever plays it and the beam chews through blocks in silence.
-               // Same interval and same numbers, sent to the miner only, who is the one who hears it in
-               // vanilla. The break itself is not handled here: it goes out as vanilla's level event
-               // 2001, which the client turns into both the break particles and the break sound.
-               if (world.getGameTime() % 4L == 0L) {
-                  SoundType soundType = state.getSoundType(world, pos, player);
-                  player.playNotifySound(soundType.getHitSound(), SoundSource.BLOCKS,
-                     (soundType.getVolume() + 1.0F) / 8.0F, soundType.getPitch() * 0.5F);
-               }
                if (newStage != progress.lastStage) {
                   progress.lastStage = newStage;
                   if (world instanceof ServerLevel serverLevel) {

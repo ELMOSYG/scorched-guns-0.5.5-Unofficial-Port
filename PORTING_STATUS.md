@@ -1399,3 +1399,15 @@ if (world.getGameTime() % 4L == 0L) {
 
 **门禁**：**49 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-215223` ✓）；探针已清空（`SCGUNS-MINE` / `TEMPORARY` 命中数 **0** ✓）。
 **待实测（交给玩家）**：用采矿枪挖方块时应该能听到**持续的四拍敲击声**（与原版手感同频同音），破坏那一下仍是方块自身的破坏音 ✓。
+
+## §82.45 **撤回敲击音效**（玩家："实际上听不到这个音效，删除这个机制"）
+
+**玩家实测**：§82.44 补的敲击音**实际上听不到** ✓ ⇒ **按要求整套删掉** ✓。
+
+**已还原**：`handleBeamMining` 里那段 `world.getGameTime() % 4L == 0L` + `player.playNotifySound(getHitSound(), …)` 整块删除 ✓，随之无用的 `SoundSource` / `SoundType` 两个 import 也删掉 ✓（源码里 `getHitSound` / `playNotifySound` / `SoundType` 命中数 **0** ✓）。
+**审计同步**：`tools/audit_beam_mining_crack.py` 去掉那 5 条音效规则 ✓，改成**一条反向规则**：**不允许再次出现**敲击音（理由里写明"试过、听不到、玩家要求删除" ✓），这样以后不会有人以为"从来没试过"又加回来 ✓。反向验证 **1/1** ✓（把音效加回去 ⇒ 报 `the beam is playing a block hit sound again; that was tried and the player could not hear it` ✓）；干净树 0 ✓。
+**破坏音不受影响**：它走的是原版 `levelEvent(2001)` ✓（客户端据此播放破坏音 + 碎屑粒子 ✓），本轮**没有动它** ✓ —— 所以"方块碎掉那一下"仍与原版一致 ✓。
+
+**未查明（如实记录，玩家若要再谈再说）**：服务端确实发出了 `playNotifySound` ⇒ 客户端应能收到；听不到的可能原因有两个方向：① 被**光束自身的持续开火音**盖住（与 §82.32 那条"命中音被枪声盖过"同类 ✓）；② 音量为原版挖掘音的量级 `(volume+1)/8`（草方块 ≈ 0.25）本身就偏轻 ✓。要再尝试的话，建议先查①（开火循环音的音量/衰减）而不是加大挖掘音 ✓。
+
+**门禁**：**49 个审计全 0** ✓ / `verify_installed_jar` **287/287** ✓ / `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（备份 `.bak-221149` ✓）。
