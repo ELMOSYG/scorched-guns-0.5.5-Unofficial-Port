@@ -42,7 +42,10 @@ BEAM = os.path.join(ROOT, "src", "main", "java", "top", "ribs", "scguns", "clien
 CONFIG = os.path.join(ROOT, "src", "main", "java", "top", "ribs", "scguns", "Config.java")
 
 MAX_LIFETIME_TICKS = 40
-MAX_GRAVITY = 1.5
+# 0.5.5 (and the official 1.21.1 1.5.2, and every other port) ships gravity 1.5, which pulls the
+# droplets down before an arc can be seen. The line is drawn below that on purpose, so going back to
+# the upstream value is a failure here rather than a pass.
+MAX_GRAVITY = 1.2
 
 
 def strip_comments(text: str) -> str:

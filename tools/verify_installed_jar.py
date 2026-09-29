@@ -171,6 +171,32 @@ def _check_class_float(zf, entry, value, label):
     return (label, packed in data)
 
 
+def _check_class_double(zf, entry, value, label):
+    """True when the class's constant pool holds the given double constant.
+
+    The same idea as `_check_class_float`, for the motion numbers that are written as doubles.
+    """
+    try:
+        data = zf.read(entry)
+    except KeyError:
+        return (label + " [class missing]", False)
+    return (label, struct.pack(">d", value) in data)
+
+
+def _check_class_float_absent(zf, entry, value, label):
+    """True when the class does NOT carry the given float constant anywhere.
+
+    Used for a value that only a regression would bring back: upstream's blood gravity is 1.5F in
+    0.5.5, in the official 1.21.1 1.5.2 and in every other port, so if 1.5F is back in the packed
+    class, the "gentle gravity" fix has been undone - no matter what the source tree says.
+    """
+    try:
+        data = zf.read(entry)
+    except KeyError:
+        return (label + " [class missing]", False)
+    return (label, struct.pack(">f", value) not in data)
+
+
 def _check_packaged_tree_lacks(zf, needle, label):
     """True when no class we ship (outside the nested maid-compat jar) mentions *needle*.
 
@@ -1483,9 +1509,17 @@ def main():
             checks.append(_check_class_contains(
                 zf, entry, b"bloodParticleCount",
                 "%s blood spawn reads the droplet count" % name))
-        checks.append(_check_class_float(
-            zf, "top/ribs/scguns/client/particle/BloodParticle.class", 1.2,
-            "the droplet's gravity lets the arc be seen"))
+        # 82.36. The shape of the burst, not its size, was what the player still could not see: every port
+        # (including the official 1.21.1 1.5.2) throws the droplets almost flat under gravity 1.5, so they
+        # are on the ground in a quarter of a second and there is no fall to watch. Two numbers carry that
+        # fix, and both are checked in the packed class: the gentle gravity is in, upstream's heavy one is
+        # out. The trajectory itself is measured by tools/audit_blood_trajectory.py.
+        checks.append(_check_class_double(
+            zf, "top/ribs/scguns/client/particle/BloodParticle.class", 0.25,
+            "the droplets are thrown upward, not flat"))
+        checks.append(_check_class_float_absent(
+            zf, "top/ribs/scguns/client/particle/BloodParticle.class", 1.5,
+            "upstream's heavy blood gravity is gone from the shipped class"))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:

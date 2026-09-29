@@ -51,18 +51,29 @@ public class BloodParticle extends TextureSheetParticle {
     * now, gravity is gentler so the arc is visible, and the life is capped at half a second or so -
     * the splatter is the first few ticks, and what stays afterwards is the droplets lying on the
     * ground.</p>
+    *
+    * <p><b>The shape, not the size, was what was still wrong (PORTING_STATUS section 82.36).</b> Every
+    * droplet used to be thrown almost flat and gravity pulled it down within a quarter of a second, so
+    * there was never anything to see fall. Measured by {@code tools/audit_blood_trajectory.py}, which
+    * replays the vanilla tick from these very constants: 0.5.5 (and the official 1.21.1 1.5.2, and
+    * every other port - they are all the same here) rises <b>0.10</b> blocks above the wound and stays
+    * airborne for <b>5.5</b> ticks, while travelling 1.5 blocks sideways. That is a horizontal squirt
+    * that is already lying on the ground before the eye can follow it. The droplets are now thrown
+    * mostly <em>upward</em> - 0.25 - 0.50 against 0.06 - 0.26 sideways, under gravity 1.0 - so they
+    * rise about <b>1.4</b> blocks, hang and arc for <b>17.5</b> ticks (0.9 s) and come down 2.6 blocks
+    * out, with nine of the twelve landing while they are still alive.</p>
     */
    public BloodParticle(ClientLevel world, double x, double y, double z) {
       super(world, x, y, z, 0.0, 0.0, 0.0);
       float speedMultiplier = Config.CLIENT.particle.bloodParticleSpeed.get().floatValue();
       double angle = this.random.nextDouble() * Math.PI * 2.0;
-      double spread = (0.10 + this.random.nextDouble() * 0.45) * speedMultiplier;
+      double spread = (0.06 + this.random.nextDouble() * 0.20) * speedMultiplier;
       this.xd = Math.cos(angle) * spread;
       this.zd = Math.sin(angle) * spread;
-      this.yd = (0.15 + this.random.nextDouble() * 0.30) * speedMultiplier;
-      this.gravity = 1.2F;
+      this.yd = (0.25 + this.random.nextDouble() * 0.25) * speedMultiplier;
+      this.gravity = 1.0F;
       this.quadSize = 0.1F;
-      this.lifetime = 10 + this.random.nextInt(14);
+      this.lifetime = 16 + this.random.nextInt(14);
    }
 
    public void setCustomColor(float r, float g, float b, float a) {
