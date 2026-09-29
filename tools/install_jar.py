@@ -9,10 +9,22 @@ The jar name follows `mod_version`, so a version bump renames it. Anything else 
 has under the same mod name is backed up and **removed**: two copies of one mod id in mods/ is a
 loading error, not a harmless leftover.
 
+Backups go to `mods/备份文件/`, not next to the live jar. Two reasons, one of which is about the
+game and one about the launcher:
+
+  * NeoForge would not have loaded them anyway. `ModDirTransformerDiscoverer#scan` calls
+    `Files.walk(modsDir, 1)` - depth 1, so a subfolder's contents are never visited - and its
+    filter is `endsWith(".jar")`, which `scguns-0.5.5.1.jar.bak-165917` does not satisfy. So the
+    34 backups that had accumulated beside the live jar were harmless to the game.
+  * They are not harmless to the player. Every launcher lists the whole mods folder, so 34 near
+    identical 19 MB jars buried the one that was actually in use. That is what the player reported,
+    and the subfolder is the fix.
+
 Usage:
     python tools/install_jar.py                      # install the newest build/libs/scguns-*.jar
     python tools/install_jar.py --check              # only report whether it is safe
     python tools/install_jar.py --force              # install anyway (you accept the crash risk)
+    python tools/install_jar.py --tidy               # move loose backups into the subfolder only
 """
 import argparse
 import datetime
@@ -24,6 +36,7 @@ import sys
 import zipfile
 
 MODS = pathlib.Path(r"D:\MCJAVA\.minecraft\versions\1.21.1-NeoForge_21.1.250\mods")
+BACKUPS = MODS / "备份文件"
 GAME_DIR_MARKER = r"1.21.1-NeoForge_21.1.250"
 PROPERTIES = pathlib.Path("gradle.properties")
 
@@ -36,10 +49,19 @@ def built_jars():
 
 
 def installed_jars():
-    """Every scguns jar in the instance's mods folder, backups excluded."""
+    """Every live scguns jar in the instance's mods folder, backups excluded."""
     if not MODS.is_dir():
         return []
-    return sorted(p for p in MODS.glob("scguns-*.jar") if ".bak-" not in p.name)
+    return sorted(p for p in MODS.iterdir()
+                  if p.is_file() and p.name.startswith("scguns-") and p.name.endswith(".jar"))
+
+
+def loose_backups():
+    """Backup files still sitting beside the live jar, from before BACKUPS existed."""
+    if not MODS.is_dir():
+        return []
+    return sorted(p for p in MODS.iterdir()
+                  if p.is_file() and ".bak-" in p.name)
 
 
 def declared_version(jar):
@@ -76,10 +98,35 @@ def game_running():
     return found
 
 
+def tidy_backups():
+    """Move backup files out of mods/ root and into mods/备份文件/.
+
+    Self-healing rather than a one-off migration: backups written before the subfolder existed
+    are still in the root, and the next install must not leave them there either.
+    """
+    moved = 0
+    for backup in loose_backups():
+        BACKUPS.mkdir(parents=True, exist_ok=True)
+        destination = BACKUPS / backup.name
+        if destination.exists():
+            # Same name, already in the subfolder: keep the older copy out of the way rather than
+            # overwriting it, so nothing is ever lost.
+            destination = BACKUPS / ("%s.dup-%s" % (backup.stem, datetime.datetime.now().strftime("%H%M%S")))
+        shutil.move(str(backup), str(destination))
+        print("moved %s -> %s" % (backup.name, destination.relative_to(MODS)))
+        moved += 1
+    if not moved:
+        print("no loose backups in mods/ (%s holds %d)"
+              % (BACKUPS.name, len(list(BACKUPS.glob("*"))) if BACKUPS.is_dir() else 0))
+    return moved
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--tidy", action="store_true",
+                        help="only move loose backups into the subfolder, install nothing")
     args = parser.parse_args()
 
     running = game_running()
@@ -95,6 +142,10 @@ def main():
 
     if args.check:
         print("no game process found%s" % (" (forced)" if running else ""))
+        return 0
+
+    if args.tidy:
+        tidy_backups()
         return 0
 
     jars = built_jars()
@@ -113,17 +164,22 @@ def main():
         return 3
     print("installing %s (declared version %s)" % (source.name, version))
 
+    # Tidy first, so a backup written by an earlier version of this tool never sits beside the
+    # live jar even for the length of this install.
+    tidy_backups()
+
     stamp = datetime.datetime.now().strftime("%H%M%S")
     target = MODS / source.name
     for existing in installed_jars():
-        backup = existing.with_name("%s.bak-%s" % (existing.name, stamp))
+        BACKUPS.mkdir(parents=True, exist_ok=True)
+        backup = BACKUPS / ("%s.bak-%s" % (existing.name, stamp))
         shutil.copy2(existing, backup)
         existing.unlink()
         if existing.name == target.name:
-            print("replaced %s (kept as %s)" % (existing.name, backup.name))
+            print("replaced %s (kept as %s/%s)" % (existing.name, BACKUPS.name, backup.name))
         else:
-            print("removed the old copy %s (kept as %s) - two mod jars with one mod id would not load"
-                  % (existing.name, backup.name))
+            print("removed the old copy %s (kept as %s/%s) - two mod jars with one mod id would not load"
+                  % (existing.name, BACKUPS.name, backup.name))
 
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(source, target)

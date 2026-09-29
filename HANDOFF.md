@@ -8298,3 +8298,46 @@ Create 6 把它删了：`MechanicalCraftingRecipe` 现在只是 `ShapedRecipe` �
 
 ⇒ 判定依据不能只有 `BUILD SUCCESSFUL`，**要看 `:clean` 有没有出现、产物时间戳有没有更新**
 （本轮就是靠这个发现"构建没生效"的）。
+
+---
+
+## 83.6 备份 jar 改放 `mods/备份文件/`（玩家提出：直接堆在 mods 里污染 mod 列表）
+
+玩家要求："后续把备份文件都放进 `D:\MCJAVA\.minecraft\versions\1.21.1-NeoForge_21.1.250\mods\备份文件`，
+直接放在 mod 文件夹会污染 mod 列表。"
+
+### 83.6.1 先查清"放子文件夹安不安全"，而不是假定
+
+用 `javap` 读 NeoForge 自己的加载器（`fancymodloader/loader-4.0.44.jar` 里的
+`net/neoforged/fml/loading/ModDirTransformerDiscoverer`）：
+
+* `ModDirTransformerDiscoverer#scan` 调的是 **`Files.walk(modsDir, 1, ...)`** —— **深度 1**，
+  即只看 mods 根目录和它的**直接子项**；子文件夹里的内容**根本不会被访问** ⇒ 放子文件夹安全 ✓
+* 过滤条件是 `Files.isRegularFile(...) && name.endsWith(".jar")` ⇒
+  `scguns-0.5.5.1.jar.bak-165917` **结尾不是 `.jar`**，**从来就没被加载过**。
+
+⇒ **所以这些备份对游戏无害，污染的是"看"的那一方**：启动器把整个 mods 目录列出来，
+34 个几乎一样的 19 MB jar 把真正在用的那一个埋掉了。玩家的判断是对的，只是原因在启动器而不在加载器。
+
+### 83.6.2 改动
+
+* `tools/install_jar.py`：备份写到 `MODS / "备份文件"`；
+  `installed_jars()` 改为"只认**根目录**下以 `.jar` 结尾的 scguns jar"（更严，且不再依赖名字里有没有 `.bak-`）；
+  新增 `loose_backups()` / `tidy_backups()` 与 `--tidy`：**自愈式** —— 把历史上遗留在根目录的备份搬进子文件夹，
+  并在每次安装**开始时**先跑一次，于是旧版本写下的备份不会在安装期间还留在根目录。
+  同名冲突时改名为 `....dup-HHMMSS` 而**不覆盖**，备份永不丢失。
+* **实际搬运**：玩家已自己建好子文件夹并搬走了 113 个，只剩本轮我生成的那 1 个；
+  `--tidy` 搬完（根目录 0 个），随后**真跑了一次完整安装**做端到端验证 ⇒
+  `replaced ... (kept as 备份文件/scguns-0.5.5.1.jar.bak-170711)`，根目录只剩一个生效 jar。
+* 幂等：连跑两次 `--tidy`，第二次输出 `no loose backups in mods/` ✓。
+
+### 83.6.3 顺带记一个事实（供以后参考）
+
+`mods/备份文件/` 现有 **116 个备份、约 2.1 GB**，绝大多数是内容完全相同的 19 MB jar。
+它们不占加载时间也不影响游戏，但占磁盘。**没有删任何一个** —— 删除存档级产物需要你点头；
+若要清理，建议只保留最近 3 个（或按日期保留每周一个），说一声即可。
+
+### 83.6.4 验收
+
+* `install_jar.py --check` 确认无游戏进程 ✓；`--tidy` 与完整安装各跑通 ✓（§49 的守卫仍然生效）；
+* 安装后的 jar 与 `build/libs` **SHA 一致**（`98a3db20864131e8`）✓、`verify_installed_jar` **267/267** ✓。
