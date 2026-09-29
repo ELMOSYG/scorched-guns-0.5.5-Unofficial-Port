@@ -8535,8 +8535,15 @@ mod 判断爆头用的是**自己的一套盒子**：`IHeadshotBox`（`interface
 上一轮我断言过"0.5.5 从来没画过"，玩家说它是紫的，于是重新查了一遍，这次**绕开反编译**、
 直接扫 jar 本体（1449 个 class 的常量池）：
 
-* **`renderLineBox` = 0 处、`renderVoxelShape` = 0 处**（全 jar）。
-  这两个是 1.20.1 画线框盒子的**全部**办法 ⇒ **0.5.5 画不出任何颜色的线框盒**。
+* **更正一个我自己的查法错误** ✓：第一次扫的是 `renderLineBox` / `renderVoxelShape` 两个**映射名**，
+  得到 0 处 —— **但那一刻的结论是无效的**：0.5.5 与 SCG Extra 的 jar 里**方法名是 SRG**，
+  `LevelRenderer.renderLineBox` 在字节码里叫 **`m_109646_`**（`javap` 实测 SCG Extra 的
+  `EntityHeadBoxDebug` 正是 `invokestatic LevelRenderer.m_109646_`）。用映射名去扫这种 jar
+  **必然扫空**，而"扫空了"被我当成了"不存在"。
+  ⇒ **教训（第五次同类）**：扫 jar 常量池找某个方法时，**必须先确认那个 jar 用的是映射名还是 SRG 名**，
+  否则"0 处"只说明字符串找错了。
+* 用 **`m_109646_`**（正确的名字）重扫 0.5.5 全 jar ⇒ **仍是 0 处** ⇒ 结论成立。
+  （有效证据一直是那条**源码**扫描：816 个文件里零处线框绘制，与 jar 无关。）
 * 又把 `E:/mod/Scorched-Guns-1.20.1-master.zip`（1.20.1 分支**源码**，816 个 java 文件）也扫了一遍：
   同样 **0 处**。⇒ **1.20.1 上任何一个 Scorched Guns 版本都没画过这个盒子**。
 * 0.5.5 jar 里的 `BoundingBoxManager` 用 `javap` 看过，方法与移植版**完全一致**，没有绘制方法。
@@ -8574,3 +8581,46 @@ renderShape` 只找到 BeamHandler 与 BulletTrailRenderingHandler" —— 结�
 * javac 0（1013）、`build` ✓、**42 审计 + 12 selftest 全 0**、**`verify_installed_jar` 274/274** ✓
   （已装进实例），服务器侧本轮未重跑（纯客户端显示改动，且上一轮已 `Done` 且无 mixin 失败）。
 * **未实测**：客户端 F3+B 下盒子的**具体紫色深浅**是否合意（一个常量，改一行）。
+
+### 83.9.5 玩家猜对了：**紫盒是 SCG Extra 画的**
+
+玩家："紫色碰撞箱可能是 scg extra 画的？" —— **就是它。**
+
+`net/zincstudios/scgextra/debug/EntityHeadBoxDebug.class`（jar：
+`SCG2_TLM/forge-1.20.1-47.4.10-mdk/libs/scgextra-forge-3.1.1.jar`，527 个类）里：
+
+* `getHeadBB(LivingEntity)` 调的是 **`BoundingBoxManager.getHeadshotBoxes(type)`** ——
+  与本移植的命中判定**同一个** `IHeadshotBox`；
+* `renderHeadShotBox` 调 **`LevelRenderer.m_109646_`**（即 `renderLineBox`），
+  颜色常量**实测为 `0.8f, 0.0f, 1.0f` + alpha 1.0** ⇒ **紫色**；
+* 还有一个 `renderWeakPointBoxes`，读 `WeakPointBoxManager.getWeakPointBoxesList`，
+  颜色是**更暗的 `0.6f, 0.0f, 1.0f`**。
+
+⇒ 本渲染器的 `COLOUR_R` 已从 0.7 改成 **0.8**，与 SCG Extra **逐值相同**，
+两边的盒子看上去完全一致（否则装上 SCG Extra 时会出现"两个盒子颜色不同"的怪事）。
+
+**顺带一个移植缺口（目前不可操作，但记下）**：SCG Extra 的**第二套盒子系统**
+`WeakPointBoxManager` / `WeakPointBox`（并在 `AsgharianEntities`、`COGEntities`、
+`FACEntities`、`NeutralEntities`、`RRCEntities`、`WhalerEntities`、`WreckersEntities`
+里给 40 多个实体注册）**在 Scorched Guns 里根本没有对应物**，本移植也没有
+⇒ **若将来在 1.21.1 上装 SCG Extra，弱点盒不会被本 mod 的爆头判定使用，
+而 §83.8 的 F3+B 视图也不会画出它**（本渲染器只读 `IHeadshotBox`）。
+SCG Extra 是 1.20.1 Forge 附属 mod、当前 1.21.1 实例里也没有，所以**本轮不动**。
+
+### 83.9.6 两次查法错误的记录（本轮真正的收获）
+
+**① 用映射名去扫 SRG jar（§83.9.2 已改写）**：`renderLineBox` 在这些 jar 里叫 `m_109646_`，
+所以第一次的"0 处"是**字符串找错了**，不是"不存在"。用对的名字重扫，结论才站得住。
+⇒ **教训（第五次同类）**：扫 jar 常量池找某个方法时，**必须先确认那个 jar 用的是映射名还是 SRG 名**，
+否则"0 处"只说明字符串找错了。
+
+**② 只搜了 RaidPlus，没搜本体**：我先查 `E:/mod/SCG-extra-raid-fix`（**空目录**）与
+`E:/mod/SCGExtra_RaidPlus`（Raid Plus 附属 mod，0 处），
+**没去查 SCG Extra 本体** —— 而本体在 `E:/mod/SCG2_TLM/` 下
+（`temp_extract/scgextra_decomp` 只有 44 个文件的局部反编译，**也不够**）。
+真正定位靠的是按 API 特征（谁引用了 `WeakPointBoxManager` / `getHeadshotBoxes`）
+在全盘 `libs/*.jar` 里找引用者。
+
+⇒ **"这个 API 被谁引用"比"我以为的目录在哪"更靠得住。**
+这与前五次是同一个错误的第六个变体：**先定搜索面，再下结论**。
+本轮两次都栽在同一件事上，值得单独记。

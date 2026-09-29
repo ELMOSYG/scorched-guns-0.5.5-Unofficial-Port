@@ -36,16 +36,22 @@ import top.ribs.scguns.interfaces.IHeadshotBox;
  * {@code enableHeadShots} option: this is a debug view, and the useful moment to look at a
  * headshot box is while deciding whether to turn headshots on.</p>
  *
- * <p><b>On "0.5.5 drew this in purple": it did not draw it at all.</b> The 0.5.5 jar has no
- * reference to {@code renderLineBox} or {@code renderVoxelShape} in any of its 1449 classes, and
- * neither does the 1.20.1 source branch (816 files) - so no Scorched Guns build for 1.20.1 could
- * draw a wireframe box of any colour, purple included. Its {@code BoundingBoxManager} carries
- * exactly the methods this port's does, with nothing that draws. The colour here is therefore this
- * renderer's own; purple is the player's choice, and it is one constant below if it needs
- * changing.</p>
+ * <p><b>Where the purple comes from, and who owns the box.</b> SCG Extra, the add-on, is what
+ * draws a headshot box - {@code net.zincstudios.scgextra.debug.EntityHeadBoxDebug}, reading the
+ * very same {@link BoundingBoxManager#getHeadshotBoxes} this renderer reads. Its colour, read out
+ * of that class's bytecode, is 0.8 / 0.0 / 1.0 with alpha 1.0, so the value below matches it
+ * exactly. (SCG Extra also has a second box system Scorched Guns has no equivalent of at all,
+ * {@code WeakPointBoxManager}, drawn in a dimmer 0.6 / 0.0 / 1.0.)</p>
+ *
+ * <p><b>Scorched Guns itself never drew a headshot box on 1.20.1.</b> It has no reference to
+ * {@code LevelRenderer.renderLineBox} in any of its 1449 classes - and note that a search for the
+ * mapped name proves nothing on its own, because those jars carry the SRG name
+ * {@code m_109646_}; the search has to use that. The 1.20.1 source branch agrees: 816 files, no
+ * line-box call anywhere. So the purple the player remembers was SCG Extra's, and this renderer
+ * deliberately adopts its colour so the two look the same.</p>
  */
 public final class HeadshotBoxDebugRenderer {
-   private static final float COLOUR_R = 0.7F;
+   private static final float COLOUR_R = 0.8F;
    private static final float COLOUR_G = 0.0F;
    private static final float COLOUR_B = 1.0F;
    private static final float ALPHA = 1.0F;

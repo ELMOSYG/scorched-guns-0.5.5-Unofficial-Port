@@ -1335,13 +1335,22 @@ def main():
             "the debug renderer anchors the box the way the hit test does",
             renderer_bytes is not None and b"getCenter" in renderer_bytes
             and b"renderLineBox" in renderer_bytes))
-        # The player asked for this box in purple (83.8.6), and the constant is named rather than
-        # inlined so a shade change is one line. Pinned here because "invisible" and "the wrong
-        # colour" are the same kind of quiet failure, and neither shows up in a log.
+        # The player asked for this box in purple (83.8.6), and the value is SCG Extra's, read out
+        # of its EntityHeadBoxDebug bytecode: 0.8 / 0.0 / 1.0 (83.9.5).
+        #
+        # Checked in the SOURCE, not the class file. A float in a constant pool is raw IEEE-754
+        # (javap renders it as "float 0.8f", the bytes are not that text), so there is nothing to
+        # grep for in the jar - a first attempt at this check looked for "0.8F" and could never
+        # have passed. The source is also the layer a human edits.
+        colour_source = ""
+        colour_path = os.path.join("src", "main", "java", "top", "ribs", "scguns", "client",
+                                   "handler", "HeadshotBoxDebugRenderer.java")
+        if os.path.exists(colour_path):
+            colour_source = open(colour_path, encoding="utf-8", errors="replace").read()
         checks.append((
-            "the headshot box is drawn in purple, as the player asked for",
-            renderer_bytes is not None and b"COLOUR_R" in renderer_bytes
-            and b"COLOUR_G" in renderer_bytes and b"COLOUR_B" in renderer_bytes))
+            "the headshot box is drawn in SCG Extra's purple, as the player asked for",
+            "COLOUR_R = 0.8F" in colour_source
+            and "COLOUR_G = 0.0F" in colour_source and "COLOUR_B = 1.0F" in colour_source))
         checks.append((
             "the packaged mixin config registers the new client mixin",
             b"client.EntityRenderDispatcherMixin" in zf.read("scguns.mixins.json")))
