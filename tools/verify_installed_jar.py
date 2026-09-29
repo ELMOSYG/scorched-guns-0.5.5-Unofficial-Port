@@ -1335,6 +1335,13 @@ def main():
             "the debug renderer anchors the box the way the hit test does",
             renderer_bytes is not None and b"getCenter" in renderer_bytes
             and b"renderLineBox" in renderer_bytes))
+        # The player asked for this box in purple (83.8.6), and the constant is named rather than
+        # inlined so a shade change is one line. Pinned here because "invisible" and "the wrong
+        # colour" are the same kind of quiet failure, and neither shows up in a log.
+        checks.append((
+            "the headshot box is drawn in purple, as the player asked for",
+            renderer_bytes is not None and b"COLOUR_R" in renderer_bytes
+            and b"COLOUR_G" in renderer_bytes and b"COLOUR_B" in renderer_bytes))
         checks.append((
             "the packaged mixin config registers the new client mixin",
             b"client.EntityRenderDispatcherMixin" in zf.read("scguns.mixins.json")))

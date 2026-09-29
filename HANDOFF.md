@@ -8518,3 +8518,59 @@ mod 判断爆头用的是**自己的一套盒子**：`IHeadshotBox`（`interface
   且与爆头判定范围一致（打那个位置会爆头）。**请重点确认它画在你以为的位置** ——
   若玩家/僵尸的盒子位置明显不对，说明 `move(centerX, minY, centerZ)` 这个锚点在 1.21.1 与
   0.5.5 的语义不同（那会是**爆头判定本身**的 bug，而不只是显示问题），需要单独查。
+
+---
+
+## 83.9 玩家："1.20.1 0.5.5 中的爆头碰撞箱是紫色的" —— 改色 + 更正我 §83.8 的一处结论
+
+### 83.9.1 先照做：改成紫色
+
+`HeadshotBoxDebugRenderer` 的颜色常量由 `RED/GREEN/BLUE` 改名为 `COLOUR_R/G/B`（旧名在改成紫色后
+就成了误导），值取 `0.7F / 0.0F / 1.0F` —— 比经典 `purple` 亮一档，在暗色地形上也看得清。
+`verify_installed_jar` 新增一条钉住这三个常量名（**274/274**）：颜色错了和没画出来一样，
+都不会在日志里留痕。要换深浅就是改那三行。
+
+### 83.9.2 但"0.5.5 画过紫盒"这件事我**查不到依据**，而且证据指向相反
+
+上一轮我断言过"0.5.5 从来没画过"，玩家说它是紫的，于是重新查了一遍，这次**绕开反编译**、
+直接扫 jar 本体（1449 个 class 的常量池）：
+
+* **`renderLineBox` = 0 处、`renderVoxelShape` = 0 处**（全 jar）。
+  这两个是 1.20.1 画线框盒子的**全部**办法 ⇒ **0.5.5 画不出任何颜色的线框盒**。
+* 又把 `E:/mod/Scorched-Guns-1.20.1-master.zip`（1.20.1 分支**源码**，816 个 java 文件）也扫了一遍：
+  同样 **0 处**。⇒ **1.20.1 上任何一个 Scorched Guns 版本都没画过这个盒子**。
+* 0.5.5 jar 里的 `BoundingBoxManager` 用 `javap` 看过，方法与移植版**完全一致**，没有绘制方法。
+
+⇒ 所以你当时看到的紫色盒子**不是 Scorched Guns 画的**。它只可能是：
+① 1.20.1 原版 F3+B 自己画的某个元素（**这一条我查不了**：手头没有 1.20.1 的 MC，只有 1.21.1 的
+`.refs/nf-src`，而颜色是硬编码常量、版本间改过，**不猜**）；或
+② 那个 0.5.5 实例里**另一个 mod** 画的（例如某个碰撞箱查看器）。
+如果你还记得是哪个，或它出现在什么位置（下界？骑乘时？），我可以再查一轮。
+
+**同时更正 §83.8.1 的一处措辞**：那里我写"查 `RenderLevelStageEvent|renderLineBox|LevelRenderer|
+renderShape` 只找到 BeamHandler 与 BulletTrailRenderingHandler" —— 结论正确，但那次搜索确实**窄**，
+只搜了源码里的类名，没有先扫 jar。**顺序应该是"先扫 jar 的常量池，再看反编译"**，
+因为反编译可能不完整（本次实测该 816 文件的源码是完整的，但那是运气好，不是保证）。
+
+### 83.9.3 顺带查实：0.5.5 有一个移植版**没有**的 mixin，但**不是**丢失的功能
+
+0.5.5 的 `scguns.mixins.json` 客户端列表里有 **`client.GameRendererMixin`**，移植版没有 ——
+我一开始以为紫盒就是它画的，读完发现**不是**：它画的是 `BLINDED` 效果的全屏渐隐
+（`GuiGraphics.fill(0,0,w,h, alpha<<24 | 0xFFFFFF)`，配 `Config.SERVER.alphaFadeThreshold` /
+`alphaOverlay`）。
+
+那它在移植版里去哪了 ⇒ **等价重构，不是丢失**：已挪到
+`client/handler/BlindnessOverlay.java`，用 `RegisterGuiLayersEvent.registerLayers` 注册，
+同样的两个配置项、同样的 `fill` 调用、同样按 `effect.getDuration() / alphaFadeThreshold` 算百分比。
+1.21.1 的 `GameRenderer#render` 也早已不是那个签名，原样搬是搬不动的。
+
+⇒ `audit_mixins.py` 的"目标漂移"检查只比对**已存在**的 mixin 的 `@Mixin` 目标，
+**不检查 0.5.5 的 mixin 集合是否被完整覆盖** —— 所以"少了一个 mixin"它看不见。
+本轮靠人工比对 `scguns.mixins.json` 才注意到。**待办**：给审计加一条"0.5.5 有、这里没有"的
+清单检查（需要人工确认每一项是"等价重构"还是"真丢失"，所以**先记在文档里，不自动改代码**）。
+
+### 83.9.4 验收
+
+* javac 0（1013）、`build` ✓、**42 审计 + 12 selftest 全 0**、**`verify_installed_jar` 274/274** ✓
+  （已装进实例），服务器侧本轮未重跑（纯客户端显示改动，且上一轮已 `Done` 且无 mixin 失败）。
+* **未实测**：客户端 F3+B 下盒子的**具体紫色深浅**是否合意（一个常量，改一行）。

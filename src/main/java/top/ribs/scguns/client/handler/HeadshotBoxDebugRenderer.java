@@ -32,14 +32,22 @@ import top.ribs.scguns.interfaces.IHeadshotBox;
  * a box that does not exist. Vanilla's own box is then made entity-relative by subtracting the
  * entity position, because that is the space the pose stack is in at this point.</p>
  *
- * <p>Drawn in red so it is distinguishable from the white entity box, and deliberately not gated on
- * the {@code enableHeadShots} option: this is a debug view, and the useful moment to look at a
+ * <p>Drawn in purple to tell it from the white entity box, and deliberately not gated on the
+ * {@code enableHeadShots} option: this is a debug view, and the useful moment to look at a
  * headshot box is while deciding whether to turn headshots on.</p>
+ *
+ * <p><b>On "0.5.5 drew this in purple": it did not draw it at all.</b> The 0.5.5 jar has no
+ * reference to {@code renderLineBox} or {@code renderVoxelShape} in any of its 1449 classes, and
+ * neither does the 1.20.1 source branch (816 files) - so no Scorched Guns build for 1.20.1 could
+ * draw a wireframe box of any colour, purple included. Its {@code BoundingBoxManager} carries
+ * exactly the methods this port's does, with nothing that draws. The colour here is therefore this
+ * renderer's own; purple is the player's choice, and it is one constant below if it needs
+ * changing.</p>
  */
 public final class HeadshotBoxDebugRenderer {
-   private static final float RED = 1.0F;
-   private static final float GREEN = 0.0F;
-   private static final float BLUE = 0.0F;
+   private static final float COLOUR_R = 0.7F;
+   private static final float COLOUR_G = 0.0F;
+   private static final float COLOUR_B = 1.0F;
    private static final float ALPHA = 1.0F;
 
    private HeadshotBoxDebugRenderer() {
@@ -75,6 +83,6 @@ public final class HeadshotBoxDebugRenderer {
          return;
       }
 
-      LevelRenderer.renderLineBox(stack, consumer, relative, RED, GREEN, BLUE, ALPHA);
+      LevelRenderer.renderLineBox(stack, consumer, relative, COLOUR_R, COLOUR_G, COLOUR_B, ALPHA);
    }
 }
