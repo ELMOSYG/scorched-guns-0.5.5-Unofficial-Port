@@ -8735,3 +8735,50 @@ DamageSource damageSource = ModDamageTypes.Sources.projectile(player.server.regi
 * **未实测**（只能玩家在客户端/游戏里看）：① 光束命中后生物沿射线方向飞出；
   ② `cr4k_mining_laser` 挖方块能看到裂纹（哪怕只有一帧）；
   ③ 挖掘速度与改前一致（不应有任何可感差异）。
+
+### 83.10.5 修正：上一轮的"延后一 tick"**根本没生效**（玩家报告仍然没有纹理）
+
+玩家反馈仍然没有破坏纹理，并建议"查看其他移植版是怎么做的"。
+
+**其他移植版的答案：都没解决过。** `ScorchedGuns-NeoForge-New` 与 `ScorchedGunsNeoforge-main`
+的阶段逻辑与 0.5.5、与本移植**逐字相同**（同样的 `Math.min(…, 9)`、同样的"变化才发包"、
+同样的 `progress >= 1.0` 即破坏）⇒ 没有可抄的答案。
+
+**而我自己的修复是无效的**，原因很蠢：**测错了变量**。
+
+```java
+int newStage = Math.min((int)(progress.progress * 10.0F), 9);
+if (newStage != progress.lastStage) {
+   progress.lastStage = newStage;            // ← 在这里被设成 9
+   ...serverLevel.destroyBlockProgress(progress.breakerId, pos, newStage);
+}
+if (progress.progress >= 1.0F && progress.lastStage >= 9) {   // ← 在这里被测
+```
+
+快的枪**第一个 tick 阶段就是 9** ⇒ 到破坏判断时 `lastStage` 已经是 9 ⇒ 条件立刻成立
+⇒ **延后从未发生**。现在破坏判断改用 `stageBeforeUpdate`（在赋值**之前**捕获的阶段），
+方块于是比"阶段 9 发出"晚一 tick 消失 —— 正好是客户端需要的那一帧，且挖掘速度不变。
+
+**审计当时也放过了这个坏版本**，因为它只检查"文本里有没有 `lastStage >= 9`"。
+现在它检查三件事：阶段被捕获了、捕获发生在赋值**之前**、破坏判断用的是被捕获的那个名字。
+**反向验证 2/2**：
+
+```
+BROKEN the stage is not captured before the update, so the break test reads a lastStage that was
+        just assigned 9 and the one-tick deferral never happens
+BROKEN the stage is captured *after* lastStage is assigned, which is the exact bug of the first fix
+```
+
+⇒ **这是本项目第七次"我自己的验证工具和'检查通过'长得一模一样"**（§83.2 静态注入器、
+§83.9 映射名/SRG 名、§83.10 里参数提取错了三次、以及这次"测试通过但行为没变"）。
+**要带走的规律**：问"正确的构造在不在"的检查，**抓不住"构造在但做错事"**；
+所以检查必须问到**顺序与时序**。
+
+顺带查实两点：① 1.21.1 客户端渲染路径**会画**裂纹（`LevelRenderer` 遍历
+`destructionProgress`、取该位置最高阶段、调 `renderBreakingTexture`）⇒ 客户端**没有**过滤；
+② `enableBeamMining` 默认 true 且三把枪都设了 `enableMining` ⇒ 路径**确实走到**
+（我上一轮对那次 grep 的读法是错的，此处更正）。
+
+**另记一处与 0.5.5 的偏差（本轮不动）**：0.5.5 只给 `cr4k_mining_laser` 与 `shard_culler`
+设 `enableMining`，本移植与两个移植版**额外给 `flayed_god` 也设了**（其唯一区别是
+`miningSpeed` 1.0）。`flayed_god` 该不该能挖属于内容决策，**保持现状并记录**。
