@@ -16,6 +16,7 @@
     "common.compat.guardvillagers.GuardEquipmentMixin"
   ],
   "client": [
+    "client.EntityRenderDispatcherMixin",
     "client.ItemInHandLayerMixin",
     "client.LevelRendererMixin",
     "client.MinecraftMixin",

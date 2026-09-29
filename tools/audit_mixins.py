@@ -266,7 +266,19 @@ def check_callbacks(rel: str, text: str, target_fqn: str) -> int:
         if not callback:
             continue
         declared = source_param_names_from_text(callback.group(2))
-        if not declared or not declared[-1].startswith("CallbackInfo"):
+        if not declared:
+            continue
+        if not declared[-1].startswith("CallbackInfo"):
+            # Only a LocalCapture callback may put CallbackInfo first and captured locals after it.
+            # Skipping on "last param is not CallbackInfo" alone is a hole: a plain @Inject with one
+            # stray trailing parameter walks straight through the arity check below, and that is a
+            # hard startup failure exactly like a wrong type (HANDOFF 83.8, where a control with an
+            # extra `float` went unreported until the two were separated).
+            if "LocalCapture" in args:
+                continue
+            broken += 1
+            print("BROKEN %-57s @Inject callback %s ends with %s, not a CallbackInfo, and the "
+                  "injection captures no locals" % (rel, callback.group(1), declared[-1]))
             continue
         literals = QUOTED.findall(attr.group(1))
         if not literals:
@@ -289,6 +301,66 @@ def check_callbacks(rel: str, text: str, target_fqn: str) -> int:
             broken += 1
             print("BROKEN %-57s @%s callback %s params %s != target %s %s"
                   % (rel, kind, callback.group(1), params, wanted_name, wanted))
+    return broken
+
+
+# A declaration of `static <ret> name(` in a target source, i.e. the target method is static.
+STATIC_DECL = re.compile(r"\bstatic\b[^;{()]*?\b%s\s*\(" % re.escape("PLACEHOLDER"))
+
+
+def target_is_static(target_fqn: str, method: str) -> bool | None:
+    """Whether `target_fqn.method` is declared static, or None when it cannot be found.
+
+    Read out of the same `.refs/nf-src` sources the parameter check uses, so the two agree on
+    what the target is.
+    """
+    path = os.path.join(REFS, *target_fqn.split(".")) + ".java"
+    if not os.path.exists(path):
+        return None
+    text = open(path, encoding="utf-8", errors="replace").read()
+    text = re.sub(r"//[^\n]*", " ", text)
+    text = re.sub(r"/\*.*?\*/", " ", text, flags=re.S)
+    pattern = re.compile(r"\bstatic\b[^;{()]*?\b%s\s*\(" % re.escape(method))
+    return bool(pattern.search(text))
+
+
+def check_injector_staticness(rel: str, text: str, target_fqn: str) -> int:
+    """An @Inject callback must be static exactly when the target method is.
+
+    A javac run cannot see this: injecting an instance method into a static target compiles
+    cleanly and fails when the client loads the mixin, which a dedicated-server smoke test
+    never reaches (HANDOFF 83.8 - the headshot-box debug renderer hit exactly that).
+    Mixin requires the injector's staticness to match the target's, in both directions.
+    """
+    broken = 0
+    for kind, args in INJECT.findall(text):
+        if kind != "Inject":
+            continue
+        attr = METHOD_ATTR.search(args)
+        if not attr:
+            continue
+        literals = QUOTED.findall(attr.group(1))
+        if not literals:
+            continue
+        method = literals[0].split("(")[0].strip().rstrip("*").strip()
+        tail = text[text.index(args) + len(args):]
+        callback = re.search(
+            r"((?:private|protected|public)\s+(?P<mods>(?:static\s+|final\s+|synchronized\s+)*)"
+            r"[\w<>\[\],.\s]+?\s[\w\$]+\s*\([^;{]*?\)\s*\{)",
+            tail, re.S,
+        )
+        if not callback:
+            continue
+        is_static = "static" in callback.group("mods")
+        wanted = target_is_static(target_fqn, method)
+        if wanted is None:
+            continue
+        if is_static != wanted:
+            broken += 1
+            print("BROKEN %-57s @Inject callback into %s.%s is %s but the target is %s"
+                  % (rel, target_fqn.rsplit(".", 1)[-1], method,
+                     "static" if is_static else "an instance method",
+                     "static" if wanted else "an instance method"))
     return broken
 
 
@@ -431,6 +503,7 @@ def main() -> None:
                 target_fqn = next((imports[t] for t in now if t in imports), None)
                 if target_fqn is not None:
                     broken += check_callbacks(rel, text, target_fqn)
+                    broken += check_injector_staticness(rel, text, target_fqn)
 
             # @Shadow fields are resolved while Mixin is still PREPARING configs, so their
             # declared type is loaded at that moment - and an entity type drags in

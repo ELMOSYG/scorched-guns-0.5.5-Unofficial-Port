@@ -8437,3 +8437,84 @@ Create 6 把它删了：`MechanicalCraftingRecipe` 现在只是 `ShapedRecipe` �
 物流传送带）—— 那类入包没有事件，只能靠 tick 轮询背包，代价与收益不成比例，故不做。
 ⇒ **教训（第四次同类）："某处没有处理 X 事件"这类结论，必须把该包/该版本**实际存在的事件类名**列全再断言**，
 否则就是把"我没搜到"当成"不存在"。**
+
+---
+
+## 83.8 F3+B 看不到 mod 的爆头判定盒（玩家报："scgun 携带的头部碰撞箱没有正常显示"）
+
+### 83.8.1 这不是"没画出来"，而是**从来没画过**
+
+mod 判断爆头用的是**自己的一套盒子**：`IHeadshotBox`（`interfaces/IHeadshotBox.java`），
+按实体类型在 `BoundingBoxManager` 的静态块里注册（玩家、僵尸、骷髅、掠夺者、村民…… 各一个），
+另有 `DynamicHeadshotBox` 兜底未注册的生物。命中判定在
+`ProjectileEntity:577-598`：射线先与**爆头盒**求交，若交点距身体命中点 < 0.5 就判为爆头，
+伤害乘 `headShotDamageMultiplier`。
+
+而 F3+B 画的只有 `Entity#getBoundingBox()`（`EntityRenderDispatcher.renderHitbox`，
+`javap -s` 核对描述符：
+`(Lcom/mojang/blaze3d/vertex/PoseStack;Lcom/mojang/blaze3d/vertex/VertexConsumer;Lnet/minecraft/world/entity/Entity;FFFF)V`）
+⇒ **真正决定爆头的那���小盒子从来不在屏幕上**。要调爆头范围只能读源码算数字。
+
+**不是移植回归**：0.5.5 与本移植中引用 `IHeadshotBox`/`getHeadshotBoxes` 的文件集合**完全一致**（各 5 个，
+都是 `BoundingBoxManager` + `headshot/*` + `ProjectileEntity` + `IHeadshotBox`），0.5.5 同样没有渲染器。
+
+### 83.8.2 修法：挂在**原版自己的 F3+B 那一趟**上
+
+新增 `client/handler/HeadshotBoxDebugRenderer` + `mixin/client/EntityRenderDispatcherMixin`，
+`@Inject(method = "renderHitbox", at = @At("TAIL"))`。
+
+选这个点而不是"关卡渲染事件"，理由有三：
+1. **跟随按键自动开关** —— 原版只在 F3+B 打开时才调它，不需要自己判标志位、也不需要额外事件；
+2. **关闭时零开销**；
+3. **不会像曳光弹那样被画两遍**（§82.12 的教训：两个订阅 + 重复注册 = 每条曳光弹画三次）。
+   §83.8.1 也确认了 1.21.1 里 `RenderLevelStageEvent` 已不存在、`CollisionBoxRenderer` 只画**方块**碰撞形状，
+   实体盒确实在 `EntityRenderDispatcher` 里。
+
+**坐标系必须照抄命中判定**：`IHeadshotBox` 返回的是**实体局部**盒，命中判定用
+`move(boundingBox.getCenter().x, boundingBox.minY, boundingBox.getCenter().z)` 把它锚到世界；
+本渲染器**复制同一个 move**，再减去实体位置转成 `renderHitbox` 所在的空间。
+⇒ **两处一旦不一致，调试视图画的就是一个不存在的盒子** —— 比不画更糟，因为它看起来很权威。
+所以 `verify_installed_jar` 会检查渲染器里同时出现 `getCenter` 与 `renderLineBox`。
+
+颜色用**红色**以区别于原版的白色盒；**刻意不受 `enableHeadShots` 开关约束** —— 这是调试视图，
+而"要不要开爆头"正是你想看这个盒子的时候。若要改成跟随开关，说一声即可（一个条件）。
+
+### 83.8.3 过程中我踩了两个坑，**都是编译期看不见、只在客户端加载 mixin 时才炸**的
+
+1. **`@Inject` 进 `private static` 方法，注入器也必须是 `static`**。我第一版写成实例方法，
+   `javac` 通过、`build` 通过、专用服务器也通过（客户端专属的 mixin 服务器根本不会应用）
+   ⇒ 只能在**玩家客户端**上炸。已改为 `static`，并在 javadoc 里记下原因。
+2. **`@Mixin` 目标写成全限定名，审计就看不见这个文件**。仓库惯例是"import + 简单名"
+   （`LevelRendererMixin` 等 10 个都是），`audit_mixins.py` 靠 import 表把简单名解析成全限定名；
+   写全限定名会静默跳过**全部** mixin 检查。已改为惯例写法。
+
+⇒ 两条都补进了 `tools/audit_mixins.py`（**第 42 个审计规则组**）：
+
+* **新增规则**：`@Inject` 注入器的 `static` 必须与目标方法一致（双向）。
+  从 `.refs/nf-src` 读目标的 `static`，不靠猜。
+* **顺带修掉一个既有漏洞**：参数检查原本在"最后一个参数不是 `CallbackInfo`"时**直接 `continue`**，
+  那是给 `locals = LocalCapture` 留的口子 —— 但普通 `@Inject` 后面多挂一个参数会**整条被跳过**。
+  现在只有 `args` 里真的出现 `LocalCapture` 才跳过，否则**明确报错**。
+  （本仓库目前没有任何 `LocalCapture` 注入器，所以收窄后不会误报。）
+
+* **反向验证 2/2** ✓：把注入器改回实例方法 ⇒ 报
+  `@Inject callback into EntityRenderDispatcher.renderHitbox is an instance method but the target is static` ✓；
+  给回调多挂一个 `float` ⇒ 报 `ends with float, not a CallbackInfo, and the injection captures no locals` ✓。
+  （第二条例子正是**先漏报、修好规则后才报出来的**——留在这里是因为"审计自己漏过一次"比"审计没修过"更值得记。）
+
+### 83.8.4 `verify_installed_jar` 新增 4 条（**273/273**）
+
+渲染器与 mixin 都要打进 jar ✓、mixin 必须挂 `renderHitbox` ✓、
+渲染器必须含 `getCenter`+`renderLineBox`（即照抄了命中判定的锚点）✓、
+随包的 `scguns.mixins.json` 必须登记 `client.EntityRenderDispatcherMixin` ✓。
+**反向验证**：把渲染器从 jar 里删掉重跑 ⇒ 2 条立即 FAIL ✓。
+
+### 83.8.5 验收
+
+* `javac` 0（1013 文件）、`build` ✓、**42 审计 + 12 selftest 全 0**、
+  服务器 `Done` 且 `Parsing error loading recipe` 0 / tag 0 / **ERROR·FATAL 0** /
+  **`Mixin apply failed`·`InvalidInjectionException` 0** ✓、`verify_installed_jar` **273/273** ✓（已装进实例）。
+* **未实测**（只能玩家在客户端看）：F3+B 时每个生物身上多出一个**红色**小盒，
+  且与爆头判定范围一致（打那个位置会爆头）。**请重点确认它画在你以为的位置** ——
+  若玩家/僵尸的盒子位置明显不对，说明 `move(centerX, minY, centerZ)` 这个锚点在 1.21.1 与
+  0.5.5 的语义不同（那会是**爆头判定本身**的 bug，而不只是显示问题），需要单独查。

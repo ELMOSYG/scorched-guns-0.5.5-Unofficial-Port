@@ -1317,6 +1317,27 @@ def main():
                     for name in zf.namelist()
                     if name.startswith("data/scguns/tags/item/")
                     and name.endswith("_gun_tier.json"))))
+        # 83.8. The headshot box decided a headshot but was never drawn, so F3+B showed only the
+        # entity box. The renderer and the mixin that hooks vanilla's own hitbox pass must both
+        # ship, the mixin must be registered in the packaged config, and the box must be anchored
+        # the way the hit test anchors it - a debug view that draws a different box is worse than
+        # none, because it looks authoritative.
+        mixin_bytes = _class_bytes(zf, "top/ribs/scguns/mixin/client/EntityRenderDispatcherMixin.class")
+        renderer_bytes = _class_bytes(
+            zf, "top/ribs/scguns/client/handler/HeadshotBoxDebugRenderer.class")
+        checks.append((
+            "the headshot box debug renderer is packaged", renderer_bytes is not None))
+        checks.append((
+            "the mixin that draws it is packaged, and hooks vanilla's own renderHitbox",
+            mixin_bytes is not None and b"renderHitbox" in mixin_bytes
+            and b"scgunsDrawHeadshotBox" in mixin_bytes))
+        checks.append((
+            "the debug renderer anchors the box the way the hit test does",
+            renderer_bytes is not None and b"getCenter" in renderer_bytes
+            and b"renderLineBox" in renderer_bytes))
+        checks.append((
+            "the packaged mixin config registers the new client mixin",
+            b"client.EntityRenderDispatcherMixin" in zf.read("scguns.mixins.json")))
         # 83.1. The 14 blending recipes were the only genuinely 0-tick ones; the types Create
         # rejects must not carry the key at all, or those recipes are dropped on load.
         checks.append(_check_resource_contains(
