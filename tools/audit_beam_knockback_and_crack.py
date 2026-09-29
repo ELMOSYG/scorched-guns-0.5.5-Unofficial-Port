@@ -126,12 +126,12 @@ def main() -> int:
         problems.append("the position-carrying constructor does not forward to DamageSource")
 
     # 3. the crack must survive at least one tick, and the stage must stay below 10
-    if not re.search(r"progress\.progress\s*>=\s*1\.0F\s*&&\s*progress\.lastStage\s*>=\s*9", common):
-        problems.append("beam mining can clear the crack and break the block in the same tick it "
-                        "reaches the final stage, so a fast mining gun never shows the texture (83.10)")
-    # The statement is `int newStage = Math.min((int)(progress.progress * 10.0F), 9);` - the cast
-    # puts a `)` inside the call, so the check is on the whole statement rather than a pattern that
-    # has to span it.
+    # 3. the crack must survive at least one tick, and the stage must stay below 10.
+    #    The test has to be on the stage *captured before* the update. A first version of the fix
+    #    tested `progress.lastStage`, which the lines just above had already set to 9 - so it held on
+    #    the first tick, nothing was deferred, and the player reported it still broken. Checking that
+    #    the right identifier is used, and that it is captured before the assignment, is the only way
+    #    a text check can catch that; a check on the mere presence of "lastStage >= 9" did not.
     stage_stmt = re.search(r"int\s+newStage\s*=\s*([^;]+);", common)
     if not stage_stmt:
         problems.append("the crack stage assignment has gone; how is the stage computed now?")
@@ -140,6 +140,24 @@ def main() -> int:
         if "Math.min" not in stmt or not re.search(r",\s*9\s*\)\s*$", stmt):
             problems.append("the crack stage is no longer clamped to 9; 1.21.1's "
                             "LevelRenderer#destroyBlockProgress treats >= 10 as a removal: %r" % stmt)
+
+    capture = re.search(r"int\s+(\w+)\s*=\s*progress\.lastStage\s*;", common)
+    if not capture:
+        problems.append("the stage is not captured before the update, so the break test reads a "
+                        "lastStage that was just assigned 9 and the one-tick deferral never happens")
+    else:
+        name = capture.group(1)
+        assign = common.find("progress.lastStage = newStage")
+        if assign < 0:
+            problems.append("lastStage is no longer assigned from newStage; the break test cannot "
+                            "tell whether the final stage was ever sent")
+        elif common.find(capture.group(0)) > assign:
+            problems.append("the stage is captured *after* lastStage is assigned, which is the "
+                            "exact bug of the first fix: the deferral silently does nothing")
+        if not re.search(r"progress\.progress\s*>=\s*1\.0F\s*&&\s*%s\s*>=\s*9" % re.escape(name),
+                         common):
+            problems.append("the break test does not require the captured stage to be 9, so a fast "
+                            "beam clears the crack and breaks in the same tick (83.10)")
 
     # 4. sanity: the real mining-speed data, so a change to it is noticed here rather than in game
     guns = os.path.join(ROOT, "src", "main", "resources", "data", "scguns", "guns")

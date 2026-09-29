@@ -155,6 +155,10 @@ public class BeamHandlerCommon {
                progress.lastUpdate = System.currentTimeMillis();
                float miningSpeed = modifiedGun.getGeneral().getMiningSpeed();
                float progressIncrement = miningSpeed / (hardness * 10.0F);
+               // The stage as it stood *before* this update, which is what the break test below has
+               // to look at: lastStage is assigned a few lines down, so testing it after that
+               // assignment always sees 9 on the very tick the block finished (HANDOFF 83.10).
+               int stageBeforeUpdate = progress.lastStage;
                progress.progress += progressIncrement;
                int newStage = Math.min((int)(progress.progress * 10.0F), 9);
                if (newStage != progress.lastStage) {
@@ -164,21 +168,24 @@ public class BeamHandlerCommon {
                   }
                }
 
-               if (progress.progress >= 1.0F && progress.lastStage >= 9) {
-                  // Only break once stage 9 has been on screen for a tick.
+               if (progress.progress >= 1.0F && stageBeforeUpdate >= 9) {
+                  // Break only once stage 9 has already been on screen for a tick.
                   //
                   // The increment is miningSpeed / (hardness * 10), so a fast mining gun finishes a
                   // soft block inside a single tick: cr4k_mining_laser (14.0) does dirt at 2.8 per
-                  // tick, so the first update reached 1.0 immediately, sent stage 9 and the -1 that
-                  // clears it in the same tick, then removed the block - the crack was never drawn
-                  // for a single frame, which is what the player reported as "no break texture".
-                  // The two slow beam guns (1.0) take 15 ticks on stone and always looked fine,
-                  // which is why this only ever showed up on the fast one.
+                  // tick, so the first update reached 1.0, sent stage 9 and the -1 that clears it,
+                  // then removed the block - the crack was never drawn for a single frame, which is
+                  // what the player reported as "no break texture". The two slow beam guns (1.0)
+                  // take 15 ticks on stone and always looked fine, which is why it only ever showed
+                  // up on the fast one.
                   //
-                  // Requiring lastStage >= 9 defers the break by exactly one tick and does not
-                  // change the mining rate: stage 9 was already computed on the tick before, so
-                  // the client has a frame to render it. The alternative - pacing the stage
-                  // increments - would slow mining down, which is a balance decision, not a fix.
+                  // `stageBeforeUpdate` is what makes this work. The first version of this fix
+                  // tested `progress.lastStage` here, which had *just* been set to 9 by the lines
+                  // above, so the condition held on the very first tick and nothing was deferred -
+                  // the player reported it still broken. With the pre-update value the break lands
+                  // one tick after stage 9 was sent, exactly the frame the client needs, and the
+                  // mining rate is untouched. The alternative - pacing the stage increments - would
+                  // slow mining down, which is a balance decision, not a fix.
                   if (world instanceof ServerLevel serverLevel) {
                      serverLevel.destroyBlockProgress(progress.breakerId, pos, -1);
                   }
