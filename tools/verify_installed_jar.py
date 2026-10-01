@@ -211,6 +211,15 @@ def _check_resource_contains(zf, entry, needle, label):
     return (label, needle in data)
 
 
+def _check_resource_absent(zf, entry, label):
+    """True when a packaged file is *not* there.
+
+    For files whose presence is the bug - a tag under a name nothing else defines reads as empty rather
+    than erroring, so shipping one again would be silent.
+    """
+    return (label, entry not in zf.namelist())
+
+
 def _check_declared_version(zf):
     """The packaged version is the one gradle.properties asks for (the jar name follows it too)."""
     expected = re.search(r"^mod_version\s*=\s*(\S+)",
@@ -1521,6 +1530,16 @@ def main():
         checks.append(_check_resource_contains(
             zf, "data/minecraft/tags/item/enchantable/mining_loot.json", b"scguns:mining_gun",
             "the mining guns are in the tag Fortune and Silk Touch are built on"))
+
+        # 82.49. NeoForge's common tag for gunpowder is c:gunpowders (plural). The port had renamed
+        # 1.20.1's forge:gunpowder to c:gunpowder, a tag nothing else defines, so #c:gunpowder held only
+        # the mod's own two powders and vanilla gunpowder stopped working in buckshot's recipe.
+        checks.append(_check_resource_contains(
+            zf, "data/c/tags/item/gunpowders.json", b"scguns:sheol",
+            "the mod's powders are in NeoForge's c:gunpowders, which also holds vanilla gunpowder"))
+        checks.append(_check_resource_absent(
+            zf, "data/c/tags/item/gunpowder.json",
+            "the private c:gunpowder tag is gone (a tag nothing else defines is silently empty)"))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:

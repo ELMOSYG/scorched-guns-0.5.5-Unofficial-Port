@@ -11,7 +11,7 @@
       "item": "minecraft:redstone"
     },
     "X": {
-      "tag": "c:glass"
+      "tag": "c:glass_blocks"
     }
   },
   "pattern": [

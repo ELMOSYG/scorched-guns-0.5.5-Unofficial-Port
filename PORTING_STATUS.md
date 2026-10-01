@@ -1465,3 +1465,32 @@ Parsing error loading recipe scguns:mech_press/depleted_diamond_steel
 
 **新增工具 `tools/check_lang_pack.py`**（按需对拍，不进审计循环 ✓）：拿任意汉化包与 mod 自带 `zh_cn.json` 对比 —— **键的缺失/多余** + **每条文本的格式占位符** ✓。这次就是它一锤定音的 ✓。
 **顺带记录**（玩家自己决定要不要补 ✓）：该包比 mod 少 **33 个键**（几乎全是新增的 `commands.scguns.*` 命令输出 ✓ ⇒ 这些地方会显示 mod 自带的中文 ✓），另有 **2 个已废弃的键**（`commands.scguns.progression.check` / `.check_none` ✓，命令改结构后已无用 ✓）。
+
+## §82.49 **`scguns:buckshot` 不能用原版火药：`forge:gunpowder` 被改成了不存在的 `c:gunpowder`**（玩家报告，已修；同类问题还波及玻璃）
+
+**玩家报告**："scguns:buckshot 不能通过原版的火药合成，调查发现原版火药没有火药的 tag" ✓ —— **两句都对** ✓，根因是移植时的**改名改错**：1.20.1 的公共标签叫 `forge:x` ✓，NeoForge 叫 `c:x` ✓，但本移植把 `forge:gunpowder` 写成了 **`c:gunpowder`** ✗ —— **NeoForge 的名字是复数的 `c:gunpowders`** ✓✓。
+
+**三个 jar 里的实测证据**：
+| 来源 | 文件 | 内容 |
+|---|---|---|
+| NeoForge 21.1.249 | `data/c/tags/item/gunpowders.json` ✓ | `[minecraft:gunpowder, #forge:gunpowder(required:false)]` ✓ |
+| Forge 1.20.1 | `data/forge/tags/items/gunpowder.json` ✓ | `[minecraft:gunpowder]` ✓ |
+| ScorchedGuns 0.5.5 | `data/forge/tags/items/gunpowder.json` ✓ | `[scguns:sheol, scguns:peal]` ✓ |
+
+⇒ 1.20.1 上**两者自动合并** ✓ ⇒ `#forge:gunpowder` = 原版火药 + 本模组两种火药 ✓；1.21.1 上本移植的文件落在 `c:gunpowder` ✗ —— **一个没有任何其它模组定义的标签** ⇒ `#c:gunpowder` 只剩本模组两种粉末 ✗ ⇒ 原版火药进不去 ✓✓。**而且是静默的** ✗：**不存在的标签只会是空的，不会报错** ✓（所以整条门禁与日志都没提示 ✓）。
+
+**修法**：标签文件改名为 `data/c/tags/item/gunpowders.json`（内容不变：sheol/peal ✓），两张引用它的配方 `#c:gunpowder` → **`#c:gunpowders`**（`buckshot.json` ✓、`create/buckshot_from_mixing.json` ✓）。清理后从**成品 jar** 实测：NeoForge 的 `c:gunpowders` = `[minecraft:gunpowder, #forge:gunpowder?]` ✓ + 我们的 `[sheol, peal]` ✓ ⇒ **合并结果与 1.20.1 完全一致** ✓✓。
+
+**同类问题（顺手一起修）：玻璃** ✓✓。0.5.5 的 `long_scope` 用 `#forge:glass` ✓，1.20.1 Forge 的 `forge:glass` = `[#forge:glass/colorless, #forge:stained_glass, #forge:glass/tinted]` ✓ ⇒ **含原版玻璃/染色玻璃/遮光玻璃** ✓；本移植把它写成自造的 `c:glass` ✗（里面**只有**硝化玻璃 ✗）⇒ **`long_scope`、`nail_bomb`、`swarm_bomb` 三张配方都用不了原版玻璃** ✗✓。NeoForge 的对应标签是 **`c:glass_blocks`** ✓（内容 = colorless + cheap(全部染色) + tinted ✓，正与 Forge 那套一致 ✓）。修法：三张配方改用 **`#c:glass_blocks`** ✓；把 17 种硝化玻璃加进 `c:glass_blocks` 的 **item 与 block 两个标签** ✓（其它模组的玻璃配方也就认它了 ✓，并且 §82.43 我把光束玻璃判定改成 `Tags.Blocks.GLASS_BLOCKS` 时丢掉的那部分也补回来了 ✓）；删掉自造的 `c:glass` 与 17 个 `c:glass/<颜色>` ✗（后者是 **Forge 当年的结构** ✓，NeoForge 已不再提供 ⇒ 本移植也不该发 ✓）。
+
+**新增审计 `tools/audit_common_tags.py`（第 51 个）**：从 merged jar 读出 **NeoForge 定义的 359 个公共标签** ✓，然后：
+- **规则**：**本模组自己发布的 `c:` 标签，若 NeoForge 没有、而 NeoForge 存在一个"同名前缀"的标签**（`+s` / `+_` / `+/` ✓）⇒ **报错** ✓✓ —— 一箭双雕抓住火药（`c:gunpowder` → `c:gunpowders` ✓）与玻璃（`c:glass` → `c:glass_blocks` ✓）。
+- 只是被引用、没人定义的标签 ⇒ **只记 NOTE** ✓（如 `c:ingots/brass`/`c:ingots/steel` ✓ —— 那本来就是 **Create/IE 提供的** ✓，写成错误会全是假阳性 ✓）。
+
+**这份审计自己返工了三轮**（都记下来 ✓）：
+1. 初版把「任何 `"c:..."` 字符串」当引用 ✗ ⇒ `neoforge:conditions`、生物群系修饰器类型等 **codec 名称**被当成标签 ✗ ⇒ **18 条假阳性** ✓；改为只认 `"tag": "..."` 与 `"#c:..."` / `"#neoforge:..."` ✓。
+2. 注册表路径解析写错 ✗（`item/ingots/iron` 被解析成 `c:ingots` ✗）⇒ 把 NeoForge 确定存在的 `c:ingots/iron` 报成缺失 ✓；修好后 NeoForge 标签数变成正确的 **359** ✓。
+3. **最后一个洞是反向验证抓出来的** ✓✓：当时只遍历"被引用到的"标签 ✗ ⇒ 一个**没人引用**的 `c:gunpowder` 文件直接从眼皮底下走过去 ✓（控制组 MISS ✓）⇒ 改成遍历 **「引用到的 ∪ 自己发布的」** ✓。修好后控制组 **3/3** ✓（重新发 `c:gunpowder` ✓ / 重新发 `c:glass` ✓ / 写错标签名 ⇒ NOTE ✓），干净树 0 ✓。
+
+**门禁**：**51 个审计全 0** ✓ / `verify_installed_jar` **289/289** ✓（新增 2 项：包里 `c:gunpowders` 含 `scguns:sheol` ✓、包里**不再有**私有的 `c:gunpowder` ✓）/ `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（`scguns-0.5.5.2.jar` ✓）。
+**待实测（交给玩家）**：进游戏后**重进世界 / 重载数据包** ⇒ **原版火药应能直接合成 buckshot** ✓；`long_scope`/`nail_bomb`/`swarm_bomb` 也应重新接受**原版玻璃** ✓。
