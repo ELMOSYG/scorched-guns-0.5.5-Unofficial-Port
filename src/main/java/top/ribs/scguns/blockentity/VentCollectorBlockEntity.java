@@ -64,7 +64,45 @@ public class VentCollectorBlockEntity extends BlockEntity implements MenuProvide
          }
       }
    };
-   private final IItemHandler itemHandlerOptional = this.itemHandler;
+   /**
+    * The handler automation sees. Only the filter slot (0) accepts anything: the three top slots are
+    * the collector's output, and a hopper pointed at the block used to fill them, which is what the
+    * player asked to be prevented. Extraction still works from every slot, so a hopper underneath can
+    * keep pulling the powder out.
+    *
+    * <p>This has to be a separate wrapper rather than the filter check moving into {@code itemHandler}:
+    * {@code ItemStackHandler#insertItem} consults {@code isItemValid} itself, so rejecting slots 1-3
+    * there would also stop the collector inserting its own production. The machine uses
+    * {@code itemHandler} directly and is unaffected; only this view is restricted.</p>
+    */
+   private final IItemHandler itemHandlerOptional = new IItemHandler() {
+      public int getSlots() {
+         return VentCollectorBlockEntity.this.itemHandler.getSlots();
+      }
+
+      @NotNull
+      public ItemStack getStackInSlot(int slot) {
+         return VentCollectorBlockEntity.this.itemHandler.getStackInSlot(slot);
+      }
+
+      @NotNull
+      public ItemStack insertItem(int slot, @NotNull ItemStack stack, boolean simulate) {
+         return slot == 0 ? VentCollectorBlockEntity.this.itemHandler.insertItem(slot, stack, simulate) : stack;
+      }
+
+      @NotNull
+      public ItemStack extractItem(int slot, int amount, boolean simulate) {
+         return VentCollectorBlockEntity.this.itemHandler.extractItem(slot, amount, simulate);
+      }
+
+      public int getSlotLimit(int slot) {
+         return VentCollectorBlockEntity.this.itemHandler.getSlotLimit(slot);
+      }
+
+      public boolean isItemValid(int slot, @NotNull ItemStack stack) {
+         return slot == 0 && VentCollectorBlockEntity.this.itemHandler.isItemValid(slot, stack);
+      }
+   };
    private int productionCounter;
    private int currentTickInterval;
    private int filterCharge;

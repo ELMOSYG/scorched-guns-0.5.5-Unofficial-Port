@@ -1617,3 +1617,16 @@ if (player.isSpectator()) { return null; }   // 原版会打印 container.specta
 
 ⇒ 1.20.1 上原版旁观者打开容器时，客户端拿到的缓冲里**没有 BlockPos** ⇒ `readBlockPos()` 失败 ⇒ 包处理抛异常 ⇒ **同样会被踢出**（1.20.1 的文案是 "Internal Exception"，1.20.5+ 才叫"网络协议错误"✓）。也就是说：**这是上游 0.5.5 就带的缺陷，本移植原样继承** ✓；本轮加的"旁观者返回 null"守卫让本移植**比 0.5.5 更好** ✓（现在只会显示 `container.spectatorCantOpen`，不再踢人 ✓）。
 **未能静态验证的一环**（如实记录 ✓）：Forge 1.20.1 的 `NetworkHooks.openScreen(..., writer)` 内部究竟把数据放在哪个包里（该包没有数据字段 ⇒ 应是另一个自定义包）✓ 没有继续挖 ✓；但结论不依赖它 ✓ —— **原版那条 1 参数路径在任何版本都不可能提供额外数据** ✓。**玩家可在 1.20.1 实例里 30 秒自验**：旁观模式右键研磨机/压床 ⇒ 若同样被踢即证实 ✓。
+
+## §82.53 喷口收集器：**自动化只能往滤芯格输入**（玩家要求，属对 0.5.5 的改进）
+
+**玩家报告**：用**漏斗**可以往收集器上方那三个产出格里塞东西 ✓ —— 他们提议"上面三格不能输入"，理由是这样自动化更方便 ✓。
+
+**现状核对**：GUI 层其实早就禁了 —— `VentCollectorMenu` 里槽 1/2/3 的 `mayPlace` 都 `return false` ✓（**0.5.5 反编译源码逐行相同** ✓，从最初的导入提交起就是这样 ✓）。`mayPlace` 只管**鼠标/GUI** ✗；**漏斗、Create 机械臂/溜槽、管道等走的是方块实体的物品栏能力**，会绕过它 ✓✓ —— 这就是玩家看到的现象 ✓。
+
+**修法**：`VentCollectorBlockEntity` 里给**对外的能力**单独做一层包装（`itemHandlerOptional` 由原来的 `this.itemHandler` 别名改成一个匿名 `IItemHandler`）：`insertItem(slot, …)` 只放行 **slot 0**，`isItemValid(slot, …)` 同样只对 **slot 0** 返回真；**其它方法（`getSlots`/`getStackInSlot`/`extractItem`/`getSlotLimit`）全部委托** ✓ ⇒ **产出格照样能往外抽**（下方漏斗继续收粉 ✓），只有"往里塞"被限制 ✓。
+
+**为什么不能直接把过滤加在 `itemHandler` 上**（关键坑，记下来 ✓）：`ItemStackHandler#insertItem` **自己会调用 `isItemValid`** ✗ ⇒ 若在底层 handler 上把 1–3 判为非法，**收集器自己把产物放进产出格也会失败** ✗✓（`insertProducedItem` 用的就是同一个 handler ✓）。所以必须分成**两个视图**：机器用 `itemHandler`（不受限 ✓），自动化用 `itemHandlerOptional`（受限 ✓）。
+
+**门禁**：57 个审计里 56 个过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓，备份 `…bak-184523` ✓）。
+**待实测（交给玩家）**：① 漏斗对着收集器 ⇒ 只能往**滤芯格**输入 ✓；② 漏斗放在收集器**下方/侧面抽取** ⇒ 仍能把粉抽走 ✓；③ 喷口正常产出 ⇒ 产出格照常被填 ✓。
