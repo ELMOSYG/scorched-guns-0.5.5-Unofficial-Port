@@ -69,6 +69,8 @@ public class ExoSuitPouchHandler {
             });
          }
       };
+      // AUDIT-OK(this provider builds vanilla ChestMenu/DispenserMenu, whose factories never read the
+      // buffer, so a null one is harmless - see tools/audit_menu_extra_data.py)
       player.openMenu(menuProvider);
    }
 

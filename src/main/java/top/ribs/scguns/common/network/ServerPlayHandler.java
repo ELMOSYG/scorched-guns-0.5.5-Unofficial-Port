@@ -408,6 +408,9 @@ public class ServerPlayHandler {
    public static void handleAttachments(ServerPlayer player) {
       ItemStack heldItem = player.getMainHandItem();
       if (heldItem.getItem() instanceof GunItem) {
+         // AUDIT-OK(the attachments menu is registered as a plain MenuSupplier, not an
+         // IContainerFactory, so there is no factory to hand a buffer to - see
+         // tools/audit_menu_extra_data.py)
          player.openMenu(new SimpleMenuProvider(
                (windowId, playerInventory, player1) -> new AttachmentContainer(windowId, playerInventory, heldItem),
                Component.translatable("container.scguns.attachments")

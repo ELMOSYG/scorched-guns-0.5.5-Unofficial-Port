@@ -39,7 +39,19 @@ public class GunBenchBlock extends Block implements EntityBlock {
       if (level.isClientSide) {
          return InteractionResult.SUCCESS;
       } else {
-         player.openMenu(state.getMenuProvider(level, pos));
+         // The writer is not optional. NeoForge only puts a menu's extra data into the packet when the
+         // writer produced at least one byte (ServerPlayer#openMenu: an empty buffer means the plain
+         // ClientboundOpenScreenPacket, which carries no data at all), and the client then calls the
+         // menu type's factory with a null buffer. GunBenchMenu's buffer constructor happens to ignore
+         // it, so this looked harmless - but any menu whose factory reads the buffer (MaceratorMenu and
+         // every other machine here) dies with a NullPointerException on the client and the connection
+         // is killed with "Network protocol error". Always write the position: it costs four bytes and
+         // removes the whole failure mode. See tools/audit_menu_extra_data.py.
+         // TEMPORARY PROBE (removed before the next round): see MaceratorBlock. This one now always
+         // writes the position, so a reproduction should name the opener that still does not.
+         top.ribs.scguns.ScorchedGuns.LOGGER.info("SCGUNS-MENU gun_bench pos={} player={} spectator={}",
+            pos, player.getGameProfile().getName(), player.isSpectator());
+         player.openMenu(state.getMenuProvider(level, pos), buf -> buf.writeBlockPos(pos));
          player.awardStat(Stats.INTERACT_WITH_CRAFTING_TABLE);
          return InteractionResult.CONSUME;
       }

@@ -1494,3 +1494,43 @@ Parsing error loading recipe scguns:mech_press/depleted_diamond_steel
 
 **门禁**：**51 个审计全 0** ✓ / `verify_installed_jar` **289/289** ✓（新增 2 项：包里 `c:gunpowders` 含 `scguns:sheol` ✓、包里**不再有**私有的 `c:gunpowder` ✓）/ `javac` 0（1013 文件 ✓）/ `build` ✓ / 已安装 ✓（`scguns-0.5.5.2.jar` ✓）。
 **待实测（交给玩家）**：进游戏后**重进世界 / 重载数据包** ⇒ **原版火药应能直接合成 buckshot** ✓；`long_scope`/`nail_bomb`/`swarm_bomb` 也应重新接受**原版玻璃** ✓。
+
+## §82.50 **旁观模式点工作站被踢"网络协议错误"：菜单的额外数据没发出去**（机制已定位并修好一类，真凶待探针确认）
+
+**玩家报告**："旁观模型与mod工作站进行交互游戏会网络协议错误并被踢出游戏" ✓。
+
+**一、日志里的原始堆栈（决定性）**：
+```
+java.lang.NullPointerException: Cannot invoke "RegistryFriendlyByteBuf.readBlockPos()" because "extraData" is null
+    at top.ribs.scguns.client.screen.MaceratorMenu.<init>(MaceratorMenu.java:41)
+    at net.neoforged.neoforge.network.IContainerFactory.create(IContainerFactory.java:36)
+    at net.minecraft.world.inventory.MenuType.create(MenuType.java:54)
+    at net.minecraft.client.gui.screens.MenuScreens$ScreenConstructor.fromPacket(MenuScreens.java:125)
+    ... ClientPacketListener.handleOpenScreen(ClientPacketListener.java:1247)
+Client disconnected with reason: 网络协议错误
+```
+⇒ **服务端开某个菜单时没带额外数据** ⇒ 客户端用 `IContainerFactory` 建菜单拿到 **null 缓冲** ⇒ 构造器 `extraData.readBlockPos()` 直接 NPE ⇒ 客户端抛异常 ⇒ **被踢** ✓✓。时间线也对得上：`09:38:19` 切旁观 → `09:38:20` **枪械工作台在旁观下正常打开了**（recipebook 日志 ✓ 没崩 ✓）→ `09:38:36` 再切旁观 → `09:38:36.770` 崩 ✓。
+
+**二、机制（从 1.21.1 合并 jar 反汇编 `ServerPlayer#openMenu(MenuProvider, Consumer)` 读出，不是猜）**：
+```java
+AbstractContainerMenu menu = provider.createMenu(id, inventory, this);
+if (menu == null) { ...; return OptionalInt.empty(); }
+byte[] customData = FriendlyByteBufUtil.writeCustomData(buf -> {
+    provider.writeClientSideData(menu, buf);
+    if (writer != null) writer.accept(buf);
+}, this.registryAccess());
+if (customData.length != 0) send(new AdvancedOpenScreenPayload(...));   // 带数据
+else                        send(new ClientboundOpenScreenPacket(...)); // 原版包，什么都不带
+```
+⇒ **只要 writer 写出 0 字节（或压根没传 writer）走的就是原版包** ⇒ 客户端工厂收到 **null** ✓✓。而本模组的机器菜单都注册成 **`IMenuTypeExtension.create(factory)`**（`ModMenuTypes.registerMenuType` ✓ / `MENUS.register(..., IMenuTypeExtension.create(...))` ✓）⇒ 其 `(int, Inventory, RegistryFriendlyByteBuf)` 构造器**读缓冲** ✓（`MaceratorMenu:41` ✓ 等）⇒ **必崩** ✓✓。
+
+**三、修了什么**：
+- **`GunBenchBlock`**：原为 1 参数 `player.openMenu(provider)` ✗ ⇒ 改成 `player.openMenu(provider, buf -> buf.writeBlockPos(pos))` ✓（它的 `GunBenchMenu` 恰好**不读**缓冲 ⇒ 今天是"侥幸没崩" ✗，但正是 0 字节来源之一 ✓）；注释写清了上面的机制 ✓。
+- **新增审计 `tools/audit_menu_extra_data.py`（第 55 个）**：**禁止不带 writer 的 `openMenu(provider)`** ✓ —— 22 处调用全检 ✓；豁免必须**就地标注** `// AUDIT-OK(<理由>)`（理由 ≥10 字符 ✓、必须紧贴调用行或其正上方**连续**注释块 ✓），或用审计内的表项（用于**别人正在改、我不该动**的文件 ✓）。当前豁免 3 处 ✓，每处都读过源码才标 ✓：① `ServerPlayHandler` 配件菜单 —— 注册的是普通 `MenuSupplier` ✓ 没有工厂可喂；② `ExoSuitPouchHandler` 背包 —— provider 返回原版 `ChestMenu/DispenserMenu` ✓；③ `SupplyScampEntity`（表项 ✓）—— 工厂忽略缓冲、构造原版 `ChestMenu` ✓。
+- 反向验证 **3/3** ✓（撤销工作台修法 ⇒ 报错 ✓ / `AUDIT-OK()` 无理由 ⇒ 报错 ✓ / 标注与调用被空行隔开 ⇒ 报错 ✓）。
+
+**四、仍未确认（已装探针，等玩家复现一次）**：崩的是 **`MaceratorMenu`** ✓，但 `MaceratorBlock`/`PoweredMaceratorBlock` 都是**带 writer** 打开的 ✓ ⇒ **还有一条我没找到的打开路径** ✗ ⇒ 已在 `MaceratorBlock`、`PoweredMaceratorBlock`、`GunBenchBlock` 三处加临时探针 `SCGUNS-MENU <机器> pos=… player=… spectator=…` ✓（下一轮删 ✓）：复现一次就能看出**是哪条路径**开的、旁观时模组代码有没有被执行 ✓。
+
+**五、配置保存问题：本轮没能定位** ✗。已核对：主模组 `ScorchedGuns:146-148` 三个配置各注册一次 ✓（CLIENT/COMMON/SERVER ✓）；女仆兼容 `ExampleMod:63` 在 TLM 检查**之前**注册 COMMON ✓；`Config.java` 读值走 `clientSpec.isLoaded()` 兜底 ✓；`saveClientConfig()` 目前**无人调用** ✓（NeoForge 自己会在配置界面保存 ✓）。**需要玩家补充**：是**游戏内配置界面**保存不生效 ✓，还是**手改 TOML** 被覆盖/无效 ✓，具体哪个文件、哪个选项 ✓（实例里 `scguns-common-1..5.toml.bak` 这类备份是 NeoForge 校正配置时留下的 ✓ 属正常 ✓）。
+
+**门禁（本轮）**：我新增/修改的审计全 0 ✓；55 个审计里 **54 个过** —— 唯一失败的是**另一位 agent 尚未提交（untracked）**的 `tools/audit_scguns_tags.py`（报 `scguns:ghost` 未发布 entity tag ✓），与本次改动无关 ✓；`verify_installed_jar` **289/289** ✓ / `javac` 0 ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓）。

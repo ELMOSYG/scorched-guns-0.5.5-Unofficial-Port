@@ -75,6 +75,9 @@ public class PoweredMaceratorBlock extends BaseEntityBlock implements SimpleWate
             throw new IllegalStateException("Our Container provider is missing!");
          }
 
+         // TEMPORARY PROBE (removed before the next round): see MaceratorBlock.
+         top.ribs.scguns.ScorchedGuns.LOGGER.info("SCGUNS-MENU powered_macerator pos={} player={} spectator={}",
+            pos, player.getGameProfile().getName(), player.isSpectator());
          ((ServerPlayer)player).openMenu((MenuProvider)entity, buf -> buf.writeBlockPos(pos));
       }
 
