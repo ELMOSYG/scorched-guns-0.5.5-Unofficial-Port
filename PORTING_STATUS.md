@@ -1534,3 +1534,30 @@ else                        send(new ClientboundOpenScreenPacket(...)); // 原�
 **五、配置保存问题：本轮没能定位** ✗。已核对：主模组 `ScorchedGuns:146-148` 三个配置各注册一次 ✓（CLIENT/COMMON/SERVER ✓）；女仆兼容 `ExampleMod:63` 在 TLM 检查**之前**注册 COMMON ✓；`Config.java` 读值走 `clientSpec.isLoaded()` 兜底 ✓；`saveClientConfig()` 目前**无人调用** ✓（NeoForge 自己会在配置界面保存 ✓）。**需要玩家补充**：是**游戏内配置界面**保存不生效 ✓，还是**手改 TOML** 被覆盖/无效 ✓，具体哪个文件、哪个选项 ✓（实例里 `scguns-common-1..5.toml.bak` 这类备份是 NeoForge 校正配置时留下的 ✓ 属正常 ✓）。
 
 **门禁（本轮）**：我新增/修改的审计全 0 ✓；55 个审计里 **54 个过** —— 唯一失败的是**另一位 agent 尚未提交（untracked）**的 `tools/audit_scguns_tags.py`（报 `scguns:ghost` 未发布 entity tag ✓），与本次改动无关 ✓；`verify_installed_jar` **289/289** ✓ / `javac` 0 ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓）。
+
+## §82.51 配置"保存了却没写盘"：一条是 NeoForge 的**关页才写**，一条是女仆兼容**注入的界面从不保存**
+
+**玩家报告**：三个配置文件（`scguns-client` / `scguns-common` / `scg2_maid_compat-common`）当天改过但没保存 ✓；随后补充：**是"用游戏内配置界面改完保存"** ✓，并判断**女仆兼容注入到女仆 mod 里的那套界面有 bug** ✓、**移植时丢了独立的 Cloth 界面** ✓。**两条判断都对** ✓✓。
+
+**一、通用机制（解释 mod 自己那两个配置，字节码实测）**：
+- `ModConfigSpec$ConfigValue#set(T)` ✓：`loadedConfig.config().set(path, value)` + 更新缓存，**全程不写文件** ✓✓；
+- 写文件只有 `ModConfigSpec#save()` ✓ → `ILoadedConfig.save()` ✓；
+- 而配置界面**只在 `ConfigurationScreen$ConfigurationSectionScreen#onClose()` 里调用它** ✓：
+```java
+if (lastScreen instanceof ConfigurationSectionScreen section) section.changed = true;  // 还在子页：不写
+else this.context.modSpec.save();                                                      // 退回模组列表这一刻：才写
+```
+⇒ **改完必须一路退出配置页（回到模组列表 / Done）才算保存** ✓；**从配置页里直接关游戏、或被踢时人还在配置页里，改动就只剩在内存里** ✓✓ —— 这正是那三个文件时间戳停在 9/23、9/29、10/1 的原因 ✓。
+
+**二、女仆兼容那套（玩家判断正确）**：`SCG2TLMClothConfigListener` 把配置项注入 TLM 的 Cloth 界面 ✓，但**注入这一路从来没有安排保存** ✗ —— 每项的 `setSaveConsumer` 只调用 `SCG2TLMConfig.X.set(...)` ✓（= 只改内存 ✓），而 TLM 界面的 `setSavingRunnable` **只保存 TLM 自己的配置** ✓ ⇒ 我们的改动**永远不会落盘** ✓✓（"本局生效、重启回旧值" ✓ 与玩家现象完全一致 ✓）。
+**修法（关键是"链接"而不是"覆盖"）** ✓：Cloth 的 `ConfigBuilder` **有 `getSavingRunnable()`** ✓（用 `javap` 在 `cloth-config-15.0.140-neoforge.jar` 上实测确认 ✓）⇒ 先取出 TLM 的回调 ✓、`setSavingRunnable` 里先跑它再 `SCG2TLMConfig.SPEC.save()` ✓✓ —— 直接覆盖会把 **TLM 自己的配置**改成不保存 ✗（那就是修一个坏一个 ✓）。
+
+**三、独立 Cloth 界面（玩家判断也正确）**：`SCG2TLMClothConfig.createScreen()` 一直都在 ✓ 并且**自己设了 `setSavingRunnable(SPEC::save)`** ✓，但**从来没被注册** ✗ —— 移植时 Forge 的 `ConfigScreenHandler.ConfigScreenFactory` 在 NeoForge 不存在 ✓，当时把整块删掉后没换成 NeoForge 的 `IConfigScreenFactory` ✓（`SCG2TLMClothConfigListener` 的类注释还写着"界面回来了" ✗，实际没有 ✓）。**已注册** ✓：`modContainer.registerExtensionPoint(IConfigScreenFactory.class, (container, parent) -> SCG2TLMClothConfig.createScreen(parent))` ✓，仍然**只在装了 cloth_config 时注册** ✓（Cloth 相关类不能被提前解析 ✓）。
+
+**四、新增审计 `tools/audit_maid_config_save.py`（第 56 个）**，4 条规则：注入路径必须 `SCG2TLMConfig.SPEC.save()` ✓、必须 `getSavingRunnable` 取回 TLM 的回调（不许覆盖）✓、独立界面必须被 `registerExtensionPoint(IConfigScreenFactory.class, …)` 注册 ✓、`createScreen` 必须 `setSavingRunnable(SCG2TLMConfig.SPEC::save)` ✓。
+**反向验证 4/4** ✓ —— 其中**第二条又是被反向验证抓出来的** ✗✓：第一版直接搜原文 ✓，结果**类注释里提到 `getSavingRunnable`** 就让规则通过了 ✗（把真正的调用删掉都不报 ✓）⇒ 改为**先剥注释（字符串字面量感知）再看代码** ✓✓。
+
+**五、打包验证（确保修的真到玩家手里）** ✓：女仆兼容是 **Jar-in-Jar 内嵌**在主体 jar 里的 ✓（`META-INF/jarjar/com.scg2tlm.scg2_maid_compat-neoforge-1.21.1-1.0.8.jar` ✓），已确认**内嵌 jar 里的 `SCG2TLMClothConfigListener.class` 含 `getSavingRunnable`** ✓ ⇒ 装上主体 jar 即生效 ✓（`install_jar.py` 只管 `scguns-*.jar` ✓，不需要单独装兼容 ✓）。
+
+**门禁（本轮）**：**56 个审计里 55 个过** —— 唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py`（`scguns:ghost` ✓）；`verify_installed_jar` **289/289** ✓ / `javac` 0 ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓）。
+**待实测（交给玩家）**：① TLM 界面里改一项 → 保存 → 重开游戏 ⇒ 值应保持 ✓；② Mods 列表里 Scorched Guns 的"配置"按钮应打开**独立的女仆兼容界面**（带自己的保存按钮 ✓）；③ mod 自己的两个配置：改完请**退出配置页**再关游戏 ✓。

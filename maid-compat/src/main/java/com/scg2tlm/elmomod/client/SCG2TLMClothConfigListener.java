@@ -1,6 +1,8 @@
 package com.scg2tlm.elmomod.client;
 
 import com.github.tartaricacid.touhoulittlemaid.api.event.client.AddClothConfigEvent;
+import com.scg2tlm.elmomod.SCG2TLMConfig;
+import me.shedaniel.clothconfig2.api.ConfigBuilder;
 
 /**
  * Adds the compat's options to Touhou Little Maid's own Cloth Config screen.
@@ -8,18 +10,22 @@ import com.github.tartaricacid.touhoulittlemaid.api.event.client.AddClothConfigE
  * <p>TLM does not only have its own config - it lets addons contribute entries to the screen it
  * builds, by posting {@code AddClothConfigEvent} on {@code NeoForge.EVENT_BUS} from
  * {@code compat.cloth.MenuIntegration} (verified with {@code javap -c}: the call site there is
- * {@code getstatic NeoForge.EVENT_BUS} followed by {@code IEventBus.post}). That is a better hook than
- * registering a config screen of our own: the compat's options appear next to TLM's, inside the screen
- * the player already knows.</p>
+ * {@code getstatic NeoForge.EVENT_BUS} followed by {@code IEventBus.post}).</p>
  *
- * <h2>Why this was missing, and why that is now fixed</h2>
- * <p>The 1.20.1 original registerd the screen through Forge's
- * {@code ModLoadingContext.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory, ...)}. That
- * class does not exist on NeoForge, and at the time Cloth Config was not installed in the test instance
- * either, so the port dropped the whole screen and left the options to
- * {@code config/scg2_maid_compat-common.toml} (HANDOFF section 36.6). Cloth Config is in the instance
- * now, so the screen is back - and it needs no Forge-only class at all, because TLM's hook does the
- * work.</p>
+ * <h2>Why the injected options used to forget themselves</h2>
+ * <p>Adding entries is only half of it. Cloth calls a {@code setSaveConsumer} when the screen saves,
+ * and that consumer does nothing but {@code SCG2TLMConfig.X.set(value)} - and {@code ConfigValue#set}
+ * only writes the in-memory NightConfig value, never the file (see
+ * {@code ModConfigSpec$ConfigValue#set}: {@code loadedConfig.config().set(path, value)} and a cache
+ * update, then return). The file is written by {@code ModConfigSpec#save} alone, which the standalone
+ * screen wires up through {@code setSavingRunnable(SPEC::save)} - but the injected copy of the entries
+ * never arranged that, and TLM's own saving runnable only saves TLM's spec. So options changed in
+ * TLM's screen took effect for the session and were replaced by the old file contents on restart,
+ * which is what the player saw.</p>
+ *
+ * <p>The fix chains rather than replaces: {@code setSavingRunnable} overwrites, so TLM's runnable is
+ * read back with {@code getSavingRunnable} and called first, then ours. Replacing it would have fixed
+ * this screen by breaking TLM's own config.</p>
  *
  * <h2>Guards</h2>
  * <p>Registered from {@link com.scg2tlm.elmomod.ExampleMod} only when Touhou Little Maid is loaded
@@ -32,6 +38,15 @@ public final class SCG2TLMClothConfigListener {
     }
 
     public static void onAddClothConfig(AddClothConfigEvent event) {
-        SCG2TLMClothConfig.addEntries(event.getRoot(), event.getEntryBuilder());
+        ConfigBuilder root = event.getRoot();
+        SCG2TLMClothConfig.addEntries(root, event.getEntryBuilder());
+
+        Runnable tlmSave = root.getSavingRunnable();
+        root.setSavingRunnable(() -> {
+            if (tlmSave != null) {
+                tlmSave.run();
+            }
+            SCG2TLMConfig.SPEC.save();
+        });
     }
 }

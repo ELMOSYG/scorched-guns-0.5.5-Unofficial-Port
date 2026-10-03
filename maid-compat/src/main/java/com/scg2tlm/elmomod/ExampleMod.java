@@ -3,6 +3,7 @@ package com.scg2tlm.elmomod;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitEntities;
 import com.scg2tlm.elmomod.client.DefaultGeckoAnimationInjector;
+import com.scg2tlm.elmomod.client.SCG2TLMClothConfig;
 import com.scg2tlm.elmomod.client.SCG2TLMClothConfigListener;
 import com.scg2tlm.elmomod.compat.BetterCombatHandler;
 import com.scg2tlm.elmomod.compat.MaidProjectileHandler;
@@ -20,6 +21,7 @@ import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.common.Mod;
+import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.fml.config.ModConfig;
 import net.neoforged.fml.loading.FMLEnvironment;
 import net.neoforged.neoforge.common.NeoForge;
@@ -77,7 +79,7 @@ public class ExampleMod {
         NeoForge.EVENT_BUS.addListener(MedkitInteractHandler::onEntityInteract);
 
         if (FMLEnvironment.dist.isClient()) {
-            registerClientOnlyHandlers();
+            registerClientOnlyHandlers(modContainer);
         }
 
         // scgextra 是可选的：只有装了 scgextra 才注册其专属 mixin 配置，避免缺失类导致崩溃
@@ -90,12 +92,22 @@ public class ExampleMod {
      * Kept in its own method so the dedicated server never has to resolve the client-only handler
      * classes: it is only called when {@code FMLEnvironment.dist.isClient()}.
      *
-     * <p>The Cloth Config screen is registered here too, but only when Cloth Config is actually
-     * loaded: it was dropped during the port because Cloth Config was neither a dependency of this mod
-     * nor of TLM, and the instance did not have it. It is present again now (HANDOFF section 47), and
-     * the hook is TLM's own {@code AddClothConfigEvent}, so no Forge-only class is involved.</p>
+     * <p>Both Cloth Config hooks are registered here, and only when Cloth Config is actually loaded:
+     * the screen was dropped during the port because Cloth Config was neither a dependency of this mod
+     * nor of TLM and the instance did not have it (HANDOFF section 36.6). It is present again now, so
+     * the compat gets its own screen back alongside the entries it contributes to TLM's.</p>
+     *
+     * <p>Two screens, on purpose. TLM's screen is where a player looking at maid settings will find
+     * these options, and {@link SCG2TLMClothConfigListener} makes them save there. The mod's own screen
+     * (registered below) is what NeoForge's "Config" button opens for this mod, and it is also the only
+     * way to reach the options when TLM is absent... which cannot happen, since the compat returns
+     * before this when TLM is missing - it is simply the conventional place for a mod's options.</p>
+     *
+     * <p>NeoForge replaced Forge's {@code ConfigScreenHandler.ConfigScreenFactory} with
+     * {@link IConfigScreenFactory}, whose {@code createScreen(ModContainer, Screen)} takes the parent
+     * screen - that is what {@code createScreen} here expects.</p>
      */
-    private static void registerClientOnlyHandlers() {
+    private static void registerClientOnlyHandlers(ModContainer modContainer) {
         NeoForge.EVENT_BUS.addListener(BetterCombatHandler::onClientTick);
         NeoForge.EVENT_BUS.addListener(DefaultGeckoAnimationInjector::onDefaultGeckoAnimation);
 
@@ -104,6 +116,8 @@ public class ExampleMod {
         // would throw NoClassDefFoundError.
         if (ModList.get().isLoaded(CLOTH_CONFIG_MODID)) {
             NeoForge.EVENT_BUS.addListener(SCG2TLMClothConfigListener::onAddClothConfig);
+            modContainer.registerExtensionPoint(IConfigScreenFactory.class,
+                (container, parent) -> SCG2TLMClothConfig.createScreen(parent));
         } else {
             LOGGER.info("Cloth Config is not installed - the maid compat's options stay in "
                 + "config/scg2_maid_compat-common.toml instead of a config screen.");
