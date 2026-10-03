@@ -136,6 +136,15 @@ public class PolarGeneratorBlockEntity extends BlockEntity implements MenuProvid
 
    @Nullable
    public AbstractContainerMenu createMenu(int id, Inventory playerInventory, Player playerEntity) {
+      // Vanilla opens a container block for a spectator itself: ServerPlayerGameMode#useItemOn calls the
+      // one-argument openMenu, which sends no extra data, and expects the provider to refuse - with a
+      // null menu ServerPlayer#openMenu prints "container.spectatorCantOpen" instead of opening it.
+      // Without this the client's IContainerFactory is handed a null buffer and the player is kicked
+      // with a network protocol error (macerator, mechanical press and their powered versions).
+      if (playerEntity.isSpectator()) {
+         return null;
+      }
+
       return new PolarGeneratorMenu(id, playerInventory, this, this.data);
    }
 

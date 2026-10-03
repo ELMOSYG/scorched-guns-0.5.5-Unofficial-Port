@@ -1561,3 +1561,48 @@ else this.context.modSpec.save();                                               
 
 **门禁（本轮）**：**56 个审计里 55 个过** —— 唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py`（`scguns:ghost` ✓）；`verify_installed_jar` **289/289** ✓ / `javac` 0 ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓）。
 **待实测（交给玩家）**：① TLM 界面里改一项 → 保存 → 重开游戏 ⇒ 值应保持 ✓；② Mods 列表里 Scorched Guns 的"配置"按钮应打开**独立的女仆兼容界面**（带自己的保存按钮 ✓）；③ mod 自己的两个配置：改完请**退出配置页**再关游戏 ✓。
+
+## §82.52 旁观被踢的**最终根因**：**原版自己**用 1 参数 `openMenu` 打开容器，而我们的菜单要读额外数据
+
+**证据链（玩家的报告目录 + 一个临时 Mixin 探针，一次复现即定案）** ✓：
+
+`debug/disconnect-2026-10-03_10.10.43-client.txt`：
+```
+java.lang.NullPointerException: ... "extraData" is null
+    at top.ribs.scguns.client.screen.PoweredMechanicalPressMenu.<init>(PoweredMechanicalPressMenu.java:38)
+-- Incoming Packet --
+    Type: clientbound/minecraft:open_screen          ← 原版包，不带额外数据
+```
+探针（拦 `ServerPlayer.openMenu(provider, writer)`）打出的调用栈：
+```
+SCGUNS-MENU open provider=…PoweredMechanicalPressBlockEntity writer=null player=ELMO_SYG spectator=true
+      at net.minecraft.server.level.ServerPlayer.openMenu(ServerPlayer.java)
+      at net.minecraft.server.level.ServerPlayer.openMenu(ServerPlayer.java:1116)      ← 1 参数重载
+      at net.minecraft.server.level.ServerPlayerGameMode.useItemOn(ServerPlayerGameMode.java:348)   ★
+      at net.minecraft.server.network.ServerGamePacketListenerImpl.handleUseItemOn(...)
+```
+`ServerPlayerGameMode#useItemOn` 的原版字节码（javap 实测 ✓）：
+```java
+MenuProvider provider = blockState.getMenuProvider(level, pos);
+if (provider != null) { player.openMenu(provider); return InteractionResult.SUCCESS; }   // ← 1 参数：没有任何额外数据
+```
+⇒ **旁观者右键容器方块时，是原版自己走这条分支打开菜单的** ✓✓ —— **它根本不经过方块自己的 `useWithoutItem`** ✓（所以我在三台机器上加的探针一次都没响 ✓✓，我上一轮据此推断"模组打开路径没参与"是**对那三台成立、对压床不成立** ✓，已在 §82.51/本轮修正 ✓）。而原版 1 参数 `openMenu` 对**返回 null 的 provider** 是有约定的 ✓：
+```java
+AbstractContainerMenu menu = provider.createMenu(id, inventory, this);
+if (menu == null) { if (isSpectator()) displayClientMessage("container.spectatorCantOpen"); return OptionalInt.empty(); }
+```
+⇒ **返回 null ⇒ 只说一句"旁观者无法打开该容器"、不发包** ✓✓。我们的机器菜单都注册成 `IMenuTypeExtension.create(...)` ⇒ 构造器要读缓冲 ✓ ⇒ 拿到 null 就 NPE ⇒ 客户端在包处理里抛异常 ⇒ **被踢** ✓✓。
+
+**修法（15 个 provider 各一行）** ✓：`createMenu` 开头
+```java
+if (player.isSpectator()) { return null; }   // 原版会打印 container.spectatorCantOpen
+```
+覆盖：`AutoTurret / BasicTurret / ShotgunTurret / SniperTurret / Cryoniter / GunBench / LightningBattery / Macerator / MechanicalPress / PolarGenerator / PoweredMacerator / PoweredMechanicalPress / Thermolith / VentCollector` 14 个方块实体 ✓ + `ExoSuitItem`（外骨骼菜单同样是 IContainerFactory ✓）。**箱子类菜单（`AmmoBox`/`AmmoModule` → 原版 `ChestMenu`）不动** ✓ —— 原版箱子旁观本来就能看 ✓，它们的工厂也不读缓冲 ✓。
+
+**我自己在这一步犯的两个错，都是构建抓出来的** ✓（如实记录 ✓）：① 上一轮删探针的脚本按"含 `SCGUNS-MENU` 的行"删 ✗ ⇒ 把 `LOGGER.info` 的首行删了、**续行留成裸表达式** ✗ ⇒ 三处 `not a statement` ✓；② 批量插桩假定参数名是 `player` ✗ ⇒ `PolarGeneratorBlockEntity` 用的是 `playerEntity` ✗ ⇒ `cannot find symbol` ✓。两处都已修 ✓，最终 `gradlew build` 干净 ✓。
+
+**新增审计 `tools/audit_menu_spectator_guard.py`（第 57 个）**：凡 `createMenu` 返回的菜单类**有 `(int, Inventory, RegistryFriendlyByteBuf)` 构造器**（= 会读额外数据）⇒ 该方法内**必须**有 `isSpectator` 判断 ✓。当前 15 个全过 ✓；反向验证 **1/1** ✓（拿掉 `MaceratorBlockEntity` 的守卫 ⇒ 报错 ✓）。临时探针（Mixin + 压床 writer 字节数 + 三台机器的日志）**已全部删除** ✓（`SCGUNS-MENU` 在源码中 0 处 ✓，mixin 配置也已还原 ✓）。
+
+**门禁**：**57 个审计里 56 个过** —— 唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py`（`scguns:ghost` ✓）；`verify_installed_jar` **289/289** ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓，备份 `…bak-102042` ✓）。
+**待实测（交给玩家）**：进**旁观模式**右键机器 ⇒ 应显示"旁观者无法打开该容器"且**不再被踢** ✓；切回生存/创造右键同一台机器 ⇒ 菜单照常打开 ✓。
+**提交说明**：本轮提交包含 14 个方块实体 + `ExoSuitItem` + 新审计 + 本文档 ✓；**`GunBenchBlockEntity` 的守卫没有单独提交** ✗（那个文件里还有另一位 agent 尚未提交的 `ItemStack#save` 修复 ✓，我的守卫会随他下一次提交一起进去 ✓）。
