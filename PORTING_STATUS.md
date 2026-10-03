@@ -1606,3 +1606,14 @@ if (player.isSpectator()) { return null; }   // 原版会打印 container.specta
 **门禁**：**57 个审计里 56 个过** —— 唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py`（`scguns:ghost` ✓）；`verify_installed_jar` **289/289** ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓，备份 `…bak-102042` ✓）。
 **待实测（交给玩家）**：进**旁观模式**右键机器 ⇒ 应显示"旁观者无法打开该容器"且**不再被踢** ✓；切回生存/创造右键同一台机器 ⇒ 菜单照常打开 ✓。
 **提交说明**：本轮提交包含 14 个方块实体 + `ExoSuitItem` + 新审计 + 本文档 ✓；**`GunBenchBlockEntity` 的守卫没有单独提交** ✗（那个文件里还有另一位 agent 尚未提交的 `ItemStack#save` 修复 ✓，我的守卫会随他下一次提交一起进去 ✓）。
+
+**附：这个问题 1.20.1 的 0.5.5 本体就存在吗？—— 静态证据表明：存在** ✓（同一处，同一写法）
+| 环节 | 1.20.1 / 0.5.5 | 本移植 1.21.1 |
+|---|---|---|
+| 菜单构造器是否读缓冲 | `MaceratorMenu(int, Inventory, FriendlyByteBuf)` → `buf.m_130135_()`（= `readBlockPos`）✓ 读 | 同样读 ✓ |
+| 模组自己的打开路径 | `NetworkHooks.openScreen(player, provider, writer)` ✓ 带数据 | `player.openMenu(provider, writer)` ✓ 带数据 |
+| 原版旁观者打开容器 | `ServerPlayerGameMode#useItemOn` → **`ServerPlayer.openMenu(MenuProvider)`**（1.20.1 **只有**这一个重载）✓ 不带数据 | 同一个调用 `:348` ✓（探针实测命中 ✓） |
+| 打开界面包能否携带额外数据 | `ClientboundOpenScreenPacket` 只有 `containerId/type/title` 三个字段 ✓ **没有数据字段** ⇒ 原版路径**不可能**给出 BlockPos | 原版包同样不带 ✓（NeoForge 改用 `AdvancedOpenScreenPayload` ✓） |
+
+⇒ 1.20.1 上原版旁观者打开容器时，客户端拿到的缓冲里**没有 BlockPos** ⇒ `readBlockPos()` 失败 ⇒ 包处理抛异常 ⇒ **同样会被踢出**（1.20.1 的文案是 "Internal Exception"，1.20.5+ 才叫"网络协议错误"✓）。也就是说：**这是上游 0.5.5 就带的缺陷，本移植原样继承** ✓；本轮加的"旁观者返回 null"守卫让本移植**比 0.5.5 更好** ✓（现在只会显示 `container.spectatorCantOpen`，不再踢人 ✓）。
+**未能静态验证的一环**（如实记录 ✓）：Forge 1.20.1 的 `NetworkHooks.openScreen(..., writer)` 内部究竟把数据放在哪个包里（该包没有数据字段 ⇒ 应是另一个自定义包）✓ 没有继续挖 ✓；但结论不依赖它 ✓ —— **原版那条 1 参数路径在任何版本都不可能提供额外数据** ✓。**玩家可在 1.20.1 实例里 30 秒自验**：旁观模式右键研磨机/压床 ⇒ 若同样被踢即证实 ✓。
