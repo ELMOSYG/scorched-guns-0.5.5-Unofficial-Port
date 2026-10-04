@@ -50,7 +50,7 @@
     "recoilKick": 1.0,
     "spread": 0.5,
     "criticalChance": 0.05,
-    "advantage": "scguns:heavy",
+    "advantage": "scguns:undead",
     "damage": 16.5,
     "damageFalloffStart": 25.0,
     "damageFalloffEnd": 60.0,

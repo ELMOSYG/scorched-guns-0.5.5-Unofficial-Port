@@ -1781,3 +1781,20 @@ data/minecraft/tags/entity_type/can_breathe_under_water.json
 
 **复核** ✓：所有 `resourcepacks/*.zip` 与 `E:\mod\汉化/*.zip` 逐个 `testzip()` 全部通过 ✓；两份 `v1.3` 条目数 3 ✓、术语为"亡灵生物" ✓；模组 `zh_cn.json` 该键为"亡灵生物" ✓。
 **门禁**：`build` ✓ / `verify_installed_jar` **289/289** ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` 19450770 字节 ✓）。
+
+## §82.61 `scguns:mas_peddler` 克制标签错误：`scguns:heavy` → `scguns:undead`（上游 bug，玩家指出）
+
+**玩家报告** ✓：`mas_peddler` 的克制单位写错了 —— 它打的是高能弹药，而该弹药的克制目标应为**亡灵生物**；玩家同时指出这是**原 mod 的 bug** ✓。
+
+**核实（弹药是判据）** ✓：该枪的 `projectile.item` 为 **`scguns:ramrod_round`** ✓（`reloads.reloadItem` 同 ✓）。列出**所有**发射同种弹药的枪械：
+```
+auvtomag / bruiser / m22_waltz / micina / rat_king_and_queen  →  advantage = scguns:undead
+mas_peddler                                                  →  advantage = scguns:heavy   ← 唯一的异类
+```
+⇒ **五把同弹药枪械全是 `undead`，只有 `mas_peddler` 是 `heavy`** ✓ ⇒ 判定为复制粘贴失误 ✓，修法与玩家描述完全一致 ✓。
+**上游确认** ✓：0.5.5 的 jar 里 `mas_peddler` 同样是 `scguns:heavy` ✓ ⇒ **确为上游 bug，非移植引入** ✓（移植保持了一致 ✓）。
+
+**修复** ✓：`data/scguns/guns/mas_peddler.json` 第 53 行 `"advantage": "scguns:heavy"` → `"scguns:undead"` ✓。**用字面文本替换而非 JSON 往返** ✓ —— 该文件是手改过的（第 60 行 `"gravity": false  ,` 有多余空格 ✓），整体重新序列化会产生巨大的无意义 diff ✗。
+**改后** ✓：六把同弹药枪械克制**全部一致**为 `scguns:undead` ✓。顺带确认 `mas_55` 虽然也声明 `heavy` ✓，但它**不使用该弹药** ✓ ⇒ 不受影响、未改动 ✓。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450769 字节 ✓）。
