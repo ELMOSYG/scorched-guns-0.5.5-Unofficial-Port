@@ -1769,3 +1769,15 @@ data/minecraft/tags/entity_type/can_breathe_under_water.json
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450771 字节 ✓，jar 内已含新标签 ✓）。
 **建议补一条审计** ✓（下一轮做，含反向对照）：凡 `getMobType()` 返回 `MobType.UNDEAD` 的自定义生物，必须在 `data/minecraft/tags/entity_type/undead.json` 中出现 —— 这正是 1.21 标签化改造会反复制造的一类回归 ✓。
+
+## §82.60 术语：`advantage.scguns:undead` 由"不死生物"改为官方译名"亡灵生物"
+
+**玩家提问** ✓：`克制：不死生物` 是否应改为"亡灵生物"。**结论：应该改** ✓ —— 原版官方中文与维基均用**亡灵生物**（同族术语如"亡灵杀手"），"不死生物"只是 undead 的字面直译 ✓。该键正是 §82.59 里那个 `scguns:undead` 标签的显示名（`advantage.scguns:undead` ✓，en_us 为 `Undead` ✓）。
+
+**同步处理了两处** ✓：① 模组自身 `assets/scguns/lang/zh_cn.json` ✓（已 build + install ✓）；② **玩家的汉化资源包**（包内同名键会覆盖模组文件 ⇒ 只改模组看不到效果 ✗）：`resourcepacks/Scorched Guns_v0.5.5-汉化v1.3.zip` 与 `E:\mod\汉化\Scorched Guns_v0.5.5-汉化v1.3.zip` 各打补丁并留备份 ✓。
+
+**⚠️ 过程中我犯了一个必须记录的错误** ✗：第一版补丁脚本**边读源 zip 边往同一路径写** ✓ ⇒ 源文件被截断，写出的包"合法但不完整"（只剩已处理的条目）✓ ⇒ `E:\mod\汉化\...v1.2.zip` 变成 **0 条目**、两份 `v1.3` 从 **3 条目**掉到 **2 条目** ✗。
+**恢复** ✓：脚本在改写前做过 `shutil.copy2` 备份 ✓ ⇒ 逐个用"条目更多且 `testzip()` 通过"的最新备份还原 ✓ ⇒ `v1.2` 回到 3 条目 ✓，两份 `v1.3` 回到 3 条目并**用正确方式**（全读入内存 → 关源 → 写临时文件 → `os.replace` 原子替换 ✓）重新打上补丁 ✓；损坏的 2 条目副本另存为 `.broken-223802` 以备查验 ✓。**教训**：任何 zip 改写都必须走临时文件，绝不可原地重写 ✗。
+
+**复核** ✓：所有 `resourcepacks/*.zip` 与 `E:\mod\汉化/*.zip` 逐个 `testzip()` 全部通过 ✓；两份 `v1.3` 条目数 3 ✓、术语为"亡灵生物" ✓；模组 `zh_cn.json` 该键为"亡灵生物" ✓。
+**门禁**：`build` ✓ / `verify_installed_jar` **289/289** ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` 19450770 字节 ✓）。
