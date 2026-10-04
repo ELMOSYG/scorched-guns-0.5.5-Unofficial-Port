@@ -1650,3 +1650,35 @@ if (player.isSpectator()) { return null; }   // 原版会打印 container.specta
 
 **门禁**：57 个审计里 56 个过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓，备份 `…bak-125752` ✓）；已确认 jar 内 `PunchyBlacklistCompat.class` 存在且含 `itemBlacklist` ✓。
 **待实测（交给玩家）**：先在 Punchy 配置界面里随便改一次并保存（生成 `config/punchy/punchy_config.json`）⇒ 重启游戏 ⇒ 日志应出现 "Added N scguns gun(s) to Punchy's blacklist"、文件里应多出枪械 id（弹药/配件/护甲不在其中）⇒ 再重启一次，手持枪械不应再有 Punchy 的持握动画 ✓。
+
+## §82.55 瞄具瞄准不改变鼠标灵敏度：改用 NeoForge 的 `CalculatePlayerTurnEvent` 重写
+
+**玩家报告**（移植时出现）：装瞄具配件后瞄准，鼠标灵敏度不变 ✓（并确认 **FOV 放大是正常的** ✓ ⇒ 瞄准状态与瞄具模块都没问题，只有灵敏度这一步 ✗）。
+
+**这段代码已经被改坏过一次** ✗：0.5.5 注入 `MouseHandler.turnPlayer()V`（1.20.1 无参）并靠 `DSTORE ordinal 2` 取局部变量 ✓；1.21.1 变成 `turnPlayer(double)`，**参数就是灵敏度** ⇒ 同一个 ordinal 落到了别的局部变量上 ✓ ⇒ 上一轮改成 `@ModifyArg` 打 `LocalPlayer.turn(DD)` 的两个参数 ✗ —— **但那也是没验证过的推断**，玩家实测仍然无效 ✗。
+
+**1.21.1 的真实链路（javap 实测）**：
+```
+MouseHandler.handleAccumulatedMovement()
+  -> turnPlayer(double)
+       -> ClientHooks.getTurnPlayerValues(double sensitivity, boolean cinematic)
+            -> new CalculatePlayerTurnEvent(sensitivity, cinematic)
+               NeoForge.EVENT_BUS.post(event)      // ← 事件携带 mouseSensitivity
+       -> LocalPlayer.turn(double, double)
+```
+⇒ 客户端最终使用的灵敏度**就是事件里那个值** ✓，官方钩子是 `net.neoforged.neoforge.client.event.CalculatePlayerTurnEvent` ✓（含 `getMouseSensitivity()` / `setMouseSensitivity(double)` ✓）。
+
+**修法** ✓：删除 `MouseHandlerMixin`（含 `scguns.mixins.json` 里的条目 ✓，已确认源码与打包 jar 中都不再存在 ✓），新增 `top.ribs.scguns.client.handler.AimingSensitivityHandler` ✓：
+```java
+@SubscribeEvent
+public static void onCalculatePlayerTurn(CalculatePlayerTurnEvent event) {
+   double multiplier = aimingSensitivityMultiplier();          // 0.5.5 的算法，未改动
+   if (multiplier != 1.0) event.setMouseSensitivity(event.getMouseSensitivity() * multiplier);
+}
+```
+注册点：`ClientHandler.onClientSetup` 里 `NeoForge.EVENT_BUS.addListener(AimingSensitivityHandler::onCalculatePlayerTurn)` ✓（事件走的是 **game bus** ✓，不是 mod bus ✓）。算法保持 0.5.5 原样 ✓：`(1 - (1 - 配置值) × ADS进度) × 瞄具系数`，其中瞄具系数 = `clamp(fovModifier^0.25, 0.5, 1.0)` ✓。
+
+**并加了临时探针** ✓（每秒最多一条、仅在瞄准时 ✓）：`SCGUNS-ADS sensitivityIn=… multiplier=… aiming=… progress=… fov=…` —— 前两次改动都是"编译通过但毫无效果" ✗，这次即使不成也**有数据**可用 ✓（确认后删除 ✓）。
+
+**门禁**：57 个审计里 56 个过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓，备份 `…bak-130813` ✓）；已确认 jar 内含事件处理器、且不含旧 mixin ✓。
+**待实测（交给玩家）**：装瞄具、按住瞄准键左右晃鼠标 ⇒ 灵敏度应明显下降（配置值 0.75 ✓ + 瞄具系数 ✓）；日志应出现 `SCGUNS-ADS` 行 ✓。

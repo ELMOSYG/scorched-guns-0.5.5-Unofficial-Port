@@ -24,7 +24,6 @@
     "client.MixinHumanoidModel",
     "client.MixinIllagerModel",
     "client.MixinVindicatorRenderer",
-    "client.MouseHandlerMixin",
     "client.PlayerModelMixin",
     "client.VehiclePoseMixin"
   ],
