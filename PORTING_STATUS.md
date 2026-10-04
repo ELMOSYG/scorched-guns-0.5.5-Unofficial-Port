@@ -1630,3 +1630,23 @@ if (player.isSpectator()) { return null; }   // 原版会打印 container.specta
 
 **门禁**：57 个审计里 56 个过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓，备份 `…bak-184523` ✓）。
 **待实测（交给玩家）**：① 漏斗对着收集器 ⇒ 只能往**滤芯格**输入 ✓；② 漏斗放在收集器**下方/侧面抽取** ⇒ 仍能把粉抽走 ✓；③ 喷口正常产出 ⇒ 产出格照常被填 ✓。
+
+## §82.54 Punchy 兼容：把本模组的**枪**（不是 `scguns:*`）自动写进它的握持黑名单
+
+**玩家转述建议**：为 Punchy 加兼容，做法是"把枪械自动添加到 mod 内的握持黑名单" ✓。**玩家随后指出的问题也对**：直接用 `scguns:*` 会把**弹药、配件、护甲、刺刀、方块**一起拉黑 ✗。
+
+**从 `punchy-2.8d-neoforge-1.21.1.jar` 反汇编得到的事实**：
+- 配置为 **JSON**：`punchy.config.PunchyConfig` + GSON，`FILE_NAME = punchy_config.json`（目录 `punchy`）✓；
+- 黑名单字段：`public java.util.List<String> itemBlacklist` ✓；读写入口 `isItemBlacklisted` / `findBlacklistMatch` / `applyAndSave` ✓；
+- **`matchesBlacklistEntry` 支持通配符** ✓（字节码里检测 `*` 与 `?`，结尾冒号会被去掉 ✓）⇒ 一条 `scguns:*` 就能覆盖全部，**但正因为过宽所以不采用** ✗；
+- Punchy 对 TaCZ 的兼容是**写死在它自己 jar 里**的 ✓（`punchy.compat.TaczBlacklistCompat` 用 `Class.forName` 反射枚举 TaCZ 的枪 ✓）⇒ **没有给其它模组留注册接口** ✗ ⇒ 只能由我们改它的配置 ✓。
+
+**实现（`top.ribs.scguns.compat.PunchyBlacklistCompat`）** ✓：
+1. 名单来源：**遍历 `BuiltInRegistries.ITEM`，取所有 `instanceof GunItem` 的物品** ✓ —— 这正是模组别处判断"是不是枪"的同一个测试 ✓ ⇒ 精确、无需维护、自动包含新增枪械 ✓，也不会误伤弹药/配件/护甲/刺刀/方块 ✓；
+2. 只改 `itemBlacklist` **数组本身**：解析整个 JSON 树 ✓、保留所有既有条目 ✓、只追加缺失的 ✓、再按 pretty-print 写回 ✓（其余字段一字不动 ✓）；
+3. **只在配置文件已存在时动手** ✓✓：Punchy 用 GSON 反序列化普通字段 ✓，凭空造一个只有黑名单的文件会让它所有开关停在 Java 默认值（false）⇒ 等于把 Punchy 关掉 ✗ ⇒ 文件不存在时**只记日志、不创建** ✓；
+4. 位置：`config/punchy/punchy_config.json`（同时兜底试 `config/punchy_config.json` ✓）；
+5. 调用点：`ClientHandler.onClientSetup`（客户端、每次启动一次 ✓）。**Punchy 在启动时读配置** ⇒ 本次写入**下次启动生效** ✓（日志里也这么写 ✓）。
+
+**门禁**：57 个审计里 56 个过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓，备份 `…bak-125752` ✓）；已确认 jar 内 `PunchyBlacklistCompat.class` 存在且含 `itemBlacklist` ✓。
+**待实测（交给玩家）**：先在 Punchy 配置界面里随便改一次并保存（生成 `config/punchy/punchy_config.json`）⇒ 重启游戏 ⇒ 日志应出现 "Added N scguns gun(s) to Punchy's blacklist"、文件里应多出枪械 id（弹药/配件/护甲不在其中）⇒ 再重启一次，手持枪械不应再有 Punchy 的持握动画 ✓。

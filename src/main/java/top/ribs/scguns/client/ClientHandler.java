@@ -320,6 +320,9 @@ public class ClientHandler {
    }
 
    private static void onClientSetup(FMLClientSetupEvent event) {
+      // Punchy animates whatever is held and only knows the gun mods it ships support for, so its
+      // blacklist gets this mod's guns added here (client side, once per launch).
+      top.ribs.scguns.compat.PunchyBlacklistCompat.onClientSetup();
       event.enqueueWork(
          () -> Minecraft.getInstance()
                .getTextureManager()
