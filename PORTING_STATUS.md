@@ -1740,3 +1740,32 @@ SCGUNS-TURN  ... pitch=-0.466749784357824     ← 与同刻 multiplier=0.4667497
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450524 字节 ✓）。
 
 **遗留（非缺陷）** ✓：`IGunModifier.modifySensitivity` / `modifyMouseSensitivity` 在 0.5.5 里即为**无实现者、无调用者**的空壳 ✗ ⇒"配件各自的灵敏度属性"需要**新做**（数据字段 + 实现 + 接入），不属于移植丢失 ✓。
+
+## §82.59 `scguns:zombified_hornlin` 会淹死：**1.21 把亡灵免疫改成了数据包标签，移植没补**
+
+**玩家报告** ✓：僵尸号角兽（`scguns:zombified_hornlin`）会淹死；玩家指出它属于亡灵、亡灵不该溺水，并给出中文维基条目。
+
+**维基 + 原版数据均证实玩家正确** ✓：维基《亡灵生物》写明"具有实体类型标签 `#undead`""**不会溺水或脱水**" ✓；原版 1.21.1 数据文件也直接证明 ✓：
+```
+data/minecraft/tags/entity_type/can_breathe_under_water.json
+{ "values": [ "#minecraft:undead", "minecraft:axolotl", "minecraft:frog", "minecraft:guardian", ... ] }
+```
+**⇒ 我最初的回答（"亡灵也会淹死、只能靠加 can_breathe_under_water"）是错的** ✗，记此更正 ✓。
+
+**根本原因（两版对照）** ✓：
+- **1.20.1**（0.5.5 的行为来源）：`LivingEntity.canBreatheUnderwater()` 的字节码就是 **`getMobType() == MobType.UNDEAD`** ✓ ⇒ **任何返回 `MobType.UNDEAD` 的自定义生物都免疫溺水** ✓；
+- **1.21.1**：该方法变为 **`final`** 且改为 **`getType().is(EntityTypeTags.CAN_BREATHE_UNDER_WATER)`** ✓ ⇒ 免疫改由**数据包标签**决定 ✓，而原版那个标签含 `#minecraft:undead` ✓ ⇒ **自定义亡灵必须被写进 `minecraft:undead`** ✓；
+- **移植缺口** ✗：`src/main/resources/data/minecraft/tags/` 下**只有 `entity_type/raiders.json`**，**没有 `undead.json`** ✗ ⇒ 模组的自定义亡灵全部失去免疫 ✓。
+
+**影响范围（扫 `MobType.UNDEAD` 得到，不止一个）** ✓：`ZombifiedHornlinEntity`(:86) ✓、`DissidentEntity`(:80) ✓、`HiveEntity`(:53) ✓ ⇒ 三个在 0.5.5 里都免疫，现在都会淹死 ✓。
+
+**修复** ✓：新增 `src/main/resources/data/minecraft/tags/entity_type/undead.json`：
+```json
+{ "replace": false, "values": ["scguns:dissident", "scguns:hive", "scguns:zombified_hornlin"] }
+```
+实体 id **取自注册表**而非猜测 ✓：`ModEntities.java` 中确认存在 `"hive"`(:201) / `"dissident"`(:210) / `"zombified_hornlin"`(:219) ✓（避免"未知条目被静默忽略" ✓）。附带修好的同类问题：该标签还被原版 `sensitive_to_smite` 等引用 ⇒ 这三者现在也能正常吃到亡灵杀手加成、并被凋灵正确视为同类 ✓。
+
+**遗留（未改，属上游自身不一致）** ✗：模组**自己的** `data/scguns/tags/entity_type/undead.json` 只列了 `scguns:zombified_hornlin` ✓，**缺 `dissident` 与 `hive`** ✗ —— 该文件语义未知，未擅自改动，待玩家决定 ✓。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450771 字节 ✓，jar 内已含新标签 ✓）。
+**建议补一条审计** ✓（下一轮做，含反向对照）：凡 `getMobType()` 返回 `MobType.UNDEAD` 的自定义生物，必须在 `data/minecraft/tags/entity_type/undead.json` 中出现 —— 这正是 1.21 标签化改造会反复制造的一类回归 ✓。
