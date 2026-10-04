@@ -1720,3 +1720,23 @@ private double sensitivity(double original) {
 **保留测量** ✓：`MouseHandlerMixin` 每秒打一条 `SCGUNS-MIXIN turnMultiplierIn=… multiplier=… turnMultiplierOut=…` ✓，`TurnProbeMixin` 每秒打一条 `SCGUNS-TURN yaw=…` ✓ —— 两者一起即可确认"倍率是否真的改到、转向是否真的变小" ✓，确认后删除 ✓。
 
 **门禁**：`build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` 19452115 字节 ✓）。
+
+## §82.58 瞄准灵敏度：**已修复并实测确认**，探针已移除
+
+**结论** ✓：瞄具恢复影响鼠标灵敏度（与 1.20.1 的 0.5.5 一致）✓。
+
+**玩家实测数据（决定性证据）** ✓：
+```
+SCGUNS-MIXIN turnMultiplierIn=0.12500001117587123 multiplier=0.5303300768136978 turnMultiplierOut=0.06629126552861288
+SCGUNS-TURN  ... pitch=-0.466749784357824     ← 与同刻 multiplier=0.46674974262714386 完全相等
+```
+- `turnMultiplierIn = 0.125` 恒定 ✓ ⇒ 1.21.1 里 `ordinal = 2` 落在 **`v³`**（灵敏度 0.5 ⇒ `v=0.5` ⇒ `v³=0.125` ✓），而 `v³×8 = 1.0` 正是未缩放时的转向倍率 ⇒ 缩放 `v³` 等价于缩放最终倍率 ✓（**无需再调 ordinal** ✓）；
+- `SCGUNS-TURN` 的 `pitch` 出现 `0.6600838744715305` / `0.466749784357824` 等值，**与同刻算出的 multiplier 逐位相同** ✓ ⇒ **转向量确实被乘上了该倍率** ✓✓ —— 这是"生效"的实测证据，而不再是推断 ✓。
+
+**最终实现** ✓：`mixin/client/MouseHandlerMixin`：`@ModifyVariable(method = "turnPlayer(D)V", at = @At("STORE"), ordinal = 2)` ⇒ `original * AimingSensitivityHandler.aimingSensitivityMultiplier()` ✓。事件方案**已彻底移除** ✓（`ClientHandler` 不再注册监听 ✓；原因是 `CalculatePlayerTurnEvent` 可被第三方覆盖 ✓ —— 实测 IE 与航空学工具枪都在写它 ✓）。
+
+**收尾** ✓：删除临时探针 `TurnProbeMixin`（源码、`scguns.mixins.json` 条目、打包 jar 三处均已确认不存在 ✓）；`MouseHandlerMixin` 内的临时日志也已删除 ✓。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450524 字节 ✓）。
+
+**遗留（非缺陷）** ✓：`IGunModifier.modifySensitivity` / `modifyMouseSensitivity` 在 0.5.5 里即为**无实现者、无调用者**的空壳 ✗ ⇒"配件各自的灵敏度属性"需要**新做**（数据字段 + 实现 + 接入），不属于移植丢失 ✓。

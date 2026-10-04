@@ -26,7 +26,6 @@
     "client.MixinVindicatorRenderer",
     "client.PlayerModelMixin",
     "client.VehiclePoseMixin",
-    "client.TurnProbeMixin",
     "client.MouseHandlerMixin"
   ],
   "injectors": {
