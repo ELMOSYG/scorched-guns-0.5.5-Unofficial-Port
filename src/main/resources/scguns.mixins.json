@@ -25,7 +25,8 @@
     "client.MixinIllagerModel",
     "client.MixinVindicatorRenderer",
     "client.PlayerModelMixin",
-    "client.VehiclePoseMixin"
+    "client.VehiclePoseMixin",
+    "client.TurnProbeMixin"
   ],
   "injectors": {
     "defaultRequire": 1

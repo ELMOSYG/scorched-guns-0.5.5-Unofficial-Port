@@ -1682,3 +1682,18 @@ public static void onCalculatePlayerTurn(CalculatePlayerTurnEvent event) {
 
 **门禁**：57 个审计里 56 个过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓ / `build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` ✓，备份 `…bak-130813` ✓）；已确认 jar 内含事件处理器、且不含旧 mixin ✓。
 **待实测（交给玩家）**：装瞄具、按住瞄准键左右晃鼠标 ⇒ 灵敏度应明显下降（配置值 0.75 ✓ + 瞄具系数 ✓）；日志应出现 `SCGUNS-ADS` 行 ✓。
+
+## §82.56 瞄准灵敏度：链路已确认，改为**直接测量**实际转向量（临时探针）
+
+**已从字节码确认的完整链路** ✓：`Minecraft` → `MouseHandler.handleAccumulatedMovement()` → `turnPlayer(double)` → `event.getMouseSensitivity()` → `v = s*0.6+0.2` → 第一人称且 `isScoping()` 时用 `v²`、否则用 `v³*8` → `LocalPlayer.turn(d10, d12 * invertY)` ✓。**中间没有任何地方再读原始设置** ✓ ⇒ 事件里的值就是最终依据 ✓。
+
+**我此前两个结论都是错的，记下来避免重犯** ✗：① 探针打的是 `setMouseSensitivity` **之后**的值，所以日志里的 `sensitivityIn` 恒等于 `0.5 × multiplier`，被误读成"输入已被别处缩放" ✗；② 由"瞄准时 progress=0、不瞄准时 progress=1.0"推断 progress 反了 ✗ —— 实际是每秒采样一次正好采到 ADS 动画的两端（按下瞬间 0→1、松开瞬间 1→0），行为正常 ✓。
+
+**1.21.1 已移除原版"平滑摄像机"界面项** ✓（字段 `Options.smoothCamera` 与按键 `keySmoothCamera` 仍在 ✓），玩家走的是非平滑分支 ✓；玩家开启的是原版 `rawMouseInput` ✓（`Options.rawMouseInput` 确实是原版字段 ✓）。
+
+**Sable 排除** ✓：`camera.camera_zoom.MouseHandlerMixin` 是 `@WrapOperation`，方法签名 `sable$onScroll(Inventory, double, Operation<Void>)` ✓ ⇒ 它包的是**滚轮换物品栏**那条路径，**与转向/灵敏度无关** ✓（此前怀疑它是我判断过早）。全环境扫过 158 个模组，其余提到 `MouseHandler` 的（balm / create accessor / fdlib / watut / railways / MouseTweaks）都不是转向缩放 ✓。
+
+**改法：加临时探针测量** ✓ —— `mixin/client/TurnProbeMixin`（已登记进 `scguns.mixins.json` 的 `client` 列表 ✓）注入 `LocalPlayer.turn(DD)V` 的 HEAD ✓，每秒打一条：`SCGUNS-TURN yaw=… pitch=… aiming=… progress=…`。
+**判读**：瞄准时 `yaw` 约为不瞄准时的 1/3 ⇒ 修复其实生效，问题在观感/倍率大小 ✓；两者相同 ⇒ 有别的模组在 `turnPlayer` 与 `turn` 之间替换了数值 ✓；完全没有该日志 ⇒ 走的不是这条路径 ✓。确认后删除此 mixin ✓。
+
+**门禁**：`build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` 19451737 字节 ✓）。
