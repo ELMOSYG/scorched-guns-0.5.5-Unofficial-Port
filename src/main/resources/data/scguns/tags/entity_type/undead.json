@@ -14,6 +14,8 @@
     "minecraft:zombie_horse",
     "minecraft:zombified_piglin",
     "minecraft:zombie_villager",
-    "scguns:zombified_hornlin"
+    "scguns:zombified_hornlin",
+    "scguns:dissident",
+    "scguns:hive"
   ]
 }
