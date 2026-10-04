@@ -4,67 +4,30 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.neoforge.client.event.CalculatePlayerTurnEvent;
 import top.ribs.scguns.Config;
-import top.ribs.scguns.ScorchedGuns;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.init.ModSyncedDataKeys;
 import top.ribs.scguns.item.GunItem;
 
 /**
- * Scales mouse sensitivity while aiming down sights.
+ * The aiming-down-sights sensitivity maths, kept in one place.
  *
- * <p>0.5.5 injected into {@code MouseHandler.turnPlayer()V} - a no-argument method in 1.20.1 - and picked
- * its variable by {@code DSTORE ordinal 2}. 1.21.1's method is {@code turnPlayer(double)} and, before it
- * uses the value, it asks NeoForge for the final one:</p>
+ * <p>0.5.5 applied this from a mixin on {@code MouseHandler.turnPlayer()V}, scaling the local that holds
+ * the final turn multiplier. The port first retargeted that mixin twice (the 1.20.1 variable ordinal
+ * pointed somewhere else once the method grew a parameter), then moved the scaling into NeoForge's
+ * {@code CalculatePlayerTurnEvent} - which the game does read, but which any other listener may write
+ * afterwards (Immersive Engineering writes to it too). The scaling is back in the mixin, where nothing
+ * runs after it; only the maths lives here.</p>
  *
- * <pre>
- * MouseHandler.handleAccumulatedMovement()
- *   -&gt; turnPlayer(double)
- *        -&gt; ClientHooks.getTurnPlayerValues(double sensitivity, boolean cinematic)
- *             -&gt; new CalculatePlayerTurnEvent(sensitivity, cinematic)
- *                NeoForge.EVENT_BUS.post(event)
- *        -&gt; LocalPlayer.turn(double, double)
- * </pre>
- *
- * <p>So the sensitivity the client finally turns by is the one this event carries, and the supported
- * place to change it is here. The mixin this replaces retargeted the two arguments of
- * {@code LocalPlayer.turn} instead - after the fact - and the player confirmed in game that it had no
- * effect, which is why it is gone rather than adjusted again.</p>
- *
- * <p>The maths is 0.5.5's, unchanged: the configured factor is blended in by the aiming progress, then
- * multiplied by a scope factor derived from the gun's FOV modifier.</p>
+ * <p>Formula, unchanged from 0.5.5: the configured factor is blended in by the ADS progress, then
+ * multiplied by a factor derived from the gun's FOV modifier when a scope is actually being aimed.</p>
  */
 public final class AimingSensitivityHandler {
-   private static long lastProbeLog;
-
    private AimingSensitivityHandler() {
    }
 
-   @SubscribeEvent
-   public static void onCalculatePlayerTurn(CalculatePlayerTurnEvent event) {
-      double multiplier = aimingSensitivityMultiplier();
-      if (multiplier != 1.0) {
-         event.setMouseSensitivity(event.getMouseSensitivity() * multiplier);
-      }
-
-      // TEMPORARY PROBE (removed once the player confirms it works): the previous two attempts at this
-      // compiled and changed nothing, so this prints what the handler actually computes, at most once a
-      // second, and only while aiming.
-      if (multiplier != 1.0) {
-         long now = System.currentTimeMillis();
-         if (now - lastProbeLog > 1000L) {
-            lastProbeLog = now;
-            ScorchedGuns.LOGGER.info(
-               "SCGUNS-ADS sensitivityIn={} multiplier={} aiming={} progress={} fov={}",
-               event.getMouseSensitivity(), multiplier, AimingHandler.get().isAiming(),
-               AimingHandler.get().getNormalisedAdsProgress(), fovModifierOfHeldGun());
-         }
-      }
-   }
-
-   private static double aimingSensitivityMultiplier() {
+   /** Multiplier to apply to the turn: 1.0 when not aiming, smaller while aiming down sights. */
+   public static double aimingSensitivityMultiplier() {
       double adsSensitivity = (Double)Config.CLIENT.controls.aimDownSightSensitivity.get();
       return (1.0 - (1.0 - adsSensitivity) * AimingHandler.get().getNormalisedAdsProgress())
          * (double)scopeSensitivityFactor();
@@ -87,17 +50,5 @@ public final class AimingSensitivityHandler {
       }
 
       return factor;
-   }
-
-   private static float fovModifierOfHeldGun() {
-      Minecraft mc = Minecraft.getInstance();
-      if (mc.player == null) {
-         return 1.0F;
-      }
-
-      ItemStack heldItem = mc.player.getMainHandItem();
-      return heldItem.getItem() instanceof GunItem gunItem
-         ? Gun.getFovModifier(heldItem, gunItem.getModifiedGun(heldItem))
-         : 1.0F;
    }
 }

@@ -1697,3 +1697,26 @@ public static void onCalculatePlayerTurn(CalculatePlayerTurnEvent event) {
 **判读**：瞄准时 `yaw` 约为不瞄准时的 1/3 ⇒ 修复其实生效，问题在观感/倍率大小 ✓；两者相同 ⇒ 有别的模组在 `turnPlayer` 与 `turn` 之间替换了数值 ✓；完全没有该日志 ⇒ 走的不是这条路径 ✓。确认后删除此 mixin ✓。
 
 **门禁**：`build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` 19451737 字节 ✓）。
+
+## §82.57 瞄准灵敏度：回到 0.5.5 的做法（改 `turnPlayer` 内部变量），放弃事件方案
+
+**玩家结论** ✓：**1.20.1 的 0.5.5 里瞄具是会改变鼠标灵敏度的，各 1.21 移植版都丢了这条设定** ✓ —— 所以这是要**恢复的行为**，不是新增功能。
+
+**0.5.5 的真实做法**（反编译 `mixin/client/MouseHandlerMixin.java`）✓：
+```java
+@ModifyVariable(method = {"turnPlayer()V"}, at = @At(value = "STORE", opcode = 57), ordinal = 2)
+private double sensitivity(double original) {
+   ...additionalAdsSensitivity = clamp(fovModifier^0.25, 0.5, 1.0) (装有 zoom 模块且正在瞄准时)...
+   return original * (1.0 - (1.0 - adsSensitivity) * progress) * additionalAdsSensitivity;
+}
+```
+⇒ 它改的是 **`turnPlayer` 里第三个被 `DSTORE` 的局部变量**（1.20.1 中即 `v³×8` 那个最终转向倍率）✓。
+
+**为什么事件方案被放弃** ✗：`CalculatePlayerTurnEvent` 确实被 `turnPlayer` 读取 ✓（21.1.249 与玩家实机的 **21.1.250 字节码完全一致** ✓，版本差异排除 ✓），但**该事件是公开可写的** —— 实测有第三方也在写：Immersive Engineering 的 `ClientEventHandler.onPlayerTurn` ✓（按手持物品改灵敏度）、`create_aeronautics_toolgun` 的 `MagneticGunClientController` ✓（按住旋转键时）。谁后注册谁生效 ⇒ 我们的值可能被覆盖 ✓。改在 `turnPlayer` 内部则在**所有监听器之后**执行 ✓，不会被覆盖 ✓。
+
+**另外两个查证** ✓：① `IGunModifier.modifySensitivity` / `modifyMouseSensitivity` **在 0.5.5 里就只是 default 方法，全 jar 无实现者、无调用者** ✗ ⇒ "配件灵敏度属性"是上游没做完的空壳，不是移植丢失 ✓；② `AimingHandler` 与 0.5.5 逐行比对，**差异全是 API 改名** ✓（`PlayerTickEvent.Pre` / `ClientTickEvent.Pre` / `RenderGuiLayerEvent.Post` / `NbtHelper.getOrCreateTag`），逻辑未改 ✓；`AimTracker` 一字不差 ✓。
+
+**本次改动** ✓：新增 `mixin/client/MouseHandlerMixin`（`@ModifyVariable(method = "turnPlayer(D)V", at = @At("STORE"), ordinal = 2)` ✓，已登记进 `client` 列表 ✓）；`AimingSensitivityHandler` 精简为**纯算法**（`aimingSensitivityMultiplier()` 改为 `public static` ✓，删掉事件监听 ✓）；`ClientHandler` 里的事件注册已移除 ✓（两者同开会叠加 ✗）。
+**保留测量** ✓：`MouseHandlerMixin` 每秒打一条 `SCGUNS-MIXIN turnMultiplierIn=… multiplier=… turnMultiplierOut=…` ✓，`TurnProbeMixin` 每秒打一条 `SCGUNS-TURN yaw=…` ✓ —— 两者一起即可确认"倍率是否真的改到、转向是否真的变小" ✓，确认后删除 ✓。
+
+**门禁**：`build` ✓ / 已安装 ✓（`scguns-0.5.5.3.jar` 19452115 字节 ✓）。
