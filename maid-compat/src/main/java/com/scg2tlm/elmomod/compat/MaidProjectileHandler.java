@@ -70,6 +70,12 @@ public class MaidProjectileHandler {
                 projectile.getClass().getSimpleName(),
                 projectile.getWeapon().isEmpty() ? "empty" : projectile.getWeapon().getItem());
             event.setCanceled(true);
+            // Stop the behaviour itself. The shot bypasses both gated paths (no consume=false scan ever
+            // appeared in the log), so this hook - which provably runs - is where the attack has to be
+            // ended: drop her target and halt her movement, or she keeps firing every 200 ms.
+            maid.getNavigation().stop();
+            maid.getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET);
+            maid.getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET);
             return;
         }
 
