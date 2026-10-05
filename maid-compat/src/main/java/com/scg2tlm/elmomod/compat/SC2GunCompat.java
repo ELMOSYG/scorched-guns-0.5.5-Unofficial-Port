@@ -805,6 +805,11 @@ public final class SC2GunCompat {
         var curios = CuriosApi.getCuriosInventory(maid);
         if (curios.isPresent()) {
             IItemHandler curioInv = curios.get().getEquippedCurios();
+            // A creative box satisfies any ammo type; the inventory branch checks this and the
+            // curio branch did not, so a creative box worn in an accessory slot seemed empty.
+            if (!ignoreCreative && hasCreativeAmmoBox(curioInv) && isAmmoProvidedByCreativeBox(ammoType)) {
+                return true;
+            }
             for (int i = 0; i < curioInv.getSlots(); i++) {
                 ItemStack slot = curioInv.getStackInSlot(i);
                 if (slot.isEmpty()) continue;

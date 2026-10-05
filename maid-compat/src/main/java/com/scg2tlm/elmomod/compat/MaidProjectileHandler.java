@@ -69,7 +69,28 @@ public class MaidProjectileHandler {
                     ? (float) airGun.getProjectile().getEnergyUse() : 0.0F;
                 if (cost > 0.0F) {
                     boolean paid = false;
-                    for (ItemStack canister : BacktankUtil.getAllWithAir(maid)) {
+                    // Create's getAllWithAir is its own player-oriented lookup and finds nothing on a maid,
+                    // which made every shot look airless. Scan her slots instead: getAir(stack) needs no
+                    // entity, so the same test works for her armour (the chest slot is where Create's own
+                    // backtank lives), her inventory and her accessory slots.
+                    java.util.List<ItemStack> canisters = new java.util.ArrayList<>();
+                    for (net.minecraft.world.entity.EquipmentSlot slot
+                            : net.minecraft.world.entity.EquipmentSlot.values()) {
+                        canisters.add(maid.getItemBySlot(slot));
+                    }
+                    net.neoforged.neoforge.items.IItemHandler maidInv = maid.getAvailableInv(true);
+                    for (int i = 0; i < maidInv.getSlots(); i++) {
+                        canisters.add(maidInv.getStackInSlot(i));
+                    }
+                    var maidCurios = top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(maid);
+                    if (maidCurios.isPresent()) {
+                        var curioHandler = maidCurios.get().getEquippedCurios();
+                        for (int i = 0; i < curioHandler.getSlots(); i++) {
+                            canisters.add(curioHandler.getStackInSlot(i));
+                        }
+                    }
+                    for (ItemStack canister : canisters) {
+                        if (canister.isEmpty()) continue;
                         if (BacktankUtil.getAir(canister) >= (int) cost) {
                             BacktankUtil.consumeAir(maid, canister, (int) cost);
                             paid = true;
