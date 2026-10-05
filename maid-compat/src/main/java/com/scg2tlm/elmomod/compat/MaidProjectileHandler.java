@@ -57,36 +57,11 @@ public class MaidProjectileHandler {
 
         if (!(event.getEntity() instanceof ProjectileEntity projectile)) return;
         if (!(projectile.getOwner() instanceof EntityMaid maid)) return;
-        // Air is charged here rather than before the shot because this is the one place both fire
-        // paths pass. The task checks maidAir first, so a maid without air never fires at all.
-        if (!SC2GunCompat.maidAir(maid, projectile.getWeapon(), true)) {
-            // Cancel the join instead of discarding: discard() has no effect while the entity is still
-            // being added, so the projectile entered the level anyway and the client drew a bullet that
-            // dealt no damage. Cancelling stops it from ever existing, whichever AI path fired it.
-            // Diagnostic: tells us which AI path fired and what it fired, so a report of "she still
-            // shoots" can be traced to a specific route instead of guessed at.
-            // Stack trace: the shot bypasses every gate we added, so the only way to pin down which AI
-            // path fires it is to print the frames. Only the first few are interesting; the rest is
-            // vanilla plumbing.
-            StringBuilder stack = new StringBuilder();
-            StackTraceElement[] frames = new Throwable().getStackTrace();
-            for (int f = 0; f < Math.min(frames.length, 14); f++) {
-                String cls = frames[f].getClassName();
-                if (cls.startsWith("java.") || cls.startsWith("org.slf4j")) continue;
-                stack.append("\n      ").append(cls).append('.').append(frames[f].getMethodName())
-                     .append(':').append(frames[f].getLineNumber());
-            }
-            org.slf4j.LoggerFactory.getLogger("scg2_maid_compat").info(
-                "[scg2_maid_compat] airless shot: projectile={} weapon={} stack:{}",
-                projectile.getClass().getSimpleName(),
-                projectile.getWeapon().isEmpty() ? "empty" : projectile.getWeapon().getItem(), stack);
+        // Fallback only: the charge happens once per shot in performGunAttack, and target
+        // selection is already blocked by cannotFight. If a shot still slips through (for example
+        // via SC2's own AI), drop the projectile rather than letting it deal damage.
+        if (!SC2GunCompat.maidAir(maid, projectile.getWeapon(), false)) {
             event.setCanceled(true);
-            // Stop the behaviour itself. The shot bypasses both gated paths (no consume=false scan ever
-            // appeared in the log), so this hook - which provably runs - is where the attack has to be
-            // ended: drop her target and halt her movement, or she keeps firing every 200 ms.
-            maid.getNavigation().stop();
-            maid.getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.WALK_TARGET);
-            maid.getBrain().eraseMemory(net.minecraft.world.entity.ai.memory.MemoryModuleType.ATTACK_TARGET);
             return;
         }
 

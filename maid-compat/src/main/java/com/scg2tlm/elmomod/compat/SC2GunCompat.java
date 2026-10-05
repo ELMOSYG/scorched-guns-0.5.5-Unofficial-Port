@@ -375,6 +375,15 @@ public final class SC2GunCompat {
     }
 
     public static int performGunAttack(LivingEntity maid, LivingEntity target, ItemStack gun) {
+        // Air is charged per SHOT, not per projectile. SC2 spawns
+        // Gun.Projectile.getProjectileAmount() projectiles per shot (6-10 for shotguns), so charging
+        // in the projectile hook multiplied the cost and made the availability question disagree with
+        // the charge. This is the compat's own fire routine and the place ammo is already spent, so
+        // one charge here covers the whole volley - and it happens before anything is spent.
+        if (maid instanceof EntityMaid airMaid && !maidAir(airMaid, gun, true)) {
+            return 0;
+        }
+
         if (!(maid instanceof Mob mob)) return 10;
         if (maid.level().isClientSide) return 10;
         if (!(gun.getItem() instanceof GunItem gunItem)) {

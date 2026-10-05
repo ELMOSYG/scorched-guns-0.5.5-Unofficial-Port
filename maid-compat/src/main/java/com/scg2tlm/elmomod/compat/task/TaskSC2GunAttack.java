@@ -254,6 +254,12 @@ public class TaskSC2GunAttack implements IRangedAttackTask {
     }
 
     private static boolean cannotFight(EntityMaid maid) {
+        // Air joins the ammo rule: with no air for a shot she must not pick a target at all.
+        // Cancelling the projectile afterwards was too late - the brain re-acquired a target on the
+        // next tick, which is why the airless shot log repeated every 200 ms.
+        if (!SC2GunCompat.maidAir(maid, maid.getMainHandItem(), false)) {
+            return true;
+        }
         ItemStack gun = maid.getMainHandItem();
         if (!(SC2GunCompat.needsReload(gun) && !SC2GunCompat.hasAmmoInInventory(maid, gun))) {
             return false;
