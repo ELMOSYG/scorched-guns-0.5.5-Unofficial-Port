@@ -799,8 +799,18 @@ public final class SC2GunCompat {
             for (int i = 0; i < curios.getSlots(); i++) candidates.add(curios.getStackInSlot(i));
         });
 
+        int scanned = 0, airItems = 0;
         for (ItemStack canister : candidates) {
             if (canister.isEmpty()) continue;
+            scanned++;
+            if (canister.getItem() instanceof top.ribs.scguns.item.AirCanisterItem canisterItem) {
+                airItems++;
+                org.slf4j.LoggerFactory.getLogger("scg2_maid_compat").info(
+                    "[scg2_maid_compat] air scan: cost={} stored={} max={} capabilityStored={} consume={}",
+                    (int) cost, canisterItem.getAirStored(canister), canisterItem.getMaxAirStored(canister),
+                    canister.getCapability(Capabilities.EnergyStorage.ITEM) instanceof IEnergyStorage es
+                        ? es.getEnergyStored() : -1, consume);
+            }
             // Only scguns' own air canisters may be read through the energy capability. Testing every
             // energy-capable stack meant a battery or any charged item counted as air, so a maid with an
             // empty canister kept firing. AirSourceHelper tests isAirCanisterWithAir for the same reason.
