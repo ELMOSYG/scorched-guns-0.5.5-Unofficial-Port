@@ -1884,3 +1884,22 @@ private static boolean aimingDownSights(Minecraft mc) {
 **探针**（仍保留，每秒一条、仅手持枪械时 ✓）新增两个字段：`ads=`（本次判定 ✓）与 `aiming=`（同步键原始值 ✓），便于日后定位 ✓：`SCGUNS-ADS multiplier=… ads=… aiming=… isAiming=… progress=… zoom=… fov=… option=… saved=…`
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451337 字节 ✓）。
+
+## §82.66 瞄准灵敏度：改为**按瞄具给固定值**（长瞄镜 25%、中瞄镜 50%）
+
+**玩家要求** ✓：长瞄镜改为 25% 灵敏度、中瞄镜改为 50%（玩家先写成"短瞄镜"，随即更正为**中瞄镜** ✓）—— 即不再由 FOV 推算，而是**每种瞄具一个固定值** ✓。
+
+**实现** ✓（`AimingSensitivityHandler`）：
+- 取值来源：`Gun.getScopeStack(ItemStack)` ✓（模组自带 API，返回装在枪上的**瞄具物品** ✓，`Gun.java:450` ✓）⇒ 用其注册名查表 ✓：
+```java
+private static final Map<ResourceLocation, Double> SCOPE_SENSITIVITY = Map.of(
+   ResourceLocation.fromNamespaceAndPath("scguns", "long_scope"),   0.25D,
+   ResourceLocation.fromNamespaceAndPath("scguns", "medium_scope"), 0.5D);
+```
+- **语义** ✓：该值就是**完全瞄准时的最终倍率** ✓，按 ADS 进度混入（`1 - (1 - 值) × progress` ✓）⇒ 长瞄镜瞄准 = **0.25** ✓、中瞄镜 = **0.5** ✓，与玩家给的数字**逐字对应** ✓；
+- **回退** ✓：没装这两种瞄具时（机瞄 ✓ / 未知瞄具 ✗）保持原行为 ✓ = `(1 - (1 - 配置值) × progress) × fov^0.25` ✓ ⇒ **配置项 `aimDownSightSensitivity` 现在只影响无瞄具瞄准** ✓（装长/中瞄镜时不再参与 ✓，否则 25% 会被再乘 0.75 变成 18.75% ✗）；
+- 瞄具物品 id 由注册名取得 ✓（`BuiltInRegistries.ITEM.getKey` ✓），不依赖 FOV 数值 ⇒ 以后调整只需改表里一个数字 ✓。
+
+**探针更新** ✓：每秒一条改为 `SCGUNS-ADS multiplier=… ads=… scope=<瞄具 id 或 none> progress=… isAiming=… option=… saved=…` ✓ ⇒ 可直接确认识别到的瞄具与倍率 ✓（确认后删除 ✓）。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451816 字节 ✓）。
