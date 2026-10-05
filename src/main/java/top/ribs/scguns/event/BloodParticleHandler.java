@@ -64,7 +64,7 @@ public final class BloodParticleHandler {
       double x = victim.getX();
       double y = victim.getY() + victim.getBbHeight() * 0.5D;
       double z = victim.getZ();
-      S2CMessageBlood packet = new S2CMessageBlood(x, y, z, victim.getType());
+      S2CMessageBlood packet = new S2CMessageBlood(x, y, z, victim.getType(), event.getNewDamage());
 
       double maxDistanceSq = MAX_DISTANCE * MAX_DISTANCE;
       for (ServerPlayer player : ((ServerLevel)victim.level()).players()) {

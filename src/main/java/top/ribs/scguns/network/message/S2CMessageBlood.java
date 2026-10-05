@@ -14,6 +14,7 @@ public class S2CMessageBlood {
    private double y;
    private double z;
    private EntityType<?> entityType;
+   private float damage;
 
    public S2CMessageBlood() {
       super();
@@ -27,11 +28,21 @@ public class S2CMessageBlood {
       this.entityType = entityType;
    }
 
+   public S2CMessageBlood(double x, double y, double z, EntityType<?> entityType, float damage) {
+      super();
+      this.x = x;
+      this.y = y;
+      this.z = z;
+      this.entityType = entityType;
+      this.damage = damage;
+   }
+
    public void encode(S2CMessageBlood message, FriendlyByteBuf buffer) {
       buffer.writeDouble(message.x);
       buffer.writeDouble(message.y);
       buffer.writeDouble(message.z);
       buffer.writeResourceLocation(Objects.requireNonNull(BuiltInRegistries.ENTITY_TYPE.getKey(message.entityType)));
+      buffer.writeFloat(message.damage);
    }
 
    public S2CMessageBlood decode(FriendlyByteBuf buffer) {
@@ -39,8 +50,9 @@ public class S2CMessageBlood {
       double y = buffer.readDouble();
       double z = buffer.readDouble();
       ResourceLocation entityTypeLocation = buffer.readResourceLocation();
+      float damage = buffer.readFloat();
       EntityType<?> entityType = (EntityType<?>)BuiltInRegistries.ENTITY_TYPE.get(entityTypeLocation);
-      return new S2CMessageBlood(x, y, z, entityType);
+      return new S2CMessageBlood(x, y, z, entityType, damage);
    }
 
    public void handle(S2CMessageBlood message, MessageContext context) {
@@ -62,5 +74,9 @@ public class S2CMessageBlood {
 
    public EntityType<?> getEntityType() {
       return this.entityType;
+   }
+
+   public float getDamage() {
+      return this.damage;
    }
 }

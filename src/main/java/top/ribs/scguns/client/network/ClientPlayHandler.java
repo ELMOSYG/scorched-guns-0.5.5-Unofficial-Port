@@ -620,7 +620,16 @@ public class ClientPlayHandler {
          Level world = Minecraft.getInstance().level;
          if (world != null) {
             EntityType<?> entityType = message.getEntityType();
-            int count = (Integer)Config.CLIENT.particle.bloodParticleCount.get();
+            // Damage-scaled blood (PORTING_STATUS 82.70): the packet carries the damage the hit dealt, or 0 when
+            // it came from a Scorched Guns projectile - those keep the plain count, so their fifteen call sites
+            // are untouched. Three extra droplets per two damage on top of the base, capped by bloodParticleMax
+            // so one big hit cannot turn into a lag spike.
+            int base = (Integer)Config.CLIENT.particle.bloodParticleCount.get();
+            float hitDamage = message.getDamage();
+            int count = hitDamage > 0.0F
+               ? Math.min((Integer)Config.CLIENT.particle.bloodParticleMax.get(),
+                  base + ((int)(hitDamage / 2.0F)) * 3)
+               : base;
             double spread = (Double)Config.CLIENT.particle.bloodParticleSpread.get();
             // Opt-in diagnostic (Config bloodDebugLog): what the packet carries and what sits below the
             // hit point, which is what decides whether a burst looks like it starts on the ground.

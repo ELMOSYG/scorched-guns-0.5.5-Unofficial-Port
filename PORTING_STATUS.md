@@ -1994,3 +1994,21 @@ event.setMouseSensitivity(Math.max(0.0, (scaled - 0.2) / 0.6));
 
 **门禁**：`build` ✓；`verify_installed_jar` **289/289** ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19453073 字节 ✓）。
 **待实测** ✓：默认关闭时行为与以前完全一致 ✓；开启后玩家近战/弓箭/宠物撕咬应喷血 ✓，32 格外的玩家看不到 ✓，<0.5 的碎伤不喷 ✓，自家枪械命中不双倍 ✓。
+
+## §82.71 血液粒子按伤害递增：基础 12、每 2 点伤害 +3 个、上限 50（可配置）
+
+玩家规格：基础沿用原 mod 子弹喷血量（bloodParticleCount 默认 12），在其上按伤害递增，单次最高 50 个（限制卡顿），并做成配置项。
+
+实现：
+- 网络包 S2CMessageBlood 增加 float damage 字段（构造 + encode + decode + getter）。encode 顺序 x,y,z,entityType,damage，decode 同序。
+- 向后兼容：既有 4 参构造不变（damage 默认 0），客户端遇到 damage <= 0 时回退为 bloodParticleCount，因此约 15 处弹射物调用点一行未改。
+- 客户端 ClientPlayHandler.handleMessageBlood：count = damage > 0 ? min(bloodParticleMax, bloodParticleCount + floor(damage/2)*3) : bloodParticleCount。
+- 新配置 Config.CLIENT.particle.bloodParticleMax（默认 50，范围 1..256）；基础仍由既有 bloodParticleCount 控制，两者在同一 particle 分组内。
+- event/BloodParticleHandler 把 event.getNewDamage() 塞进包。
+
+数值示例：伤害 2 得 15、10 得 27、20 得 42、26 及以上封顶 50；伤害低于 0.5 不发包。
+
+过程记录（工具教训）：第一次补丁的锚点是从带 3 空格前缀的控制台输出里抄的，导致三处替换被跳过（包写了 float 却没读、客户端未改、配置有引用无声明，编译报 cannot find symbol）。改为按行内容匹配并保留原缩进后一次通过。
+
+门禁：build 通过；verify_installed_jar 289/289；已安装 scguns-0.5.5.3.jar。
+注意：包结构变更属于协议变更，客户端与服务端需同版本。

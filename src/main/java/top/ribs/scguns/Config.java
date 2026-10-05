@@ -825,6 +825,7 @@ public class Config {
       public final DoubleValue bulletHoleFadeThreshold;
       public final BooleanValue enableBlood;
       public final IntValue bloodParticleCount;
+      public final IntValue bloodParticleMax;
       public final DoubleValue bloodParticleSpread;
       public final DoubleValue bloodParticleSpeed;
       public final BooleanValue bloodDebugLog;
@@ -852,6 +853,14 @@ public class Config {
                }
             )
             .defineInRange("bloodParticleCount", 12, 1, 64);
+            this.bloodParticleMax = builder.comment(
+                  new String[]{
+                     "Upper limit on blood droplets from a single hit when damage-scaled blood is active.",
+                     "The count starts at bloodParticleCount and grows by three droplets per two damage dealt,",
+                     "so this caps what one big hit can throw and keeps it from turning into a lag spike."
+                  }
+               )
+               .defineInRange("bloodParticleMax", 50, 1, 256);
          this.bloodParticleSpread = builder.comment("Radius in blocks the droplets are scattered over when they spawn")
             .defineInRange("bloodParticleSpread", 0.15, 0.0, 1.0);
          this.bloodParticleSpeed = builder.comment(
