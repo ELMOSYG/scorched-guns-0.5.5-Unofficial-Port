@@ -1947,3 +1947,29 @@ if (speed <= 0.0) {
 4. 另有一条工具教训 ✓：`scguns.mixins.json` 曾被 PowerShell `Set-Content -Encoding utf8` 写入 **BOM** ✗，可能导致混入配置解析失败 ✓ ⇒ 该文件此后均以**无 BOM** 方式读写 ✓。
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19448296 字节 ✓）。
+
+## §82.69 瞄准灵敏度：采用开源移植版（`其他移植/ScorchedGuns-1.5.jar`）的机制**重新实现**
+
+**玩家线索** ✓：该 mod 开源、可直接使用其代码 ✓。反汇编其 `AimingHandler.onCalculatePlayerTurn` 得到完整实现 ✓：
+
+```java
+double m = getAimingSensitivityMultiplier();
+if (m >= 0.999) return;                       // 未瞄准不动事件
+double s = event.getMouseSensitivity();
+double v = s * 0.6 + 0.2;                     // 复刻原版曲线
+double scaled = Math.cbrt(v * v * v * m);     // ← 关键：反解曲线
+event.setMouseSensitivity(Math.max(0.0, (scaled - 0.2) / 0.6));
+```
+
+**为何这才是正解** ✓：原版转向量 = `v³ × 8`，`v = 灵敏度 × 0.6 + 0.2` ✓。要让**转向**乘以 `m`，必须 `v' = ∛(v³ × m)` 再反解回选项值 ✓。此前本移植两条路都忽略了 `+0.2` 偏移 ✗：§82.55 直接改事件灵敏度 ✓、§82.63 改写选项（Tweakeroo 式 ✓）⇒ 强度与预期不符 ✗，且**改写选项留下持久状态** ⇒ 才有"关镜不还原"那一串问题 ✓。事件路线**每条转向一个值、不存任何状态** ⇒ 该类问题从机制上不可能出现 ✓。
+
+**本次实现** ✓（`client/handler/AimingTurnHandler` ✓）：
+
+- 上述曲线反解照抄 ✓（常量 `0.6` / `0.2` 命名为 `CURVE_SLOPE` / `CURVE_OFFSET` ✓）；
+- 倍率由 **`getNormalisedAdsProgress()`** 驱动 ✓（FOV 缩放同一判据 ✓；**刻意不用** `AIMING` / `isAiming()` ✓ —— 二者在装瞄具时恒为 false ✗，§82.65 已踩过 ✓）；
+- 瞄具按固定值 ✓（`long_scope` **0.25** ✓ / `medium_scope` **0.5** ✓，经 `Gun.getScopeStack` 查表 ✓）作用于**转向量** ✓；无瞄具则用配置项 `aimDownSightSensitivity` ✓，等价于 0.5.5「乘在最终转向量上」的语义 ✓；
+- 注册：`ClientHandler.onClientSetup` 里 `NeoForge.EVENT_BUS.addListener(AimingTurnHandler::onCalculatePlayerTurn)` ✓；
+- **不写灵敏度选项** ✓ ⇒ 无持久状态 ✓。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450606 字节 ✓）。
+**待实测** ✓：机瞄（配置值）✓ / 长瞄镜 25% ✓ / 中瞄镜 50% ✓；松开瞄准应**立即恢复**（无状态可残留 ✓）。
