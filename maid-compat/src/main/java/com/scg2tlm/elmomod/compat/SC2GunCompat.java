@@ -802,27 +802,21 @@ public final class SC2GunCompat {
             ? (float) airGun.getProjectile().getEnergyUse() : 0.0F;
         if (cost <= 0.0F) return true;
 
+        // Identity-based: the armour, inventory and curio scans overlap, and ItemStack.equals compares
+        // contents - which would merge two genuinely separate stacks that happen to hold the same item.
+        java.util.Set<ItemStack> seenStacks =
+            java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         java.util.List<ItemStack> candidates = new java.util.ArrayList<>();
-        for (EquipmentSlot slot : EquipmentSlot.values()) candidates.add(maid.getItemBySlot(slot));
+        for (EquipmentSlot slot : EquipmentSlot.values()) if (seenStacks.add(maid.getItemBySlot(slot))) candidates.add(maid.getItemBySlot(slot));
         IItemHandler maidInv = maid.getAvailableInv(true);
-        for (int i = 0; i < maidInv.getSlots(); i++) candidates.add(maidInv.getStackInSlot(i));
+        for (int i = 0; i < maidInv.getSlots(); i++) if (seenStacks.add(maidInv.getStackInSlot(i))) candidates.add(maidInv.getStackInSlot(i));
         CuriosApi.getCuriosInventory(maid).ifPresent(handler -> {
             IItemHandler curios = handler.getEquippedCurios();
-            for (int i = 0; i < curios.getSlots(); i++) candidates.add(curios.getStackInSlot(i));
+            for (int i = 0; i < curios.getSlots(); i++) if (seenStacks.add(curios.getStackInSlot(i))) candidates.add(curios.getStackInSlot(i));
         });
 
-        int scanned = 0, airItems = 0;
         for (ItemStack canister : candidates) {
             if (canister.isEmpty()) continue;
-            scanned++;
-            if (canister.getItem() instanceof top.ribs.scguns.item.AirCanisterItem canisterItem) {
-                airItems++;
-                org.slf4j.LoggerFactory.getLogger("scg2_maid_compat").info(
-                    "[scg2_maid_compat] air scan: cost={} stored={} max={} capabilityStored={} consume={}",
-                    (int) cost, canisterItem.getAirStored(canister), canisterItem.getMaxAirStored(canister),
-                    canister.getCapability(Capabilities.EnergyStorage.ITEM) instanceof IEnergyStorage es
-                        ? es.getEnergyStored() : -1, consume);
-            }
             // Only scguns' own air canisters may be read through the energy capability. Testing every
             // energy-capable stack meant a battery or any charged item counted as air, so a maid with an
             // empty canister kept firing. AirSourceHelper tests isAirCanisterWithAir for the same reason.
