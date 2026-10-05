@@ -519,7 +519,13 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
 
       for (Entity entity : entities) {
          if (!entity.equals(this.shooter)) {
-            ProjectileEntity.EntityResult result = this.getHitResult(entity, startVec, endVec);
+            // A dead entity must not stop the shot: corpses still in the world (mid death animation, or
+         // held by another mod) used to absorb bullets instead of letting them pass through.
+         if (!entity.isAlive()) {
+            continue;
+         }
+
+         ProjectileEntity.EntityResult result = this.getHitResult(entity, startVec, endVec);
             if (result != null) {
                Vec3 hitPos = result.getHitPos();
                double distanceToHit = startVec.distanceTo(hitPos);
@@ -540,6 +546,12 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       List<ProjectileEntity.EntityResult> hitEntities = new ArrayList<>();
 
       for (Entity entity : this.level().getEntities(this, this.getBoundingBox().expandTowards(this.getDeltaMovement()).inflate(1.0), PROJECTILE_TARGETS)) {
+         // A dead entity must not stop the shot: corpses still in the world (mid death animation, or
+         // held by another mod) used to absorb bullets instead of letting them pass through.
+         if (!entity.isAlive()) {
+            continue;
+         }
+
          ProjectileEntity.EntityResult result = this.getHitResult(entity, startVec, endVec);
          if (result != null) {
             hitEntities.add(result);
