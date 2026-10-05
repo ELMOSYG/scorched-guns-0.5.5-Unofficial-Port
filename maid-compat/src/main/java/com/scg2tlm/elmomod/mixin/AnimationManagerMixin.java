@@ -156,6 +156,17 @@ public class AnimationManagerMixin {
             }
         }
         animName = prefix + animType;
+        // A dual-wield pose is realistically only authored for the hold state (it is one gun held in two
+        // hands), while aim/run/fire/reload have no dual_wield variant. Those branches above do not check
+        // whether the animation exists, so the controller would be handed an unknown name and the pose
+        // would break. Fall back to the pistol animation for any state the dual-wield set does not define.
+        if ("dual_wield".equals(animType) && animationFile != null
+                && !animationFile.animations().containsKey(animName)) {
+            String pistolName = prefix + "pistol";
+            if (animationFile.animations().containsKey(pistolName)) {
+                animName = pistolName;
+            }
+        }
         SC2GunCompat.setAnimOnce(event.getController(), animName, loopType);
         cir.setReturnValue(PlayState.CONTINUE);
     }
