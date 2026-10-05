@@ -54,7 +54,10 @@ public final class AimingSensitivityHandler {
          return;
       }
 
-      double multiplier = aimingDownSights(mc) ? aimingSensitivityMultiplier() : 1.0;
+      // Apply on the ADS progress, the same test the FOV zoom uses: it is non-zero while aiming
+      // through a scope, whereas AIMING and AimingHandler.isAiming() both read false there.
+      double progress = AimingHandler.get().getNormalisedAdsProgress();
+      double multiplier = progress != 0.0 ? aimingSensitivityMultiplier() : 1.0;
       if (multiplier == 1.0) {
          restore(mc);
       } else {

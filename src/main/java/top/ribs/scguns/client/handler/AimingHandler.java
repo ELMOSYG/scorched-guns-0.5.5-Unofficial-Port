@@ -349,6 +349,11 @@ public class AimingHandler {
             if (this.currentAim < 5.0) {
                double speed = GunEnchantmentHelper.getAimDownSightSpeed(heldItem);
                speed = GunModifierHelper.getModifiedAimDownSightSpeed(heldItem, speed);
+               // Some guns resolve this to 0, which freezes the ADS animation wherever it happened to
+               // be - the progress then never returns to 0 after aiming, so the sensitivity stayed scaled.
+               if (speed <= 0.0) {
+                  speed = 0.25;
+               }
                this.currentAim += speed;
                if (this.currentAim > 5.0) {
                   this.currentAim = 5.0;
@@ -357,6 +362,11 @@ public class AimingHandler {
          } else if (this.currentAim > 0.0) {
             double speed = GunEnchantmentHelper.getAimDownSightSpeed(heldItem);
             speed = GunModifierHelper.getModifiedAimDownSightSpeed(heldItem, speed);
+            // Some guns resolve this to 0, which freezes the ADS animation wherever it happened to
+            // be - the progress then never returns to 0 after aiming, so the sensitivity stayed scaled.
+            if (speed <= 0.0) {
+               speed = 0.25;
+            }
             this.currentAim -= speed;
             if (this.currentAim < 0.0) {
                this.currentAim = 0.0;

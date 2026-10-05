@@ -1903,3 +1903,27 @@ private static final Map<ResourceLocation, Double> SCOPE_SENSITIVITY = Map.of(
 **探针更新** ✓：每秒一条改为 `SCGUNS-ADS multiplier=… ads=… scope=<瞄具 id 或 none> progress=… isAiming=… option=… saved=…` ✓ ⇒ 可直接确认识别到的瞄具与倍率 ✓（确认后删除 ✓）。
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451816 字节 ✓）。
+
+## §82.67 瞄准灵敏度：修正 §82.65 的退化（施加条件回到 progress），并修掉"progress 不归零"的根因
+
+**玩家复现** ✓：修好"关镜后不还原"之后，**灵敏度修改又不生效** ✗ —— 与 §82.65 的改动时间点完全对应 ✓。
+
+**根因** ✓：§82.65 为解决"不还原"，把**施加条件**一并从 `progress != 0` 换成了 `AIMING || isAiming()` ✗；而这两个标志**在装瞄具瞄准时都是 false** ✗（§82.64 已实测确认 ✓）⇒ 倍率重又恒为 1.0 ✗ ⇒ 等于回退了 §82.64 的修复 ✓。**一个条件同时承担"何时施加"和"何时还原"是设计错误** ✗：施加与还原需要不同的判据 ✓。
+
+**本次两处修改** ✓：
+1. **施加条件回到 `progress != 0`** ✓（与 FOV 缩放路径同一判据 ✓，已被证明在瞄具下为真 ✓）：
+```java
+double progress = AimingHandler.get().getNormalisedAdsProgress();
+double multiplier = progress != 0.0 ? aimingSensitivityMultiplier() : 1.0;
+```
+2. **修掉 progress 不归零的根因** ✓：`AimTracker.handleAiming` 的步进量取自已持物品的 ADS 速度（`GunEnchantmentHelper` → `GunModifierHelper` ✓），**该值为 0 时两个方向都不动** ⇒ 动画冻结在任意位置 ✓ ⇒ 松开后 progress 不回落 ⇒ 灵敏度一直被乘着 ✗。现在给步进量设下限 ✓（两处分支各一处 ✓）：
+```java
+if (speed <= 0.0) {
+   speed = 0.25;   // 部分枪械该值为 0，会把 ADS 动画冻在半途
+}
+```
+⇒ 动画必定回落 ⇒ `progress` 必定归零 ⇒ **还原条件自然成立** ✓，且不需要任何额外标志位 ✓。
+
+**设计结论（写入文档，避免重犯）** ✓：**施加用 `progress != 0`**（唯一在瞄具下可靠的信号 ✓）；**还原依赖 progress 归零**（现已由 §82.67 的步进下限保证 ✓）。不要再把 `AIMING` / `isAiming()` 用于施加判定 ✗ —— 它们在瞄具下恒为 false ✓。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451875 字节 ✓）；探针保留（每秒一条、含 `scope=` 字段 ✓）。
