@@ -871,7 +871,7 @@ public class Config {
                   "than the original and anything above it is stronger. 0 makes the droplets drop straight down."
                }
             )
-            .defineInRange("bloodParticleSpeed", 1.0, 0.0, 4.0);
+            .defineInRange("bloodParticleSpeed", 0.5, 0.0, 4.0);
          this.bloodDebugLog = builder.comment(
                new String[]{
                   "Log every blood droplet to latest.log: where the packet spawned it, the velocity it was given,",
