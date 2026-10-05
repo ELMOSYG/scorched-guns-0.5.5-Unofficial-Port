@@ -1798,3 +1798,23 @@ mas_peddler                                                  →  advantage = sc
 **改后** ✓：六把同弹药枪械克制**全部一致**为 `scguns:undead` ✓。顺带确认 `mas_55` 虽然也声明 `heavy` ✓，但它**不使用该弹药** ✓ ⇒ 不受影响、未改动 ✓。
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450769 字节 ✓）。
+
+## §82.62 瞄准灵敏度：换掉不稳定的 ordinal 注入，改为缩放 `Entity.turn(DD)V` 的参数
+
+**玩家结论** ✓：ordinal 那套做法不稳定、"从来没生效"，要求换更稳的方式 ✓。
+
+**为什么不稳定** ✓：`turnPlayer` 的局部变量只能靠 `ordinal` 定位 —— 1.20.1 的 `turnPlayer()V` 无参（`ordinal=2` 指第三个 double 存储），1.21.1 变成 `turnPlayer(double)` 后**同一个 ordinal 落到别处** ✗，注入照常应用、效果为零 ✗。这个坑已经踩了两轮 ✓。
+
+**新做法（稳定点）** ✓：`mixin/client/EntityTurnSensitivityMixin` —— `@Mixin(Entity.class)` ✓，对 **`turn(DD)V` 的两个参数**做 `@ModifyVariable(method = "turn(DD)V", at = @At("HEAD"), argsOnly = true, ordinal = 0/1)` ✓：
+- **不依赖调用点**、**不依赖局部变量编号** ✓（`argsOnly` 把候选限定为参数本身 ✓），方法签名简单且长期稳定 ✓；
+- **该注入点已被实测证明可用** ✓✓ —— 上一轮的临时探针正是注入到 `Entity.turn(DD)V` 并成功打出 `SCGUNS-TURN` 日志 ✓；
+- 只对本机玩家生效（`(Object)this != Minecraft.getInstance().player` 直接放行 ✓），其它实体不受影响 ✓；
+- `MouseHandlerMixin` **已删除** ✓（源码 + `scguns.mixins.json` 条目 ✓），避免重复缩放 ✓。
+
+**同时修掉"瞄准几乎没变化"的根因** ✓：`AimingSensitivityHandler.aimingSensitivityMultiplier()` 现在**只在真正瞄准时**才用 ADS 进度混合 ✓：
+```java
+double progress = handler.isAiming() ? handler.getNormalisedAdsProgress() : 0.0;
+```
+依据：实测日志里**不瞄准时 `progress` 长期为 1.0** ✗ ⇒ 配置系数 0.75 被**永久**乘在灵敏度上 ✗，瞄准时只剩瞄具系数（×0.71）⇒ 差异很小、感觉"没生效" ✗。改后：**不瞄准 = 1.0（完全不缩放）** ✓，瞄准 = `0.75 × fovModifier^0.25`（4 倍镜约 **0.53**，即慢约 47%）✓。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451061 字节 ✓）。

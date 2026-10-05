@@ -28,9 +28,16 @@ public final class AimingSensitivityHandler {
 
    /** Multiplier to apply to the turn: 1.0 when not aiming, smaller while aiming down sights. */
    public static double aimingSensitivityMultiplier() {
+      AimingHandler handler = AimingHandler.get();
+      // The ADS progress is the blend for the transition into aiming, not the aiming state itself. It
+      // reads ~1.0 while standing still (measured in game: "aiming=false progress=1.0" for seconds on
+      // end), which applied the configured factor permanently and left aiming with nothing but the scope
+      // term - so the sensitivity barely moved when the player aimed, and the player reported the whole
+      // feature as never having worked. Gating it on the aiming flag restores 0.5.5's intent: not aiming
+      // means exactly 1.0, no scaling at all.
+      double progress = handler.isAiming() ? handler.getNormalisedAdsProgress() : 0.0;
       double adsSensitivity = (Double)Config.CLIENT.controls.aimDownSightSensitivity.get();
-      return (1.0 - (1.0 - adsSensitivity) * AimingHandler.get().getNormalisedAdsProgress())
-         * (double)scopeSensitivityFactor();
+      return (1.0 - (1.0 - adsSensitivity) * progress) * (double)scopeSensitivityFactor();
    }
 
    private static float scopeSensitivityFactor() {

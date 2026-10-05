@@ -1,4 +1,4 @@
-{
+﻿{
   "required": true,
   "package": "top.ribs.scguns.mixin",
   "compatibilityLevel": "JAVA_21",
@@ -26,7 +26,7 @@
     "client.MixinVindicatorRenderer",
     "client.PlayerModelMixin",
     "client.VehiclePoseMixin",
-    "client.MouseHandlerMixin"
+    "client.EntityTurnSensitivityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
