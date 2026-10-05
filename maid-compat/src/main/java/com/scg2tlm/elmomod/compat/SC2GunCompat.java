@@ -1201,11 +1201,11 @@ public final class SC2GunCompat {
         if (type == null) return SCG2TLMConfig.GUN_RANGE.get();
         return switch (type) {
             case sniper, plasma, laser -> SCG2TLMConfig.SNIPER_SEARCH_RADIUS.get();
-            case rifle, magnum, heavy, lmg -> SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.get();
+            case rifle, heavy, lmg -> SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.get();
             case shotgun -> SCG2TLMConfig.SHOTGUN_SEARCH_RADIUS.get();
             case flamethrower, shock -> SCG2TLMConfig.FLAMETHROWER_SEARCH_RADIUS.get();
             case smg -> SCG2TLMConfig.SMG_SHOTGUN_PISTOL_SEARCH_RADIUS.get();
-            case pistol -> SCG2TLMConfig.PISTOL_SEARCH_RADIUS.get();
+            case pistol, magnum -> SCG2TLMConfig.PISTOL_SEARCH_RADIUS.get();
             // WeaponType 一共 13 个常量，`special` 是那个「特殊武器」兜底类别：
             // 走全局交战距离（其中几个真正特殊的枪由上面的 getSpecialRangeClass 特判接管）。
             case special -> SCG2TLMConfig.GUN_RANGE.get();
@@ -1289,7 +1289,7 @@ public final class SC2GunCompat {
         if (type == null) return baseRange * 0.375;
         if (type == WeaponType.sniper) return Math.min(baseRange * 1.25, SCG2TLMConfig.SNIPER_SEARCH_RADIUS.get() * 0.85);
         if (type == WeaponType.rifle) return baseRange * 0.5;
-        if (type == WeaponType.magnum) return baseRange * 0.4375;
+        if (type == WeaponType.magnum) return baseRange * 0.1875;   // magnums are handguns: same as pistol
         if (type == WeaponType.smg) return baseRange * 0.25;
         if (type == WeaponType.shotgun) return baseRange * 0.125;
         if (type == WeaponType.pistol) return baseRange * 0.1875;
@@ -1313,7 +1313,7 @@ public final class SC2GunCompat {
         if (type == null) return baseRange * 0.078125;
         if (type == WeaponType.sniper) return baseRange * 0.4375;
         if (type == WeaponType.rifle) return baseRange * 0.125;
-        if (type == WeaponType.magnum) return baseRange * 0.125;
+        if (type == WeaponType.magnum) return baseRange * 0.046875; // magnums are handguns: same as pistol
         if (type == WeaponType.smg) return baseRange * 0.0625;
         if (type == WeaponType.shotgun) return baseRange * 0.03125;
         if (type == WeaponType.pistol) return baseRange * 0.046875;
