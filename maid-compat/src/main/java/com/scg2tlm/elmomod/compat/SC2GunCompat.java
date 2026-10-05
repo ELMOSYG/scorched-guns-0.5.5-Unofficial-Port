@@ -801,7 +801,11 @@ public final class SC2GunCompat {
 
         for (ItemStack canister : candidates) {
             if (canister.isEmpty()) continue;
-            IEnergyStorage energy = canister.getCapability(Capabilities.EnergyStorage.ITEM);
+            // Only scguns' own air canisters may be read through the energy capability. Testing every
+            // energy-capable stack meant a battery or any charged item counted as air, so a maid with an
+            // empty canister kept firing. AirSourceHelper tests isAirCanisterWithAir for the same reason.
+            IEnergyStorage energy = canister.getItem() instanceof top.ribs.scguns.item.AirCanisterItem
+                ? canister.getCapability(Capabilities.EnergyStorage.ITEM) : null;
             if (energy != null && energy.getEnergyStored() >= (int) cost) {
                 if (!consume) return true;
                 if (energy.extractEnergy((int) cost, false) >= (int) cost) return true;
