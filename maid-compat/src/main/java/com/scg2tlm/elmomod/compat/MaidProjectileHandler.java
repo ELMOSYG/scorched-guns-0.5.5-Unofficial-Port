@@ -2,6 +2,12 @@ package com.scg2tlm.elmomod.compat;
 
 
 
+import top.ribs.scguns.ScorchedGuns;
+import com.scg2tlm.elmomod.SCG2TLMConfig;
+import top.ribs.scguns.item.GunItem;
+import top.ribs.scguns.interfaces.IAirGun;
+import top.ribs.scguns.common.Gun;
+import com.simibubi.create.content.equipment.armor.BacktankUtil;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.minecraft.core.registries.BuiltInRegistries;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
@@ -50,7 +56,35 @@ public class MaidProjectileHandler {
         if (event.getLevel().isClientSide()) return;
 
         if (!(event.getEntity() instanceof ProjectileEntity projectile)) return;
-        if (!(projectile.getOwner() instanceof EntityMaid)) return;
+        if (!(projectile.getOwner() instanceof EntityMaid maid)) return;
+        // Air-powered guns: SC2 charges the canister in GunEventBus, but its helper and its
+        // GunFireEvent are both Player-only, so a maid fired them for free. Charge her here, the one
+        // place both fire paths (our task and SC2's native gunner AI) pass through.
+        if (!SCG2TLMConfig.RELOAD_FREE_AMMO.get() && ScorchedGuns.createLoaded) {
+            ItemStack airWeapon = projectile.getWeapon();
+            if (airWeapon != null && airWeapon.getItem() instanceof IAirGun
+                    && airWeapon.getItem() instanceof GunItem airGunItem) {
+                Gun airGun = airGunItem.getModifiedGun(airWeapon);
+                float cost = airGun != null && airGun.getProjectile() != null
+                    ? (float) airGun.getProjectile().getEnergyUse() : 0.0F;
+                if (cost > 0.0F) {
+                    boolean paid = false;
+                    for (ItemStack canister : BacktankUtil.getAllWithAir(maid)) {
+                        if (BacktankUtil.getAir(canister) >= (int) cost) {
+                            BacktankUtil.consumeAir(maid, canister, (int) cost);
+                            paid = true;
+                            break;
+                        }
+                    }
+                    if (!paid) {
+                        // Same outcome as the player path, where a shot without air is cancelled.
+                        projectile.discard();
+                        return;
+                    }
+                }
+            }
+        }
+
         if (!projectile.getPersistentData().contains("AIDamageScale")) return;
         projectile.getPersistentData().putFloat("AIDamageScale", 1.0f);
     }
