@@ -73,6 +73,15 @@ def main():
     print("=== how the port renders those files today ===")
     # Each of these files, and how many former `getDeltaFrameTime()` sites it has.
     expected = {name: len(sites) for name, sites in delta_files.items()}
+    # Sites that no longer exist because the code around them was removed on purpose, keyed by the
+    # port's path and the number of sites that went with it. Listing them here keeps the rule strict
+    # for every other file: a site going missing anywhere else still fails the audit.
+    #   mixin/client/PlayerModelMixin.java - the war axe holding pose was deleted because it fought
+    #   with Better Combat, and that pose held the file's only getDeltaFrameTime site.
+    REMOVED_SITES = {"mixin/client/PlayerModelMixin.java": 1}
+    for removed_path, removed_count in REMOVED_SITES.items():
+        if removed_path in expected:
+            expected[removed_path] = max(0, expected[removed_path] - removed_count)
     problems = 0
     for name in sorted(expected):
         new_path = NEW / name
