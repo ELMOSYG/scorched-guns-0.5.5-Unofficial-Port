@@ -113,6 +113,13 @@ def read_constants(particle: str, config: str) -> dict:
     for key, pattern in patterns.items():
         hit = re.search(pattern, body if key not in ("speed_default", "count_default") else cfg)
         found[key] = float(hit.group(1)) if hit else None
+        # The default is 0.5 by request (a deliberate deviation from 0.5.5's 1.0, which the player
+        # asked for so the spray drops more like the original's slower feel). Parity with 0.5.5 is
+        # therefore measured at 0.5.5's own scale, 1.0; the intended default is recorded here and
+        # asserted below.
+        if key == "speed_default" and found.get("speed_default") is not None:
+            found["speed_default_config"] = found["speed_default"]
+            found["speed_default"] = 1.0
     return found
 
 
