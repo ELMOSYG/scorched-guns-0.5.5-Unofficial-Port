@@ -1517,8 +1517,13 @@ public final class SC2GunCompat {
 
         // ---- 主判据：握持方式 ----
         GripType grip = getGripTypeOf(stack);
-        if (grip == GripType.ONE_HANDED || grip == GripType.ONE_HANDED_2
-                || grip == GripType.DUAL_WIELD) {
+        // DUAL_WIELD gets its own animation type: the player's dual-wield gun (RAT_KING_AND_QUEEN) is a
+        // dedicated item class with its own pose and alternating shots, and the maid was falling back to
+        // the plain pistol pose. The maid's model can now define tac:<controller>:dual_wield.
+        if (grip == GripType.DUAL_WIELD) {
+            return "dual_wield";
+        }
+        if (grip == GripType.ONE_HANDED || grip == GripType.ONE_HANDED_2) {
             return "pistol";
         }
         if (grip == GripType.TWO_HANDED || grip == GripType.TWO_HANDED_SHOTGUN
@@ -1545,7 +1550,9 @@ public final class SC2GunCompat {
      */
     public static boolean isTwoHandedGun(ItemStack stack) {
         if (stack.isEmpty() || !(stack.getItem() instanceof GunItem)) return false;
-        return !"pistol".equals(getAnimationGunType(stack));
+        String type = getAnimationGunType(stack);
+        // dual_wield is a one-handed family too, so it must not be treated as two-handed.
+        return !"pistol".equals(type) && !"dual_wield".equals(type);
     }
 
     /**
