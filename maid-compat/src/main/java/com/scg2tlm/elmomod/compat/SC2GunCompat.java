@@ -781,7 +781,10 @@ public final class SC2GunCompat {
      * @param consume true to actually take the air, false to only ask whether it is there
      */
     public static boolean maidAir(EntityMaid maid, ItemStack gun, boolean consume) {
-        if (SCG2TLMConfig.RELOAD_FREE_AMMO.get() || !ScorchedGuns.createLoaded) return true;
+        // Only the free-ammo option skips the check entirely. Create being absent must NOT: scguns'
+        // own canisters have nothing to do with Create, and returning true here meant a maid with an
+        // empty canister - or none at all - kept firing.
+        if (SCG2TLMConfig.RELOAD_FREE_AMMO.get()) return true;
         if (gun == null || !(gun.getItem() instanceof IAirGun) || !(gun.getItem() instanceof GunItem gunItem)) {
             return true;
         }
@@ -827,7 +830,7 @@ public final class SC2GunCompat {
                 if (energy.extractEnergy((int) cost, false) >= (int) cost) return true;
                 continue;
             }
-            if (BacktankUtil.getAir(canister) >= (int) cost) {
+            if (ScorchedGuns.createLoaded && BacktankUtil.getAir(canister) >= (int) cost) {
                 if (!consume) return true;
                 BacktankUtil.consumeAir(maid, canister, (int) cost);
                 return true;
