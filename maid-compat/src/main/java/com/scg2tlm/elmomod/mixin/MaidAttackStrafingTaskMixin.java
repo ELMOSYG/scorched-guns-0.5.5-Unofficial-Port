@@ -1,5 +1,6 @@
 package com.scg2tlm.elmomod.mixin;
 
+import com.scg2tlm.elmomod.compat.SC2GunCompat;
 import com.github.tartaricacid.touhoulittlemaid.entity.ai.brain.task.MaidAttackStrafingTask;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import net.minecraft.core.BlockPos;
@@ -23,6 +24,18 @@ public abstract class MaidAttackStrafingTaskMixin {
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true, remap = false)
     private void scg2tlm$onTick(ServerLevel level, EntityMaid maid, long gameTime, CallbackInfo ci) {
+        // An air gun with no air must stop the whole attack behaviour, not just the bullet. The projectile
+        // is already cancelled in MaidProjectileHandler, but the AI kept strafing, spending ammo and
+        // reloading - the log showed a blocked shot every 200 ms. This task drives that behaviour, so
+        // dropping the target here ends it: no walking, no firing, no ammo consumed.
+        if (!SC2GunCompat.maidAir(maid, maid.getMainHandItem(), false)) {
+            maid.getNavigation().stop();
+            maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
+            maid.getBrain().eraseMemory(MemoryModuleType.ATTACK_TARGET);
+            ci.cancel();
+            return;
+        }
+
         if (!maid.getBrain().hasMemoryValue(MemoryModuleType.ATTACK_TARGET)) {
             maid.getNavigation().stop();
             maid.getBrain().eraseMemory(MemoryModuleType.WALK_TARGET);
