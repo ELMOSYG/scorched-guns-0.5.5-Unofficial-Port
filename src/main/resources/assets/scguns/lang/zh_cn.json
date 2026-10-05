@@ -284,7 +284,7 @@
   "enchantment.scguns.lightweight": "轻装上阵",
   "enchantment.scguns.lightweight.desc": "持枪时增加移动速度，装填时减速程度更小，重型武器不再减速",
   "enchantment.scguns.puncturing": "神枪手",
-  "enchantment.scguns.puncturing.desc": "增加暴击几率，提高穿甲",
+  "enchantment.scguns.puncturing.desc": "提高暴击率与护甲穿透，但每级降低 6% 射速",
   "enchantment.scguns.quick_hands": "快手",
   "enchantment.scguns.quick_hands.desc": "增加装填武器的速度",
   "enchantment.scguns.reclaimed": "幽灵弹",
