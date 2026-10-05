@@ -151,7 +151,7 @@ public class SCG2TLMClothConfig {
                 .setMin(8.0).setMax(512.0)
                 .setTooltip(Component.literal("狙击步枪的索敌半径（格）。"))
                 .setSaveConsumer(i -> SCG2TLMConfig.SNIPER_SEARCH_RADIUS.set(i)).build());
-        search.add(entry.startDoubleField(Component.literal("步枪/马格南索敌范围 Rifle/Magnum"), SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.get())
+        search.add(entry.startDoubleField(Component.literal("步枪索敌范围 Rifle"), SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.get())
                 .setDefaultValue(SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.getDefault())
                 .setMin(8.0).setMax(256.0)
                 .setTooltip(Component.literal("步枪和马格南的索敌半径（格）。"))
@@ -163,7 +163,7 @@ public class SCG2TLMClothConfig {
                         + "配置键名里还留着 shotgun/pistol，是为了兼容旧配置；霰弹枪、喷火器、手枪现在都有独立条目。\n"
                         + "「索敌半径」同时也是这把枪的**最大开火距离**上限（= min(交战距离, 该半径)）。"))
                 .setSaveConsumer(i -> SCG2TLMConfig.SMG_SHOTGUN_PISTOL_SEARCH_RADIUS.set(i)).build());
-        search.add(entry.startDoubleField(Component.literal("手枪索敌范围 Pistol"), SCG2TLMConfig.PISTOL_SEARCH_RADIUS.get())
+        search.add(entry.startDoubleField(Component.literal("手枪/马格南索敌范围 Pistol/Magnum"), SCG2TLMConfig.PISTOL_SEARCH_RADIUS.get())
                 .setDefaultValue(SCG2TLMConfig.PISTOL_SEARCH_RADIUS.getDefault())
                 .setMin(4.0).setMax(64.0)
                 .setTooltip(Component.literal("手枪的索敌半径（格），同时也是最大开火距离。\n"

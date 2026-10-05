@@ -798,6 +798,25 @@ public final class SC2GunCompat {
                 }
             }
         }
+        // Accessory (Curios) slots. The maid has her own curio inventory, but this gate only ever
+        // looked at getAvailableInv, so a box worn there read as "no ammo" - and
+        // MaidSC2GunShootTask asks hasAmmoInInventory before reloadFromInventory, which is why her
+        // reload never ran at all rather than running and finding nothing.
+        var curios = CuriosApi.getCuriosInventory(maid);
+        if (curios.isPresent()) {
+            IItemHandler curioInv = curios.get().getEquippedCurios();
+            for (int i = 0; i < curioInv.getSlots(); i++) {
+                ItemStack slot = curioInv.getStackInSlot(i);
+                if (slot.isEmpty()) continue;
+                if (slot.getItem() == ammoType) return true;
+                if (slot.getItem() instanceof AmmoBoxItem) {
+                    if (ignoreCreative && isCreativeAmmoBox(slot)) continue;
+                    if (AmmoBoxItem.getContents(slot).anyMatch(s -> s.getItem() == ammoType)) {
+                        return true;
+                    }
+                }
+            }
+        }
         return false;
     }
 

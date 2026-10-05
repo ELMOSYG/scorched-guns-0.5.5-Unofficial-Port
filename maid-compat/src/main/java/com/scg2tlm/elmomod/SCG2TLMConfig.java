@@ -172,15 +172,15 @@ public class SCG2TLMConfig {
         BUILDER.push("search_radii");
 
         BUILDER.comment("Target search radius for sniper rifles");
-        SNIPER_SEARCH_RADIUS = BUILDER.defineInRange("sniper_search_radius", 96.0, 8.0, 512.0);
+        SNIPER_SEARCH_RADIUS = BUILDER.defineInRange("sniper_search_radius", 48.0, 8.0, 512.0);
 
         BUILDER.comment("Target search radius for rifles and magnums");
-        RIFLE_MAGNUM_SEARCH_RADIUS = BUILDER.defineInRange("rifle_magnum_search_radius", 64.0, 8.0, 256.0);
+        RIFLE_MAGNUM_SEARCH_RADIUS = BUILDER.defineInRange("rifle_magnum_search_radius", 32.0, 8.0, 256.0);
 
         BUILDER.comment("Target search radius for SMGs",
                 "(the config key still lists shotgun/pistol for backwards compatibility -",
                 " shotguns, flamethrowers and pistols now have their own entries)");
-        SMG_SHOTGUN_PISTOL_SEARCH_RADIUS = BUILDER.defineInRange("smg_shotgun_pistol_search_radius", 32.0, 8.0, 128.0);
+        SMG_SHOTGUN_PISTOL_SEARCH_RADIUS = BUILDER.defineInRange("smg_shotgun_pistol_search_radius", 20.0, 8.0, 128.0);
 
         BUILDER.comment("Target search radius for pistols / magnum-class handguns",
                 "Same rule as the other entries: this also caps the firing distance.");
