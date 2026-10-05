@@ -44,6 +44,8 @@ dependencies {
     // class signatures). Both are compile-time only - the runtime copies come from the host.
     compileOnly fileTree('libs') { include '*.jar' }
     compileOnly files(rootProject.file('libs/geckolib-neoforge-1.21.1-4.9.3.jar'))
+    // Curios: the maid's accessory slots are curio slots, and the ammo lookup reads them.
+    compileOnly files(rootProject.file('libs/curios-neoforge-9.5.1+1.21.1.jar'))
 }
 
 // Expand neoforge.mods.toml, exactly like the root build does for the host mod. The identity

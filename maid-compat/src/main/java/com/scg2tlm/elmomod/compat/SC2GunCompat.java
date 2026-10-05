@@ -71,6 +71,7 @@ import top.ribs.scguns.entity.ai.AIGunEvent;
 import top.ribs.scguns.entity.throwable.ThrowableGrenadeEntity;
 import top.ribs.scguns.item.BeaconGrenadeItem;
 import top.ribs.scguns.item.GasGrenadeItem;
+import top.theillusivec4.curios.api.CuriosApi;
 import top.ribs.scguns.item.GrenadeItem;
 import top.ribs.scguns.item.AmmoBoxItem;
 import top.ribs.scguns.item.ammo_boxes.CreativeAmmoBoxItem;
@@ -908,6 +909,9 @@ public final class SC2GunCompat {
             }
             if (found == 0) {
                 found = extractFromAmmoBoxes(maid, inv, ammoType, 1, ignoreCreative);
+            if (found == 0) {
+                found = extractFromMaidCurios(maid, ammoType, 1, ignoreCreative);
+            }
             }
             if (found > 0) {
                 LOGGER.info("reloadFromInventory(single): maxAmmo={}, found={}", maxAmmo, found);
@@ -935,6 +939,9 @@ public final class SC2GunCompat {
             }
             if (found < maxAmmo) {
                 found += extractFromAmmoBoxes(maid, inv, ammoType, maxAmmo - found, ignoreCreative);
+            if (found < maxAmmo) {
+                found += extractFromMaidCurios(maid, ammoType, maxAmmo - found, ignoreCreative);
+            }
             }
             if (found > 0) {
                 int newCount = Math.min(found, maxAmmo);
@@ -953,6 +960,18 @@ public final class SC2GunCompat {
             return found > 0;
         }
 
+    }
+
+    /**
+     * Ammo boxes worn in the maid's own accessory slots. extractFromAmmoBoxes only sees the handler it
+     * is given, and the caller passes her inventory, so a box in a curio slot was invisible to her.
+     */
+    private static int extractFromMaidCurios(EntityMaid maid, Item ammoType, int maxAmount,
+                                             boolean ignoreCreativeBox) {
+        return CuriosApi.getCuriosInventory(maid)
+            .map(handler -> extractFromAmmoBoxes(maid, handler.getEquippedCurios(), ammoType, maxAmount,
+                ignoreCreativeBox))
+            .orElse(0);
     }
 
     private static int extractFromAmmoBoxes(EntityMaid maid, IItemHandler inv, Item ammoType, int maxAmount,
