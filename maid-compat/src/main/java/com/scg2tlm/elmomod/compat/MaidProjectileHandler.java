@@ -91,6 +91,19 @@ public class MaidProjectileHandler {
                     }
                     for (ItemStack canister : canisters) {
                         if (canister.isEmpty()) continue;
+                        // scguns' own air canisters (AirCanisterItem) keep their air as Forge energy, not as
+                        // Create backtank air - AirSourceHelper.consumeAir has a separate AIR_CANISTER branch
+                        // for exactly that. Testing only BacktankUtil.getAir read 0 on those items and threw
+                        // every shot away, which is why air guns dealt no damage.
+                        net.neoforged.neoforge.energy.IEnergyStorage energy =
+                            canister.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.ITEM);
+                        if (energy != null && energy.getEnergyStored() >= (int) cost) {
+                            if (energy.extractEnergy((int) cost, false) >= (int) cost) {
+                                paid = true;
+                                break;
+                            }
+                            continue;
+                        }
                         if (BacktankUtil.getAir(canister) >= (int) cost) {
                             BacktankUtil.consumeAir(maid, canister, (int) cost);
                             paid = true;
