@@ -60,7 +60,16 @@ public class MaidProjectileHandler {
         // Air is charged here rather than before the shot because this is the one place both fire
         // paths pass. The task checks maidAir first, so a maid without air never fires at all.
         if (!SC2GunCompat.maidAir(maid, projectile.getWeapon(), true)) {
-            projectile.discard();
+            // Cancel the join instead of discarding: discard() has no effect while the entity is still
+            // being added, so the projectile entered the level anyway and the client drew a bullet that
+            // dealt no damage. Cancelling stops it from ever existing, whichever AI path fired it.
+            // Diagnostic: tells us which AI path fired and what it fired, so a report of "she still
+            // shoots" can be traced to a specific route instead of guessed at.
+            org.slf4j.LoggerFactory.getLogger("scg2_maid_compat").info(
+                "[scg2_maid_compat] airless shot blocked: projectile={} weapon={}",
+                projectile.getClass().getSimpleName(),
+                projectile.getWeapon().isEmpty() ? "empty" : projectile.getWeapon().getItem());
+            event.setCanceled(true);
             return;
         }
 
