@@ -1,12 +1,9 @@
 package top.ribs.scguns.item;
 
 import java.util.List;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
-import net.minecraft.util.Mth;
-import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.AxeItem;
@@ -26,23 +23,6 @@ public class WaraxeItem extends AxeItem {
       super(Tiers.IRON, properties.attributes(DiggerItem.createAttributes(Tiers.IRON, 7.0F, -3.2F)));
    }
 
-   public void applyHoldingPose(HumanoidModel<LivingEntity> model, float ageInTicks, LivingEntity entity, ItemStack stack, float delta) {
-      boolean leftHanded = entity.getMainArm() == HumanoidArm.LEFT;
-      float attackTime = 1.0F - model.attackTime;
-      attackTime *= attackTime;
-      attackTime *= attackTime;
-      attackTime = 1.0F - attackTime;
-      float swingRotation = -Mth.sin(attackTime * (float) Math.PI) / 1.25F;
-      float baseRightArmX = (float) (Math.PI / 3);
-      float baseRightArmY = (float) (Math.PI / 6);
-      float baseLeftArmX = 1.3762634F;
-      float baseLeftArmY = (float) (Math.PI / 12);
-      float swingOffset = swingRotation * 0.3490659F;
-      model.rightArm.xRot = leftHanded ? -baseLeftArmX - swingRotation : -baseRightArmX - swingRotation;
-      model.rightArm.yRot = leftHanded ? -baseLeftArmY - swingOffset : -baseRightArmY;
-      model.leftArm.xRot = leftHanded ? -baseRightArmX - swingRotation : -baseLeftArmX - swingRotation;
-      model.leftArm.yRot = leftHanded ? baseRightArmY : baseLeftArmY + swingOffset;
-   }
 
    public boolean hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {
       if (!attacker.level().isClientSide()) {

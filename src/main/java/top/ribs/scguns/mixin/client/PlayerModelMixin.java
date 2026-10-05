@@ -1,7 +1,6 @@
 package top.ribs.scguns.mixin.client;
 
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.world.InteractionHand;
@@ -15,7 +14,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import top.ribs.scguns.client.handler.AimingHandler;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.item.GunItem;
-import top.ribs.scguns.item.WaraxeItem;
 
 @Mixin({PlayerModel.class})
 public class PlayerModelMixin<T extends LivingEntity> {
@@ -31,15 +29,10 @@ public class PlayerModelMixin<T extends LivingEntity> {
       if (entity instanceof Player player) {
          PlayerModel model = (PlayerModel)(Object)this;
          ItemStack heldItem = player.getMainHandItem();
-         if (heldItem.getItem() instanceof WaraxeItem waraxe) {
-            // 0.5.5 read Minecraft#getDeltaFrameTime() (ticks elapsed this frame);
-            // the 1.21 equivalent is DeltaTracker#getGameTimeDeltaTicks().
-            float delta = Minecraft.getInstance().getTimer().getGameTimeDeltaTicks();
-            HumanoidModel<LivingEntity> humanoidModel = (HumanoidModel<LivingEntity>)model;
-            waraxe.applyHoldingPose(humanoidModel, animationBob, player, heldItem, delta);
-            copyModelAngles(model.rightArm, model.rightSleeve);
-            copyModelAngles(model.leftArm, model.leftSleeve);
-         } else if (heldItem.getItem() instanceof GunItem gunItem) {
+         // The war axe used to get its own holding pose here. It fought with Better Combat, which animates
+         // that weapon itself, so the pose is gone and the axe now falls through to the vanilla pose. Its
+         // ground slam, particles and sounds are untouched (PORTING_STATUS section 82.72).
+         if (heldItem.getItem() instanceof GunItem gunItem) {
             // 0.5.5 bailed out here whenever the LOCAL player was standing still
             // -- setupAnim's second argument is limbSwing, and
             // LivingEntityRenderer passes walkAnimation.position() into it, so
