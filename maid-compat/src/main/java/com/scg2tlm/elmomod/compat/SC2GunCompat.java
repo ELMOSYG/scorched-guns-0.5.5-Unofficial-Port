@@ -807,7 +807,13 @@ public final class SC2GunCompat {
             IEnergyStorage energy = canister.getItem() instanceof top.ribs.scguns.item.AirCanisterItem
                 ? canister.getCapability(Capabilities.EnergyStorage.ITEM) : null;
             if (energy != null && energy.getEnergyStored() >= (int) cost) {
-                if (!consume) return true;
+                if (!consume) {
+                    // Simulate, exactly as the real call will run. extractEnergy can hand back less than
+                    // asked for, so a plain "is there enough stored" check said yes while the real
+                    // extraction failed - the gate let the shot through and the handler then dropped it,
+                    // which is why a bullet appeared but dealt no damage.
+                    return energy.extractEnergy((int) cost, true) >= (int) cost;
+                }
                 if (energy.extractEnergy((int) cost, false) >= (int) cost) return true;
                 continue;
             }
