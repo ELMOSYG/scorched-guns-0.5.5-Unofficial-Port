@@ -1927,3 +1927,23 @@ if (speed <= 0.0) {
 **设计结论（写入文档，避免重犯）** ✓：**施加用 `progress != 0`**（唯一在瞄具下可靠的信号 ✓）；**还原依赖 progress 归零**（现已由 §82.67 的步进下限保证 ✓）。不要再把 `AIMING` / `isAiming()` 用于施加判定 ✗ —— 它们在瞄具下恒为 false ✓。
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451875 字节 ✓）；探针保留（每秒一条、含 `scope=` 字段 ✓）。
+
+## §82.68 瞄准灵敏度：**整体回退**（玩家决定放弃该功能）
+
+**玩家决定** ✓："修复这类问题难度有点高，因为从来没有生效过，我提议退回至没有修改灵敏度成类似 tweakeroo 模式的版本" ✓ ⇒ 整块回退 ✓。
+
+**回退内容** ✓（已确认源码与 jar 中均无残留 ✓）：
+- 删除 `client/handler/AimingSensitivityHandler.java` ✓（含选项改写机制、瞄具固定值表、临时探针 ✓）；
+- 移除 `ClientHandler` 中的每 tick 注册 ✓（1 处 ✓，`grep` 无残留引用 ✓）；
+- 移除本功能附带加进 `AimTracker.handleAiming` 的 **ADS 步进下限** ✓（2 处 ✓）—— 它只为让 progress 回落而加，改动了上游行为，故一并回退 ✓；
+- 打包结果：jar 内**不再含**该 handler 类 ✓，`ClientHandler.class` 无引用 ✓。
+
+**回退后的行为** ✓：**完全不再修改鼠标灵敏度** ✓（0.5.5 是有这个功能的 ✗ ⇒ 这是一处**与上游的有意差异** ✓，应记入更新日志 ✓）；由于模组**完全不写灵敏度选项** ✓，"关镜后灵敏度不复原"这类问题**从机制上不可能再发生** ✓。
+
+**留给后续的实现结论（避免重走弯路）** ✓：
+1. 唯一**确实改变了灵敏度**的路径是 **Tweakeroo 式选项改写** ✓（`Minecraft.options.sensitivity()` ✓，而 `turnPlayer` 正是读它 ✓）；`turnPlayer` 局部变量 ordinal ✗、`LocalPlayer.turn` 参数 ✗、`CalculatePlayerTurnEvent` ✗ 三种注入均未能可靠生效 ✓；
+2. **施加判据只能用 `progress != 0`** ✓（FOV 缩放路径同一判据 ✓；`AIMING` 与 `AimingHandler.isAiming()` **在装瞄具时恒为 false** ✓）；**还原不能依赖该标志位** ✓ —— 正确做法必须先保证 progress 能回落 ✓；
+3. 曾发现一个**上游隐性缺陷**（本次已随回退移除 ✓）：`AimTracker.handleAiming` 的步进量取自已持物品 ADS 速度，**为 0 时动画会冻结在半途** ✓（原版因瞄具覆盖层是二值显示而不显眼 ✓）。若日后需要，可单独修 ✓；
+4. 另有一条工具教训 ✓：`scguns.mixins.json` 曾被 PowerShell `Set-Content -Encoding utf8` 写入 **BOM** ✗，可能导致混入配置解析失败 ✓ ⇒ 该文件此后均以**无 BOM** 方式读写 ✓。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19448296 字节 ✓）。

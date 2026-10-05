@@ -323,11 +323,6 @@ public class ClientHandler {
       // Punchy animates whatever is held and only knows the gun mods it ships support for, so its
       // blacklist gets this mod's guns added here (client side, once per launch).
       top.ribs.scguns.compat.PunchyBlacklistCompat.onClientSetup();
-      // Aiming sensitivity is applied by writing the vanilla sensitivity option, the way Tweakeroo
-      // does for its zoom; a tick is needed to put the original value back when aiming stops.
-      net.neoforged.neoforge.common.NeoForge.EVENT_BUS.addListener(
-         (net.neoforged.neoforge.client.event.ClientTickEvent.Post ignored) ->
-            top.ribs.scguns.client.handler.AimingSensitivityHandler.onClientTick());
       event.enqueueWork(
          () -> Minecraft.getInstance()
                .getTextureManager()
