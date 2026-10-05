@@ -321,7 +321,11 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentContaine
                false
             );
             currentY += (float)lineHeight;
-            int modifiedRate = GunCompositeStatHelper.getCompositeRate(gunStack, modifiedGun);
+            // Same call the firing path uses (ShootTracker), so the panel and the real interval agree.
+            // modifiedGun already has the attachments merged in, so running the attachment modifiers over
+            // it again counted the bump stock twice: a 400 RPM gun (interval 3) went 3 -> 2 -> 1 and the
+            // panel printed 1200 RPM while the gun really fired at 600.
+            int modifiedRate = top.ribs.scguns.util.GunEnchantmentHelper.getRate(gunStack, modifiedGun);
             float rpm = 20.0F / (float)modifiedRate * 60.0F;
             pGuiGraphics.drawString(
                this.font,
