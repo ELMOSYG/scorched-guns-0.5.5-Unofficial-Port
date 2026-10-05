@@ -1818,3 +1818,29 @@ double progress = handler.isAiming() ? handler.getNormalisedAdsProgress() : 0.0;
 依据：实测日志里**不瞄准时 `progress` 长期为 1.0** ✗ ⇒ 配置系数 0.75 被**永久**乘在灵敏度上 ✗，瞄准时只剩瞄具系数（×0.71）⇒ 差异很小、感觉"没生效" ✗。改后：**不瞄准 = 1.0（完全不缩放）** ✓，瞄准 = `0.75 × fovModifier^0.25`（4 倍镜约 **0.53**，即慢约 47%）✓。
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451061 字节 ✓）。
+
+## §82.63 瞄准灵敏度：改用 Tweakeroo 的做法（**直接写原版灵敏度选项**，全程不用 mixin）
+
+**玩家线索** ✓：`tweakerge-0.4.3+mc1.21.1.jar` 有同类功能且可用 ✓（它实为 Tweakeroo 分支 `fi.dy.masa.tweakeroo` ✓）。反汇编其 `MiscUtils` 得到其做法 ✓：
+```java
+private static double mouseSensitivity;            // 记住玩家原始灵敏度
+public static void setMouseSensitivityForZoom();   // 缩放时写入
+public static void resetMouseSensitivityForZoom(); // 结束时还原
+```
+⇒ **它根本不注入任何东西，只是改写 `Minecraft.options.sensitivity()` 这个 `OptionInstance`** ✓ —— 而这正是 `MouseHandler.turnPlayer` 读取的值（§82.55 已从字节码确认：`ClientHooks.getTurnPlayerValues(options.sensitivity().get(), options.smoothCamera)` ✓）。**没有 ordinal、没有调用点、没有事件可被第三方覆盖** ⇒ 这就是它稳定的原因 ✓✓。
+
+**本次实现** ✓（`AimingSensitivityHandler` 重写为选项改写 + 每 tick 驱动 ✓）：
+- 每客户端 tick 计算倍率 ✓；`multiplier == 1.0`（未瞄准）⇒ **还原原始值** ✓；否则写入 `clamp(saved × multiplier, 0, 1)` ✓；
+- **永远以"记住的原始值"相乘** ✓（绝不基于当前值 ⇒ 不会逐 tick 叠加 ✓）；
+- 玩家为空（断线/退出世界）时自动还原 ✓；
+- 注册方式：`ClientHandler.onClientSetup` 里加 `ClientTickEvent.Post` 监听 ✓（改用 `ignored ->` 形参 ✗ 见下）；
+- `EntityTurnSensitivityMixin` **已删除** ✓（源码 + 配置条目 ✓，避免与选项改写重复叠加 ✓）。
+
+**⚠️ 过程中发现并修掉我自己的两个问题** ✗：
+1. **`scguns.mixins.json` 被写入了 UTF-8 BOM** ✗（我之前用 PowerShell `Set-Content -Encoding utf8` 所致 ✓）—— 这**很可能就是上一版"改了却不生效"的原因** ✓（配置文件带 BOM 可能让 mixin 配置解析失败 ⇒ 整个配置不加载 ✓）；现改为无 BOM 写入并已验证 `jar BOM: False` ✓；
+2. 删除 mixin 类后**配置里仍列着它** ✗ ⇒ `required: true` 下**启动即崩** ✗，而当时 `install_jar` 把这份坏 jar 装了回去 ✓ ⇒ **已修** ✓（现验证：`stale entries: []` ✓、所列类均有源文件 ✓、jar 内无该类 ✓）。
+3. lambda 形参 `event` 与外层方法参数同名 ⇒ 编译失败 ✓（Java 不允许 ✗），改为 `ignored` ✓。
+
+**强度说明** ✓：改的是**原始灵敏度选项** ⇒ 经 `v = s×0.6+0.2`、`v³×8` 后效果比 0.5.5 的"线性乘最终倍率"**更强** ✓（例如 4 倍镜：选项 0.5→0.265，转向量约降到 0.37 倍 ✓）。若手感过强，调低配置项 `aimDownSightSensitivity` 即可 ✓（当前 0.75 ✓）。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450685 字节 ✓）。
