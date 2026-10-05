@@ -187,6 +187,11 @@ public class TaskSC2GunAttack implements IRangedAttackTask {
 
     @Override
     public void performRangedAttack(EntityMaid shooter, LivingEntity target, float distanceFactor) {
+        // No air, no shot. Charging happens in MaidProjectileHandler; here we only ask, so the
+        // projectile is never spawned and the client cannot draw a bullet that deals no damage.
+        if (!SC2GunCompat.maidAir(shooter, shooter.getMainHandItem(), false)) {
+            return;
+        }
     }
 
     @Override

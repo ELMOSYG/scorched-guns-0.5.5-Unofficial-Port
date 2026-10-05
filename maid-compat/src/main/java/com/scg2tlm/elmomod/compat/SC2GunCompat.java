@@ -2,6 +2,10 @@ package com.scg2tlm.elmomod.compat;
 
 
 
+import top.ribs.scguns.interfaces.IAirGun;
+import top.ribs.scguns.ScorchedGuns;
+import net.minecraft.world.entity.EquipmentSlot;
+import com.simibubi.create.content.equipment.armor.BacktankUtil;
 import top.ribs.scguns.util.NbtHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
 import com.scg2tlm.elmomod.SCG2TLMConfig;
@@ -765,6 +769,51 @@ public final class SC2GunCompat {
         }
         int maxAmmo = getMaxAmmo(stack);
         NbtHelper.getOrCreateTag(stack).putInt("AmmoCount", maxAmmo);
+    }
+
+    /**
+     * Air for one shot from a maid, mirroring AirSourceHelper.consumeAir (which takes a Player, and
+     * GunFireEvent extends PlayerEvent, so neither can serve her).
+     *
+     * <p>Scguns' own canisters keep their air as Forge energy; Create backtanks keep it in Create's own
+     * data. Testing only one of the two made every shot from the other kind look airless.</p>
+     *
+     * @param consume true to actually take the air, false to only ask whether it is there
+     */
+    public static boolean maidAir(EntityMaid maid, ItemStack gun, boolean consume) {
+        if (SCG2TLMConfig.RELOAD_FREE_AMMO.get() || !ScorchedGuns.createLoaded) return true;
+        if (gun == null || !(gun.getItem() instanceof IAirGun) || !(gun.getItem() instanceof GunItem gunItem)) {
+            return true;
+        }
+        Gun airGun = gunItem.getModifiedGun(gun);
+        float cost = airGun != null && airGun.getProjectile() != null
+            ? (float) airGun.getProjectile().getEnergyUse() : 0.0F;
+        if (cost <= 0.0F) return true;
+
+        java.util.List<ItemStack> candidates = new java.util.ArrayList<>();
+        for (EquipmentSlot slot : EquipmentSlot.values()) candidates.add(maid.getItemBySlot(slot));
+        IItemHandler maidInv = maid.getAvailableInv(true);
+        for (int i = 0; i < maidInv.getSlots(); i++) candidates.add(maidInv.getStackInSlot(i));
+        CuriosApi.getCuriosInventory(maid).ifPresent(handler -> {
+            IItemHandler curios = handler.getEquippedCurios();
+            for (int i = 0; i < curios.getSlots(); i++) candidates.add(curios.getStackInSlot(i));
+        });
+
+        for (ItemStack canister : candidates) {
+            if (canister.isEmpty()) continue;
+            IEnergyStorage energy = canister.getCapability(Capabilities.EnergyStorage.ITEM);
+            if (energy != null && energy.getEnergyStored() >= (int) cost) {
+                if (!consume) return true;
+                if (energy.extractEnergy((int) cost, false) >= (int) cost) return true;
+                continue;
+            }
+            if (BacktankUtil.getAir(canister) >= (int) cost) {
+                if (!consume) return true;
+                BacktankUtil.consumeAir(maid, canister, (int) cost);
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean hasAmmoInInventory(EntityMaid maid, ItemStack gun) {

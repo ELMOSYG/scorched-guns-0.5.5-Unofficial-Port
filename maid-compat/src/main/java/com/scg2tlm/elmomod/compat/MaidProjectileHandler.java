@@ -57,66 +57,11 @@ public class MaidProjectileHandler {
 
         if (!(event.getEntity() instanceof ProjectileEntity projectile)) return;
         if (!(projectile.getOwner() instanceof EntityMaid maid)) return;
-        // Air-powered guns: SC2 charges the canister in GunEventBus, but its helper and its
-        // GunFireEvent are both Player-only, so a maid fired them for free. Charge her here, the one
-        // place both fire paths (our task and SC2's native gunner AI) pass through.
-        if (!SCG2TLMConfig.RELOAD_FREE_AMMO.get() && ScorchedGuns.createLoaded) {
-            ItemStack airWeapon = projectile.getWeapon();
-            if (airWeapon != null && airWeapon.getItem() instanceof IAirGun
-                    && airWeapon.getItem() instanceof GunItem airGunItem) {
-                Gun airGun = airGunItem.getModifiedGun(airWeapon);
-                float cost = airGun != null && airGun.getProjectile() != null
-                    ? (float) airGun.getProjectile().getEnergyUse() : 0.0F;
-                if (cost > 0.0F) {
-                    boolean paid = false;
-                    // Create's getAllWithAir is its own player-oriented lookup and finds nothing on a maid,
-                    // which made every shot look airless. Scan her slots instead: getAir(stack) needs no
-                    // entity, so the same test works for her armour (the chest slot is where Create's own
-                    // backtank lives), her inventory and her accessory slots.
-                    java.util.List<ItemStack> canisters = new java.util.ArrayList<>();
-                    for (net.minecraft.world.entity.EquipmentSlot slot
-                            : net.minecraft.world.entity.EquipmentSlot.values()) {
-                        canisters.add(maid.getItemBySlot(slot));
-                    }
-                    net.neoforged.neoforge.items.IItemHandler maidInv = maid.getAvailableInv(true);
-                    for (int i = 0; i < maidInv.getSlots(); i++) {
-                        canisters.add(maidInv.getStackInSlot(i));
-                    }
-                    var maidCurios = top.theillusivec4.curios.api.CuriosApi.getCuriosInventory(maid);
-                    if (maidCurios.isPresent()) {
-                        var curioHandler = maidCurios.get().getEquippedCurios();
-                        for (int i = 0; i < curioHandler.getSlots(); i++) {
-                            canisters.add(curioHandler.getStackInSlot(i));
-                        }
-                    }
-                    for (ItemStack canister : canisters) {
-                        if (canister.isEmpty()) continue;
-                        // scguns' own air canisters (AirCanisterItem) keep their air as Forge energy, not as
-                        // Create backtank air - AirSourceHelper.consumeAir has a separate AIR_CANISTER branch
-                        // for exactly that. Testing only BacktankUtil.getAir read 0 on those items and threw
-                        // every shot away, which is why air guns dealt no damage.
-                        net.neoforged.neoforge.energy.IEnergyStorage energy =
-                            canister.getCapability(net.neoforged.neoforge.capabilities.Capabilities.EnergyStorage.ITEM);
-                        if (energy != null && energy.getEnergyStored() >= (int) cost) {
-                            if (energy.extractEnergy((int) cost, false) >= (int) cost) {
-                                paid = true;
-                                break;
-                            }
-                            continue;
-                        }
-                        if (BacktankUtil.getAir(canister) >= (int) cost) {
-                            BacktankUtil.consumeAir(maid, canister, (int) cost);
-                            paid = true;
-                            break;
-                        }
-                    }
-                    if (!paid) {
-                        // Same outcome as the player path, where a shot without air is cancelled.
-                        projectile.discard();
-                        return;
-                    }
-                }
-            }
+        // Air is charged here rather than before the shot because this is the one place both fire
+        // paths pass. The task checks maidAir first, so a maid without air never fires at all.
+        if (!SC2GunCompat.maidAir(maid, projectile.getWeapon(), true)) {
+            projectile.discard();
+            return;
         }
 
         if (!projectile.getPersistentData().contains("AIDamageScale")) return;
