@@ -1865,3 +1865,22 @@ if (progress == 0.0) return 1.0;          // 与 FOV 路径同一个测试
 **保留一次性探针** ✓（每秒一条，仅在手持枪械时 ✓）：`SCGUNS-ADS multiplier=… isAiming=… progress=… zoom=… fov=… option=… saved=…` ⇒ 若数值仍不对，该行可直接判定是哪一项出问题 ✓（例如确认配件下 `isAiming=false` 而 `zoom=present` ✓）；确认后删除 ✓。
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451257 字节 ✓）。
+
+## §82.65 瞄准灵敏度：作用生效后**松开不还原**的修复（还原判据独立于 ADS 动画值）
+
+**玩家实测** ✓：§82.64 后作用**已生效** ✓，但发现新 bug —— **瞄准结束后灵敏度没有改回去** ✗。
+
+**根因** ✓：还原的触发条件是 `multiplier == 1.0`，即 `progress == 0.0` ✗，而 **`progress` 松开后并不保证归零** ✗：`AimTracker` 的衰减量取自已持物品的 ADS 速度（`GunEnchantmentHelper.getAimDownSightSpeed` / `GunModifierHelper.getModifiedAimDownSightSpeed`），该值可为 0 ⇒ 衰减停滞、`currentAim` 卡在 5.0 ✓ ⇒ progress 长期为 1.0 ✓ —— 这也正是之前日志里"`aiming=false progress=1.0` 持续数秒"的原因 ✓（当时被误判为动画采样），于是倍率一直被乘着 ⇒ 永不还原 ✗。
+
+**修法** ✓：还原判据改为**动画自身使用的瞄准条件** ✓（照抄 `AimTracker.handleAiming` 的判据 ✓），与 progress 是否卡住无关 ✓：
+```java
+private static boolean aimingDownSights(Minecraft mc) {
+   return (Boolean)ModSyncedDataKeys.AIMING.getValue(mc.player) || AimingHandler.get().isAiming();
+}
+```
+⇒ `onClientTick` 里：`aimingDownSights(mc) ? aimingSensitivityMultiplier() : 1.0` ✓ ⇒ **松开瞄准 ⇒ 立即还原原始灵敏度** ✓。该条件同时覆盖两种输入模式 ✓：切换式瞄准（`AIMING` 同步键 ✓）与手柄/本地瞄准（`isAiming()` ✓），并且**配件场景下 `AIMING` 为真** ✓（否则 FOV 放大与动画都不会动 ✓）⇒ 既修了不还原、也不再受 §82.64 那个 flag 陷阱影响 ✓。
+`scopeSensitivityFactor()` 内那个 `progress != 0.0` 的附加判据也随之删除 ✓（调用点已保证正在瞄准 ✓）。
+
+**探针**（仍保留，每秒一条、仅手持枪械时 ✓）新增两个字段：`ads=`（本次判定 ✓）与 `aiming=`（同步键原始值 ✓），便于日后定位 ✓：`SCGUNS-ADS multiplier=… ads=… aiming=… isAiming=… progress=… zoom=… fov=… option=… saved=…`
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451337 字节 ✓）。
