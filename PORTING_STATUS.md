@@ -1844,3 +1844,24 @@ public static void resetMouseSensitivityForZoom(); // 结束时还原
 **强度说明** ✓：改的是**原始灵敏度选项** ⇒ 经 `v = s×0.6+0.2`、`v³×8` 后效果比 0.5.5 的"线性乘最终倍率"**更强** ✓（例如 4 倍镜：选项 0.5→0.265，转向量约降到 0.37 倍 ✓）。若手感过强，调低配置项 `aimDownSightSensitivity` 即可 ✓（当前 0.75 ✓）。
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450685 字节 ✓）。
+
+## §82.64 瞄准灵敏度（配件无效）：根因是**我自己加的 `isAiming()` 门**，改用 FOV 路径的判据
+
+**玩家实测** ✓：改用选项改写后**机瞄生效** ✓，但**装瞄具配件时倍率恒为 1.0** ✗ —— 这条信息直接定位了根因 ✓。
+
+**根因** ✓：`AimingHandler.isAiming()` 在**通过瞄具瞄准时返回 false** ✗（机瞄时为 true ✓）。而 §82.62 我为了修"平时也被压"给它加了门：
+```java
+double progress = handler.isAiming() ? handler.getNormalisedAdsProgress() : 0.0;
+```
+⇒ 配件场景下 progress 被强制为 0 ✓ ⇒ 倍率 = 1.0 ✓✓，与"机瞄生效、配件 1.0"的现象**完全吻合** ✓。同一个 flag 还出现在 `scopeSensitivityFactor()` 里 ⇒ 两项**同时**变成 1.0 ✓。
+
+**为何这个 flag 不可靠** ✓：**真正管用的 FOV 缩放路径根本不用它** ✓ —— `AimingHandler.onFovUpdate` 的判据是 `getNormalisedAdsProgress() != 0.0` ✓（玩家也确认过 FOV 放大一直正常 ✓）。⇒ 本轮改为**两处都使用与 FOV 路径相同的判据** ✓：
+```java
+double progress = AimingHandler.get().getNormalisedAdsProgress();
+if (progress == 0.0) return 1.0;          // 与 FOV 路径同一个测试
+```
+`scopeSensitivityFactor()` 内的 `isAiming()` 也一并换成 `progress != 0.0` ✓。
+
+**保留一次性探针** ✓（每秒一条，仅在手持枪械时 ✓）：`SCGUNS-ADS multiplier=… isAiming=… progress=… zoom=… fov=… option=… saved=…` ⇒ 若数值仍不对，该行可直接判定是哪一项出问题 ✓（例如确认配件下 `isAiming=false` 而 `zoom=present` ✓）；确认后删除 ✓。
+
+**门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19451257 字节 ✓）。

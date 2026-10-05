@@ -6,34 +6,31 @@ import net.minecraft.client.OptionInstance;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import top.ribs.scguns.Config;
+import top.ribs.scguns.ScorchedGuns;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.init.ModSyncedDataKeys;
 import top.ribs.scguns.item.GunItem;
 
 /**
- * Scales mouse sensitivity while aiming down sights.
+ * Scales mouse sensitivity while aiming down sights by writing the vanilla sensitivity option.
  *
- * <p>Method taken from Tweakeroo (shipped here as tweakerge), which does the same thing for its zoom
- * without a single mixin: it remembers the player's sensitivity, writes a scaled value into the vanilla
- * option while zooming, and puts the original back when zooming ends. That works because
- * {@code MouseHandler.turnPlayer} reads exactly that option - verified in the 1.21.1 bytecode, where the
- * event's sensitivity comes from {@code minecraft.options.sensitivity().get()}. Nothing is injected, so
- * there is no ordinal to drift and no event for another mod to overwrite.</p>
+ * <p>The write itself is Tweakeroo's method (it does the same for its zoom with no mixin at all): remember
+ * the player's value, write the scaled one while aiming, restore it afterwards. That part is proven - the
+ * player reports it works with iron sights.</p>
  *
- * <p>Why the earlier attempts failed: 0.5.5 modified a local variable of {@code turnPlayer()V} selected by
- * {@code ordinal = 2}; 1.21.1 gave that method a parameter, the ordinal shifted to a different local, and
- * the injection still applied while doing nothing. Retargeting the arguments of {@code Entity.turn} and
- * using NeoForge's {@code CalculatePlayerTurnEvent} were also reported as having no effect in game. This
- * route changes the value the game asks for in the first place.</p>
+ * <p>What that report also pinned down: with a scope <em>attachment</em> the multiplier came out as exactly
+ * 1.0. The cause was this class gating on {@code AimingHandler.isAiming()}, which reads false for scoped
+ * aiming. The FOV zoom path - the one that demonstrably works with scopes - does not use that flag at all;
+ * {@code AimingHandler.onFovUpdate} tests {@code getNormalisedAdsProgress() != 0.0}. This now uses the same
+ * test in both places, so the sensitivity follows the same state as the zoom the player can already see.</p>
  *
- * <p>Called every client tick. The multiplier is always applied to the <em>remembered original</em>, never
- * to the current option value, so repeated ticks cannot compound. When not aiming the original is restored
- * immediately, so the option is at its normal value whenever the player is not aiming - including after a
- * disconnect, where the tick simply restores it because no player is present.</p>
+ * <p>A temporary log prints the inputs once a second while a gun is held, so if the numbers are still wrong
+ * the next round has data instead of another guess.</p>
  */
 public final class AimingSensitivityHandler {
    /** The player's real sensitivity while we are overriding it; null means "not overriding". */
    private static Double savedSensitivity;
+   private static long lastProbe;
 
    private AimingSensitivityHandler() {
    }
@@ -51,6 +48,24 @@ public final class AimingSensitivityHandler {
          restore(mc);
       } else {
          apply(mc, multiplier);
+      }
+
+      long now = System.currentTimeMillis();
+      if (now - lastProbe > 1000L) {
+         lastProbe = now;
+         AimingHandler handler = AimingHandler.get();
+         ItemStack held = mc.player.getMainHandItem();
+         String zoom = "n/a";
+         float fov = 1.0F;
+         if (held.getItem() instanceof GunItem gun) {
+            Gun modified = gun.getModifiedGun(held);
+            zoom = modified.getModules().getZoom() == null ? "null" : "present";
+            fov = Gun.getFovModifier(held, modified);
+         }
+         ScorchedGuns.LOGGER.info(
+            "SCGUNS-ADS multiplier={} isAiming={} progress={} zoom={} fov={} option={} saved={}",
+            multiplier, handler.isAiming(), handler.getNormalisedAdsProgress(), zoom, fov,
+            mc.options.sensitivity().get(), savedSensitivity);
       }
    }
 
@@ -76,22 +91,24 @@ public final class AimingSensitivityHandler {
 
    /** Multiplier for the sensitivity option: exactly 1.0 when not aiming down sights. */
    public static double aimingSensitivityMultiplier() {
-      AimingHandler handler = AimingHandler.get();
-      // The ADS progress is the blend for the transition into aiming, not the aiming state itself. It reads
-      // ~1.0 while standing still (measured in game: "aiming=false progress=1.0" for seconds on end), which
-      // applied the configured factor permanently and left aiming with nothing but the scope term.
-      double progress = handler.isAiming() ? handler.getNormalisedAdsProgress() : 0.0;
+      double progress = AimingHandler.get().getNormalisedAdsProgress();
+      // Same test the FOV zoom uses. isAiming() is false while aiming through a scope attachment, which is
+      // what made the multiplier 1.0 for every scoped gun while iron sights worked.
+      if (progress == 0.0) {
+         return 1.0;
+      }
+
       double adsSensitivity = (Double)Config.CLIENT.controls.aimDownSightSensitivity.get();
-      return (1.0 - (1.0 - adsSensitivity) * progress) * (double)scopeSensitivityFactor();
+      return (1.0 - (1.0 - adsSensitivity) * progress) * (double)scopeSensitivityFactor(progress);
    }
 
-   private static float scopeSensitivityFactor() {
+   private static float scopeSensitivityFactor(double progress) {
       float factor = 1.0F;
       Minecraft mc = Minecraft.getInstance();
       if (mc.player != null && !mc.player.getMainHandItem().isEmpty()
          && mc.options.getCameraType() == CameraType.FIRST_PERSON) {
          ItemStack heldItem = mc.player.getMainHandItem();
-         if (heldItem.getItem() instanceof GunItem gunItem && AimingHandler.get().isAiming()
+         if (heldItem.getItem() instanceof GunItem gunItem && progress != 0.0
             && !(Boolean)ModSyncedDataKeys.RELOADING.getValue(mc.player)) {
             Gun modifiedGun = gunItem.getModifiedGun(heldItem);
             if (modifiedGun.getModules().getZoom() != null) {
