@@ -2382,19 +2382,19 @@ public class ModItems {
       "vertical_grip", () -> new UnderBarrelItem(UnderBarrel.create(GunModifiers.REDUCED_RECOIL), new Properties().stacksTo(1).durability(1600))
    );
    public static final DeferredHolder<Item, Item> IRON_BAYONET = REGISTER.register(
-      "iron_bayonet", () -> new BayonetItem(UnderBarrel.create(GunModifiers.IRON_BAYONET_DAMAGE), new Properties().stacksTo(1).durability(256), 1.5F, -3.0F)
+      "iron_bayonet", () -> new BayonetItem(UnderBarrel.create(GunModifiers.IRON_BAYONET_DAMAGE), new Properties().stacksTo(1).durability(256), 2.5F, -1.6F)
    );
    public static final DeferredHolder<Item, Item> ANTHRALITE_BAYONET = REGISTER.register(
       "anthralite_bayonet",
-      () -> new BayonetItem(UnderBarrel.create(GunModifiers.ANTHRALITE_BAYONET_DAMAGE), new Properties().stacksTo(1).durability(512), 2.0F, -3.0F)
+      () -> new BayonetItem(UnderBarrel.create(GunModifiers.ANTHRALITE_BAYONET_DAMAGE), new Properties().stacksTo(1).durability(512), 3.0F, -1.6F)
    );
    public static final DeferredHolder<Item, Item> DIAMOND_BAYONET = REGISTER.register(
       "diamond_bayonet",
-      () -> new BayonetItem(UnderBarrel.create(GunModifiers.DIAMOND_BAYONET_DAMAGE), new Properties().stacksTo(1).durability(1024), 3.0F, -3.0F)
+      () -> new BayonetItem(UnderBarrel.create(GunModifiers.DIAMOND_BAYONET_DAMAGE), new Properties().stacksTo(1).durability(1024), 3.5F, -1.6F)
    );
    public static final DeferredHolder<Item, Item> NETHERITE_BAYONET = REGISTER.register(
       "netherite_bayonet",
-      () -> new BayonetItem(UnderBarrel.create(GunModifiers.NETHERITE_BAYONET_DAMAGE), new Properties().stacksTo(1).durability(1550), 4.0F, -3.0F)
+      () -> new BayonetItem(UnderBarrel.create(GunModifiers.NETHERITE_BAYONET_DAMAGE), new Properties().stacksTo(1).durability(1550), 4.0F, -1.6F)
    );
    public static final DeferredHolder<Item, Item> EXTENDED_MAG = REGISTER.register(
       "extended_mag", () -> new MagazineItem(Magazine.create(GunModifiers.EXTENDED_MAG_MODIFIER), new Properties().stacksTo(1).durability(1700))
