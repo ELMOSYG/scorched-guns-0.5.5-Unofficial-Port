@@ -945,10 +945,16 @@ public class Config {
       public final BooleanValue enableCameraRecoil;
       public final IntValue cooldownThreshold;
       public final Config.Server.Experimental experimental;
+      public final BooleanValue bloodFromAnyDamage;
 
       public Server(Builder builder) {
          super();
          builder.push("server");
+         this.bloodFromAnyDamage = builder.comment(
+            "Blood particles from damage that did not come from a Scorched Guns projectile: melee, bows,",
+            "and a player's pets. Only hits of at least 0.5 damage, and only players within 32 blocks, are",
+            "told about it.")
+            .define("bloodFromAnyDamage", false);
          builder.comment("Stun Grenade related properties").push("grenade");
          this.alphaOverlay = builder.comment(
                "After the duration drops to this many ticks, the transparency of the overlay when blinded will gradually fade to 0 alpha."

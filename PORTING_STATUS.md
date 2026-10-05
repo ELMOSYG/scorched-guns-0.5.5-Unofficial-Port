@@ -1973,3 +1973,24 @@ event.setMouseSensitivity(Math.max(0.0, (scaled - 0.2) / 0.6));
 
 **门禁**：57 个审计 56 过 ✓（唯一失败仍是另一位 agent 未提交的 `audit_scguns_tags.py` ✓）；`verify_installed_jar` **289/289** ✓；`build` ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19450606 字节 ✓）。
 **待实测** ✓：机瞄（配置值）✓ / 长瞄镜 25% ✓ / 中瞄镜 50% ✓；松开瞄准应**立即恢复**（无状态可残留 ✓）。
+
+## §82.70 新增配置：**非子弹伤害也生成血液粒子**（`bloodFromAnyDamage`，默认关闭）
+
+**玩家需求** ✓：让血液粒子对"子弹伤害以外"的武器也生效，做成配置项、**默认关闭** ✓；范围最终确定为：**有玩家参与的伤害都生成**（含**玩家宠物** ✓）、**32 格外的玩家不发粒子** ✓、**伤害低于 0.5 不生成** ✓。
+
+**现状（改造前）** ✓：血液**只有模组自己的弹射物**会发 —— 十余个弹射物类各自在命中时 `sendToTrackingEntity(new S2CMessageBlood(...))` ✓（`ProjectileEntity:895`、`AdvancedRoundProjectileEntity:109`、`Beowulf/Gibbs/Krahg/Ramrod/Shatter/Shotball/OsborneSlug/SculkCell/BearPackShell/Lightning` 弹射物、`ThrowableNailBomb:204` ✓），外加 `LaceratedEffect:33`（撕裂效果 ✓）。客户端 `ClientPlayHandler.handleMessageBlood` 按**实体类型**决定颜色，并受既有 `Config.CLIENT.particle.enableBlood` 控制 ✓。
+
+**实现** ✓（新增 `event/BloodParticleHandler`，`@EventBusSubscriber(modid = "scguns")` ⇒ 通用侧 game bus，无需手工注册 ✓）：',
+- 监听 `LivingDamageEvent.Post` ✓；
+- 门槛：配置开启 ✓ + 非客户端 ✓ + `getNewDamage() >= 0.5F` ✓；
+- **玩家参与**：`event.getSource().getEntity()` 是 `Player` ✓，**或是 `OwnableEntity` 且其 owner 是 `Player`** ✓（用 `OwnableEntity` 覆盖全部可驯服生物 ✓ —— 即玩家宠物 ✓）；环境伤害（摔落/火焰等）该值为 null ⇒ **自动排除** ✓；
+- **跳过模组自家弹射物** ✓（它们命中时已发过包，否则同一次命中会喷两次 ✓）；
+- **距离限制** ✓：不再用 `sendToTrackingEntity`，而是遍历 `ServerLevel.players()` 只对 `distanceToSqr <= 32²` 的玩家 `sendToPlayer(...)` ✓；',
+- **颜色/粒子逻辑零改动** ✓ —— 包里只带实体类型，客户端自行判定 ✓。
+
+**配置** ✓：`Config.Server.bloodFromAnyDamage` ✓（`Builder.comment(...).define("bloodFromAnyDamage", false)` ✓，插入在 `builder.push("server")` 之后 ✓，位于 server 分组内 ✓）。
+
+**过程记录** ✗：两次替换失误已修 —— 用**原始字符串**做 `re.subn` 替换时 `\"` 会以字面反斜杠写入源码 ✗（编译报 illegal character ✓）；第一次按"数量吻合"整体替换因文件另有 2 处合法转义而**正确拒绝** ✓，最终**按行号定点修复** ✓。
+
+**门禁**：`build` ✓；`verify_installed_jar` **289/289** ✓；已安装 ✓（`scguns-0.5.5.3.jar` 19453073 字节 ✓）。
+**待实测** ✓：默认关闭时行为与以前完全一致 ✓；开启后玩家近战/弓箭/宠物撕咬应喷血 ✓，32 格外的玩家看不到 ✓，<0.5 的碎伤不喷 ✓，自家枪械命中不双倍 ✓。
