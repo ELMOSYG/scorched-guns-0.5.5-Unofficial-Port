@@ -1233,13 +1233,13 @@ public final class SC2GunCompat {
         String special = getSpecialRangeClass(stack);
         if ("sniper".equals(special)) return SCG2TLMConfig.SNIPER_SEARCH_RADIUS.get();
         if ("shotgun".equals(special)) return SCG2TLMConfig.SHOTGUN_SEARCH_RADIUS.get();
-        if ("rifle".equals(special)) return SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.get();
+        if ("rifle".equals(special)) return SCG2TLMConfig.RIFLE_SEARCH_RADIUS.get();
 
         WeaponType type = getWeaponType(stack);
         if (type == null) return SCG2TLMConfig.GUN_RANGE.get();
         return switch (type) {
             case sniper, plasma, laser -> SCG2TLMConfig.SNIPER_SEARCH_RADIUS.get();
-            case rifle, heavy, lmg -> SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.get();
+            case rifle, heavy, lmg -> SCG2TLMConfig.RIFLE_SEARCH_RADIUS.get();
             case shotgun -> SCG2TLMConfig.SHOTGUN_SEARCH_RADIUS.get();
             case flamethrower, shock -> SCG2TLMConfig.FLAMETHROWER_SEARCH_RADIUS.get();
             case smg -> SCG2TLMConfig.SMG_SHOTGUN_PISTOL_SEARCH_RADIUS.get();

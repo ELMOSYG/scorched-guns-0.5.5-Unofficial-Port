@@ -151,11 +151,11 @@ public class SCG2TLMClothConfig {
                 .setMin(8.0).setMax(512.0)
                 .setTooltip(Component.literal("狙击步枪的索敌半径（格）。"))
                 .setSaveConsumer(i -> SCG2TLMConfig.SNIPER_SEARCH_RADIUS.set(i)).build());
-        search.add(entry.startDoubleField(Component.literal("步枪索敌范围 Rifle"), SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.get())
-                .setDefaultValue(SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.getDefault())
+        search.add(entry.startDoubleField(Component.literal("步枪索敌范围 Rifle"), SCG2TLMConfig.RIFLE_SEARCH_RADIUS.get())
+                .setDefaultValue(SCG2TLMConfig.RIFLE_SEARCH_RADIUS.getDefault())
                 .setMin(8.0).setMax(256.0)
                 .setTooltip(Component.literal("步枪和马格南的索敌半径（格）。"))
-                .setSaveConsumer(i -> SCG2TLMConfig.RIFLE_MAGNUM_SEARCH_RADIUS.set(i)).build());
+                .setSaveConsumer(i -> SCG2TLMConfig.RIFLE_SEARCH_RADIUS.set(i)).build());
         search.add(entry.startDoubleField(Component.literal("冲锋枪索敌范围 SMG"), SCG2TLMConfig.SMG_SHOTGUN_PISTOL_SEARCH_RADIUS.get())
                 .setDefaultValue(SCG2TLMConfig.SMG_SHOTGUN_PISTOL_SEARCH_RADIUS.getDefault())
                 .setMin(8.0).setMax(128.0)

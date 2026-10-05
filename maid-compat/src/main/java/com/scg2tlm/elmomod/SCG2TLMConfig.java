@@ -45,7 +45,7 @@ public class SCG2TLMConfig {
     public static final ModConfigSpec.IntValue IDLE_RELOAD_DELAY;
 
     public static final ModConfigSpec.DoubleValue SNIPER_SEARCH_RADIUS;
-    public static final ModConfigSpec.DoubleValue RIFLE_MAGNUM_SEARCH_RADIUS;
+    public static final ModConfigSpec.DoubleValue RIFLE_SEARCH_RADIUS;
     public static final ModConfigSpec.DoubleValue SMG_SHOTGUN_PISTOL_SEARCH_RADIUS;
     public static final ModConfigSpec.DoubleValue PISTOL_SEARCH_RADIUS;
     public static final ModConfigSpec.DoubleValue SHOTGUN_SEARCH_RADIUS;
@@ -174,8 +174,8 @@ public class SCG2TLMConfig {
         BUILDER.comment("Target search radius for sniper rifles");
         SNIPER_SEARCH_RADIUS = BUILDER.defineInRange("sniper_search_radius", 48.0, 8.0, 512.0);
 
-        BUILDER.comment("Target search radius for rifles and magnums");
-        RIFLE_MAGNUM_SEARCH_RADIUS = BUILDER.defineInRange("rifle_magnum_search_radius", 32.0, 8.0, 256.0);
+        BUILDER.comment("Target search radius for rifles");
+        RIFLE_SEARCH_RADIUS = BUILDER.defineInRange("rifle_search_radius", 32.0, 8.0, 256.0);
 
         BUILDER.comment("Target search radius for SMGs",
                 "(the config key still lists shotgun/pistol for backwards compatibility -",
