@@ -829,6 +829,7 @@ public class Config {
       public final DoubleValue bloodParticleSpread;
       public final DoubleValue bloodParticleSpeed;
       public final BooleanValue bloodDebugLog;
+      public final BooleanValue ignoreEnchantedMuzzleFlash;
       public final DoubleValue impactParticleDistance;
       public final BooleanValue enableWaterImpactParticles;
       public final BooleanValue enableLavaImpactParticles;
@@ -880,6 +881,13 @@ public class Config {
                }
             )
             .define("bloodDebugLog", false);
+            this.ignoreEnchantedMuzzleFlash = builder.comment(
+               new String[]{
+                  "Keep the muzzle flash texture unchanged when the gun is enchanted.",
+                  "Enchanted guns use a different flash texture; turn this on to always draw the gun's normal one."
+               }
+            )
+            .define("ignoreEnchantedMuzzleFlash", false);
          this.impactParticleDistance = builder.comment("The maximum distance impact particles can be seen from the player")
             .defineInRange("impactParticleDistance", 32.0, 0.0, 64.0);
          this.enableWaterImpactParticles = builder.comment("If true, particles will spawn when projectiles impact water")

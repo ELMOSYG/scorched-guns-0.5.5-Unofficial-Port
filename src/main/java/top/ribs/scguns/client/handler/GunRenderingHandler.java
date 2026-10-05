@@ -995,7 +995,9 @@ public class GunRenderingHandler {
          poseStack.scale(scaleModifier, scaleModifier, 1.0F);
          poseStack.translate(-0.5, -0.5, 0.0);
          boolean shouldUseEnchanted = weapon.isEnchanted();
-         if (entity != null && entityIdToUseEnchantedTexture.containsKey(entity.getId())) {
+         // Client option: keep the plain muzzle flash even on an enchanted gun.
+         if (entity != null && !(Boolean)Config.CLIENT.particle.ignoreEnchantedMuzzleFlash.get()
+            && entityIdToUseEnchantedTexture.containsKey(entity.getId())) {
             shouldUseEnchanted = entityIdToUseEnchantedTexture.get(entity.getId());
          }
 
