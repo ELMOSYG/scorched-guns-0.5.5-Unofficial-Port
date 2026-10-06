@@ -8,7 +8,7 @@
   ],
   "energy": 2400,
   "input": {
-    "item": "minecraft:iron_ingot"
+    "item": "scguns:treated_iron_ingot"
   },
   "mold": "scguns:medium_casing_mold",
   "result": {
