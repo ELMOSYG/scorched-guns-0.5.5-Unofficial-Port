@@ -83,7 +83,7 @@ public class ExampleMod {
             registerClientOnlyHandlers(modContainer);
         }
 
-        // scgextra 是可选的：只有装�?scgextra 才注册其专属 mixin 配置，避免缺失类导致崩溃
+        // scgextra 是可选的：只有装了 scgextra 才注册其专属 mixin 配置，避免缺失类导致崩溃
         if (ModList.get().isLoaded("scgextra")) {
             Mixins.addConfiguration("scg2_maid_compat_scgextra.mixins.json");
         }
@@ -166,7 +166,8 @@ public class ExampleMod {
         maid.getBrain().setMemory(MemoryModuleType.ATTACK_TARGET, attacker);
     }
 
-    // SCG 本体 bug 修复：Viventrum 没有攻击黑名单，会索敌主人名下的其他随从（宠物）。取消该索敌�?    @SubscribeEvent
+    // SCG 本体 bug 修复：Viventrum 没有攻击黑名单，会索敌主人名下的其他随从（宠物）。取消该索敌。
+    @SubscribeEvent
     public void onLivingChangeTarget(LivingChangeTargetEvent event) {
         if (!(event.getEntity() instanceof top.ribs.scguns.entity.monster.ViventrumEntity viventrum)) {
             return;
@@ -182,12 +183,16 @@ public class ExampleMod {
         }
     }
 
-    // SCG Extra 阵营友伤防护：同一阵营的怪互相攻击时取消伤害（覆盖所�?SCG 弹体类型 + 近战/爆炸）�?    // 放行玩家/女仆�?player" 阵营）发起的伤害，保留原有行为�?    @SubscribeEvent
+    // SCG Extra 阵营友伤防护：同一阵营的怪互相攻击时取消伤害（覆盖所有 SCG 弹体类型 + 近战/爆炸）。
+    // 放行玩家/女仆（"player" 阵营）发起的伤害，保留原有行为。
+    @SubscribeEvent
     public void onFactionFriendlyFire(LivingIncomingDamageEvent event) {
         if (!SCG2TLMConfig.PREVENT_FACTION_FRIENDLY_FIRE.get()) {
             return;
         }
-        // scgextra 未安装时直接跳过。这里刻意不放进 SCGExtraCompatHelper�?        // 那个类要保持「零依赖、纯反射」，才能在最坏情况下安全降级�?        if (!ModList.get().isLoaded("scgextra")) {
+        // scgextra 未安装时直接跳过。这里刻意不放进 SCGExtraCompatHelper：
+        // 那个类要保持「零依赖、纯反射」，才能在最坏情况下安全降级。
+        if (!ModList.get().isLoaded("scgextra")) {
             return;
         }
         if (event.getEntity().level().isClientSide) {
