@@ -1,7 +1,6 @@
 package top.ribs.scguns.client.handler;
 
 
-import top.ribs.scguns.compat.ShoulderSurfingHelper;
 import top.ribs.scguns.util.NbtHelper;
 import java.util.Map;
 import java.util.WeakHashMap;
@@ -50,9 +49,6 @@ public class AimingHandler {
    public boolean aiming = false;
    private boolean wasKeyPressed = false;
 
-   /** Last aim state handed to Shoulder Surfing, so the perspective is only switched on change. */
-   private static boolean scguns$shoulderSurfingAiming = false;
-
    public static AimingHandler get() {
       if (instance == null) {
          instance = new AimingHandler();
@@ -99,20 +95,6 @@ public class AimingHandler {
 
    @SubscribeEvent
    public void onClientTick(ClientTickEvent.Pre event) {
-
-      // Shoulder Surfing Reloaded: while a gun is aimed the camera has to sit in the
-      // vanilla first-person position, otherwise the iron sights and scopes do not line up.
-      // The moment the aim ends, hand the camera back to shoulder surfing.
-      if (ScorchedGuns.shoulderSurfingLoaded
-            && Minecraft.getInstance().player != null
-            && Minecraft.getInstance().player.getMainHandItem().getItem() instanceof GunItem) {
-         boolean scguns$aimingNow = get().getNormalisedAdsProgress() != 0.0;
-         if (scguns$aimingNow != scguns$shoulderSurfingAiming) {
-            ShoulderSurfingHelper.changePerspective(
-               scguns$aimingNow ? "FIRST_PERSON" : "SHOULDER_SURFING");
-            scguns$shoulderSurfingAiming = scguns$aimingNow;
-         }
-      }
       {
          Player player = Minecraft.getInstance().player;
          if (player != null) {

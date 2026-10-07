@@ -15,15 +15,8 @@ import top.ribs.scguns.ScorchedGuns;
  * present.</p>
  */
 public class ShoulderSurfingHelper {
-    /**
-     * The {@code Perspective} enum moved between Shoulder Surfing builds: 5.x keeps it in
-     * {@code api.client}, older ones in {@code api.model}. Only one of the two is present, and the old
-     * hardcoded path made {@link #init()} give up and disable the helper on 5.x - which is what the
-     * installed ShoulderSurfing-NeoForge-1.21.1-5.2.0 jar uses. Both are tried, newest first.
-     */
-    private static final String[] PERSPECTIVE_CLASSES = {
-            "com.github.exopandora.shouldersurfing.api.client.Perspective",
-            "com.github.exopandora.shouldersurfing.api.model.Perspective"};
+    private static final String PERSPECTIVE_CLASS =
+            "com.github.exopandora.shouldersurfing.api.model.Perspective";
 
     private static boolean disable1 = false;
     private static boolean disable2 = false;
@@ -103,13 +96,7 @@ public class ShoulderSurfingHelper {
 
     private static void init() {
         if (getShoulderInstance == null) {
-            // 5.x keeps Perspective in api.client, older builds in api.model: try both.
-            for (String candidate : PERSPECTIVE_CLASSES) {
-               perspectiveClass = loadClass(candidate);
-               if (perspectiveClass != null) {
-                  break;
-               }
-            }
+            perspectiveClass = loadClass(PERSPECTIVE_CLASS);
             if (perspectiveClass == null) {
                 disable1 = true;
                 disable2 = true;
