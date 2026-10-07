@@ -1,11 +1,10 @@
 {
-  "display": {
-  },
+  "display": {},
   "general": {
     "weaponType": "heavy",
     "fireMode": "scguns:automatic",
-    "gripType": "scguns:mini_gun_5",
-    "baseGripType": "scguns:mini_gun_5",
+    "gripType": "scguns:bazooka",
+    "baseGripType": "scguns:bazooka",
     "rate": 4,
     "hotBarrelRate": 40,
     "meleeDamage": 4.5,

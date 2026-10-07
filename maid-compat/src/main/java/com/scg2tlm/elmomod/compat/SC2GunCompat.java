@@ -1372,6 +1372,12 @@ public final class SC2GunCompat {
     public static boolean isRpgGun(ItemStack stack) {
         ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (key == null) return false;
+        // Same rule as the miniguns: this mod's own guns are classified by their grip, and the lists only cover
+        // guns from other mods, which carry no GripType. kiln_gun and scratches used to sit in the RPG list
+        // while their grip said mini_gun_5; their data now says bazooka, which is what they actually are.
+        if (getGripTypeOf(stack) == GripType.BAZOOKA) {
+            return true;
+        }
         return SC2_RPG_GUNS.contains(key.getPath())
                 || CC_RPG_GUNS.contains(key.getPath())
                 || OREG_RPG_GUNS.contains(key.getPath());
