@@ -3,6 +3,7 @@ package top.ribs.scguns.blockentity;
 
 
 
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.core.HolderLookup;
 import top.ribs.scguns.util.PhysicsStructureHelper;
 import top.ribs.scguns.util.NbtHelper;
@@ -290,6 +291,10 @@ public abstract class TurretBlockEntity extends BlockEntity implements MenuProvi
 
          if (fireSound != null) {
             this.level.playSound(null, muzzlePos.x, muzzlePos.y, muzzlePos.z, fireSound, SoundSource.BLOCKS, 0.7F, 0.7F);
+
+            // Turrets rattle the sensors too, but the source is deliberately null: sculk
+            // shriekers only summon a warden for player-sourced vibrations.
+            this.level.gameEvent((net.minecraft.world.entity.Entity) null, GameEvent.PROJECTILE_SHOOT, muzzlePos);
          }
 
          Vec3 targetPos = new Vec3(this.target.getX(), this.target.getY() + (double)this.target.getEyeHeight() * 0.5, this.target.getZ());

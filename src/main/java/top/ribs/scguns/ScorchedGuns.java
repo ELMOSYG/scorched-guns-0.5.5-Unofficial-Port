@@ -1,6 +1,7 @@
 package top.ribs.scguns;
 
 
+import top.ribs.scguns.init.ModGameEvents;
 import top.ribs.scguns.util.DistHelper;
 import com.mrcrayfish.framework.api.FrameworkAPI;
 import net.minecraft.resources.ResourceLocation;
@@ -149,6 +150,7 @@ public class ScorchedGuns {
       IEventBus bus = modEventBus;
       modEventBus.addListener(this::onConfigLoad);
       ModItems.REGISTER.register(bus);
+      ModGameEvents.REGISTER.register(bus);
       // 1.21.1 keeps armor materials in a built-in registry, so they are registered
       // here rather than declared as data/scguns/armor_material/*.json (1.21.2+).
       ModArmorMaterials.REGISTER.register(bus);

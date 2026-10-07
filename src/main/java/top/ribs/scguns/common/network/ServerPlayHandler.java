@@ -4,6 +4,8 @@ package top.ribs.scguns.common.network;
 
 
 
+import net.minecraft.world.level.gameevent.GameEvent;
+import top.ribs.scguns.init.ModGameEvents;
 import net.minecraft.server.level.ServerLevel;
 import top.ribs.scguns.util.ScEnchants;
 import top.ribs.scguns.util.NbtHelper;
@@ -255,6 +257,13 @@ public class ServerPlayHandler {
       float pitch = 0.9F + world.random.nextFloat() * 0.2F;
       double radius = GunModifierHelper.getModifiedFireSoundRadius(heldItem, (Double)Config.SERVER.gunShotMaxDistance.get());
       boolean muzzle = modifiedGun.getDisplay().getFlash() != null;
+      // A shot is a vibration, like a bow's. A silenced one still vibrates, but on a
+      // registered event with half the radius, so only nearby sensors pick it up.
+      boolean scguns$silenced = GunModifierHelper.isSilencedFire(heldItem);
+               net.minecraft.core.Holder<GameEvent> scguns$shotEvent =
+                  scguns$silenced ? ModGameEvents.SILENCED_GUNSHOT : GameEvent.PROJECTILE_SHOOT;
+               player.serverLevel().gameEvent(player, scguns$shotEvent, player.position());
+
       S2CMessageGunSound messageSound = new S2CMessageGunSound(
          fireSound, SoundSource.PLAYERS, (float)posX, (float)posY, (float)posZ, volume, pitch, player.getId(), muzzle, false
       );
