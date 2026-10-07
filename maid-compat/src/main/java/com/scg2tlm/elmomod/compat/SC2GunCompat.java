@@ -1349,6 +1349,16 @@ public final class SC2GunCompat {
     public static boolean isMinigunGun(ItemStack stack) {
         ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (key == null) return false;
+        // The grip type decides for this mod's own guns: shard_culler and bomb_lance carry a mini_gun grip but
+        // were missing from every list, so they fell back to the rifle animation group. The three lists stay
+        // as the fallback for guns from other mods (electrothermal_autocannon, electrum_spoolgun,
+        // mauvite_beam_rifle), which have no grip data of their own.
+        GripType minigunGrip = getGripTypeOf(stack);
+        if (minigunGrip == GripType.MINI_GUN || minigunGrip == GripType.MINI_GUN_2
+                || minigunGrip == GripType.MINI_GUN_3 || minigunGrip == GripType.MINI_GUN_4
+                || minigunGrip == GripType.MINI_GUN_5) {
+            return true;
+        }
         return SC2_MINIGUN_GUNS.contains(key.getPath())
                 || CC_MINIGUN_GUNS.contains(key.getPath())
                 || OREG_MINIGUN_GUNS.contains(key.getPath());
@@ -1512,8 +1522,10 @@ public final class SC2GunCompat {
         if (stack.isEmpty() || !(stack.getItem() instanceof GunItem)) return "";
 
         // ---- 特例优先：这两类有专属动画，且握持类型不在下面的两支里 ----
-        if (isMinigunGun(stack)) return "rifle";
+        // RPG first on purpose: kiln_gun and scratches carry a mini_gun grip but are listed as RPG guns, and
+        // this keeps their current animations unchanged. Only guns that are neither get the minigun treatment.
         if (isRpgGun(stack)) return "rpg";
+        if (isMinigunGun(stack)) return "rifle";
 
         // ---- 主判据：握持方式 ----
         GripType grip = getGripTypeOf(stack);
