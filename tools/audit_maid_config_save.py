@@ -18,7 +18,8 @@ fixed one screen by breaking TLM's own config.
 
 The same round restored the compat's own screen: `SCG2TLMClothConfig.createScreen` existed but was never
 registered, because the port dropped Forge's `ConfigScreenHandler.ConfigScreenFactory` and never
-replaced it with NeoForge's `IConfigScreenFactory`.
+replaced it with NeoForge's `IConfigScreenFactory` (the registration now lives in
+`client/ClientConfigScreen.java`, see the note next to SCREEN_REG).
 
 usage: python tools/audit_maid_config_save.py
 """
@@ -33,6 +34,11 @@ COMPAT = os.path.join(ROOT, "maid-compat", "src", "main", "java")
 LISTENER = os.path.join(COMPAT, "com", "scg2tlm", "elmomod", "client", "SCG2TLMClothConfigListener.java")
 SCREEN = os.path.join(COMPAT, "com", "scg2tlm", "elmomod", "client", "SCG2TLMClothConfig.java")
 ENTRY = os.path.join(COMPAT, "com", "scg2tlm", "elmomod", "ExampleMod.java")
+# The registration deliberately lives outside the entry class: a lambda becomes a synthetic method of its
+# enclosing class, and that method's descriptor mentions net.minecraft.client.gui.screens.Screen, which made
+# a dedicated server refuse to load ExampleMod ("invalid dist DEDICATED_SERVER"). The entry class now only
+# calls ClientConfigScreen.register(...) from behind its FMLEnvironment.dist.isClient() check.
+SCREEN_REG = os.path.join(COMPAT, "com", "scg2tlm", "elmomod", "client", "ClientConfigScreen.java")
 
 
 def strip_comments(src: str) -> str:
@@ -102,12 +108,19 @@ def main() -> int:
         if not re.search(r"setSavingRunnable\(\s*SCG2TLMConfig\.SPEC::save\s*\)", screen):
             problems.append("the compat's own screen does not save the spec when it is saved")
 
-    if "registerExtensionPoint(IConfigScreenFactory.class" not in entry:
+    screen_reg = read(SCREEN_REG) if os.path.exists(SCREEN_REG) else ""
+    if "registerExtensionPoint(IConfigScreenFactory.class" not in screen_reg:
         problems.append("the compat's own screen is never registered - NeoForge needs "
                         "modContainer.registerExtensionPoint(IConfigScreenFactory.class, ...), which "
                         "replaced Forge's ConfigScreenHandler.ConfigScreenFactory")
-    elif "SCG2TLMClothConfig.createScreen" not in entry:
+    elif "SCG2TLMClothConfig.createScreen" not in screen_reg:
         problems.append("a config screen is registered but it is not the compat's screen")
+    elif "ClientConfigScreen.register(" not in entry:
+        problems.append("the registration is not reachable: the entry class never calls "
+                        "ClientConfigScreen.register(...)")
+    elif "FMLEnvironment.dist.isClient()" not in entry:
+        problems.append("the entry class does not guard the client-only registration with a dist check, "
+                        "so a dedicated server would resolve client classes")
 
     for problem in problems:
         print("BROKEN %s" % problem)
