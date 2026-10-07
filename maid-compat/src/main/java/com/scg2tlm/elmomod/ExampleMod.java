@@ -1,5 +1,6 @@
 package com.scg2tlm.elmomod;
 
+import com.scg2tlm.elmomod.client.ClientConfigScreen;
 import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
 import com.github.tartaricacid.touhoulittlemaid.init.InitEntities;
 import com.scg2tlm.elmomod.client.DefaultGeckoAnimationInjector;
@@ -111,17 +112,7 @@ public class ExampleMod {
         NeoForge.EVENT_BUS.addListener(BetterCombatHandler::onClientTick);
         NeoForge.EVENT_BUS.addListener(DefaultGeckoAnimationInjector::onDefaultGeckoAnimation);
 
-        // Guarded like everything else TLM- or Cloth-facing: the listener's parameter type comes from
-        // TLM and its entry builders from Cloth Config, so mentioning the class without both loaded
-        // would throw NoClassDefFoundError.
-        if (ModList.get().isLoaded(CLOTH_CONFIG_MODID)) {
-            NeoForge.EVENT_BUS.addListener(SCG2TLMClothConfigListener::onAddClothConfig);
-            modContainer.registerExtensionPoint(IConfigScreenFactory.class,
-                (container, parent) -> SCG2TLMClothConfig.createScreen(parent));
-        } else {
-            LOGGER.info("Cloth Config is not installed - the maid compat's options stay in "
-                + "config/scg2_maid_compat-common.toml instead of a config screen.");
-        }
+        ClientConfigScreen.register(modContainer);
     }
 
     @SubscribeEvent
