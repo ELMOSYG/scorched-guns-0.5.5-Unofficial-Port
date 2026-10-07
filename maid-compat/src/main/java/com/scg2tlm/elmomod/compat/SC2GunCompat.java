@@ -1349,6 +1349,11 @@ public final class SC2GunCompat {
     public static boolean isMinigunGun(ItemStack stack) {
         ResourceLocation key = BuiltInRegistries.ITEM.getKey(stack.getItem());
         if (key == null) return false;
+        // An RPG stays an RPG. kiln_gun and scratches carry a mini_gun grip but are RPG guns, and this method
+        // is not only about the animation type: AnimationManagerMixin also switches the reload special case and
+        // appends the minigun animation name ($tacz:minigun) on it. Treating them as miniguns changed their
+        // animations even though getAnimationGunType still reported "rpg".
+        if (isRpgGun(stack)) return false;
         // The grip type decides for this mod's own guns: shard_culler and bomb_lance carry a mini_gun grip but
         // were missing from every list, so they fell back to the rifle animation group. The three lists stay
         // as the fallback for guns from other mods (electrothermal_autocannon, electrum_spoolgun,
