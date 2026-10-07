@@ -176,6 +176,10 @@ public final class NbtHelper {
      * components, which need a registry lookup, so the stack is decoded with
      * {@code NbtOps} instead. Unknown items decode to an empty stack, matching the
      * old behaviour of returning an empty stack for unparsable data.
+     *
+     * <p>Decoding uses {@link ItemStack#OPTIONAL_CODEC}, so legacy data that stores an explicit
+     * {@code minecraft:air} slot (or a count of 0) reads back as {@link ItemStack#EMPTY} instead of
+     * being reported as an error.</p>
      */
     public static ItemStack itemFromTag(@Nullable CompoundTag tag) {
         return itemFromTag(tag, registryAccess);
@@ -186,7 +190,12 @@ public final class NbtHelper {
         if (tag == null || tag.isEmpty()) {
             return ItemStack.EMPTY;
         }
-        var result = ItemStack.CODEC.parse(ops(provider), tag);
+        // OPTIONAL_CODEC rather than CODEC: the strict one rejects minecraft:air and counts outside
+        // [1;99], which is exactly what legacy (1.20.1) container and inventory data contains. It made
+        // every world load print "Item must not be minecraft:air" once per such slot and drop the item.
+        // The optional codec decodes those to ItemStack.EMPTY, which is what this method already returns
+        // for unusable data, while genuine errors are still reported below.
+        var result = ItemStack.OPTIONAL_CODEC.parse(ops(provider), tag);
         if (result.error().isPresent()) {
             LOGGER.error("Could not decode an item stack ({}); treating it as empty: {}",
                 describe(provider),
