@@ -15,8 +15,8 @@
   "general": {
     "weaponType": "shotgun",
     "fireMode": "scguns:semi_automatic",
-    "gripType": "scguns:bazooka",
-    "baseGripType": "scguns:bazooka",
+    "gripType": "scguns:mini_gun_5",
+    "baseGripType": "scguns:mini_gun_5",
     "rate": 5,
     "meleeDamage": 4.0,
     "meleeCooldownTicks": 20,
