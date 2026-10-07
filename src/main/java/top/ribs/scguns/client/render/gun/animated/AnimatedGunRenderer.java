@@ -198,8 +198,11 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
             ? player.getUsedItemHand() == InteractionHand.MAIN_HAND
             : player.getUsedItemHand() == InteractionHand.OFF_HAND);
       ItemStack overrideModel = ItemStack.EMPTY;
-      if (NbtHelper.getTag(stack) != null && NbtHelper.getTag(stack).contains("Model", 10)) {
-         overrideModel = top.ribs.scguns.util.NbtHelper.itemFromTag(NbtHelper.getTag(stack).getCompound("Model"));
+      // Read the tag once: this runs every frame while a gun is held, and the same tag
+      // was fetched three times in a row.
+      CompoundTag overrideTag = NbtHelper.getTag(stack);
+      if (overrideTag != null && overrideTag.contains("Model", 10)) {
+         overrideModel = top.ribs.scguns.util.NbtHelper.itemFromTag(overrideTag.getCompound("Model"));
       }
 
       BakedModel model = client.getItemRenderer().getModel(overrideModel.isEmpty() ? stack : overrideModel, player.level(), player, 0);

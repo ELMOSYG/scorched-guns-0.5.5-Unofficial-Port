@@ -496,8 +496,11 @@ public class GunRenderingHandler {
          // the held item a second time - "the gun renders twice, with an extra arm".
          event.setCanceled(true);
          ItemStack var32 = ItemStack.EMPTY;
-         if (NbtHelper.getTag(heldItem) != null && NbtHelper.getTag(heldItem).contains("Model", 10)) {
-            var32 = top.ribs.scguns.util.NbtHelper.itemFromTag(NbtHelper.getTag(heldItem).getCompound("Model"));
+         // Read the tag once: this runs every frame while a gun is held, and the same tag
+         // was fetched three times in a row.
+         CompoundTag heldGunTag = NbtHelper.getTag(heldItem);
+         if (heldGunTag != null && heldGunTag.contains("Model", 10)) {
+            var32 = top.ribs.scguns.util.NbtHelper.itemFromTag(heldGunTag.getCompound("Model"));
          }
 
          LocalPlayer player = Objects.requireNonNull(Minecraft.getInstance().player);
@@ -772,8 +775,8 @@ public class GunRenderingHandler {
    }
 
    public void applyWeaponScale(ItemStack heldItem, PoseStack stack) {
-      if (NbtHelper.getTag(heldItem) != null) {
-         CompoundTag compound = NbtHelper.getTag(heldItem);
+      CompoundTag compound = NbtHelper.getTag(heldItem);
+      if (compound != null) {
          if (compound.contains("Scale", 5)) {
             float scale = compound.getFloat("Scale");
             stack.scale(scale, scale, scale);
