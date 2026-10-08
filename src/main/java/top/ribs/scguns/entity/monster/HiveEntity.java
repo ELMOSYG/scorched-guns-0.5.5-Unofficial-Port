@@ -89,9 +89,16 @@ public class HiveEntity extends Monster {
    public void die(@NotNull DamageSource cause) {
       super.die(cause);
 
-      for (SwarmEntity swarm : summonedSwarm) {
-         if (swarm != null) {
-            swarm.discard();
+      // die() runs on both sides: the server calls it when the mob dies, and the client calls it from
+      // ClientboundEntityEventPacket. Discarding the swarm on the client asked the integrated server to
+      // unload entities from inside packet handling, which C2ME's async-unload guard turns into a
+      // ConcurrentModificationException - the packet then fails and the client disconnects with a network
+      // protocol error. The client does not own these entities anyway; the server removes them itself.
+      if (!this.level().isClientSide) {
+         for (SwarmEntity swarm : summonedSwarm) {
+            if (swarm != null) {
+               swarm.discard();
+            }
          }
       }
 
