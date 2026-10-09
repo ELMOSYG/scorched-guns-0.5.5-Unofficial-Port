@@ -1,6 +1,7 @@
 package top.ribs.scguns.block;
 
 
+import net.minecraft.world.level.block.ComposterBlock;
 import com.mojang.serialization.MapCodec;
 import javax.annotation.Nullable;
 import net.minecraft.core.BlockPos;
@@ -220,16 +221,25 @@ public class AdvancedComposterBlock extends BaseEntityBlock {
    }
 
    public boolean isCompostable(ItemStack stack) {
-      return stack.is(ModTags.Items.WEAK_COMPOST) || stack.is(ModTags.Items.NORMAL_COMPOST) || stack.is(ModTags.Items.STRONG_COMPOST);
+      return this.getCompostChance(stack) > 0.0F;
    }
 
+   /**
+    * The mod's own three tiers win, and everything else falls back to vanilla's compostable table.
+    *
+    * <p>This used to be a pure tag whitelist: an item was compostable only if it appeared in
+    * {@code scguns:weak_compost}, {@code normal_compost} or {@code strong_compost}, so items added by other
+    * mods - and vanilla items this mod never listed - were silently rejected. {@link ComposterBlock#getValue}
+    * is public, so the vanilla value is used unchanged (0.3 / 0.5 / 0.65 / 0.85 / 1.0, never 0).</p>
+    */
    private float getCompostChance(ItemStack stack) {
       if (stack.is(ModTags.Items.WEAK_COMPOST)) {
          return 0.4F;
       } else if (stack.is(ModTags.Items.NORMAL_COMPOST)) {
          return 0.6F;
-      } else {
-         return stack.is(ModTags.Items.STRONG_COMPOST) ? 0.8F : 0.0F;
+      } else if (stack.is(ModTags.Items.STRONG_COMPOST)) {
+         return 0.8F;
       }
+      return ComposterBlock.getValue(stack);
    }
 }
