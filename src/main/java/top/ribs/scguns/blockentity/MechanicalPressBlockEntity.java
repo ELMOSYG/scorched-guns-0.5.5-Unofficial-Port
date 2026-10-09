@@ -301,11 +301,33 @@ public class MechanicalPressBlockEntity extends BlockEntity implements MenuProvi
       if (match.isPresent()) {
          MechanicalPressRecipe recipe = match.get();
          this.maxProgress = recipe.getProcessingTime();
-         return true;
+         // The output slot has to be able to take the product, otherwise the press would burn fuel
+         // and spin its progress bar while craftItem() silently drops the result.
+         return this.scguns$canAcceptResult(recipe.getResultItem(this.level.registryAccess()));
       } else {
          return false;
       }
    }
+
+   /**
+    * Whether the output slot can take {@code result}. {@link #hasRecipe()} asks this, so a full output stops
+    * the machine instead of letting it burn fuel and spin its progress bar while {@code craftItem()} drops
+    * the product.
+    */
+   private boolean scguns$canAcceptResult(ItemStack result) {
+      if (result.isEmpty()) {
+         return false;
+      }
+      ItemStack output = this.itemHandler.getStackInSlot(5);
+      if (output.isEmpty()) {
+         return true;
+      }
+      // isSameItemSameComponents, not getItem() ==: items carrying components must not merge just because
+      // they share an item.
+      return ItemStack.isSameItemSameComponents(output, result)
+         && output.getCount() + result.getCount() <= output.getMaxStackSize();
+   }
+
 
    private void craftItem() {
       SimpleContainer inventory = new SimpleContainer(4);
