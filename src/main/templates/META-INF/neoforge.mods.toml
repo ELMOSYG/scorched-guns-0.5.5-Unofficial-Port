@@ -8,7 +8,7 @@ version="${mod_version}"
 displayName="${mod_name}"
 authors="${mod_authors}"
 credits="${mod_credits}"
-description='''${mod_description}'''
+description='''${mod_description} (unofficial 1.21.1 port of Scorched Guns 0.5.5)'''
 # Points at the enum extensions (the gun bench recipe book type and its categories). NeoForge does NOT
 # look for this file on its own: without this line META-INF/enumextensions.json is ignored silently -
 # no warning, not even for a corrupted file - which is how the recipe book ended up unregistered
