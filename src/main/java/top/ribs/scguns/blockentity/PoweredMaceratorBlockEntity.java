@@ -221,9 +221,8 @@ public class PoweredMaceratorBlockEntity extends BlockEntity implements MenuProv
    }
 
    private boolean hasSpaceForOutput(ItemStack output) {
-      ItemStack currentOutput = this.itemHandler.getStackInSlot(4);
-      return currentOutput.isEmpty()
-         || currentOutput.getItem() == output.getItem() && currentOutput.getCount() + output.getCount() <= currentOutput.getMaxStackSize();
+      // Delegates to the same check hasRecipe() uses, so "can run" and "can place" cannot drift apart.
+      return this.scguns$canAcceptResult(output);
    }
 
    private boolean hasRecipe() {
@@ -275,7 +274,7 @@ public class PoweredMaceratorBlockEntity extends BlockEntity implements MenuProv
          ItemStack resultItem = recipe.getResultItem(this.level.registryAccess());
          ItemStack outputStack = this.itemHandler.getStackInSlot(4);
          if (outputStack.isEmpty()
-            || outputStack.getItem() == resultItem.getItem() && outputStack.getCount() + resultItem.getCount() <= outputStack.getMaxStackSize()) {
+            || ItemStack.isSameItemSameComponents(outputStack, resultItem) && outputStack.getCount() + resultItem.getCount() <= outputStack.getMaxStackSize()) {
             for (int i = 0; i <= 3; i++) {
                this.itemHandler.extractItem(i, 1, false);
             }

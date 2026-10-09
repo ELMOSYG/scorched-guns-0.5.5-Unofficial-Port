@@ -270,7 +270,7 @@ public class MaceratorBlockEntity extends BlockEntity implements MenuProvider {
          ItemStack resultItem = recipe.getResultItem(this.level.registryAccess());
          ItemStack outputStack = this.itemHandler.getStackInSlot(5);
          if (outputStack.isEmpty()
-            || outputStack.getItem() == resultItem.getItem() && outputStack.getCount() + resultItem.getCount() <= outputStack.getMaxStackSize()) {
+            || ItemStack.isSameItemSameComponents(outputStack, resultItem) && outputStack.getCount() + resultItem.getCount() <= outputStack.getMaxStackSize()) {
             for (int i = 0; i <= 3; i++) {
                this.itemHandler.extractItem(i, 1, false);
             }

@@ -255,7 +255,7 @@ public class MechanicalPressBlockEntity extends BlockEntity implements MenuProvi
       if (match.isPresent()) {
          ItemStack resultItem = match.get().getResultItem(this.level.registryAccess());
          if (outputStack.isEmpty()
-            || outputStack.getItem() == resultItem.getItem() && outputStack.getCount() + resultItem.getCount() <= outputStack.getMaxStackSize()) {
+            || ItemStack.isSameItemSameComponents(outputStack, resultItem) && outputStack.getCount() + resultItem.getCount() <= outputStack.getMaxStackSize()) {
             return true;
          }
       }
@@ -346,7 +346,7 @@ public class MechanicalPressBlockEntity extends BlockEntity implements MenuProvi
          ItemStack resultItem = recipe.getResultItem(this.level.registryAccess());
          ItemStack outputStack = this.itemHandler.getStackInSlot(5);
          if (outputStack.isEmpty()
-            || outputStack.getItem() == resultItem.getItem() && outputStack.getCount() + resultItem.getCount() <= outputStack.getMaxStackSize()) {
+            || ItemStack.isSameItemSameComponents(outputStack, resultItem) && outputStack.getCount() + resultItem.getCount() <= outputStack.getMaxStackSize()) {
             for (Ingredient ingredient : recipe.getIngredients()) {
                for (int i = 0; i <= 2; i++) {
                   if (ingredient.test(this.itemHandler.getStackInSlot(i))) {
