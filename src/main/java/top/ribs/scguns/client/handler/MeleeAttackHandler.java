@@ -88,6 +88,14 @@ public class MeleeAttackHandler {
    /** Who is charging, so the state below can be synced to that player's client (HANDOFF section 82.22). */
    private static ServerPlayer banzaiPlayer;
 
+   /**
+    * The item each charging player started the charge with, keyed by UUID.
+    *
+    * <p>A single static item only works with one player: with two, one player's ticker compared against the
+    * other player's item, decided the charge was over and cleared the wrong player's synced BANZAI key.</p>
+    */
+   private static final java.util.Map<java.util.UUID, ItemStack> BANZAI_ACTIVE_ITEMS = new java.util.concurrent.ConcurrentHashMap<>();
+
    /** The bayonet charge's own options - every number this mechanic uses lives in that section. */
    private static Config.BayonetCharge charge() {
       return Config.COMMON.bayonetCharge;
@@ -183,6 +191,7 @@ public class MeleeAttackHandler {
          } else {
             isBanzai = true;
             banzaiActiveItem = heldItem.copy();
+      BANZAI_ACTIVE_ITEMS.put(player.getUUID(), heldItem.copy());
             banzaiPlayer = player;
             player.getPersistentData().remove(BANZAI_SPRINT_LOST_TAG);
             ModSyncedDataKeys.BANZAI.setValue(player, true);
@@ -191,14 +200,30 @@ public class MeleeAttackHandler {
    }
 
    public static void stopBanzai() {
-      if (banzaiPlayer != null) {
-         banzaiPlayer.getPersistentData().remove(BANZAI_SPRINT_LOST_TAG);
-         ModSyncedDataKeys.BANZAI.setValue(banzaiPlayer, false);
-         banzaiPlayer = null;
+      ServerPlayer player = banzaiPlayer;
+      if (player != null) {
+         stopBanzai(player);
+      } else {
+         isBanzai = false;
       }
+   }
 
-      isBanzai = false;
-      banzaiActiveItem = ItemStack.EMPTY;
+   /**
+    * Ends the charge for one player. The synced BANZAI key belongs to that player, so clearing it is what
+    * stops their client's charge animation - clearing another player's (as the single static field used to do)
+    * left the real owner animating forever.
+    */
+   public static void stopBanzai(ServerPlayer player) {
+      if (player != null) {
+         player.getPersistentData().remove(BANZAI_SPRINT_LOST_TAG);
+         BANZAI_ACTIVE_ITEMS.remove(player.getUUID());
+         ModSyncedDataKeys.BANZAI.setValue(player, false);
+      }
+      if (banzaiPlayer == player) {
+         banzaiPlayer = null;
+         isBanzai = false;
+         banzaiActiveItem = ItemStack.EMPTY;
+      }
    }
 
    public static void performMeleeAttack(ServerPlayer player) {
@@ -396,7 +421,7 @@ public class MeleeAttackHandler {
       }
 
       if (isEndChargeOnHit() && connected) {
-         stopBanzai();
+         stopBanzai(player);
       }
    }
 
@@ -541,10 +566,13 @@ public class MeleeAttackHandler {
    }
 
    public static void handleBanzaiMode(ServerPlayer player) {
-      if (isBanzai) {
+      // The synced key is the per-player source of truth. The static isBanzai flag is global, so on a server
+      // this ticker used to run for whichever player happened to own it, and cleared the wrong player's key.
+      ItemStack startedWith = BANZAI_ACTIVE_ITEMS.get(player.getUUID());
+      if (startedWith != null && isBanzaiCharging(player)) {
          ItemStack currentHeldItem = player.getItemInHand(InteractionHand.MAIN_HAND);
-         if (!ItemStack.matches(currentHeldItem, banzaiActiveItem)) {
-            stopBanzai();
+         if (!ItemStack.matches(currentHeldItem, startedWith)) {
+            stopBanzai(player);
          } else {
             CompoundTag playerData = player.getPersistentData();
             long currentTime = player.level().getGameTime();
@@ -560,7 +588,7 @@ public class MeleeAttackHandler {
                triggerBanzaiImpactIfNecessary(currentHeldItem);
                playerData.putLong(KNOCKBACK_GRACE_TAG, currentTime + (long)charge().knockbackGraceTicks.get());
             } else if (!inGracePeriod && !keepCharging(player, playerData, currentTime)) {
-               stopBanzai();
+               stopBanzai(player);
             } else if (!playerData.contains(BANZAI_DAMAGE_COOLDOWN_TAG) || currentTime >= playerData.getLong(BANZAI_DAMAGE_COOLDOWN_TAG)) {
                // Two mechanics share this charge (HANDOFF sections 82.33 and 82.34). The original area sweep
                // is what ships, and it stays the default; singleTargetStab switches to the one target thrust,

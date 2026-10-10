@@ -22,7 +22,8 @@ public class C2SMessageMeleeAttack {
     * cancelled it, so a player who charged N times had N tasks calling {@code handleBanzaiMode} - each of
     * them knocking the player back and scanning for targets every 50 ms (HANDOFF section 82.23).
     */
-   private static ScheduledFuture<?> banzaiTask;
+   private static final java.util.Map<java.util.UUID, ScheduledFuture<?>> banzaiTasks =
+      new java.util.concurrent.ConcurrentHashMap<>();
 
    public C2SMessageMeleeAttack() {
       super();
@@ -39,8 +40,8 @@ public class C2SMessageMeleeAttack {
       context.execute(() -> {
          ServerPlayer player = context.getPlayer().map(p -> (ServerPlayer) p).orElse(null);
          if (player != null && !player.isSpectator()) {
-            if (MeleeAttackHandler.isBanzaiActive()) {
-               MeleeAttackHandler.stopBanzai();
+            if (MeleeAttackHandler.isBanzaiCharging(player)) {
+               MeleeAttackHandler.stopBanzai(player);
             } else if (!MeleeAttackHandler.isBanzaiEnabled()) {
                // The charge is switched off (HANDOFF section 82.32). A press with a bayonet fitted is then an
                // ordinary bayonet stab, not a dead key, and any charge still running is stopped above.
@@ -73,26 +74,32 @@ public class C2SMessageMeleeAttack {
     * reached. A charge ends there, not here (HANDOFF section 82.23).
     */
    private static void startBanzaiTicker(ServerPlayer player) {
-      ScheduledFuture<?> previous = banzaiTask;
+      // One task per player. A single shared task meant that whoever charged last cancelled everyone else's
+      // ticker, so those charges were never driven to their end and their animation never stopped.
+      ScheduledFuture<?> previous = banzaiTasks.remove(player.getUUID());
       if (previous != null) {
          previous.cancel(false);
       }
 
       final ScheduledFuture<?>[] self = new ScheduledFuture<?>[1];
       self[0] = scheduler.scheduleAtFixedRate(() -> {
-         if (!MeleeAttackHandler.isBanzaiActive()) {
+         // Ask whether THIS player is still charging; the static flag is global and cannot answer that.
+         if (!MeleeAttackHandler.isBanzaiCharging(player)) {
+            banzaiTasks.remove(player.getUUID(), self[0]);
             self[0].cancel(false);
             return;
          }
 
          if (player.isRemoved() || !player.isAlive()) {
-            MeleeAttackHandler.stopBanzai();
+            MeleeAttackHandler.stopBanzai(player);
+            banzaiTasks.remove(player.getUUID(), self[0]);
+            self[0].cancel(false);
             return;
          }
 
          MeleeAttackHandler.handleBanzaiMode(player);
       }, 0L, BANZAI_CHECK_INTERVAL_MS, TimeUnit.MILLISECONDS);
-      banzaiTask = self[0];
+      banzaiTasks.put(player.getUUID(), self[0]);
    }
 
    private void handleNormalMeleeAttack(ServerPlayer player) {
