@@ -55,7 +55,13 @@ public class AttachmentRenderer extends GeoRenderLayer<AnimatedGunItem> {
          String heldItemPath = heldItemId == null ? "" : heldItemId.getPath();
          AnimatedGunModel focusModel = new AnimatedGunModel(model_resource);
          ResourceLocation focusModelModelResource = model_resource;
-         RenderType focusModelRenderLayer = RenderType.entityTranslucent(texture_resource);
+         // entityCutoutNoCull, not entityTranslucent. With Iris shaders the translucent pass is drawn
+         // separately and does not occlude, so a scope's solid body let the world show through it ("seeing
+         // through the sight"). Cutout keeps alpha-tested pixels writing depth, which suits these models:
+         // their alpha is essentially 0 or 255 apart from anti-aliased edges. The scope's full-screen overlay
+         // and vignette are drawn elsewhere and stay blended - they are soft gradients and alpha testing would
+         // destroy them.
+         RenderType focusModelRenderLayer = RenderType.entityCutoutNoCull(texture_resource);
          if (bone.getName().matches("attachment_bone") && !bone.getName().matches(heldItemPath) && itemStack != null) {
             this.getRenderer()
                .reRender(
