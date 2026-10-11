@@ -1,11 +1,8 @@
 package top.ribs.scguns.client;
 
 import com.mrcrayfish.framework.api.client.FrameworkClientAPI;
-import java.lang.reflect.Field;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.components.OptionsList;
 import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
-import net.minecraft.client.gui.screens.options.MouseSettingsScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.RenderType;
@@ -26,14 +23,12 @@ import net.neoforged.api.distmarker.Dist;
 import net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent;
 import net.neoforged.neoforge.client.event.InputEvent.Key;
 import net.neoforged.neoforge.client.event.ModelEvent.RegisterAdditional;
-import net.neoforged.neoforge.client.event.ScreenEvent.Init.Post;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.fml.event.lifecycle.FMLClientSetupEvent;
-import net.neoforged.fml.util.ObfuscationReflectionHelper;
 import top.ribs.scguns.ScorchedGuns;
 import top.ribs.scguns.client.handler.AimingHandler;
 import top.ribs.scguns.client.handler.BulletTrailRenderingHandler;
@@ -281,7 +276,6 @@ import top.theillusivec4.curios.api.client.CuriosRendererRegistry;
    value = {Dist.CLIENT}
 )
 public class ClientHandler {
-   private static Field mouseOptionsField;
    private static long lastAmmoSwapTime = 0L;
    private static final long SWAP_COOLDOWN_MS = 1000L;
 
@@ -596,23 +590,6 @@ public class ClientHandler {
       ModelOverrides.register((Item)ModItems.FORLORN_HOPE.get(), new ForlornHopeModel());
       ModelOverrides.register((Item)ModItems.PRIMA_MATERIA.get(), new PrimaMateriaModel());
       ModelOverrides.register((Item)ModItems.TROTTERS.get(), new TrottersModel());
-   }
-
-   @SubscribeEvent
-   public static void onScreenInit(Post event) {
-      if (event.getScreen() instanceof MouseSettingsScreen) {
-         MouseSettingsScreen screen = (MouseSettingsScreen)event.getScreen();
-         if (mouseOptionsField == null) {
-            mouseOptionsField = ObfuscationReflectionHelper.findField(MouseSettingsScreen.class, "list");
-            mouseOptionsField.setAccessible(true);
-         }
-
-         try {
-            OptionsList e = (OptionsList)mouseOptionsField.get(screen);
-         } catch (IllegalAccessException var3) {
-            var3.printStackTrace();
-         }
-      }
    }
 
    @SubscribeEvent
