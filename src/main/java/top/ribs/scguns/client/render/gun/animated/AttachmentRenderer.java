@@ -1,5 +1,6 @@
 package top.ribs.scguns.client.render.gun.animated;
 
+import top.ribs.scguns.Config;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -61,7 +62,13 @@ public class AttachmentRenderer extends GeoRenderLayer<AnimatedGunItem> {
          // their alpha is essentially 0 or 255 apart from anti-aliased edges. The scope's full-screen overlay
          // and vignette are drawn elsewhere and stay blended - they are soft gradients and alpha testing would
          // destroy them.
-         RenderType focusModelRenderLayer = RenderType.entityCutoutNoCull(texture_resource);
+         // Translucent blending is what vanilla expects (the scope lens is a soft gradient), but shader
+         // packs draw entity translucency in a separate pass that does not occlude, so the sight's solid body
+         // lets the world through. Cutout keeps alpha-tested pixels writing depth and fixes that, at the cost of
+         // the lens reading as solid - so it is opt-in rather than the default.
+         RenderType focusModelRenderLayer = Config.CLIENT.display.sightsUseCutout.get()
+            ? RenderType.entityCutoutNoCull(texture_resource)
+            : RenderType.entityTranslucent(texture_resource);
          if (bone.getName().matches("attachment_bone") && !bone.getName().matches(heldItemPath) && itemStack != null) {
             this.getRenderer()
                .reRender(

@@ -261,6 +261,7 @@ public class Config {
       public final DoubleValue dynamicCrosshairDotThreshold;
       public final DoubleValue dynamicCrosshairMaxScale;
       public final BooleanValue renderArms;
+      public final BooleanValue sightsUseCutout;
       public final BooleanValue enablePerformanceSulfurCloud;
       public final BooleanValue showProgressionMessages;
 
@@ -354,6 +355,13 @@ public class Config {
          this.dynamicCrosshairMaxScale = builder.comment("The maximum scale factor for the dynamic crosshair when spread is high")
             .defineInRange("dynamicCrosshairMaxScale", 8.0, 1.0, 20.0);
          this.renderArms = builder.comment("If true, renders the player's arms when holding a gun").define("renderArms", true);
+         this.sightsUseCutout = builder.comment(
+               "Draw the 3D sight and attachment models with alpha-cutout rendering instead of translucent"
+                  + " blending. Shader packs draw translucent models in a separate pass that does not"
+                  + " occlude, which makes sights show the world through them; cutout keeps them solid. Turn"
+                  + " this on if you use shaders and see that. Off by default, because cutout makes the"
+                  + " scope lens read as solid rather than softly translucent.")
+            .define("sightsUseCutout", false);
          this.enablePerformanceSulfurCloud = builder.comment(
                "If true, enables a performance mode for the sulfur smoke particle which reduces the max number of particles."
             )
