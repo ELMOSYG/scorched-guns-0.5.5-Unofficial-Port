@@ -26,6 +26,7 @@ import top.ribs.scguns.network.message.C2SMessageSwapAmmo;
 import top.ribs.scguns.network.message.C2SMessageToggleExoSuitPower;
 import top.ribs.scguns.network.message.C2SMessageUnload;
 import top.ribs.scguns.network.message.C2SMessageUtilityAction;
+import top.ribs.scguns.network.message.S2CMessageBanzaiImpact;
 import top.ribs.scguns.network.message.S2CMessageBeamImpact;
 import top.ribs.scguns.network.message.S2CMessageBeamPenetration;
 import top.ribs.scguns.network.message.S2CMessageBeamUpdate;
@@ -88,6 +89,7 @@ public class PacketHandler {
                 .registerPlayMessage("c2s_toggle_exo_suit_power", C2SMessageToggleExoSuitPower.class, FrameworkMessageBridge.codec(C2SMessageToggleExoSuitPower.class), FrameworkMessageBridge.handler(C2SMessageToggleExoSuitPower.class), PacketFlow.SERVERBOUND)
                 .registerPlayMessage("c2s_unload", C2SMessageUnload.class, FrameworkMessageBridge.codec(C2SMessageUnload.class), FrameworkMessageBridge.handler(C2SMessageUnload.class), PacketFlow.SERVERBOUND)
                 .registerPlayMessage("c2s_utility_action", C2SMessageUtilityAction.class, FrameworkMessageBridge.codec(C2SMessageUtilityAction.class), FrameworkMessageBridge.handler(C2SMessageUtilityAction.class), PacketFlow.SERVERBOUND)
+                .registerPlayMessage("s2c_banzai_impact", S2CMessageBanzaiImpact.class, FrameworkMessageBridge.codec(S2CMessageBanzaiImpact.class), FrameworkMessageBridge.handler(S2CMessageBanzaiImpact.class), PacketFlow.CLIENTBOUND)
                 .registerPlayMessage("s2c_beam_impact", S2CMessageBeamImpact.class, FrameworkMessageBridge.codec(S2CMessageBeamImpact.class), FrameworkMessageBridge.handler(S2CMessageBeamImpact.class), PacketFlow.CLIENTBOUND)
                 .registerPlayMessage("s2c_beam_penetration", S2CMessageBeamPenetration.class, FrameworkMessageBridge.codec(S2CMessageBeamPenetration.class), FrameworkMessageBridge.handler(S2CMessageBeamPenetration.class), PacketFlow.CLIENTBOUND)
                 .registerPlayMessage("s2c_beam_update", S2CMessageBeamUpdate.class, FrameworkMessageBridge.codec(S2CMessageBeamUpdate.class), FrameworkMessageBridge.handler(S2CMessageBeamUpdate.class), PacketFlow.CLIENTBOUND)

@@ -4,6 +4,7 @@ package top.ribs.scguns.client.handler;
 
 
 
+import top.ribs.scguns.network.message.S2CMessageBanzaiImpact;
 import top.ribs.scguns.util.ScEnchants;
 import net.minecraft.core.Holder;
 import top.ribs.scguns.util.DistHelper;
@@ -376,7 +377,7 @@ public class MeleeAttackHandler {
                .playSound(null, target.getX(), target.getY(), target.getZ(), SoundEvents.PLAYER_ATTACK_WEAK, SoundSource.PLAYERS, 1.0F, 1.0F);
             applyKnockback(player, target, heldItem);
             applySpecialEnchantmentsFromBayonet(heldItem, target, player, gunItem);
-            triggerBanzaiImpactIfNecessary(heldItem);
+            triggerBanzaiImpactIfNecessary(player, heldItem);
          }
       }
    }
@@ -411,7 +412,7 @@ public class MeleeAttackHandler {
          }
 
          applySpecialEnchantmentsFromBayonet(heldItem, target, player, gunItem);
-         triggerBanzaiImpactIfNecessary(heldItem);
+         triggerBanzaiImpactIfNecessary(player, heldItem);
       }
 
       if (isKnockPlayerBackOnHit() && connected) {
@@ -487,7 +488,7 @@ public class MeleeAttackHandler {
             spawnSuccessfulHitParticles(player, raycastTarget);
             applyKnockback(player, raycastTarget, heldItem);
             applySpecialEnchantmentsFromBayonet(heldItem, raycastTarget, player, gunItem);
-            triggerBanzaiImpactIfNecessary(heldItem);
+            triggerBanzaiImpactIfNecessary(player, heldItem);
          }
       }
    }
@@ -510,9 +511,11 @@ public class MeleeAttackHandler {
       }
    }
 
-   private static void triggerBanzaiImpactIfNecessary(ItemStack heldItem) {
+   private static void triggerBanzaiImpactIfNecessary(ServerPlayer player, ItemStack heldItem) {
       if (((GunItem)heldItem.getItem()).hasBayonet(heldItem)) {
-         GunRenderingHandler.get().triggerBanzaiImpact();
+         // GunRenderingHandler is client-only, so the animation has to be requested over the network - on a
+         // dedicated server the direct call this used to make did nothing at all.
+         PacketHandler.getPlayChannel().sendToPlayer(() -> player, new S2CMessageBanzaiImpact());
       }
    }
 
@@ -585,7 +588,7 @@ public class MeleeAttackHandler {
             if (isWallImpactEnabled() && checkForWallCollision(player)) {
                knockPlayerBack(player);
                sendWallImpactParticles(player);
-               triggerBanzaiImpactIfNecessary(currentHeldItem);
+               triggerBanzaiImpactIfNecessary(player, currentHeldItem);
                playerData.putLong(KNOCKBACK_GRACE_TAG, currentTime + (long)charge().knockbackGraceTicks.get());
             } else if (!inGracePeriod && !keepCharging(player, playerData, currentTime)) {
                stopBanzai(player);
