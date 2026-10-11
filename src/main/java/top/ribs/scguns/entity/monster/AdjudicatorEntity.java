@@ -92,6 +92,11 @@ public class AdjudicatorEntity extends Monster implements RangedAttackMob {
             this.dodgeCooldown--;
          }
 
+         // Ends the dodge leap 8 ticks after it started (see performDodgeLeap).
+         if (this.isDodging() && this.tickCount - this.lastDodgeTime >= 8) {
+            this.setDodging(false);
+         }
+
          if (this.isAttacking() && this.getAttackTimeout() > 0) {
             this.setAttackTimeout(this.getAttackTimeout() - 1);
             if (this.getAttackTimeout() == 6) {
@@ -173,16 +178,11 @@ public class AdjudicatorEntity extends Monster implements RangedAttackMob {
          this.playSound(SoundEvents.RAVAGER_ROAR, 0.8F, 1.2F + this.random.nextFloat() * 0.3F);
          this.dodgeCooldown = 25 + this.random.nextInt(35);
          this.lastDodgeTime = this.tickCount;
-         this.level().getServer().execute(() -> {
-            try {
-               Thread.sleep(400L);
-               if (this.isAlive()) {
-                  this.setDodging(false);
-               }
-            } catch (InterruptedException var2x) {
-               this.setDodging(false);
-            }
-         });
+         // The dodge ends 8 ticks (400 ms) later. This used to be
+         //     level().getServer().execute(() -> { Thread.sleep(400L); setDodging(false); });
+         // which runs on the SERVER THREAD: every dodge leap froze the whole server for 400 ms - eight
+         // dropped ticks, which the player sees as the game hitching whenever the adjudicator leaps.
+         // tick() clears the flag once that many ticks have passed instead; no thread, no sleep.
       }
    }
 
