@@ -104,7 +104,11 @@ public class AnimationManagerMixin {
             }
         }
 
-        if (entity.isSleeping() || entity.isPassenger() || entity.isSwimming()) {
+        // Riding is deliberately NOT excluded here. The tac:hold animations are upper-body only, so they
+        // layer on top of whatever the maid's own main animation plays for the lower body - including the
+        // riding pose. Excluding passengers meant a maid on a horse or a boat held her gun with no upper-body
+        // pose at all. Sleeping and swimming stay excluded: those need the whole body.
+        if (entity.isSleeping() || entity.isSwimming()) {
             return;
         }
 
@@ -126,9 +130,10 @@ public class AnimationManagerMixin {
             }
         } else if (isFiring) {
             prefix = isInCombat ? "tac:aim:fire:" : "tac:hold:fire:";
-        } else if (entity.onGround() && entity.isSprinting()) {
+        } else if (entity.onGround() && entity.isSprinting() && !entity.isPassenger()) {
+            // Not while riding: tac:run animates the legs, which belong to the mount's pose.
             prefix = "tac:run:";
-        } else if (entity.onGround() && isInCombat && !isFiring) {
+        } else if ((entity.onGround() || entity.isPassenger()) && isInCombat && !isFiring) {
             prefix = "tac:aim:";
         } else {
             prefix = "tac:hold:";
