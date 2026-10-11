@@ -126,8 +126,12 @@ public class GunEventBus {
       Level level = event.getEntity().level();
       ItemStack heldItem = player.getMainHandItem();
       CompoundTag tag = NbtHelper.getTagForWrite(heldItem);
-      if (MeleeAttackHandler.isBanzaiActive()) {
-         MeleeAttackHandler.stopBanzai();
+      // Firing cancels the shooter's own charge. This used to ask the global "is anyone charging" flag and
+      // then stop whoever the static player field pointed at, so on a server one player's shot could end
+      // another player's charge - and the shooter's own charge could survive, leaving the charge pose on.
+      if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer
+            && MeleeAttackHandler.isBanzaiCharging(serverPlayer)) {
+         MeleeAttackHandler.stopBanzai(serverPlayer);
       }
 
       if (level.isClientSide() && heldItem.getItem() instanceof AnimatedGunItem animatedGunItem) {
