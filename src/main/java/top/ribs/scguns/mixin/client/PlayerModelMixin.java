@@ -32,6 +32,15 @@ public class PlayerModelMixin<T extends LivingEntity> {
          // The war axe used to get its own holding pose here. It fought with Better Combat, which animates
          // that weapon itself, so the pose is gone and the axe now falls through to the vanilla pose. Its
          // ground slam, particles and sounds are untouched (PORTING_STATUS section 82.72).
+         // Let other mods own the player's arms while an item is in use. Spell casting (Iron's Spellbooks
+         // and its kin) poses the arms from its own setupAnim injection, and this mixin runs at TAIL, so
+         // without this check the gun pose silently overwrote the casting animation. Guns never set
+         // isUsingItem - GunItem has no use() - so holding and aiming a gun are unaffected, and the
+         // vanilla eating, drinking and bow poses now win as they should.
+         if (player.isUsingItem()) {
+            return;
+         }
+
          if (heldItem.getItem() instanceof GunItem gunItem) {
             // 0.5.5 bailed out here whenever the LOCAL player was standing still
             // -- setupAnim's second argument is limbSwing, and
