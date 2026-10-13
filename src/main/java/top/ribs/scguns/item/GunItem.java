@@ -286,6 +286,55 @@ public class GunItem extends Item implements IColored, IMeta {
 
 
 
+   /**
+
+
+
+    * Whether this gun accepts the given enchantment.
+
+
+
+    *
+
+
+
+    * <p>Vanilla 1.21.1 has no such method on {@code Item}; it exists in the other 1.21.1 Scorched Guns port and
+
+
+
+    * addons mix into it there to narrow the enchantment list. tepox_scguns_enchantments injects into
+
+
+
+    * GunItem.supportsEnchantment, and a missing target is a fatal mixin failure that leaves the mod in a
+
+
+
+    * broken state and takes the whole game down with it, so the method has to exist here even though
+
+
+
+    * nothing in this mod calls it.</p>
+
+
+
+    */
+
+
+
+   public boolean supportsEnchantment(ItemStack stack, Holder<Enchantment> enchantment) {
+
+
+
+      return this.isEnchantable(stack);
+
+
+
+   }
+
+
+
+
    public boolean isEnchantable(ItemStack stack) {
       return this.getMaxStackSize(stack) == 1;
    }
