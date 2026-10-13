@@ -1680,6 +1680,11 @@ public class Gun implements IEditorMenu {
          tag.putInt("FireTimer", this.fireTimer);
          tag.putString("GripType", this.gripType.id().toString());
          tag.putString("BaseGripType", this.baseGripType.id().toString());
+         tag.putFloat("RecoilAngle", this.recoilAngle);
+         tag.putFloat("RecoilKick", this.recoilKick);
+         tag.putFloat("Spread", this.spread);
+         tag.putBoolean("AlwaysSpread", this.alwaysSpread);
+         tag.putInt("ProjectileAmount", this.projectileAmount);
          tag.putFloat("RecoilDurationOffset", this.recoilDurationOffset);
          tag.putFloat("RecoilAdsReduction", this.recoilAdsReduction);
          tag.putFloat("RestingSpread", this.restingSpread);
@@ -1769,6 +1774,26 @@ public class Gun implements IEditorMenu {
 
          if (tag.contains("BaseGripType", 8)) {
             this.baseGripType = GripType.getType(ResourceLocation.tryParse(tag.getString("BaseGripType")));
+         }
+
+         if (tag.contains("RecoilAngle", 99)) {
+            this.recoilAngle = tag.getFloat("RecoilAngle");
+         }
+
+         if (tag.contains("RecoilKick", 99)) {
+            this.recoilKick = tag.getFloat("RecoilKick");
+         }
+
+         if (tag.contains("Spread", 99)) {
+            this.spread = tag.getFloat("Spread");
+         }
+
+         if (tag.contains("AlwaysSpread", 99)) {
+            this.alwaysSpread = tag.getBoolean("AlwaysSpread");
+         }
+
+         if (tag.contains("ProjectileAmount", 99)) {
+            this.projectileAmount = tag.getInt("ProjectileAmount");
          }
 
          if (tag.contains("RecoilDurationOffset", 99)) {
@@ -2018,6 +2043,11 @@ public class Gun implements IEditorMenu {
          general.fireTimer = this.fireTimer;
          general.gripType = this.gripType;
          general.baseGripType = this.baseGripType;
+         general.recoilAngle = this.recoilAngle;
+         general.recoilKick = this.recoilKick;
+         general.spread = this.spread;
+         general.alwaysSpread = this.alwaysSpread;
+         general.projectileAmount = this.projectileAmount;
          general.recoilDurationOffset = this.recoilDurationOffset;
          general.recoilAdsReduction = this.recoilAdsReduction;
          general.restingSpread = this.restingSpread;
