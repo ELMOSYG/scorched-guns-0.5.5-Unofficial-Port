@@ -437,6 +437,52 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    }
 
 
+   /**
+    * Whether this draw is for a player other than the one at the keyboard.
+    *
+    * <p>Mobs never set a render subject, so they keep the old behaviour.</p>
+    */
+   private void drawStaticForRemotePlayer(
+      PoseStack poseStack,
+      AnimatedGunItem animatable,
+      GeoBone bone,
+      RenderType renderType,
+      MultiBufferSource bufferSource,
+      VertexConsumer buffer,
+      boolean isReRender,
+      float partialTick,
+      int packedLight,
+      int packedOverlay,
+      int renderColor
+   ) {
+      this.restoreBakedBone(bone);
+      bone.setHidden(false);
+      bone.setChildrenHidden(false);
+      super.renderRecursively(
+         poseStack, animatable, bone, renderType, bufferSource, this.bufferSource.getBuffer(renderType),
+         isReRender, partialTick, packedLight, packedOverlay, renderColor
+      );
+   }
+
+   private static boolean isRemoteSubject() {
+      Player subject = GunRenderContext.subject();
+      return subject != null && subject != Minecraft.getInstance().player;
+   }
+
+   /**
+    * Puts a bone back to the pose its model file defines.
+    */
+   private void restoreBakedBone(GeoBone bone) {
+      AnimatedGunModel geoModel = (AnimatedGunModel)this.getGeoModel();
+      Map<String, float[]> poses = BONE_POSE.get(geoModel.getGunModelResource());
+      float[] pose = poses == null ? null : poses.get(bone.getName());
+      if (pose != null) {
+         bone.updatePosition(pose[0], pose[1], pose[2]);
+         bone.updateRotation(pose[3], pose[4], pose[5]);
+         bone.updateScale(pose[6], pose[7], pose[8]);
+      }
+   }
+
    private AnimatedGunRenderer.BoneType getBoneType(String boneName) {
       return BONE_TYPE_CACHE.computeIfAbsent(boneName, name -> {
          if (ARM_BONE_NAMES.contains(name)) {
@@ -494,6 +540,15 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       int packedOverlay,
       int renderColor
    ) {
+      // Another player's gun is drawn from the model file's own pose: every bone visible, nothing moved
+      // and none of the player specific handling below. Their gun cannot lose a bone this way, which is what
+      // "draw it like a mob holds it" comes down to; the local player keeps the full animation.
+      if (isRemoteSubject()) {
+         this.drawStaticForRemotePlayer(poseStack, animatable, bone, renderType, bufferSource, buffer,
+            isReRender, partialTick, packedLight, packedOverlay, renderColor);
+         return;
+      }
+
       AnimatedGunRenderer.BoneType boneType = this.getBoneType(bone.getName());
       Minecraft client = Minecraft.getInstance();
       boolean shouldRenderCustomArms = false;
