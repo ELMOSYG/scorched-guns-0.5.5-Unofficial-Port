@@ -1,0 +1,25 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:ridgetop"
+    }
+  ],
+  "processing_time": 250,
+  "results": [
+    {
+      "id": "minecraft:leather",
+      "count": 2
+    },
+    {
+      "id": "minecraft:iron_ingot",
+      "chance": 0.25
+    }
+  ]
+}

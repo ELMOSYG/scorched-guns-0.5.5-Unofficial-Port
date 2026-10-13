@@ -1,0 +1,21 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:diamond_steel_leggings"
+    }
+  ],
+  "processing_time": 250,
+  "results": [
+    {
+      "id": "scguns:diamond_steel_blend",
+      "count": 3
+    }
+  ]
+}

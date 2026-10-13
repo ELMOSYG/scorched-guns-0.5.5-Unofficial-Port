@@ -1,0 +1,21 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:exo_suit_boots"
+    }
+  ],
+  "processing_time": 250,
+  "results": [
+    {
+      "id": "scguns:treated_iron_blend",
+      "count": 2
+    }
+  ]
+}

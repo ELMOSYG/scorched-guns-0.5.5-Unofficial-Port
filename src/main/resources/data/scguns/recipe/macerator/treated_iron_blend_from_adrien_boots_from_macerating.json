@@ -1,0 +1,13 @@
+{
+  "type": "scguns:macerating",
+  "processingTime": 100,
+  "ingredients": [
+    {
+      "item": "scguns:adrien_boots"
+    }
+  ],
+  "result": {
+    "id": "scguns:treated_iron_blend",
+    "count": 1
+  }
+}

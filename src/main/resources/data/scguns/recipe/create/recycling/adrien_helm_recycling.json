@@ -1,0 +1,25 @@
+{
+  "type": "create:crushing",
+  "neoforge:conditions": [
+    {
+      "type": "neoforge:mod_loaded",
+      "modid": "create"
+    }
+  ],
+  "ingredients": [
+    {
+      "item": "scguns:adrien_helm"
+    }
+  ],
+  "processing_time": 250,
+  "results": [
+    {
+      "id": "scguns:treated_iron_blend",
+      "count": 1
+    },
+    {
+      "id": "minecraft:leather",
+      "chance": 0.5
+    }
+  ]
+}

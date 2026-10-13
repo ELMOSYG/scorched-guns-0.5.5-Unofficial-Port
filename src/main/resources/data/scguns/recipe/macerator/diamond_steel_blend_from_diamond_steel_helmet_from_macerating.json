@@ -1,0 +1,13 @@
+{
+  "type": "scguns:macerating",
+  "processingTime": 100,
+  "ingredients": [
+    {
+      "item": "scguns:diamond_steel_helmet"
+    }
+  ],
+  "result": {
+    "id": "scguns:diamond_steel_blend",
+    "count": 2
+  }
+}
