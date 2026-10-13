@@ -254,6 +254,10 @@ public class Config {
       public final IntValue ammoHudOffsetX;
       /** Vertical nudge for the ammo readout; positive moves it down (vanilla subtitles sit bottom centre). */
       public final IntValue ammoHudOffsetY;
+      /** Horizontal nudge for Polymorph's recipe selector on the gun bench, in GUI pixels. */
+      public final IntValue selectorOffsetX;
+      /** Vertical nudge for Polymorph's recipe selector on the gun bench; positive moves it down. */
+      public final IntValue selectorOffsetY;
       public final DoubleValue bulletTrailLifeMultiplier;
       public final DoubleValue bulletTrailLengthMultiplier;
       public final BooleanValue puritySeals;
@@ -377,6 +381,10 @@ public class Config {
          .defineInRange("ammo_hud_offset_x", 0, -1000, 1000);
       this.ammoHudOffsetY = builder.comment("Vertical offset of the ammo readout on screen, in GUI pixels.\nMove it up (negative) if it sits under the subtitles")
          .defineInRange("ammo_hud_offset_y", 0, -1000, 1000);
+      this.selectorOffsetX = builder.comment("Horizontal offset of Polymorph's recipe selector on the gun bench")
+         .defineInRange("polymorph_selector_offset_x", 0, -1000, 1000);
+      this.selectorOffsetY = builder.comment("Vertical offset of Polymorph's recipe selector on the gun bench")
+         .defineInRange("polymorph_selector_offset_y", 0, -1000, 1000);
          builder.pop();
       }
    }

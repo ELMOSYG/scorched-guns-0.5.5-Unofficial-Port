@@ -2,6 +2,7 @@ package top.ribs.scguns.compat;
 
 import com.illusivesoulworks.polymorph.api.client.base.PersistentRecipesWidget;
 import net.minecraft.world.inventory.Slot;
+import top.ribs.scguns.Config;
 import top.ribs.scguns.client.screen.GunBenchScreen;
 
 /**
@@ -21,6 +22,23 @@ public class GunBenchRecipesWidget extends PersistentRecipesWidget {
     * <p>The bench deliberately adds its output as view slot 0 - the recipe book's ghost placement depends on it
     * (see GunBenchMenu) - so this is the output, not the first attachment slot.</p>
     */
+   /**
+    * Where Polymorph draws the selector and its button.
+    *
+    * <p>Its base position hugs the output slot; these offsets let a player move it off whatever it overlaps
+    * (the bench's own fuel and ammo readouts sit nearby) without another build. Adjustable in game through the
+    * Configured screen, or in config/scguns-client.toml under client.display.</p>
+    */
+   @Override
+   public int getXPos() {
+      return super.getXPos() + Config.clientOr(Config.CLIENT.display.selectorOffsetX);
+   }
+
+   @Override
+   public int getYPos() {
+      return super.getYPos() + Config.clientOr(Config.CLIENT.display.selectorOffsetY);
+   }
+
    @Override
    public Slot getOutputSlot() {
       return this.containerScreen.getMenu().slots.get(0);
