@@ -639,6 +639,9 @@ public class ClientHandler {
    }
 
    public static void registerAdditional(RegisterAdditional event) {
+      // Forwarded to SpecialModels in 0.5.5; the port left this body empty, so nothing registered the mod's own
+      // side-loaded models (the override models addons hook into live in the same registry).
+      SpecialModels.registerAdditional(event);
    }
 
    public static Screen createEditorScreen(IEditorMenu menu) {
