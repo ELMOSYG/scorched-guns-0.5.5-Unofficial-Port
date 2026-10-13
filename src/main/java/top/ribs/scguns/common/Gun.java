@@ -164,11 +164,39 @@ public class Gun implements IEditorMenu {
    }
 
    public Gun.General getGeneral() {
-
-      GunOwners.put(this.general, this);
-
+      this.bridgeGeneralSection();
       return this.general;
+   }
 
+   /**
+    * Copies the projectile values an addon wrote into the general section across to the projectile section.
+    *
+    * <p>The other 1.21.1 port keeps recoil angle, recoil kick, spread and always-spread on the general section;
+    * this port (like 0.5.5) keeps them on the projectile section, and every gameplay path - the recoil handlers,
+    * the camera recoil, the model kick-back in GunRenderingHandler - reads them there. A gun whose JSON came from
+    * such an addon therefore had all four at zero: no recoil, no spread, no visible kick. Only copies what the
+    * projectile section does not already define, so it is idempotent and never overrides this port's own JSON.</p>
+    */
+   private void bridgeGeneralSection() {
+      if (this.general == null || this.projectile == null) {
+         return;
+      }
+
+      if (this.projectile.getRecoilAngle() == 0.0F && this.general.getRecoilAngle() != 0.0F) {
+         this.projectile.setRecoilAngle(this.general.getRecoilAngle());
+      }
+
+      if (this.projectile.getRecoilKick() == 0.0F && this.general.getRecoilKick() != 0.0F) {
+         this.projectile.setRecoilKick(this.general.getRecoilKick());
+      }
+
+      if (this.projectile.getSpread() == 0.0F && this.general.getSpread() != 0.0F) {
+         this.projectile.setSpread(this.general.getSpread());
+      }
+
+      if (!this.projectile.isAlwaysSpread() && this.general.isAlwaysSpread()) {
+         this.projectile.setAlwaysSpread(true);
+      }
    }
 
    public Gun.Reloads getReloads() {
@@ -1534,8 +1562,23 @@ public class Gun implements IEditorMenu {
        */
 
       public int getProjectileAmount() {
-      Gun gun = GunOwners.get(this);
-      return gun == null || gun.getProjectile() == null ? 0 : gun.getProjectile().getProjectileAmount();
+      return this.projectileAmount;
+   }
+
+   public float getRecoilAngle() {
+      return this.recoilAngle;
+   }
+
+   public float getRecoilKick() {
+      return this.recoilKick;
+   }
+
+   public float getSpread() {
+      return this.spread;
+   }
+
+   public boolean isAlwaysSpread() {
+      return this.alwaysSpread;
    }
 
       private Gun.WeaponType weaponType = Gun.WeaponType.pistol;
@@ -1554,6 +1597,20 @@ public class Gun implements IEditorMenu {
       @Ignored
       private GripType baseGripType = GripType.ONE_HANDED;
       @Optional
+      // These four live on the projectile section in this port (as they did in 0.5.5) and on the general
+      // section in the other 1.21.1 port, whose addons write them there. Primitives, so the gun validator
+      // (reflection over declared fields, nulls rejected) accepts them, and bridgeGeneralSection copies them
+      // across so every existing gameplay path keeps reading the projectile section.
+      @Optional
+   private float recoilAngle;
+      @Optional
+   private float recoilKick;
+      @Optional
+   private float spread;
+      @Optional
+   private boolean alwaysSpread;
+      @Optional
+   private int projectileAmount;
       private float recoilDurationOffset;
       @Optional
       private float recoilAdsReduction = 0.2F;
@@ -3223,6 +3280,34 @@ public class Gun implements IEditorMenu {
       public void setDamage(float v) {
          this.damage = v;
       }
+
+      public void setRecoilAngle(float recoilAngle) {
+
+         this.recoilAngle = recoilAngle;
+
+      }
+
+
+      public void setRecoilKick(float recoilKick) {
+
+         this.recoilKick = recoilKick;
+
+      }
+
+
+      public void setSpread(float spread) {
+
+         this.spread = spread;
+
+      }
+
+
+      public void setAlwaysSpread(boolean alwaysSpread) {
+
+         this.alwaysSpread = alwaysSpread;
+
+      }
+
 
       public float getSpread() {
          return this.spread;
