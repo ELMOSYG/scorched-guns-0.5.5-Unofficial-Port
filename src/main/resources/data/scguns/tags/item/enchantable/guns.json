@@ -199,10 +199,6 @@
       "required": false
     },
     {
-      "id": "scgunsww1:mosin_sawnoff_stonecutting",
-      "required": false
-    },
-    {
       "id": "scgunsww1:nagant",
       "required": false
     },
@@ -212,10 +208,6 @@
     },
     {
       "id": "scgunsww1:obrez_pistol",
-      "required": false
-    },
-    {
-      "id": "scgunsww1:obrez_pistol_stonecutting",
       "required": false
     },
     {
