@@ -1524,7 +1524,14 @@ public class Gun implements IEditorMenu {
 
       /** Set by {@link Gun#getGeneral()}; only used by the compatibility accessor below. */
 
-      private Gun owner;
+      /**
+    * Back-reference for the compatibility accessor below. TRANSIENT on purpose: Gun instances are
+    * serialised (a gun's definition travels inside the item's NBT), and a plain field here makes that
+    * serialisation recurse General -> Gun -> General forever, which corrupts the written definition. Every
+    * gun then reads back as an empty Gun: no projectile (the HUD shows air) and the default 30 round
+    * magazine. Gson skips transient fields, so the reference exists at runtime and never on disk.
+    */
+   private transient Gun owner;
 
 
       /**
