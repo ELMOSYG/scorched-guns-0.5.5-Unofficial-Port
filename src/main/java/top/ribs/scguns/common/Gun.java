@@ -1603,6 +1603,10 @@ public class Gun implements IEditorMenu {
       return this.criticalChance;
    }
 
+   public void setCriticalChance(float criticalChance) {
+      this.criticalChance = criticalChance;
+   }
+
    public int getEnergyUse() {
       return this.energyUse;
    }

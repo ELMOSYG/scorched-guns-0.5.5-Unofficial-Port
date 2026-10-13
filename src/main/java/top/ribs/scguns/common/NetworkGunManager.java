@@ -97,6 +97,13 @@ public class NetworkGunManager extends SimplePreparableReloadListener<Map<GunIte
                               try (Reader reader = new BufferedReader(new InputStreamReader(resource.open(), StandardCharsets.UTF_8))) {
                                  JsonObject jsonObject = GsonHelper.parse(reader);
                                  Gun gun = (Gun)GSON_INSTANCE.fromJson(jsonObject, Gun.class);
+                                 // Gson leaves General#criticalChance at zero however the JSON spells it, while the same section's
+                                 // recoil and pellet values come through fine. Read this one straight out of the JSON instead, so addons
+                                 // that declare a crit chance (scgunsww1 sets 0.05 on most of its guns) actually get one.
+                                 JsonObject scgunsGeneral = jsonObject.getAsJsonObject("general");
+                                 if (scgunsGeneral != null && scgunsGeneral.has("criticalChance")) {
+                                    gun.getGeneral().setCriticalChance(scgunsGeneral.get("criticalChance").getAsFloat());
+                                 }
                                  if (gun != null && Validator.isValidObject(gun)) {
                                     gun.loadAlternateProjectilesFromJson(jsonObject);
                                     map.put((GunItem)item, gun);
