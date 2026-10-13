@@ -69,6 +69,9 @@ import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
 
 public class GunRenderingHandler {
+   /** Items whose model override threw: reported once, then skipped for the session. */
+   private static final java.util.Set<net.minecraft.world.item.Item> failedOverrideModels =
+      java.util.Collections.newSetFromMap(new java.util.concurrent.ConcurrentHashMap<>());
    private final Map<Integer, Integer> entityShotCount = new HashMap<>();
    public static final Map<Integer, Vec3> entityIdToFlashPosition = new HashMap<>();
    public static final Map<Integer, Boolean> entityIdToUseEnchantedTexture = new HashMap<>();
@@ -802,7 +805,18 @@ public class GunRenderingHandler {
                   || display == ItemDisplayContext.FIXED
                   || display == ItemDisplayContext.GUI
             )) {
-            model.render(partialTicks, display, stack, ItemStack.EMPTY, entity, poseStack, renderTypeBuffer, light, OverlayTexture.NO_OVERLAY);
+            // Addon models run inside our render path, so a failure there takes the whole client down (an addon
+            // whose side-loaded model is missing throws on its very first frame). Contain it: report once per item
+            // and fall through to the normal path, which still draws the gun without the override.
+            try {
+               model.render(partialTicks, display, stack, ItemStack.EMPTY, entity, poseStack, renderTypeBuffer, light, OverlayTexture.NO_OVERLAY);
+            } catch (Throwable throwable) {
+               if (failedOverrideModels.add(stack.getItem())) {
+                  top.ribs.scguns.ScorchedGuns.LOGGER.warn(
+                     "A model override for {} failed to render and was disabled for this session",
+                     net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()), throwable);
+               }
+            }
             if (display == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND || display == ItemDisplayContext.THIRD_PERSON_LEFT_HAND) {
                return;
             }
