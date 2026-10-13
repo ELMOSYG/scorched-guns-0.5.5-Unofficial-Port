@@ -3,6 +3,10 @@
   "values": [
     "scguns:diamond_bayonet",
     "scguns:iron_bayonet",
-    "scguns:netherite_bayonet"
+    "scguns:netherite_bayonet",
+    {
+      "id": "#scguns:enchantable/bayonet",
+      "required": false
+    }
   ]
 }

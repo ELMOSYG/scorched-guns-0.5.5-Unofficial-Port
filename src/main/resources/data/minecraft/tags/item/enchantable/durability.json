@@ -220,6 +220,10 @@
     "scguns:winnie",
     "scguns:winnie_millend",
     "scguns:wooden_stock",
-    "scguns:zilk_45"
+    "scguns:zilk_45",
+    {
+      "id": "#scguns:enchantable/guns",
+      "required": false
+    }
   ]
 }

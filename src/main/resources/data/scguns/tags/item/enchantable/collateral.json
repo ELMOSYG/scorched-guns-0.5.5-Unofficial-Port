@@ -106,6 +106,10 @@
     "scguns:whistler",
     "scguns:winnie",
     "scguns:winnie_millend",
-    "scguns:zilk_45"
+    "scguns:zilk_45",
+    {
+      "id": "#scguns:enchantable/collateral_compatible",
+      "required": false
+    }
   ]
 }

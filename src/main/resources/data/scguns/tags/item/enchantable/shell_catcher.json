@@ -126,6 +126,10 @@
     "scguns:whizzbanger",
     "scguns:winnie",
     "scguns:winnie_millend",
-    "scguns:zilk_45"
+    "scguns:zilk_45",
+    {
+      "id": "#scguns:enchantable/shell_catcher_compatible",
+      "required": false
+    }
   ]
 }

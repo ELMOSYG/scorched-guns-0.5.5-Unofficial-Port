@@ -141,6 +141,90 @@
     "scguns:whizzbanger",
     "scguns:winnie",
     "scguns:winnie_millend",
-    "scguns:zilk_45"
+    "scguns:zilk_45",
+    {
+      "id": "#scguns:enchantable/gun",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:arisaka",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:browning_pistol",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:combat_winchester_shotgun",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:fedorov_avtomat",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:fedorov_rifle",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:general_liu",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:luger",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:madsen",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:mauser",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:mauser_auto",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:mosin_grenade_launcher",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:mosin_nagant",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:mosin_sawnoff",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:mosin_sawnoff_stonecutting",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:nagant",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:nambu_pistol",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:obrez_pistol",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:obrez_pistol_stonecutting",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:sawnoff_shotgun",
+      "required": false
+    },
+    {
+      "id": "scgunsww1:winchester_shotgun",
+      "required": false
+    }
   ]
 }
