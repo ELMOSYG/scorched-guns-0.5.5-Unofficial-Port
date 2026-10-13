@@ -149,14 +149,19 @@ public class BeamWeaponHandler {
          }
 
          float damage = calculateBeamDamage(weapon, modifiedGun, player, damageMultiplier, entityHitResult);
-         // The hit point, not null. 1.21's DamageSource#getSourcePosition reads only the direct
-         // entity, never the causing one, and a hitscan beam has no projectile - so a null direct
-         // entity means no position, and LivingEntity#hurt then calls knockback(0.4, 0, 0), which
-         // vanilla turns into a RANDOM direction (its knockback replaces a near-zero vector with
-         // (random() - random()) * 0.01). This is the only damage source in the mod built that way;
-         // every projectile passes itself. The same pair also orients the damage-tilt flash.
+         // The shooter's position, not the impact point. 1.21's DamageSource#getSourcePosition reads only the
+         // direct entity, never the causing one, and a hitscan beam has no projectile - so with a null direct
+         // entity the position is whatever we hand it, and with none at all LivingEntity#hurt finds no
+         // direction and calls knockback(0.4, 0, 0), which vanilla turns into a RANDOM shove.
+         //
+         // The impact point looked reasonable but is nearly the victim's own position when a beam lands on
+         // them, so the direction vector it produced fell under vanilla's degeneracy check and the victim was
+         // thrown in a random direction anyway. Using the shooter's position always yields a long, stable
+         // vector pointing away from the shooter. Vanilla normalises it before scaling by the knockback
+         // strength, so this changes the direction only, not how hard the hit pushes. The same pair also
+         // orients the damage-tilt flash.
          DamageSource damageSource = ModDamageTypes.Sources.projectile(
-            player.server.registryAccess(), null, player, entityHitResult.getLocation());
+            player.server.registryAccess(), null, player, player.position());
          boolean damaged = hitEntity.hurt(damageSource, damage);
          if (damaged) {
             hitEntity.invulnerableTime = 0;
