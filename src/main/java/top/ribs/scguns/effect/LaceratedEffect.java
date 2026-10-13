@@ -26,7 +26,7 @@ public class LaceratedEffect extends MobEffect {
          if (random.nextFloat() < 1.0F / (float)damageInterval) {
             float baseDamage = 1.0F + random.nextFloat() * 3.0F;
             float damage = baseDamage * (1.0F + (float)amplifier * 0.3F);
-            entity.hurt(ModDamageTypes.Sources.lacerated(entity.level().registryAccess()), damage);
+            entity.hurt(ModDamageTypes.Sources.lacerated(entity.level().registryAccess(), entity), damage);
             if (!entity.level().isClientSide) {
                double x = entity.getX();
                double y = entity.getY() + (double)entity.getBbHeight() * 0.5;

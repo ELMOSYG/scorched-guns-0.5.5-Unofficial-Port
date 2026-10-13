@@ -36,7 +36,7 @@ public class SulfurPoisoningEffect extends MobEffect {
          if (entity.tickCount % damageInterval == 0) {
             float damage = (1.5F + (float)amplifier * 0.75F) * intensityRatio;
             if (damage > 0.3F) {
-               entity.hurt(ModDamageTypes.Sources.sulfurPoison(entity.level().registryAccess()), damage);
+               entity.hurt(ModDamageTypes.Sources.sulfurPoison(entity.level().registryAccess(), entity), damage);
             }
          }
 

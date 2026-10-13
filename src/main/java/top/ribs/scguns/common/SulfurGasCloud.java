@@ -253,14 +253,14 @@ public class SulfurGasCloud {
                      if (isBot) {
                         entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, duration, amplifier));
                         float damage = inInnerZone ? 1.5F : 0.75F;
-                        entity.hurt(ModDamageTypes.Sources.sulfurPoison(entity.level().registryAccess()), damage);
+                        entity.hurt(ModDamageTypes.Sources.sulfurPoison(entity.level().registryAccess(), entity), damage);
                         if (inInnerZone) {
                            entity.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, duration / 2, 0));
                         }
                      } else {
                         entity.addEffect(new MobEffectInstance(ModEffects.SULFUR_POISONING, duration, amplifier));
                         if (inInnerZone) {
-                           entity.hurt(ModDamageTypes.Sources.sulfurPoison(entity.level().registryAccess()), 1.0F);
+                           entity.hurt(ModDamageTypes.Sources.sulfurPoison(entity.level().registryAccess(), entity), 1.0F);
                            entity.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 60, 0));
                         }
                      }
