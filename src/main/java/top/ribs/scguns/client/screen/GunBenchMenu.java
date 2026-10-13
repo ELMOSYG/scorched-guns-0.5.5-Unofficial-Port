@@ -1,6 +1,7 @@
 package top.ribs.scguns.client.screen;
 
 import java.util.Optional;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.NonNullList;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
@@ -59,7 +60,26 @@ public class GunBenchMenu extends RecipeBookMenu<ContainerRecipeInput, GunBenchR
    public static final int SLOT_BLUEPRINT = 11;
 
    public GunBenchMenu(int id, Inventory playerInventory, RegistryFriendlyByteBuf extraData) {
-      this(id, playerInventory, new SimpleContainer(12), ContainerLevelAccess.NULL);
+      this(id, playerInventory, new SimpleContainer(12), clientAccess(playerInventory, extraData));
+   }
+
+   /**
+    * The block position the server sends when it opens the bench, so the client side of this menu knows which bench
+    * it belongs to.
+    *
+    * <p>GunBenchBlock#useWithoutItem already writes the position into the buffer (a plain openMenu call would send
+    * an empty one, which ServerPlayer#openMenu refuses). Dropping it left the client menu with
+    * {@link ContainerLevelAccess#NULL}, so the Polymorph integration - which has to find the bench behind a menu to
+    * attach its recipe data and draw the recipe selection button - could not resolve anything on the client and no
+    * button ever appeared.</p>
+    */
+   private static ContainerLevelAccess clientAccess(Inventory playerInventory, RegistryFriendlyByteBuf extraData) {
+      if (extraData == null || !extraData.isReadable()) {
+         return ContainerLevelAccess.NULL;
+      }
+
+      BlockPos pos = extraData.readBlockPos();
+      return ContainerLevelAccess.create(playerInventory.player.level(), pos);
    }
 
    public GunBenchMenu(int id, Inventory playerInventory, ContainerLevelAccess containerAccess) {
