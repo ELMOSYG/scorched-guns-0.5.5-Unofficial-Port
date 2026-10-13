@@ -378,13 +378,13 @@ public class Config {
             // 移植有意偏离 0.5.5：原本默认 false，玩家反馈"等级提升没有任何提示"（HANDOFF 40）。
          .define("showProgressionMessages", true);
       this.ammoHudOffsetX = builder.comment("Horizontal offset of the ammo readout on screen, in GUI pixels")
-         .defineInRange("ammo_hud_offset_x", 0, -1000, 1000);
+         .defineInRange("ammo_hud_offset_x", -50, -1000, 1000);
       this.ammoHudOffsetY = builder.comment("Vertical offset of the ammo readout on screen, in GUI pixels.\nMove it up (negative) if it sits under the subtitles")
          .defineInRange("ammo_hud_offset_y", 0, -1000, 1000);
       this.selectorOffsetX = builder.comment("Horizontal offset of Polymorph's recipe selector on the gun bench")
          .defineInRange("polymorph_selector_offset_x", 0, -1000, 1000);
       this.selectorOffsetY = builder.comment("Vertical offset of Polymorph's recipe selector on the gun bench")
-         .defineInRange("polymorph_selector_offset_y", 0, -1000, 1000);
+         .defineInRange("polymorph_selector_offset_y", -5, -1000, 1000);
          builder.pop();
       }
    }
