@@ -6,6 +6,7 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -44,7 +45,6 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import org.joml.Matrix4f;
 import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.animation.state.BoneSnapshot;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.animatable.GeoAnimatable;
@@ -122,6 +122,19 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    // and a cache keyed on the stack goes stale because the gun NBT is mutated in place.
    private static final Map<String, AnimatedGunRenderer.BoneType> BONE_TYPE_CACHE = new HashMap<>();
 
+   /**
+    * Each bone's baked pose (position, rotation, scale), captured the first time this model is drawn and
+    * put back before every later draw.
+    *
+    * <p>The model and its bones are shared by every player holding the gun, and GeckoLib only restores a
+    * bone while the animation that moved it is still playing. A bone the next animation does not key kept
+    * the old value, so e.g. the bolt of the many guns whose idle animation leaves it out stayed wherever
+    * the shoot animation put it, which parked it outside the drawn model. The capture happens before
+    * GeckoLib applies anything, so it is the pose the model file defines.</p>
+    */
+   private static final Map<ResourceLocation, Map<String, float[]>> BONE_POSE = new HashMap<>();
+   private static final Set<ResourceLocation> BONE_POSE_CAPTURED = new HashSet<>();
+
    public AnimatedGunRenderer(ResourceLocation path) {
       super(new AnimatedGunModel(path));
       instance = this;
@@ -178,6 +191,8 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       // The working 1.21.1 port resolves the effective context from the configured main
       // hand, so a left-handed player gets FIRST_PERSON_LEFT_HAND; 0.5.5 hardcoded the
       // right hand and then mirrored the left hand wrongly.
+      this.captureOrRestoreBonePose();
+
       this.currentDisplayContext = getEffectiveDisplayContext(stack, transformType, client);
       this.currentRenderStack = stack;
       this.bufferSource = bufferSource;
@@ -187,15 +202,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       // and the inventories draw every visible gun again on every frame, so resolving the item's baked model
       // and its item overrides, reading the world light at the player's eye and parsing the gun's tag here was
       // pure per-slot, per-frame work.
-               // The gun model is one shared instance, and GeckoLib only clears a bone's hidden flag from inside
-         // renderRecursively - which it skips for a hidden bone and for the children of one. A bone hidden while
-         // drawing one player's gun therefore stayed hidden for the next player's, and a bone an animation had
-         // moved stayed moved once that animation stopped. Resetting to the baked state before every render stops
-         // one player's render leaking into the next and returns unkeyed bones - the bolt of the many guns whose
-         // idle animation leaves it out - to their resting pose.
-         this.resetBoneState();
-
-if (transformType == ItemDisplayContext.GUI) {
+      if (transformType == ItemDisplayContext.GUI) {
          this.renderGuiItem(stack, poseStack, bufferSource, packedOverlay);
          return;
       }
@@ -364,11 +371,14 @@ if (transformType == ItemDisplayContext.GUI) {
       }
    }
 
-   private void resetBoneState() {
+   private void captureOrRestoreBonePose() {
 
       AnimatedGunModel geoModel = (AnimatedGunModel)this.getGeoModel();
+      ResourceLocation resource = geoModel.getGunModelResource();
 
-      BakedGeoModel model = geoModel.getBakedModel(geoModel.getGunModelResource());
+      BakedGeoModel model = geoModel.getBakedModel(resource);
+      boolean captured = BONE_POSE_CAPTURED.contains(resource);
+      Map<String, float[]> poses = BONE_POSE.computeIfAbsent(resource, key -> new HashMap<>());
 
       if (model == null) {
 
@@ -379,35 +389,48 @@ if (transformType == ItemDisplayContext.GUI) {
 
       for (GeoBone bone : model.topLevelBones()) {
 
-         this.resetBone(bone);
+         captureOrRestoreBone(bone, poses, captured);
 
       }
+
+
+      BONE_POSE_CAPTURED.add(resource);
 
    }
 
 
-   private void resetBone(GeoBone bone) {
+   private static void captureOrRestoreBone(GeoBone bone, Map<String, float[]> poses, boolean captured) {
 
-      BoneSnapshot snapshot = bone.getInitialSnapshot();
+      if (!captured) {
 
-      if (snapshot != null) {
+         poses.put(bone.getName(), new float[]{
 
-         bone.updatePosition(snapshot.getOffsetX(), snapshot.getOffsetY(), snapshot.getOffsetZ());
+            bone.getPosX(), bone.getPosY(), bone.getPosZ(),
 
-         bone.updateRotation(snapshot.getRotX(), snapshot.getRotY(), snapshot.getRotZ());
+            bone.getRotX(), bone.getRotY(), bone.getRotZ(),
 
-         bone.updateScale(snapshot.getScaleX(), snapshot.getScaleY(), snapshot.getScaleZ());
+            bone.getScaleX(), bone.getScaleY(), bone.getScaleZ()});
+
+      } else {
+
+         float[] pose = poses.get(bone.getName());
+
+         if (pose != null) {
+
+            bone.updatePosition(pose[0], pose[1], pose[2]);
+
+            bone.updateRotation(pose[3], pose[4], pose[5]);
+
+            bone.updateScale(pose[6], pose[7], pose[8]);
+
+         }
 
       }
 
 
-      bone.setHidden(false);
-
-      bone.setChildrenHidden(false);
-
       for (GeoBone child : bone.getChildBones()) {
 
-         this.resetBone(child);
+         captureOrRestoreBone(child, poses, captured);
 
       }
 
