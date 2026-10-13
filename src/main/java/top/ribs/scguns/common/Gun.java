@@ -3438,6 +3438,18 @@ public class Gun implements IEditorMenu {
          return this.casingParticle;
       }
 
+      public void setDamageFalloffStart(float value) {
+         this.damageFalloffStart = value;
+      }
+
+      public void setDamageFalloffEnd(float value) {
+         this.damageFalloffEnd = value;
+      }
+
+      public void setDamageFalloffMinMultiplier(float value) {
+         this.damageFalloffMinMultiplier = value;
+      }
+
       public float getDamageFalloffStart() {
          return this.damageFalloffStart;
       }

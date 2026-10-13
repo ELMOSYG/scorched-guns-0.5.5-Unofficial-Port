@@ -104,6 +104,20 @@ public class NetworkGunManager extends SimplePreparableReloadListener<Map<GunIte
                                  if (scgunsGeneral != null && scgunsGeneral.has("criticalChance")) {
                                     gun.getGeneral().setCriticalChance(scgunsGeneral.get("criticalChance").getAsFloat());
                                  }
+                                 // Same story for the damage falloff: scgunsww1 declares it on the projectile section
+                                 // (sawnoff_shotgun: start 8, end 20, minimum 0.4) and Gson does not carry it across.
+                                 JsonObject scgunsProjectile = jsonObject.getAsJsonObject("projectile");
+                                 if (scgunsProjectile != null) {
+                                    if (scgunsProjectile.has("damageFalloffStart")) {
+                                       gun.getProjectile().setDamageFalloffStart(scgunsProjectile.get("damageFalloffStart").getAsFloat());
+                                    }
+                                    if (scgunsProjectile.has("damageFalloffEnd")) {
+                                       gun.getProjectile().setDamageFalloffEnd(scgunsProjectile.get("damageFalloffEnd").getAsFloat());
+                                    }
+                                    if (scgunsProjectile.has("damageFalloffMinMultiplier")) {
+                                       gun.getProjectile().setDamageFalloffMinMultiplier(scgunsProjectile.get("damageFalloffMinMultiplier").getAsFloat());
+                                    }
+                                 }
                                  if (gun != null && Validator.isValidObject(gun)) {
                                     gun.loadAlternateProjectilesFromJson(jsonObject);
                                     map.put((GunItem)item, gun);
