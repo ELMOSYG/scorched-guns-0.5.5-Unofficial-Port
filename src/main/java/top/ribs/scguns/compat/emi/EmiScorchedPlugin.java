@@ -39,7 +39,19 @@ public class EmiScorchedPlugin implements EmiPlugin {
    public static final EmiRecipeCategory LIGHTNING_BATTERY = category("lightning_battery", ModBlocks.LIGHTNING_BATTERY.get());
 
    private static EmiRecipeCategory category(String path, net.minecraft.world.level.block.Block icon) {
-      return new EmiRecipeCategory(ResourceLocation.fromNamespaceAndPath("scguns", path), EmiStack.of(icon));
+      // Same translation the JEI category uses, so both viewers label the page identically.
+      String key = "block.scguns." + path;
+      if ("mechanical_pressing".equals(path)) {
+         key = "block.scguns.mechanical_press";
+      } else if ("powered_mechanical_pressing".equals(path)) {
+         key = "block.scguns.powered_mechanical_press";
+      } else if ("macerating".equals(path)) {
+         key = "block.scguns.macerator";
+      } else if ("powered_macerating".equals(path)) {
+         key = "block.scguns.powered_macerator";
+      }
+
+      return new ScorchedEmiCategory(ResourceLocation.fromNamespaceAndPath("scguns", path), icon, key);
    }
 
    @Override

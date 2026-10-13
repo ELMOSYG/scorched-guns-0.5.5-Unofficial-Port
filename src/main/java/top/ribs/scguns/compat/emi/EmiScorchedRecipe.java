@@ -26,7 +26,7 @@ public class EmiScorchedRecipe extends BasicEmiRecipe {
    private static final int SLOT = 18;
 
    public EmiScorchedRecipe(EmiRecipeCategory category, ResourceLocation id, Recipe<ContainerRecipeInput> recipe) {
-      super(category, id, 0, 0);
+      super(category, id, displayWidth(recipe), displayHeight(recipe));
 
       List<EmiIngredient> ingredients = new ArrayList<>();
       for (Ingredient ingredient : recipe.getIngredients()) {
@@ -37,10 +37,38 @@ public class EmiScorchedRecipe extends BasicEmiRecipe {
 
       this.inputs = ingredients;
       this.outputs = List.of(EmiStack.of(recipe.getResultItem(RegistryAccess.EMPTY)));
+   }
 
-      int rows = Math.max(1, (ingredients.size() + COLUMNS - 1) / COLUMNS);
-      this.width = Math.min(ingredients.size(), COLUMNS) * SLOT + SLOT * 2;
-      this.height = rows * SLOT;
+   // BasicEmiRecipe takes the canvas size in its constructor, so the layout has to be measured from the recipe
+   // itself rather than assigned afterwards - computing it later left every page drawing inside an oversized canvas.
+   private static int columns(Recipe<ContainerRecipeInput> recipe) {
+      int count = 0;
+      for (Ingredient ingredient : recipe.getIngredients()) {
+         if (!ingredient.isEmpty()) {
+            count++;
+         }
+      }
+
+      return Math.max(1, Math.min(count, COLUMNS));
+   }
+
+   private static int rows(Recipe<ContainerRecipeInput> recipe) {
+      int count = 0;
+      for (Ingredient ingredient : recipe.getIngredients()) {
+         if (!ingredient.isEmpty()) {
+            count++;
+         }
+      }
+
+      return Math.max(1, (count + COLUMNS - 1) / COLUMNS);
+   }
+
+   private static int displayWidth(Recipe<ContainerRecipeInput> recipe) {
+      return columns(recipe) * SLOT + SLOT * 3;
+   }
+
+   private static int displayHeight(Recipe<ContainerRecipeInput> recipe) {
+      return rows(recipe) * SLOT;
    }
 
    @Override
