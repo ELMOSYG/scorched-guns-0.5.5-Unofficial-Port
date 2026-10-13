@@ -1140,7 +1140,12 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
 
    @OnlyIn(Dist.CLIENT)
    private PlayState predicate(AnimationState<AnimatedGunItem> event) {
-      Player player = Minecraft.getInstance().player;
+      // The player holding the gun being drawn, not the one at the keyboard. Reading the local player here made
+      // this predicate report STOP for every other player's gun - the held stack is not in the local player's
+      // hands - which cut their animation off part way through and left the bones (the bolt, for one) wherever
+      // it happened to be. Guns held by mobs are unaffected: there is no render subject for them, so this falls
+      // back to the local player exactly as before.
+      Player player = top.ribs.scguns.client.render.gun.animated.GunRenderContext.subject();
       if (player == null) {
          return PlayState.STOP;
       } else {
