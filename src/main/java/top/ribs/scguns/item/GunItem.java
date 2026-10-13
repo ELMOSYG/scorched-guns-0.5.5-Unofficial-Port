@@ -301,7 +301,11 @@ public class GunItem extends Item implements IColored, IMeta {
          // when it is actually out of range, so this stays idempotent.
          int maxAmmo = this.gun == null || this.gun.getReloads() == null ? 0 : this.gun.getReloads().getMaxAmmo();
          if (maxAmmo > 0 && tagCompound.getInt("AmmoCount") > maxAmmo) {
-            tagCompound.putInt("AmmoCount", maxAmmo);
+            // Write through a write accessor, bound and used in the same statement: tagCompound came from
+            // getTag() and is read-only (mutating it would not mark the stack dirty, so the change would never
+            // reach the client), and a tag bound from getOrCreateTag() goes stale the moment anything else
+            // re-detaches this stack's component.
+            NbtHelper.getOrCreateTag(stack).putInt("AmmoCount", maxAmmo);
          }
 
          return this.gun;
