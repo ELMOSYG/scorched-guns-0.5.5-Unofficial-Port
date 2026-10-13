@@ -817,9 +817,11 @@ public class GunRenderingHandler {
                      net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()), throwable);
                }
             }
-            if (display == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND || display == ItemDisplayContext.THIRD_PERSON_LEFT_HAND) {
-               return;
-            }
+            // The override above drew the whole gun. Falling through would draw the inner model on top of it, and in
+            // the inventory that inner model animates per frame, so the two poses fight and the preview twitches.
+            // Upstream only returned for the third-person contexts, which went unnoticed while addon overrides were
+            // failing outright; now that they load, GUI and FIXED need the same treatment.
+            return;
          }
       }
 
