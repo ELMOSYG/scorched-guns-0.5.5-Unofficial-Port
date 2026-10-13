@@ -19,6 +19,19 @@ public class GunBenchRecipeData extends AbstractBlockEntityRecipeData<GunBenchBl
    }
 
    @Override
+   public boolean isEmpty() {
+      // The blueprint in slot 11 is not an ingredient, so a bench holding only a blueprint is empty as far as
+      // recipe matching is concerned.
+      for (int slot = 0; slot < GunBenchMenu.SLOT_OUTPUT; slot++) {
+         if (!this.getOwner().getInventory().getItem(slot).isEmpty()) {
+            return false;
+         }
+      }
+
+      return true;
+   }
+
+   @Override
    protected NonNullList<ItemStack> getInput() {
       NonNullList<ItemStack> input = NonNullList.create();
       for (int slot = 0; slot < GunBenchMenu.SLOT_OUTPUT; slot++) {

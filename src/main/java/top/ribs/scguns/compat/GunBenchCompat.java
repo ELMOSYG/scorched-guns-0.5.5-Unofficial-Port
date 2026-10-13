@@ -30,8 +30,11 @@ public final class GunBenchCompat {
          }
       }
 
-      List<RecipeHolder<GunBenchRecipe>> candidates = level.getRecipeManager().getAllRecipesFor(GunBenchRecipe.Type.INSTANCE);
-      return candidates.stream().filter(holder -> holder.value().matches(input, level)).findFirst()
-         .map(holder -> holder.value());
+      List<RecipeHolder<GunBenchRecipe>> candidates = level.getRecipeManager()
+         .getAllRecipesFor(GunBenchRecipe.Type.INSTANCE)
+         .stream()
+         .filter(holder -> holder.value().matches(input, level))
+         .toList();
+      return candidates.isEmpty() ? Optional.empty() : Optional.of(candidates.get(0).value());
    }
 }

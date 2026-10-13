@@ -27,18 +27,35 @@ public final class GunBenchPolymorph {
       api.registerMenu(menu -> menu instanceof GunBenchMenu bench ? resolve(bench) : null);
    }
 
-   /** The recipe the player selected, or the first match when there is nothing to select between. */
-   @SuppressWarnings("unchecked")
+   /**
+    * The recipe the player selected among those that currently match, or empty when none does.
+    *
+    * <p>Only matching recipes are offered as candidates. Polymorph's contract is to return the player's selection
+    * and, when nothing has been selected yet, the first entry of the list it is handed - it does not re-check that
+    * the entry still fits the input. Passing every bench recipe therefore made an empty bench resolve to whatever
+    * recipe happened to sort first (players saw the output slot fill with a gun and could take it with no
+    * ingredients at all). Filtering first keeps the choice meaningful and an empty bench empty.</p>
+    */
    public static Optional<GunBenchRecipe> findRecipe(GunBenchMenu menu, ContainerRecipeInput input, Level level) {
-      List<RecipeHolder<GunBenchRecipe>> candidates = level.getRecipeManager().getAllRecipesFor(GunBenchRecipe.Type.INSTANCE);
+      List<RecipeHolder<GunBenchRecipe>> candidates = level.getRecipeManager()
+         .getAllRecipesFor(GunBenchRecipe.Type.INSTANCE)
+         .stream()
+         .filter(holder -> holder.value().matches(input, level))
+         .toList();
+      if (candidates.isEmpty()) {
+         return Optional.empty();
+      }
+
       IBlockEntityRecipeData data = PolymorphApi.getInstance().getBlockEntityRecipeData(menu);
       if (data == null) {
-         return candidates.stream().filter(holder -> holder.value().matches(input, level)).findFirst()
-            .map(holder -> holder.value());
+         return Optional.of(candidates.get(0).value());
       }
 
       RecipeHolder<GunBenchRecipe> selected = data.getRecipe(GunBenchRecipe.Type.INSTANCE, input, level, candidates);
-      return Optional.ofNullable(selected).map(RecipeHolder::value);
+      // Belt and braces: never hand back a recipe that does not fit what is in the bench.
+      return selected == null || !selected.value().matches(input, level)
+         ? Optional.of(candidates.get(0).value())
+         : Optional.of(selected.value());
    }
 
    private static BlockEntity resolve(GunBenchMenu menu) {
