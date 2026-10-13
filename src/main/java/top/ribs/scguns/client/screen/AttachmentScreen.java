@@ -262,6 +262,18 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentContaine
             );
             currentY += (float)lineHeight;
             float critChance = GunModifierHelper.getCriticalChance(gunStack);
+            // TEMPORARY PROBE (remove once the ww1 crit chance is traced): reports the three places the value can
+            // come from - the helper's total, the general section the addon writes, and the projectile section this
+            // port reads. Only runs while the attachment screen is open.
+            if (gunStack.getItem() instanceof top.ribs.scguns.item.GunItem scgunsCritItem) {
+               top.ribs.scguns.common.Gun scgunsCritGun = scgunsCritItem.getModifiedGun(gunStack);
+               top.ribs.scguns.ScorchedGuns.LOGGER.info(
+                  "SCGUNS-CRIT item={} helper={} general={} projectile={}",
+                  net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(gunStack.getItem()),
+                  critChance,
+                  scgunsCritGun.getGeneral().getCriticalChance(),
+                  scgunsCritGun.getProjectile().getCriticalChance());
+            }
             if (critChance > 0.0F) {
                pGuiGraphics.drawString(
                   this.font,
