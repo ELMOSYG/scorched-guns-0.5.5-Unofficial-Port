@@ -165,7 +165,7 @@ public class Gun implements IEditorMenu {
 
    public Gun.General getGeneral() {
 
-      this.general.owner = this;
+      GunOwners.put(this.general, this);
 
       return this.general;
 
@@ -1524,15 +1524,6 @@ public class Gun implements IEditorMenu {
 
       /** Set by {@link Gun#getGeneral()}; only used by the compatibility accessor below. */
 
-      /**
-    * Back-reference for the compatibility accessor below. TRANSIENT on purpose: Gun instances are
-    * serialised (a gun's definition travels inside the item's NBT), and a plain field here makes that
-    * serialisation recurse General -> Gun -> General forever, which corrupts the written definition. Every
-    * gun then reads back as an empty Gun: no projectile (the HUD shows air) and the default 30 round
-    * magazine. Gson skips transient fields, so the reference exists at runtime and never on disk.
-    */
-   private transient Gun owner;
-
 
       /**
 
@@ -1543,10 +1534,9 @@ public class Gun implements IEditorMenu {
        */
 
       public int getProjectileAmount() {
-
-         return this.owner == null ? 0 : this.owner.getProjectile().getProjectileAmount();
-
-      }
+      Gun gun = GunOwners.get(this);
+      return gun == null || gun.getProjectile() == null ? 0 : gun.getProjectile().getProjectileAmount();
+   }
 
       private Gun.WeaponType weaponType = Gun.WeaponType.pistol;
       @Ignored
