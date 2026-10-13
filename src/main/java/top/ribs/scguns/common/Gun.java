@@ -197,6 +197,12 @@ public class Gun implements IEditorMenu {
       if (!this.projectile.isAlwaysSpread() && this.general.isAlwaysSpread()) {
          this.projectile.setAlwaysSpread(true);
       }
+
+      // Shotguns: this port reads the pellet count from the projectile section, the other port keeps it in the
+      // general section. Without this a shotgun fired a single pellet, whatever its JSON said.
+      if (this.projectile.getProjectileAmount() <= 1 && this.general.getProjectileAmount() > 1) {
+         this.projectile.setProjectileAmount(this.general.getProjectileAmount());
+      }
    }
 
    public Gun.Reloads getReloads() {
@@ -3333,6 +3339,10 @@ public class Gun implements IEditorMenu {
 
       }
 
+
+      public void setProjectileAmount(int projectileAmount) {
+         this.projectileAmount = Math.max(1, projectileAmount);
+      }
 
       public void setAlwaysSpread(boolean alwaysSpread) {
 
