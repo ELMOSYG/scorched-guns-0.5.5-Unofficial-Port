@@ -5,7 +5,8 @@ running (started 23:31). The JVM had the mod jar open and had cached entry offse
 file, so 25 seconds later it threw ClassNotFoundException for a class the new file does contain,
 and the game crashed. Replacing a mod jar under a running game is not safe; this refuses instead.
 
-The jar name follows `mod_version`, so a version bump renames it. Anything else the instance already
+The jar name follows `port_version`; the version inside neoforge.mods.toml follows `mod_version`
+(compat_version+port_version), which is what other mods' dependency ranges are compared against. Anything else the instance already
 has under the same mod name is backed up and **removed**: two copies of one mod id in mods/ is a
 loading error, not a harmless leftover.
 

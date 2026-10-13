@@ -164,7 +164,11 @@ public class Gun implements IEditorMenu {
    }
 
    public Gun.General getGeneral() {
+
+      this.general.owner = this;
+
       return this.general;
+
    }
 
    public Gun.Reloads getReloads() {
@@ -640,6 +644,34 @@ public class Gun implements IEditorMenu {
    public static float getAdditionalDamage(ItemStack gunStack) {
       CompoundTag tag = NbtHelper.getOrCreateTag(gunStack);
       return tag.getFloat("AdditionalDamage");
+   }
+
+   /**
+    * Bridge for addons built against other Scorched Guns ports, which call the reload lookup by this name.
+    * Ours is {@link #findAmmo(Player, Item)}; the gun's current projectile supplies the item.
+    */
+   public static AmmoContext findReloadAmmo(Player player, ItemStack gunStack, Gun gun) {
+      return findAmmo(player, gun.getCurrentAmmoItem(gunStack));
+   }
+
+   /**
+    * Bridge for addons built against other Scorched Guns ports. Writes the alternate projectile index the way
+    * {@link #getProjectile(ItemStack)} reads it back, so a gun can be pointed at one of its ammo types.
+    */
+   public static void setLoadedProjectileItem(ItemStack gunStack, Gun gun, Item item) {
+      CompoundTag tag = NbtHelper.getOrCreateTag(gunStack);
+      CompoundTag gunTag = tag.getCompound("Gun");
+      CompoundTag generalTag = gunTag.getCompound("General");
+      generalTag.putInt("CurrentAmmoTypeIndex", 0);
+      for (int i = 0; i < gun.alternateProjectiles.size(); i++) {
+         if (gun.alternateProjectiles.get(i).getItem() == item) {
+            generalTag.putInt("CurrentAmmoTypeIndex", i + 1);
+            break;
+         }
+      }
+
+      gunTag.put("General", generalTag);
+      tag.put("Gun", gunTag);
    }
 
    public static AmmoContext findAmmo(Player player, Item item) {
@@ -1489,6 +1521,26 @@ public class Gun implements IEditorMenu {
    }
 
    public static class General  {
+
+      /** Set by {@link Gun#getGeneral()}; only used by the compatibility accessor below. */
+
+      private Gun owner;
+
+
+      /**
+
+       * Bridge for addons built against other Scorched Guns ports, which ask the general section for the proj
+
+       * count. Ours lives on the projectile section.
+
+       */
+
+      public int getProjectileAmount() {
+
+         return this.owner == null ? 0 : this.owner.getProjectile().getProjectileAmount();
+
+      }
+
       private Gun.WeaponType weaponType = Gun.WeaponType.pistol;
       @Ignored
       private FireMode fireMode = FireMode.SEMI_AUTO;

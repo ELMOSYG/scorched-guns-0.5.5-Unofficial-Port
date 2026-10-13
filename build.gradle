@@ -14,7 +14,9 @@ tasks.named('wrapper', Wrapper).configure {
     distributionType = Wrapper.DistributionType.BIN
 }
 
-version = mod_version
+// The jar is named after the port's own version. mod_version (compat_version+port_version) is what
+// goes into neoforge.mods.toml for the loader's dependency ranges - see gradle.properties.
+version = port_version
 group = mod_group_id
 
 sourceSets.main.resources {

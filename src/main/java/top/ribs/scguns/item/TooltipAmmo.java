@@ -1,5 +1,6 @@
 package top.ribs.scguns.item;
 
+import top.ribs.scguns.item.ammo.AmmoItem;
 
 
 import net.minecraft.world.item.Item;

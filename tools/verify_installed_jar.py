@@ -29,7 +29,7 @@ def _installed_jar():
 
 
 def _built_jar():
-    """The jar build/libs currently holds (the name follows mod_version)."""
+    """The jar build/libs currently holds (the name follows port_version, the manifest follows mod_version)."""
     candidates = [p for p in pathlib.Path("build/libs").glob("scguns-*.jar")
                   if not p.name.endswith(("-sources.jar", "-javadoc.jar"))]
     return max(candidates, key=lambda p: p.stat().st_mtime) if candidates else \
