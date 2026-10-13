@@ -1596,21 +1596,21 @@ public class Gun implements IEditorMenu {
       private GripType gripType = GripType.ONE_HANDED;
       @Ignored
       private GripType baseGripType = GripType.ONE_HANDED;
+      // These five live on the projectile section in this port (as the recoil trio did in 0.5.5) and on the general
+      // section in the other 1.21.1 port, whose addons write them there. They are primitives and @Optional, so the
+      // gun validator (reflection over declared fields, nulls rejected) is happy, and bridgeGeneralSection copies
+      // them across so every existing gameplay path keeps reading the projectile section.
       @Optional
-      // These four live on the projectile section in this port (as they did in 0.5.5) and on the general
-      // section in the other 1.21.1 port, whose addons write them there. Primitives, so the gun validator
-      // (reflection over declared fields, nulls rejected) accepts them, and bridgeGeneralSection copies them
-      // across so every existing gameplay path keeps reading the projectile section.
+      private float recoilAngle;
       @Optional
-   private float recoilAngle;
+      private float recoilKick;
       @Optional
-   private float recoilKick;
+      private float spread;
       @Optional
-   private float spread;
+      private boolean alwaysSpread;
       @Optional
-   private boolean alwaysSpread;
+      private int projectileAmount;
       @Optional
-   private int projectileAmount;
       private float recoilDurationOffset;
       @Optional
       private float recoilAdsReduction = 0.2F;
