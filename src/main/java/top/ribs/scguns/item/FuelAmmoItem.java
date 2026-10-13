@@ -1,6 +1,5 @@
 package top.ribs.scguns.item;
 
-import top.ribs.scguns.item.ammo.AmmoItem;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;

@@ -29,7 +29,7 @@ import top.ribs.scguns.ScorchedGuns;
 import top.ribs.scguns.common.Attachments;
 import top.ribs.scguns.common.GunModifiers;
 import top.ribs.scguns.item.AirCanisterItem;
-import top.ribs.scguns.item.AmmoItem;
+import top.ribs.scguns.item.ammo.AmmoItem;
 import top.ribs.scguns.item.AnthraliteHammerItem;
 import top.ribs.scguns.item.AnthralitePaxelItem;
 import top.ribs.scguns.item.BarrelItem;

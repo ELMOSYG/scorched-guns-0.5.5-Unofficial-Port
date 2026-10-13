@@ -1,6 +1,5 @@
 package top.ribs.scguns.item;
 
-import top.ribs.scguns.item.ammo.AmmoItem;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.stats.Stats;
