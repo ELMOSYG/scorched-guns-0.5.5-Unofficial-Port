@@ -59,7 +59,6 @@ public class GunEntityRenderers {
       event.registerEntityRenderer((EntityType)ModEntities.SHULKSHOT.get(), ShulkshotRenderer::new);
       event.registerEntityRenderer((EntityType)ModEntities.KRAHG_ROUND_PROJECTILE.get(), ProjectileRenderer::new);
       event.registerEntityRenderer((EntityType)ModEntities.ADVANCED_ROUND_PROJECTILE.get(), ProjectileRenderer::new);
-      event.registerEntityRenderer((EntityType)ModEntities.SHATTER_ROUND_PROJECTILE.get(), ProjectileRenderer::new);
       event.registerEntityRenderer((EntityType)ModEntities.GIBBS_ROUND_PROJECTILE.get(), ProjectileRenderer::new);
       event.registerEntityRenderer((EntityType)ModEntities.SHOTBALL_PROJECTILE.get(), ShotballRenderer::new);
       event.registerEntityRenderer((EntityType)ModEntities.THROWABLE_GRENADE.get(), ThrowableGrenadeRenderer::new);
