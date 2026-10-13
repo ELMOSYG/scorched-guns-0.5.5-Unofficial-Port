@@ -16,6 +16,7 @@ import java.util.Objects;
 import java.util.concurrent.atomic.AtomicBoolean;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -336,8 +337,10 @@ public class HUDRenderHandler {
          boolean isCreative = player.isCreative();
          updateAmmoTextCache(currentAmmo, maxAmmo, isCreative);
          updateReserveAmmoTextCache(isCreative);
-         int ammoPosX = (int)((double)cachedScreenWidth * 0.88);
-         int ammoPosY = (int)((double)cachedScreenHeight * 0.8);
+         // Player-adjustable, because the default spot sits where vanilla draws its subtitles. Config.clientOr
+         // keeps this safe on a dedicated server, which never loads the client config file.
+         int ammoPosX = Mth.clamp((int)((double)cachedScreenWidth * 0.88) + Config.clientOr(Config.CLIENT.display.ammoHudOffsetX), 0, Math.max(0, cachedScreenWidth - 60));
+         int ammoPosY = Mth.clamp((int)((double)cachedScreenHeight * 0.8) + Config.clientOr(Config.CLIENT.display.ammoHudOffsetY), 0, Math.max(0, cachedScreenHeight - 24));
          RenderSystem.enableBlend();
          RenderSystem.defaultBlendFunc();
          RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);

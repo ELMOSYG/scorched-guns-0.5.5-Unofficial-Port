@@ -250,6 +250,10 @@ public class Config {
       public final DoubleValue bobbingIntensity;
       public final BooleanValue fireLights;
       public final IntValue bulletTrailRenderDelay;
+      /** Horizontal nudge for the ammo readout, in GUI-scaled pixels; positive moves it right. */
+      public final IntValue ammoHudOffsetX;
+      /** Vertical nudge for the ammo readout; positive moves it down (vanilla subtitles sit bottom centre). */
+      public final IntValue ammoHudOffsetY;
       public final DoubleValue bulletTrailLifeMultiplier;
       public final DoubleValue bulletTrailLengthMultiplier;
       public final BooleanValue puritySeals;
@@ -369,6 +373,10 @@ public class Config {
          this.showProgressionMessages = builder.comment("If enabled, shows messages when unlocking new gun tiers and raid levels")
             // 移植有意偏离 0.5.5：原本默认 false，玩家反馈"等级提升没有任何提示"（HANDOFF 40）。
          .define("showProgressionMessages", true);
+      this.ammoHudOffsetX = builder.comment("Horizontal offset of the ammo readout on screen, in GUI pixels")
+         .defineInRange("ammo_hud_offset_x", 0, -1000, 1000);
+      this.ammoHudOffsetY = builder.comment("Vertical offset of the ammo readout on screen, in GUI pixels.\nMove it up (negative) if it sits under the subtitles")
+         .defineInRange("ammo_hud_offset_y", 0, -1000, 1000);
          builder.pop();
       }
    }
