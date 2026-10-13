@@ -203,6 +203,16 @@ public class Gun implements IEditorMenu {
       if (this.projectile.getProjectileAmount() <= 1 && this.general.getProjectileAmount() > 1) {
          this.projectile.setProjectileAmount(this.general.getProjectileAmount());
       }
+
+      // Critical chance and energy cost: projectile section here, general section there.
+      if (this.projectile.getCriticalChance() <= 0.0F && this.general.getCriticalChance() > 0.0F) {
+         this.projectile.setCriticalChance(this.general.getCriticalChance());
+      }
+
+      if (this.projectile.getEnergyUse() <= 0 && this.general.getEnergyUse() > 0) {
+         this.projectile.setEnergyUse(this.general.getEnergyUse());
+      }
+
    }
 
    public Gun.Reloads getReloads() {
@@ -1589,6 +1599,23 @@ public class Gun implements IEditorMenu {
       return this.alwaysSpread;
    }
 
+   public float getCriticalChance() {
+      return this.criticalChance;
+   }
+
+   public int getEnergyUse() {
+      return this.energyUse;
+   }
+
+   public boolean hasPlayerKnockBack() {
+      return this.playerKnockBack;
+   }
+
+   public float getPlayerKnockBackStrength() {
+      return this.playerKnockBackStrength;
+   }
+
+
       private Gun.WeaponType weaponType = Gun.WeaponType.pistol;
       @Ignored
       private FireMode fireMode = FireMode.SEMI_AUTO;
@@ -1618,6 +1645,14 @@ public class Gun implements IEditorMenu {
       private boolean alwaysSpread;
       @Optional
       private int projectileAmount;
+      @Optional
+      private float criticalChance;
+      @Optional
+      private int energyUse;
+      @Optional
+      private boolean playerKnockBack;
+      @Optional
+      private float playerKnockBackStrength;
       @Optional
       private float recoilDurationOffset;
       @Optional
@@ -2054,6 +2089,10 @@ public class Gun implements IEditorMenu {
          general.spread = this.spread;
          general.alwaysSpread = this.alwaysSpread;
          general.projectileAmount = this.projectileAmount;
+         general.criticalChance = this.criticalChance;
+         general.energyUse = this.energyUse;
+         general.playerKnockBack = this.playerKnockBack;
+         general.playerKnockBackStrength = this.playerKnockBackStrength;
          general.recoilDurationOffset = this.recoilDurationOffset;
          general.recoilAdsReduction = this.recoilAdsReduction;
          general.restingSpread = this.restingSpread;
@@ -3249,6 +3288,10 @@ public class Gun implements IEditorMenu {
 
       public int getEnergyUse() {
          return this.energyUse;
+      }
+
+      public void setCriticalChance(float criticalChance) {
+         this.criticalChance = criticalChance;
       }
 
       public void setEnergyUse(int energyUse) {
