@@ -44,6 +44,8 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import org.joml.Matrix4f;
 import software.bernie.geckolib.animatable.GeoItem;
+import software.bernie.geckolib.animation.state.BoneSnapshot;
+import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.animatable.GeoAnimatable;
 import software.bernie.geckolib.animation.AnimationController;
@@ -142,18 +144,18 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    private void updateImmersiveCamera() {
       this.prevFallSway = this.fallSway;
       Minecraft mc = Minecraft.getInstance();
-      if (mc.player != null) {
-         ItemStack heldItem = mc.player.getMainHandItem();
+      if (GunRenderContext.subject() != null) {
+         ItemStack heldItem = GunRenderContext.subject().getMainHandItem();
          float targetAngle = !(heldItem.getItem() instanceof GunItem) && Config.CLIENT.display.restrictCameraRollToWeapons.get()
             ? 0.0F
             : mc.player.input.leftImpulse;
          float speed = mc.player.input.leftImpulse != 0.0F ? 0.1F : 0.15F;
          this.immersiveRoll = Mth.lerp(speed, this.immersiveRoll, targetAngle);
-         float deltaY = (float)Mth.clamp(mc.player.yo - mc.player.getY(), -1.0, 1.0);
+         float deltaY = (float)Mth.clamp(GunRenderContext.subject().yo - GunRenderContext.subject().getY(), -1.0, 1.0);
          deltaY = (float)((double)deltaY * (1.0 - AimingHandler.get().getNormalisedAdsProgress()));
-         deltaY = (float)((double)deltaY * (1.0 - (double)(Mth.abs(mc.player.getXRot()) / 90.0F)));
+         deltaY = (float)((double)deltaY * (1.0 - (double)(Mth.abs(GunRenderContext.subject().getXRot()) / 90.0F)));
          this.fallSway = Mth.approach(this.fallSway, deltaY * 60.0F * ((Double)Config.CLIENT.display.swaySensitivity.get()).floatValue(), 10.0F);
-         float intensity = mc.player.isSprinting() ? 0.75F : 1.0F;
+         float intensity = GunRenderContext.subject().isSprinting() ? 0.75F : 1.0F;
          this.sprintIntensity = Mth.approach(this.sprintIntensity, intensity, 0.1F);
       }
    }
@@ -185,12 +187,20 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       // and the inventories draw every visible gun again on every frame, so resolving the item's baked model
       // and its item overrides, reading the world light at the player's eye and parsing the gun's tag here was
       // pure per-slot, per-frame work.
-      if (transformType == ItemDisplayContext.GUI) {
+               // The gun model is one shared instance, and GeckoLib only clears a bone's hidden flag from inside
+         // renderRecursively - which it skips for a hidden bone and for the children of one. A bone hidden while
+         // drawing one player's gun therefore stayed hidden for the next player's, and a bone an animation had
+         // moved stayed moved once that animation stopped. Resetting to the baked state before every render stops
+         // one player's render leaking into the next and returns unkeyed bones - the bolt of the many guns whose
+         // idle animation leaves it out - to their resting pose.
+         this.resetBoneState();
+
+if (transformType == ItemDisplayContext.GUI) {
          this.renderGuiItem(stack, poseStack, bufferSource, packedOverlay);
          return;
       }
 
-      Player player = client.player;
+      Player player = GunRenderContext.subject();
       boolean actualFirstPersonHand = isFirstPersonHand(transformType);
       boolean right = isFirstPersonHand(this.currentDisplayContext)
          ? isRightHandDisplay(this.currentDisplayContext)
@@ -227,7 +237,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          this.applySwayTransforms(poseStack, modifiedGun, stack, localPlayer, translateX, translateY, translateZ, client.getTimer().getGameTimeDeltaPartialTick(false));
          if (ShootingHandler.get().isShooting() && !GunModifierHelper.isSilencedFire(stack)) {
             // Same as the working port: the effective context, not a hardcoded right hand.
-            this.renderMuzzleFlash(client.player, poseStack, bufferSource, stack, this.currentDisplayContext, client.getTimer().getGameTimeDeltaPartialTick(false));
+            this.renderMuzzleFlash(GunRenderContext.subject(), poseStack, bufferSource, stack, this.currentDisplayContext, client.getTimer().getGameTimeDeltaPartialTick(false));
          }
       }
 
@@ -341,7 +351,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          return false;
       } else {
          Minecraft mc = Minecraft.getInstance();
-         if (mc.player == null) {
+         if (GunRenderContext.subject() == null) {
             return false;
          } else if (mc.screen instanceof AttachmentScreen) {
             return false;
@@ -349,10 +359,60 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
             && this.currentDisplayContext != ItemDisplayContext.FIRST_PERSON_LEFT_HAND) {
             return false;
          } else {
-            return mc.options.getCameraType() != CameraType.FIRST_PERSON ? false : !mc.player.isSpectator() && mc.player.isAlive();
+            return mc.options.getCameraType() != CameraType.FIRST_PERSON ? false : !GunRenderContext.subject().isSpectator() && GunRenderContext.subject().isAlive();
          }
       }
    }
+
+   private void resetBoneState() {
+
+      AnimatedGunModel geoModel = (AnimatedGunModel)this.getGeoModel();
+
+      BakedGeoModel model = geoModel.getBakedModel(geoModel.getGunModelResource());
+
+      if (model == null) {
+
+         return;
+
+      }
+
+
+      for (GeoBone bone : model.topLevelBones()) {
+
+         this.resetBone(bone);
+
+      }
+
+   }
+
+
+   private void resetBone(GeoBone bone) {
+
+      BoneSnapshot snapshot = bone.getInitialSnapshot();
+
+      if (snapshot != null) {
+
+         bone.updatePosition(snapshot.getOffsetX(), snapshot.getOffsetY(), snapshot.getOffsetZ());
+
+         bone.updateRotation(snapshot.getRotX(), snapshot.getRotY(), snapshot.getRotZ());
+
+         bone.updateScale(snapshot.getScaleX(), snapshot.getScaleY(), snapshot.getScaleZ());
+
+      }
+
+
+      bone.setHidden(false);
+
+      bone.setChildrenHidden(false);
+
+      for (GeoBone child : bone.getChildBones()) {
+
+         this.resetBone(child);
+
+      }
+
+   }
+
 
    private AnimatedGunRenderer.BoneType getBoneType(String boneName) {
       return BONE_TYPE_CACHE.computeIfAbsent(boneName, name -> {
@@ -449,7 +509,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          this.handleBoneVisibility(bone);
       }
 
-      if (shouldRenderCustomArms && client.player != null) {
+      if (shouldRenderCustomArms && GunRenderContext.subject() != null) {
          this.renderPlayerArms(client, poseStack, bone, animatable, packedLight, packedOverlay);
       }
 
@@ -494,7 +554,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
 
    private void handleSlidingMagazine(PoseStack poseStack, GeoBone bone) {
       Minecraft mc = Minecraft.getInstance();
-      if (mc.player == null || !(Boolean)ModSyncedDataKeys.RELOADING.getValue(mc.player)) {
+      if (GunRenderContext.subject() == null || !(Boolean)ModSyncedDataKeys.RELOADING.getValue(GunRenderContext.subject())) {
          float maxAmmo = (float)Gun.getMaxAmmo(this.currentRenderStack);
          float currentAmmo = (float)Gun.getAmmoCount(this.currentRenderStack);
          if (maxAmmo > 0.0F) {
@@ -572,16 +632,16 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    }
 
    private void renderPlayerArms(Minecraft client, PoseStack poseStack, GeoBone bone, AnimatedGunItem animatable, int packedLight, int packedOverlay) {
-      if (client.player != null) {
-         PlayerModel<AbstractClientPlayer> playerEntityModel = this.armModel(client.player);
+      if (GunRenderContext.subject() != null) {
+         PlayerModel<AbstractClientPlayer> playerEntityModel = this.armModel(GunRenderContext.clientSubject());
          this.setupArmTransforms(poseStack, bone);
          // Same as the working 1.21.1 port: hand the skin down and let each arm resolve
          // its own RenderType from it, instead of pre-building buffers up here.
-         ResourceLocation playerSkin = client.player.getSkin().texture();
+         ResourceLocation playerSkin = GunRenderContext.clientSubject().getSkin().texture();
          if (this.isRightArm(bone)) {
             this.renderRightArm(poseStack, playerEntityModel, playerSkin, bone, packedLight, packedOverlay);
          } else {
-            this.renderLeftArm(poseStack, playerEntityModel, playerSkin, bone, packedLight, packedOverlay, client.player, animatable);
+            this.renderLeftArm(poseStack, playerEntityModel, playerSkin, bone, packedLight, packedOverlay, GunRenderContext.subject(), animatable);
          }
       }
    }
@@ -709,9 +769,9 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       Minecraft mc = Minecraft.getInstance();
       float kickReduction;
       float recoilReduction;
-      if (mc.player != null) {
-         kickReduction = 1.0F - GunModifierHelper.getKickReduction(mc.player, item);
-         recoilReduction = 1.0F - GunModifierHelper.getRecoilModifier(mc.player, item);
+      if (GunRenderContext.subject() != null) {
+         kickReduction = 1.0F - GunModifierHelper.getKickReduction(GunRenderContext.subject(), item);
+         recoilReduction = 1.0F - GunModifierHelper.getRecoilModifier(GunRenderContext.subject(), item);
       } else {
          kickReduction = 1.0F - GunModifierHelper.getKickReduction(item);
          recoilReduction = 1.0F - GunModifierHelper.getRecoilModifier(item);
