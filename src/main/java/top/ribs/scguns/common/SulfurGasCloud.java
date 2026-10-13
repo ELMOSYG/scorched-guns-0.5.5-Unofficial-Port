@@ -18,6 +18,7 @@ import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
+import top.ribs.scguns.init.ModDamageTypes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
@@ -252,14 +253,14 @@ public class SulfurGasCloud {
                      if (isBot) {
                         entity.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, duration, amplifier));
                         float damage = inInnerZone ? 1.5F : 0.75F;
-                        entity.hurt(entity.damageSources().magic(), damage);
+                        entity.hurt(ModDamageTypes.Sources.sulfurPoison(entity.level().registryAccess()), damage);
                         if (inInnerZone) {
                            entity.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, duration / 2, 0));
                         }
                      } else {
                         entity.addEffect(new MobEffectInstance(ModEffects.SULFUR_POISONING, duration, amplifier));
                         if (inInnerZone) {
-                           entity.hurt(entity.damageSources().magic(), 1.0F);
+                           entity.hurt(ModDamageTypes.Sources.sulfurPoison(entity.level().registryAccess()), 1.0F);
                            entity.addEffect(new MobEffectInstance(MobEffects.CONFUSION, 60, 0));
                         }
                      }

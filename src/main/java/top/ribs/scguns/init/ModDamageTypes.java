@@ -21,6 +21,8 @@ import top.ribs.scguns.util.GunModifierHelper;
 public class ModDamageTypes {
    public static final ResourceKey<DamageType> BULLET = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("scguns", "bullet"));
    public static final ResourceKey<DamageType> MELEE = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("scguns", "melee"));
+   public static final ResourceKey<DamageType> LACERATED = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("scguns", "lacerated"));
+   public static final ResourceKey<DamageType> SULFUR_POISON = ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("scguns", "sulfur_poison"));
 
    public ModDamageTypes() {
       super();
@@ -29,6 +31,16 @@ public class ModDamageTypes {
    public static class Sources {
       public Sources() {
          super();
+      }
+
+      /** The lacerated (bleeding) effect's damage: its own type, so it has its own death message. */
+      public static DamageSource lacerated(RegistryAccess access) {
+         return new DamageSource(getHolder(access, ModDamageTypes.LACERATED));
+      }
+
+      /** Sulfur poisoning's damage, likewise its own type rather than plain magic. */
+      public static DamageSource sulfurPoison(RegistryAccess access) {
+         return new DamageSource(getHolder(access, ModDamageTypes.SULFUR_POISON));
       }
 
       private static Reference<DamageType> getHolder(RegistryAccess access, ResourceKey<DamageType> damageTypeKey) {

@@ -1172,6 +1172,8 @@
   "itemGroup.scguns": "Scorched Guns",
   "death.attack.scguns.bullet.killed": "%1$s was taken down by %2$s",
   "death.attack.scguns.bullet": "%1$s was taken down by %2$s",
+  "death.attack.scguns.lacerated": "%1$s was torn apart",
+  "death.attack.scguns.sulfur_poison": "%1$s succumbed to sulfur poisoning",
   "death.attack.scguns.bullet.eliminated": "%1$s was eliminated by %2$s",
   "death.attack.scguns.bullet.executed": "%1$s was executed by %2$s",
   "death.attack.scguns.bullet.annihilated": "%1$s was annihilated by %2$s",

@@ -237,6 +237,8 @@
   "creativetab.scorched_guns_tab": "赤焦枪械 - 枪械",
   "creativetab.scorched_items_tab": "赤焦枪械 - 物品",
   "death.attack.scguns.bullet": "%1$s 被 %2$s 枪决",
+  "death.attack.scguns.lacerated": "%1$s 被撕裂致死",
+  "death.attack.scguns.sulfur_poison": "%1$s 因硫中毒而死",
   "death.attack.scguns.bullet.annihilated": "%1$s 被 %2$s 歼灭",
   "death.attack.scguns.bullet.annihilated.silenced": "%s 被悄无声息地歼灭",
   "death.attack.scguns.bullet.decimated": "%1$s 被 %2$s 摧毁",
