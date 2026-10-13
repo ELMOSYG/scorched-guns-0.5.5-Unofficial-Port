@@ -20,6 +20,7 @@ import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import org.jetbrains.annotations.NotNull;
 import top.ribs.scguns.common.recipe.ContainerRecipeInput;
+import top.ribs.scguns.compat.GunBenchCompat;
 import top.ribs.scguns.common.recipe.ScgunsRecipeBookTypes;
 import top.ribs.scguns.entity.player.PlayerGunProgression;
 import top.ribs.scguns.event.GunProgressionEventHandler;
@@ -38,6 +39,11 @@ import top.ribs.scguns.item.BlueprintItem;
 public class GunBenchMenu extends RecipeBookMenu<ContainerRecipeInput, GunBenchRecipe> {
    private final Container container;
    private final ContainerLevelAccess containerAccess;
+
+   /** Exposed so the Polymorph integration can find the bench behind this menu. */
+   public ContainerLevelAccess getContainerAccess() {
+      return this.containerAccess;
+   }
    private final Player player;
    public static final int SLOT_GRIP = 8;
    public static final int SLOT_MAGAZINE = 9;
@@ -352,7 +358,7 @@ public class GunBenchMenu extends RecipeBookMenu<ContainerRecipeInput, GunBenchR
             }
 
             ContainerRecipeInput recipeInput = new ContainerRecipeInput(craftingContainer);
-            Optional<GunBenchRecipe> recipe = level.getRecipeManager().getRecipeFor(GunBenchRecipe.Type.INSTANCE, recipeInput, level).map(net.minecraft.world.item.crafting.RecipeHolder::value);
+            Optional<GunBenchRecipe> recipe = GunBenchCompat.findRecipe(this, recipeInput, level);
             if (recipe.isPresent()) {
                ItemStack result = recipe.get().assemble(recipeInput, level.registryAccess());
                container.setItem(10, result);
@@ -372,9 +378,7 @@ public class GunBenchMenu extends RecipeBookMenu<ContainerRecipeInput, GunBenchR
                craftingContainer.setItem(i, this.container.getItem(i));
             }
 
-            Optional<GunBenchRecipe> recipeOptional = level.getRecipeManager()
-               .getRecipeFor(GunBenchRecipe.Type.INSTANCE, new ContainerRecipeInput(craftingContainer), level)
-               .map(net.minecraft.world.item.crafting.RecipeHolder::value);
+            Optional<GunBenchRecipe> recipeOptional = GunBenchCompat.findRecipe(this, new ContainerRecipeInput(craftingContainer), level);
             if (recipeOptional.isPresent()) {
                GunBenchRecipe recipe = recipeOptional.get();
                // Container indices, not the book's input list: container slot 10 is the output and

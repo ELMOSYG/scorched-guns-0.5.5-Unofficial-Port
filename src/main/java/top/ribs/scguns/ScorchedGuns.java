@@ -272,6 +272,19 @@ public class ScorchedGuns {
    }
 
    private void onCommonSetup(FMLCommonSetupEvent event) {
+      // The gun bench hands Polymorph its recipe choice when the mod is installed, so duplicate bench recipes
+      // shipped by different gun addons become something the player picks instead of a silent first match.
+      if (CompatManager.POLYMORPH_LOADED) {
+         event.enqueueWork(
+            () -> {
+               try {
+                  top.ribs.scguns.compat.GunBenchPolymorph.register();
+               } catch (Throwable throwable) {
+                  LOGGER.warn("Could not register the gun bench with Polymorph", throwable);
+               }
+            }
+         );
+      }
       event.enqueueWork(
          () -> {
             GunTiers.init();
