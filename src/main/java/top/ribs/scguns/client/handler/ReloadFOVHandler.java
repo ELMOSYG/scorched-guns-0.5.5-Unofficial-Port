@@ -1,5 +1,6 @@
 package top.ribs.scguns.client.handler;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.api.distmarker.Dist;
@@ -40,6 +41,16 @@ public class ReloadFOVHandler {
       priority = EventPriority.LOWEST
    )
    public static void onComputeFOV(ComputeFovModifierEvent event) {
+      // Honour the vanilla "FOV Effects" slider (Options#fovEffectScale, the 视场角效果 option). This handler only
+      // ever pins the modifier to its pre-reload value, so scaling it is meaningless - either the effect is wanted
+      // or it is not. Ignoring the slider meant the FOV still snapped around on every reload at 0.
+      Minecraft minecraft = Minecraft.getInstance();
+      if (minecraft == null || minecraft.options.fovEffectScale().get() <= 0.0) {
+         wasReloading = false;
+         reloadEndCooldown = 0;
+         return;
+      }
+
       Player player = event.getPlayer();
       ItemStack mainHand = player.getMainHandItem();
       ItemStack offHand = player.getOffhandItem();
