@@ -153,6 +153,19 @@ public class GunItem extends Item implements IColored, IMeta {
          );
       }
 
+      // Crit chance, shown the same way the attachment screen shows it (and through the same helper, so
+      // attachment and enchantment bonuses are included). Addons that declare their crit chance in the general
+      // section reach this through Gun#bridgeGeneralSection.
+      float critChance = GunModifierHelper.getCriticalChance(stack);
+      if (critChance > 0.0F) {
+         tooltip.add(
+            Component.translatable("info.scguns.critical_chance")
+               .append(": ")
+               .withStyle(ChatFormatting.GRAY)
+               .append(Component.literal(String.format("%.1f%%", critChance * 100.0F)).withStyle(ChatFormatting.WHITE))
+         );
+      }
+
       ResourceLocation effectLocation = modifiedGun.getProjectile().getImpactEffect();
       if (effectLocation != null) {
          MobEffect effect = (MobEffect)BuiltInRegistries.MOB_EFFECT.get(effectLocation);
