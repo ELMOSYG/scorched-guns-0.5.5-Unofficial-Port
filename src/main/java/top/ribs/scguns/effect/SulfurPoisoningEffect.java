@@ -10,6 +10,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation;
 import net.minecraft.world.entity.player.Player;
+import top.ribs.scguns.init.ModDamageTypes;
 import top.ribs.scguns.init.ModEffects;
 
 public class SulfurPoisoningEffect extends MobEffect {
@@ -35,7 +36,7 @@ public class SulfurPoisoningEffect extends MobEffect {
          if (entity.tickCount % damageInterval == 0) {
             float damage = (1.5F + (float)amplifier * 0.75F) * intensityRatio;
             if (damage > 0.3F) {
-               entity.hurt(entity.damageSources().magic(), damage);
+               entity.hurt(ModDamageTypes.Sources.sulfurPoison(entity.level().registryAccess()), damage);
             }
          }
 
