@@ -13,7 +13,6 @@ import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.client.event.RenderPlayerEvent.Post;
 import net.neoforged.neoforge.client.event.RenderPlayerEvent.Pre;
 import net.neoforged.bus.api.SubscribeEvent;
-import top.ribs.scguns.client.render.gun.animated.GunRenderContext;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.item.GunItem;
 
@@ -25,8 +24,6 @@ public class PlayerModelHandler {
    @SubscribeEvent
    public void onRenderPlayer(Pre event) {
       Player player = event.getEntity();
-      // Everything drawn from here until the matching Post event belongs to this player, held gun included.
-      GunRenderContext.push(player);
       ItemStack heldItem = player.getMainHandItem();
       GunRenderingHandler renderingHandler = GunRenderingHandler.get();
       if (renderingHandler.isThirdPersonMeleeAttacking()) {
@@ -48,7 +45,6 @@ public class PlayerModelHandler {
 
    @SubscribeEvent
    public void onRenderPlayer(Post event) {
-      GunRenderContext.pop();
       PlayerModel<AbstractClientPlayer> model = (PlayerModel<AbstractClientPlayer>)event.getRenderer().getModel();
       boolean slim = ((AbstractClientPlayer)event.getEntity()).getSkin().model() == PlayerSkin.Model.SLIM;
       model.rightArm.x = -5.0F;

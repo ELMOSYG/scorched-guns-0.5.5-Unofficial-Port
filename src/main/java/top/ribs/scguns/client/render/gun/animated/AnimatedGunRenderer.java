@@ -6,7 +6,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -45,7 +44,6 @@ import net.neoforged.neoforge.client.event.ClientTickEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import org.joml.Matrix4f;
 import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.animatable.GeoAnimatable;
 import software.bernie.geckolib.animation.AnimationController;
@@ -122,19 +120,6 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    // and a cache keyed on the stack goes stale because the gun NBT is mutated in place.
    private static final Map<String, AnimatedGunRenderer.BoneType> BONE_TYPE_CACHE = new HashMap<>();
 
-   /**
-    * Each bone's baked pose (position, rotation, scale), captured the first time this model is drawn and
-    * put back before every later draw.
-    *
-    * <p>The model and its bones are shared by every player holding the gun, and GeckoLib only restores a
-    * bone while the animation that moved it is still playing. A bone the next animation does not key kept
-    * the old value, so e.g. the bolt of the many guns whose idle animation leaves it out stayed wherever
-    * the shoot animation put it, which parked it outside the drawn model. The capture happens before
-    * GeckoLib applies anything, so it is the pose the model file defines.</p>
-    */
-   private static final Map<ResourceLocation, Map<String, float[]>> BONE_POSE = new HashMap<>();
-   private static final Set<ResourceLocation> BONE_POSE_CAPTURED = new HashSet<>();
-
    public AnimatedGunRenderer(ResourceLocation path) {
       super(new AnimatedGunModel(path));
       instance = this;
@@ -157,18 +142,18 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    private void updateImmersiveCamera() {
       this.prevFallSway = this.fallSway;
       Minecraft mc = Minecraft.getInstance();
-      if (GunRenderContext.subject() != null) {
-         ItemStack heldItem = GunRenderContext.subject().getMainHandItem();
+      if (mc.player != null) {
+         ItemStack heldItem = mc.player.getMainHandItem();
          float targetAngle = !(heldItem.getItem() instanceof GunItem) && Config.CLIENT.display.restrictCameraRollToWeapons.get()
             ? 0.0F
             : mc.player.input.leftImpulse;
          float speed = mc.player.input.leftImpulse != 0.0F ? 0.1F : 0.15F;
          this.immersiveRoll = Mth.lerp(speed, this.immersiveRoll, targetAngle);
-         float deltaY = (float)Mth.clamp(GunRenderContext.subject().yo - GunRenderContext.subject().getY(), -1.0, 1.0);
+         float deltaY = (float)Mth.clamp(mc.player.yo - mc.player.getY(), -1.0, 1.0);
          deltaY = (float)((double)deltaY * (1.0 - AimingHandler.get().getNormalisedAdsProgress()));
-         deltaY = (float)((double)deltaY * (1.0 - (double)(Mth.abs(GunRenderContext.subject().getXRot()) / 90.0F)));
+         deltaY = (float)((double)deltaY * (1.0 - (double)(Mth.abs(mc.player.getXRot()) / 90.0F)));
          this.fallSway = Mth.approach(this.fallSway, deltaY * 60.0F * ((Double)Config.CLIENT.display.swaySensitivity.get()).floatValue(), 10.0F);
-         float intensity = GunRenderContext.subject().isSprinting() ? 0.75F : 1.0F;
+         float intensity = mc.player.isSprinting() ? 0.75F : 1.0F;
          this.sprintIntensity = Mth.approach(this.sprintIntensity, intensity, 0.1F);
       }
    }
@@ -191,8 +176,6 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       // The working 1.21.1 port resolves the effective context from the configured main
       // hand, so a left-handed player gets FIRST_PERSON_LEFT_HAND; 0.5.5 hardcoded the
       // right hand and then mirrored the left hand wrongly.
-      this.captureOrRestoreBonePose();
-
       this.currentDisplayContext = getEffectiveDisplayContext(stack, transformType, client);
       this.currentRenderStack = stack;
       this.bufferSource = bufferSource;
@@ -207,7 +190,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          return;
       }
 
-      Player player = GunRenderContext.subject();
+      Player player = client.player;
       boolean actualFirstPersonHand = isFirstPersonHand(transformType);
       boolean right = isFirstPersonHand(this.currentDisplayContext)
          ? isRightHandDisplay(this.currentDisplayContext)
@@ -244,7 +227,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          this.applySwayTransforms(poseStack, modifiedGun, stack, localPlayer, translateX, translateY, translateZ, client.getTimer().getGameTimeDeltaPartialTick(false));
          if (ShootingHandler.get().isShooting() && !GunModifierHelper.isSilencedFire(stack)) {
             // Same as the working port: the effective context, not a hardcoded right hand.
-            this.renderMuzzleFlash(GunRenderContext.subject(), poseStack, bufferSource, stack, this.currentDisplayContext, client.getTimer().getGameTimeDeltaPartialTick(false));
+            this.renderMuzzleFlash(client.player, poseStack, bufferSource, stack, this.currentDisplayContext, client.getTimer().getGameTimeDeltaPartialTick(false));
          }
       }
 
@@ -358,7 +341,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          return false;
       } else {
          Minecraft mc = Minecraft.getInstance();
-         if (GunRenderContext.subject() == null) {
+         if (mc.player == null) {
             return false;
          } else if (mc.screen instanceof AttachmentScreen) {
             return false;
@@ -366,140 +349,8 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
             && this.currentDisplayContext != ItemDisplayContext.FIRST_PERSON_LEFT_HAND) {
             return false;
          } else {
-            return mc.options.getCameraType() != CameraType.FIRST_PERSON ? false : !GunRenderContext.subject().isSpectator() && GunRenderContext.subject().isAlive();
+            return mc.options.getCameraType() != CameraType.FIRST_PERSON ? false : !mc.player.isSpectator() && mc.player.isAlive();
          }
-      }
-   }
-
-   private void captureOrRestoreBonePose() {
-
-      AnimatedGunModel geoModel = (AnimatedGunModel)this.getGeoModel();
-      ResourceLocation resource = geoModel.getGunModelResource();
-
-      BakedGeoModel model = geoModel.getBakedModel(resource);
-      boolean captured = BONE_POSE_CAPTURED.contains(resource);
-      Map<String, float[]> poses = BONE_POSE.computeIfAbsent(resource, key -> new HashMap<>());
-
-      if (model == null) {
-
-         return;
-
-      }
-
-
-      for (GeoBone bone : model.topLevelBones()) {
-
-         captureOrRestoreBone(bone, poses, captured);
-
-      }
-
-
-      BONE_POSE_CAPTURED.add(resource);
-
-   }
-
-
-   private static void captureOrRestoreBone(GeoBone bone, Map<String, float[]> poses, boolean captured) {
-
-      if (!captured) {
-
-         poses.put(bone.getName(), new float[]{
-
-            bone.getPosX(), bone.getPosY(), bone.getPosZ(),
-
-            bone.getRotX(), bone.getRotY(), bone.getRotZ(),
-
-            bone.getScaleX(), bone.getScaleY(), bone.getScaleZ()});
-
-      } else {
-
-         float[] pose = poses.get(bone.getName());
-
-         if (pose != null) {
-
-            bone.updatePosition(pose[0], pose[1], pose[2]);
-
-            bone.updateRotation(pose[3], pose[4], pose[5]);
-
-            bone.updateScale(pose[6], pose[7], pose[8]);
-
-         }
-
-      }
-
-
-      for (GeoBone child : bone.getChildBones()) {
-
-         captureOrRestoreBone(child, poses, captured);
-
-      }
-
-   }
-
-
-   /**
-    * Whether this draw is for a player other than the one at the keyboard.
-    *
-    * <p>Mobs never set a render subject, so they keep the old behaviour.</p>
-    */
-   private void drawStaticForRemotePlayer(
-      PoseStack poseStack,
-      AnimatedGunItem animatable,
-      GeoBone bone,
-      RenderType renderType,
-      MultiBufferSource bufferSource,
-      VertexConsumer buffer,
-      boolean isReRender,
-      float partialTick,
-      int packedLight,
-      int packedOverlay,
-      int renderColor
-   ) {
-      this.restoreBakedBone(bone);
-      bone.setHidden(false);
-      bone.setChildrenHidden(false);
-      super.renderRecursively(
-         poseStack, animatable, bone, renderType, bufferSource, this.bufferSource.getBuffer(renderType),
-         isReRender, partialTick, packedLight, packedOverlay, renderColor
-      );
-   }
-
-   private boolean isRemoteSubject() {
-      // Decided from the stack being drawn rather than from an event, because a render event is not guaranteed to
-      // have run: RenderPlayerEvent only fires for players, and the whole bug is about players. If this stack is
-      // in the local player's own hands the gun is the local player's; anything else - another player's gun, or a
-      // mob's - is drawn from the model file's own pose.
-      //
-      // Guns held by mobs look exactly the same as before: their controller predicate has always answered STOP,
-      // so they never played an animation to begin with.
-      Minecraft mc = Minecraft.getInstance();
-      Player local = mc.player;
-      ItemStack stack = this.currentRenderStack;
-      if (local == null || stack == null) {
-         return false;
-      }
-
-      if (stack != local.getMainHandItem() && stack != local.getOffhandItem()) {
-         return true;
-      }
-
-      // In hand, but being drawn for somebody else (the local player's own gun is also drawn during another
-      // player's render pass), which the subject records.
-      Player subject = GunRenderContext.subject();
-      return subject != null && subject != local;
-   }
-
-   /**
-    * Puts a bone back to the pose its model file defines.
-    */
-   private void restoreBakedBone(GeoBone bone) {
-      AnimatedGunModel geoModel = (AnimatedGunModel)this.getGeoModel();
-      Map<String, float[]> poses = BONE_POSE.get(geoModel.getGunModelResource());
-      float[] pose = poses == null ? null : poses.get(bone.getName());
-      if (pose != null) {
-         bone.updatePosition(pose[0], pose[1], pose[2]);
-         bone.updateRotation(pose[3], pose[4], pose[5]);
-         bone.updateScale(pose[6], pose[7], pose[8]);
       }
    }
 
@@ -560,15 +411,6 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       int packedOverlay,
       int renderColor
    ) {
-      // Another player's gun is drawn from the model file's own pose: every bone visible, nothing moved
-      // and none of the player specific handling below. Their gun cannot lose a bone this way, which is what
-      // "draw it like a mob holds it" comes down to; the local player keeps the full animation.
-      if (isRemoteSubject()) {
-         this.drawStaticForRemotePlayer(poseStack, animatable, bone, renderType, bufferSource, buffer,
-            isReRender, partialTick, packedLight, packedOverlay, renderColor);
-         return;
-      }
-
       AnimatedGunRenderer.BoneType boneType = this.getBoneType(bone.getName());
       Minecraft client = Minecraft.getInstance();
       boolean shouldRenderCustomArms = false;
@@ -607,7 +449,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          this.handleBoneVisibility(bone);
       }
 
-      if (shouldRenderCustomArms && GunRenderContext.subject() != null) {
+      if (shouldRenderCustomArms && client.player != null) {
          this.renderPlayerArms(client, poseStack, bone, animatable, packedLight, packedOverlay);
       }
 
@@ -652,7 +494,7 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
 
    private void handleSlidingMagazine(PoseStack poseStack, GeoBone bone) {
       Minecraft mc = Minecraft.getInstance();
-      if (GunRenderContext.subject() == null || !(Boolean)ModSyncedDataKeys.RELOADING.getValue(GunRenderContext.subject())) {
+      if (mc.player == null || !(Boolean)ModSyncedDataKeys.RELOADING.getValue(mc.player)) {
          float maxAmmo = (float)Gun.getMaxAmmo(this.currentRenderStack);
          float currentAmmo = (float)Gun.getAmmoCount(this.currentRenderStack);
          if (maxAmmo > 0.0F) {
@@ -730,16 +572,16 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    }
 
    private void renderPlayerArms(Minecraft client, PoseStack poseStack, GeoBone bone, AnimatedGunItem animatable, int packedLight, int packedOverlay) {
-      if (GunRenderContext.subject() != null) {
-         PlayerModel<AbstractClientPlayer> playerEntityModel = this.armModel(GunRenderContext.clientSubject());
+      if (client.player != null) {
+         PlayerModel<AbstractClientPlayer> playerEntityModel = this.armModel(client.player);
          this.setupArmTransforms(poseStack, bone);
          // Same as the working 1.21.1 port: hand the skin down and let each arm resolve
          // its own RenderType from it, instead of pre-building buffers up here.
-         ResourceLocation playerSkin = GunRenderContext.clientSubject().getSkin().texture();
+         ResourceLocation playerSkin = client.player.getSkin().texture();
          if (this.isRightArm(bone)) {
             this.renderRightArm(poseStack, playerEntityModel, playerSkin, bone, packedLight, packedOverlay);
          } else {
-            this.renderLeftArm(poseStack, playerEntityModel, playerSkin, bone, packedLight, packedOverlay, GunRenderContext.subject(), animatable);
+            this.renderLeftArm(poseStack, playerEntityModel, playerSkin, bone, packedLight, packedOverlay, client.player, animatable);
          }
       }
    }
@@ -867,9 +709,9 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       Minecraft mc = Minecraft.getInstance();
       float kickReduction;
       float recoilReduction;
-      if (GunRenderContext.subject() != null) {
-         kickReduction = 1.0F - GunModifierHelper.getKickReduction(GunRenderContext.subject(), item);
-         recoilReduction = 1.0F - GunModifierHelper.getRecoilModifier(GunRenderContext.subject(), item);
+      if (mc.player != null) {
+         kickReduction = 1.0F - GunModifierHelper.getKickReduction(mc.player, item);
+         recoilReduction = 1.0F - GunModifierHelper.getRecoilModifier(mc.player, item);
       } else {
          kickReduction = 1.0F - GunModifierHelper.getKickReduction(item);
          recoilReduction = 1.0F - GunModifierHelper.getRecoilModifier(item);

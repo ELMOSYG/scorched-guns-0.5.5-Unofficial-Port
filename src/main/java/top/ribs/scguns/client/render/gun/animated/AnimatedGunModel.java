@@ -13,11 +13,6 @@ public class AnimatedGunModel extends DefaultedItemGeoModel<AnimatedGunItem> {
    }
 
    public ResourceLocation getModelResource(AnimatedGunItem gunItem) {
-      return this.getGunModelResource();
-   }
-
-   /** The baked model's own resource, for code that needs the model without an animatable at hand. */
-   public ResourceLocation getGunModelResource() {
       return ResourceLocation.fromNamespaceAndPath("scguns", "geo/item/gun/" + this.modelPath + ".geo.json");
    }
 
