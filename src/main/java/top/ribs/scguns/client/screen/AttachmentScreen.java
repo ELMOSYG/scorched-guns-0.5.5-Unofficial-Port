@@ -273,6 +273,18 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentContaine
                   critChance,
                   scgunsCritGun.getGeneral().getCriticalChance(),
                   scgunsCritGun.getProjectile().getCriticalChance());
+               // Second half: is the value missing because it is not in the stack's stash at all, or because the
+               // stash holds a zero written before the field existed?
+               net.minecraft.nbt.CompoundTag scgunsCritTag = top.ribs.scguns.util.NbtHelper.getTag(gunStack);
+               boolean hasGunTag = scgunsCritTag != null && scgunsCritTag.contains("Gun", 10);
+               float nbtGeneral = hasGunTag && scgunsCritTag.getCompound("Gun").contains("General", 10)
+                  ? scgunsCritTag.getCompound("Gun").getCompound("General").getFloat("CriticalChance") : -1.0F;
+               float nbtProjectile = hasGunTag && scgunsCritTag.getCompound("Gun").contains("Projectile", 10)
+                  ? scgunsCritTag.getCompound("Gun").getCompound("Projectile").getFloat("CriticalChance") : -1.0F;
+               top.ribs.scguns.ScorchedGuns.LOGGER.info(
+                  "SCGUNS-CRIT2 item={} hasGunTag={} nbtGeneral={} nbtProjectile={}",
+                  net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(gunStack.getItem()),
+                  hasGunTag, nbtGeneral, nbtProjectile);
             }
             if (critChance > 0.0F) {
                pGuiGraphics.drawString(
