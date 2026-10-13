@@ -296,6 +296,14 @@ public class GunItem extends Item implements IColored, IMeta {
       // back here - this runs on both sides and on every lookup - the next legitimate write replaces the tag.
       if (!this.hasUsableDefinition(stored)) {
          this.reportRepairedDefinition(stack);
+         // The stack may also carry an ammo count that was written against the unusable definition - the empty
+         // one reports a default magazine - so clamp it to what this gun's own definition allows. Only written
+         // when it is actually out of range, so this stays idempotent.
+         int maxAmmo = this.gun == null || this.gun.getReloads() == null ? 0 : this.gun.getReloads().getMaxAmmo();
+         if (maxAmmo > 0 && tagCompound.getInt("AmmoCount") > maxAmmo) {
+            tagCompound.putInt("AmmoCount", maxAmmo);
+         }
+
          return this.gun;
       }
 
