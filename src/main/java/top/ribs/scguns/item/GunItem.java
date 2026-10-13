@@ -25,6 +25,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.Item.Properties;
@@ -51,6 +52,9 @@ import top.ribs.scguns.util.GunModifierHelper;
 public class GunItem extends Item implements IColored, IMeta {
    private final WeakHashMap<CompoundTag, Gun> modifiedGunCache = new WeakHashMap<>();
    private Gun gun = new Gun();
+
+   private boolean reportedRepair;
+
 
    public GunItem(Properties properties) {
       super(properties);
@@ -271,18 +275,70 @@ public class GunItem extends Item implements IColored, IMeta {
       }
    }
 
-   public Gun getModifiedGun(ItemStack stack) {
+      public Gun getModifiedGun(ItemStack stack) {
       CompoundTag tagCompound = NbtHelper.getTag(stack);
-      return tagCompound != null && tagCompound.contains("Gun", 10) ? this.modifiedGunCache.computeIfAbsent(tagCompound, item -> {
+      if (tagCompound == null || !tagCompound.contains("Gun", 10)) {
+         return this.gun;
+      }
+
+      Gun stored = this.modifiedGunCache.computeIfAbsent(tagCompound, tag -> {
          if (tagCompound.getBoolean("Custom")) {
             return Gun.create(tagCompound.getCompound("Gun"));
-         } else {
-            Gun gunCopy = this.gun.copy();
-            gunCopy.deserializeNBT(tagCompound.getCompound("Gun"));
-            return gunCopy;
          }
-      }) : this.gun;
+
+         Gun gunCopy = this.gun.copy();
+         gunCopy.deserializeNBT(tagCompound.getCompound("Gun"));
+         return gunCopy;
+      });
+
+      // Repair on read: a definition that came back without usable data is replaced by this gun's own one for
+      // the rest of the read, so a stack whose NBT holds a broken "Gun" compound still works. Nothing is written
+      // back here - this runs on both sides and on every lookup - the next legitimate write replaces the tag.
+      if (!this.hasUsableDefinition(stored)) {
+         this.reportRepairedDefinition(stack);
+         return this.gun;
+      }
+
+      return stored;
    }
+
+   /**
+    * Whether a gun definition read out of an item's NBT can actually be used.
+    *
+    * <p>The failure this guards against showed up as every gun reading its projectile as air with the default
+    * 30 round magazine: an empty definition, which is what a definition serialised while it held a reference
+    * back to its own Gun looked like once it was read again. A definition is treated as unusable when it is
+    * missing entirely, when it has no projectile where this gun's own definition has one, or when that
+    * projectile resolves to air.</p>
+    */
+   private boolean hasUsableDefinition(Gun candidate) {
+      if (candidate == null || candidate.getGeneral() == null || candidate.getProjectile() == null) {
+         return false;
+      }
+
+      Item storedAmmo = candidate.getProjectile().getItem();
+      Gun stock = this.gun;
+      Item stockAmmo = stock == null || stock.getProjectile() == null ? null : stock.getProjectile().getItem();
+      if (stockAmmo == null || stockAmmo == Items.AIR) {
+         // This gun has no ammo of its own to compare against, so accept whatever was stored.
+         return true;
+      }
+
+      return storedAmmo != null && storedAmmo != Items.AIR;
+   }
+
+   /** Says so once per item type, so a repaired stack is visible in the log without flooding it. */
+   private void reportRepairedDefinition(ItemStack stack) {
+      if (this.reportedRepair) {
+         return;
+      }
+
+      this.reportedRepair = true;
+      top.ribs.scguns.ScorchedGuns.LOGGER.warn(
+         "Read an unusable gun definition from a {} stack and used the built-in definition instead",
+         stack.getItem());
+   }
+
 
 
 
