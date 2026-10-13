@@ -1,5 +1,8 @@
 package top.ribs.scguns.compat.emi;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import dev.emi.emi.api.EmiEntrypoint;
 import dev.emi.emi.api.EmiPlugin;
 import dev.emi.emi.api.EmiRegistry;
@@ -70,8 +73,10 @@ public class EmiScorchedPlugin implements EmiPlugin {
       registry.addCategory(category);
       registry.addWorkstation(category, EmiStack.of(workstation));
 
-      for (RecipeHolder<T> holder : registry.getRecipeManager().getAllRecipesFor(type)) {
-         registry.addRecipe(new EmiScorchedRecipe(category, holder.id(), holder.value()));
+      List<RecipeHolder<T>> holders = new ArrayList<>(registry.getRecipeManager().getAllRecipesFor(type));
+      holders.sort(Comparator.comparing(holder -> holder.id().toString()));
+      for (RecipeHolder<T> holder : holders) {
+         registry.addRecipe(new EmiScorchedRecipe(category, holder));
       }
    }
 }

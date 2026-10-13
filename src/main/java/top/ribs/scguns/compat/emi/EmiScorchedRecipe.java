@@ -12,6 +12,7 @@ import net.minecraft.core.RegistryAccess;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import top.ribs.scguns.common.recipe.ContainerRecipeInput;
 
 /**
@@ -25,9 +26,13 @@ public class EmiScorchedRecipe extends BasicEmiRecipe {
    private static final int COLUMNS = 5;
    private static final int SLOT = 18;
 
-   public EmiScorchedRecipe(EmiRecipeCategory category, ResourceLocation id, Recipe<ContainerRecipeInput> recipe) {
-      super(category, id, displayWidth(recipe), displayHeight(recipe));
+   private final RecipeHolder<?> backing;
 
+   public EmiScorchedRecipe(EmiRecipeCategory category, RecipeHolder<? extends Recipe<ContainerRecipeInput>> backing) {
+      super(category, backing.id(), displayWidth(backing.value()), displayHeight(backing.value()));
+      this.backing = backing;
+
+      Recipe<ContainerRecipeInput> recipe = backing.value();
       List<EmiIngredient> ingredients = new ArrayList<>();
       for (Ingredient ingredient : recipe.getIngredients()) {
          if (!ingredient.isEmpty()) {
@@ -37,6 +42,29 @@ public class EmiScorchedRecipe extends BasicEmiRecipe {
 
       this.inputs = ingredients;
       this.outputs = List.of(EmiStack.of(recipe.getResultItem(RegistryAccess.EMPTY)));
+   }
+
+   /**
+    * The recipe this page came from.
+    *
+    * <p>EMI uses this to tie a page back to the recipe holder, which is what lets a gun's entry in the item list
+    * and in the favourites panel show the bench recipes that produce it. Without it the pages existed but nothing
+    * linked them to the item.</p>
+    */
+   @Override
+   public RecipeHolder<?> getBackingRecipe() {
+      return this.backing;
+   }
+
+   /** Recipes are wanted in the tree: they are ordinary crafting pages, not a special case. */
+   @Override
+   public boolean supportsRecipeTree() {
+      return true;
+   }
+
+   @Override
+   public boolean hideCraftable() {
+      return false;
    }
 
    // BasicEmiRecipe takes the canvas size in its constructor, so the layout has to be measured from the recipe
