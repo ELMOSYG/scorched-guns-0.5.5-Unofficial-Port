@@ -464,9 +464,29 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       );
    }
 
-   private static boolean isRemoteSubject() {
+   private boolean isRemoteSubject() {
+      // Decided from the stack being drawn rather than from an event, because a render event is not guaranteed to
+      // have run: RenderPlayerEvent only fires for players, and the whole bug is about players. If this stack is
+      // in the local player's own hands the gun is the local player's; anything else - another player's gun, or a
+      // mob's - is drawn from the model file's own pose.
+      //
+      // Guns held by mobs look exactly the same as before: their controller predicate has always answered STOP,
+      // so they never played an animation to begin with.
+      Minecraft mc = Minecraft.getInstance();
+      Player local = mc.player;
+      ItemStack stack = this.currentRenderStack;
+      if (local == null || stack == null) {
+         return false;
+      }
+
+      if (stack != local.getMainHandItem() && stack != local.getOffhandItem()) {
+         return true;
+      }
+
+      // In hand, but being drawn for somebody else (the local player's own gun is also drawn during another
+      // player's render pass), which the subject records.
       Player subject = GunRenderContext.subject();
-      return subject != null && subject != Minecraft.getInstance().player;
+      return subject != null && subject != local;
    }
 
    /**
