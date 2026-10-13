@@ -1,0 +1,13 @@
+{
+  "type": "scguns:macerating",
+  "processingTime": 100,
+  "ingredients": [
+    {
+      "item": "scguns:anthralite_leggings"
+    }
+  ],
+  "result": {
+    "id": "scguns:anthralite_ingot",
+    "count": 3
+  }
+}

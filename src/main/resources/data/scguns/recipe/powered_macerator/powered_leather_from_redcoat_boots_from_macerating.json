@@ -1,0 +1,14 @@
+{
+  "type": "scguns:powered_macerating",
+  "processingTime": 50,
+  "energyUse": 1000,
+  "ingredients": [
+    {
+      "item": "scguns:redcoat_boots"
+    }
+  ],
+  "result": {
+    "id": "minecraft:leather",
+    "count": 1
+  }
+}

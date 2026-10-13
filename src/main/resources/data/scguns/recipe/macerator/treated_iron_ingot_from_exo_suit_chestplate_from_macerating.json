@@ -1,0 +1,13 @@
+{
+  "type": "scguns:macerating",
+  "processingTime": 100,
+  "ingredients": [
+    {
+      "item": "scguns:exo_suit_chestplate"
+    }
+  ],
+  "result": {
+    "id": "scguns:treated_iron_ingot",
+    "count": 2
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "type": "scguns:powered_macerating",
+  "processingTime": 50,
+  "energyUse": 1000,
+  "ingredients": [
+    {
+      "item": "scguns:adrien_helm"
+    }
+  ],
+  "result": {
+    "id": "scguns:treated_iron_ingot",
+    "count": 1
+  }
+}

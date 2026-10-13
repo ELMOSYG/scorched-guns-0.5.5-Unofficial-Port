@@ -1,0 +1,14 @@
+{
+  "type": "scguns:powered_macerating",
+  "processingTime": 50,
+  "energyUse": 1000,
+  "ingredients": [
+    {
+      "item": "scguns:diamond_steel_leggings"
+    }
+  ],
+  "result": {
+    "id": "scguns:diamond_steel_ingot",
+    "count": 3
+  }
+}

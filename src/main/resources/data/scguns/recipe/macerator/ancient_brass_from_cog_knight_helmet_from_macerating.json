@@ -1,0 +1,13 @@
+{
+  "type": "scguns:macerating",
+  "processingTime": 100,
+  "ingredients": [
+    {
+      "item": "scguns:cog_knight_helmet"
+    }
+  ],
+  "result": {
+    "id": "scguns:ancient_brass",
+    "count": 2
+  }
+}

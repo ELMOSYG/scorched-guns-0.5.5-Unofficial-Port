@@ -1,0 +1,13 @@
+{
+  "type": "scguns:macerating",
+  "processingTime": 100,
+  "ingredients": [
+    {
+      "item": "scguns:redcoat_coat"
+    }
+  ],
+  "result": {
+    "id": "minecraft:leather",
+    "count": 2
+  }
+}

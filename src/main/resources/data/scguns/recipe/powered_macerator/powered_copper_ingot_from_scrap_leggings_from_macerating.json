@@ -1,0 +1,14 @@
+{
+  "type": "scguns:powered_macerating",
+  "processingTime": 50,
+  "energyUse": 1000,
+  "ingredients": [
+    {
+      "item": "scguns:scrap_leggings"
+    }
+  ],
+  "result": {
+    "id": "minecraft:copper_ingot",
+    "count": 2
+  }
+}
