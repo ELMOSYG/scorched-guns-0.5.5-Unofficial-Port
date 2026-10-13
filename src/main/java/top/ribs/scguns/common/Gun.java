@@ -204,6 +204,7 @@ public class Gun implements IEditorMenu {
    }
 
    public Gun.Projectile getProjectile() {
+      this.bridgeGeneralSection();
       if (this.general.allowsAmmoChange() && !this.alternateProjectiles.isEmpty()) {
          int currentIndex = this.general.getCurrentAmmoTypeIndex();
          if (currentIndex > 0 && currentIndex <= this.alternateProjectiles.size()) {
@@ -215,6 +216,7 @@ public class Gun implements IEditorMenu {
    }
 
    public Gun.Projectile getProjectile(ItemStack gunStack) {
+      this.bridgeGeneralSection();
       if (this.general.allowsAmmoChange() && !this.alternateProjectiles.isEmpty()) {
          CompoundTag tag = NbtHelper.getOrCreateTag(gunStack);
          if (tag.contains("Gun", 10)) {
