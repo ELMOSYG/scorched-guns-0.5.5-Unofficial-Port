@@ -825,6 +825,8 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                      nbt.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.STARTING.name());
                      nbt.putLong("LastReloadStateChange", currentTime);
                      nbt.putBoolean("ManualReloadInitialized", true);
+                     nbt.putInt("ScgunsReloadStartAmmo", currentAmmo);
+                     nbt.putInt("ScgunsReloadLoopsPlayed", 0);
                      animationController.setAnimationSpeed((double)speedMultiplier);
                      animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_reload_start" : "reload_start");
                      break;
@@ -836,6 +838,7 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                            nbt.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.LOADING.name());
                            nbt.putLong("LastReloadStateChange", currentTime);
                            nbt.putBoolean("InReloadLoop", true);
+                           nbt.putInt("ScgunsReloadLoopsPlayed", 1);
                            animationController.setAnimationSpeed((double)speedMultiplier);
                            animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_reload_loop" : "reload_loop");
                         } else {
@@ -872,8 +875,23 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                         nbt.remove("PendingStopTransition");
                         nbt.remove("PendingStopTime");
                         if (!isLoopPlaying && animationController.getAnimationState() == State.STOPPED) {
-                           animationController.setAnimationSpeed((double)speedMultiplier);
-                           animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_reload_loop" : "reload_loop");
+                           // The server has already seated the last round but its AmmoCount update has not reached the client yet, so
+                           // ammoFull still reads false and this used to start one loop too many: a six round revolver played seven
+                           // reloads, and when the timing went the other way the loop that was skipped took its sound keyframes with it
+                           // (an animated gun's reload sound lives in the animation - ReloadTracker#playReloadSound skips them). Count
+                           // the loops started here and never run more of them than the magazine still needs.
+                           int loopsPlayed = nbt.getInt("ScgunsReloadLoopsPlayed");
+                           int startAmmo = nbt.getInt("ScgunsReloadStartAmmo");
+                           if (startAmmo + loopsPlayed >= maxAmmo) {
+                              if (!nbt.getBoolean("PendingStopTransition")) {
+                                 nbt.putBoolean("PendingStopTransition", true);
+                                 nbt.putLong("PendingStopTime", System.currentTimeMillis());
+                              }
+                           } else {
+                              nbt.putInt("ScgunsReloadLoopsPlayed", loopsPlayed + 1);
+                              animationController.setAnimationSpeed((double)speedMultiplier);
+                              animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_reload_loop" : "reload_loop");
+                           }
                         }
                      }
                      break;
