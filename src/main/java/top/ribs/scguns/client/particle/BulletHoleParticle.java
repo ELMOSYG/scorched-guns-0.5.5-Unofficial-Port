@@ -26,6 +26,8 @@ public class BulletHoleParticle extends TextureSheetParticle {
    private int uOffset;
    private int vOffset;
    private float textureDensity;
+   /** False while the client is still waiting for the chunk the decal belongs to. */
+   private boolean spriteResolved;
 
    public BulletHoleParticle(ClientLevel world, double x, double y, double z, Direction direction, BlockPos pos) {
       super(world, x, y, z);
@@ -41,7 +43,11 @@ public class BulletHoleParticle extends TextureSheetParticle {
       this.gravity = 0.0F;
       this.quadSize = 0.05F;
       BlockState state = world.getBlockState(pos);
-      if (world.getBlockState(pos).isAir()) {
+      // Never remove on an unloaded chunk: the hit message can reach the client before the block data does, and
+      // reading air there used to delete the decal outright - which is why bullet holes never showed up on a
+      // server, while single player (same process as the integrated server) always had the chunk already.
+      this.spriteResolved = world.isLoaded(pos);
+      if (this.spriteResolved && world.getBlockState(pos).isAir()) {
          this.remove();
       }
 
@@ -92,7 +98,21 @@ public class BulletHoleParticle extends TextureSheetParticle {
 
    public void tick() {
       super.tick();
-      if (this.level.getBlockState(this.pos).isAir()) {
+      if (!this.spriteResolved) {
+         // Wait for the chunk, then take the sprite from the block that is really there, and only then decide
+         // whether the decal still belongs.
+         if (this.level.isLoaded(this.pos)) {
+            this.setSprite(this.getSprite(this.pos));
+            this.spriteResolved = true;
+            if (this.level.getBlockState(this.pos).isAir()) {
+               this.remove();
+            }
+         }
+
+         return;
+      }
+
+      if (this.level.isLoaded(this.pos) && this.level.getBlockState(this.pos).isAir()) {
          this.remove();
       }
    }
