@@ -7,7 +7,6 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import top.ribs.scguns.client.SpecialModels;
 import top.ribs.scguns.client.render.gun.IOverrideModel;
-import top.ribs.scguns.client.util.MagazineAmmoDisplay;
 import top.ribs.scguns.client.util.RenderUtil;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.init.ModItems;
@@ -101,8 +100,9 @@ public class BirdfeederModel implements IOverrideModel {
    }
 
    private float calculateMagazinePosition(ItemStack stack) {
-      // Held steady for the duration of a reload; see MagazineAmmoDisplay for why.
-      return MagazineAmmoDisplay.position(stack);
+      int maxAmmo = Gun.getMaxAmmo(stack);
+      int currentAmmo = Gun.getAmmoCount(stack);
+      return Math.min((float)(maxAmmo - currentAmmo) / (float)maxAmmo, 1.0F);
    }
 
    private float clampMagazinePosition(float position) {
