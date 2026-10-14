@@ -53,6 +53,9 @@ public class LightningBatteryBlockEntity extends BlockEntity implements MenuProv
       }
    };
    private IItemHandler lazyItemHandler = null;
+   /** True once a contained push has been logged, so a persistent one is not swallowed in silence. */
+   private boolean reportedContainedPush;
+
    private final EnergyStorage energyStorage = new EnergyStorage(32000) {
       public int receiveEnergy(int maxReceive, boolean simulate) {
          int received = super.receiveEnergy(maxReceive, simulate);
@@ -239,6 +242,21 @@ public class LightningBatteryBlockEntity extends BlockEntity implements MenuProv
       this.updateBlockState();
    }
 
+   /**
+    * Blocks that must never be on the receiving end of the battery's push.
+    *
+    * <p>Create: New Age's energy network iterates its own member map inside {@code ElectricalNetwork.insert}. A push
+    * from our tick therefore landed in the middle of that iteration and threw {@code ConcurrentModificationException},
+    * which killed the server tick and made the save unloadable the moment a battery was wired to it. Rather than
+    * paper over it, that mod's blocks are skipped outright: the battery still tops up every other FE neighbour
+    * (including this mod's own machines), it just never writes into their network.</p>
+    */
+   private static boolean isExcludedEnergyNeighbour(net.minecraft.world.level.Level level, net.minecraft.core.BlockPos pos, net.minecraft.core.Direction direction) {
+      net.minecraft.world.level.block.state.BlockState state = level.getBlockState(pos.relative(direction));
+      net.minecraft.resources.ResourceLocation id = net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock());
+      return id != null && "create_new_age".equals(id.getNamespace());
+   }
+
    public void tick() {
       if (this.level != null && !this.level.isClientSide) {
          boolean wasProcessing = this.isProcessing();
@@ -319,12 +337,27 @@ public class LightningBatteryBlockEntity extends BlockEntity implements MenuProv
                      // save unloadable every time a battery was wired to it. The push itself is worth keeping - it is how
                      // a battery tops up a plain FE machine - so contain it instead: one neighbour skipped this tick is
                      // harmless, whereas an exception here takes the world with it.
-                     try {
-                        int extracted = this.energyStorage.extractEnergy(50, true);
-                        int accepted = handler.receiveEnergy(extracted, false);
-                        this.energyStorage.extractEnergy(accepted, false);
-                     } catch (RuntimeException var9) {
-                        // deliberately empty: retried next tick
+                     // Only every tenth tick: the push is a convenience (powering a plain FE neighbour), and spacing it out
+                     // makes it far less likely to land in the middle of another mod's own iteration.
+                     if (this.level.getGameTime() % 10L == 0L) {
+                        if (isExcludedEnergyNeighbour(this.level, this.getBlockPos(), direction)) {
+                           return;
+                        }
+
+                        try {
+                           int extracted = this.energyStorage.extractEnergy(50, true);
+                           int accepted = handler.receiveEnergy(extracted, false);
+                           this.energyStorage.extractEnergy(accepted, false);
+                        } catch (RuntimeException var9) {
+                           if (!this.reportedContainedPush) {
+                              this.reportedContainedPush = true;
+                              top.ribs.scguns.ScorchedGuns.LOGGER.warn(
+                                 "Skipped an energy push from the lightning battery at {}: the neighbour was mid-update. "
+                                    + "Further occurrences stay quiet, and the push is retried on a later tick.",
+                                 this.getBlockPos(), var9
+                              );
+                           }
+                        }
                      }
                      this.setChanged();
                      this.sync();
