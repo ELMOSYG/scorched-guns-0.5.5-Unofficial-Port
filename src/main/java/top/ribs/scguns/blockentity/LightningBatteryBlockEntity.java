@@ -313,9 +313,19 @@ public class LightningBatteryBlockEntity extends BlockEntity implements MenuProv
             if (adjacentEntity != null) {
                Caps.ifPresent(Caps.<IEnergyStorage>of(adjacentEntity, Capabilities.EnergyStorage.BLOCK, direction.getOpposite()), handler -> {
                   if (handler.canReceive()) {
-                     int extracted = this.energyStorage.extractEnergy(50, true);
-                     int accepted = handler.receiveEnergy(extracted, false);
-                     this.energyStorage.extractEnergy(accepted, false);
+                     // Pushing into a neighbour's energy network from our own tick can land inside that network's own
+                     // iteration over its members. Create: New Age does exactly that (ElectricalNetwork.insert walks a
+                     // HashMap), so the push threw ConcurrentModificationException, killed the server tick and left the
+                     // save unloadable every time a battery was wired to it. The push itself is worth keeping - it is how
+                     // a battery tops up a plain FE machine - so contain it instead: one neighbour skipped this tick is
+                     // harmless, whereas an exception here takes the world with it.
+                     try {
+                        int extracted = this.energyStorage.extractEnergy(50, true);
+                        int accepted = handler.receiveEnergy(extracted, false);
+                        this.energyStorage.extractEnergy(accepted, false);
+                     } catch (RuntimeException var9) {
+                        // deliberately empty: retried next tick
+                     }
                      this.setChanged();
                      this.sync();
                   }
