@@ -25,6 +25,17 @@ public class GunAttackGoal<T extends PathfinderMob> extends Goal {
    protected final T shooter;
    protected final double speedModifier;
    protected int seeTime;
+   /**
+    * Ticks left before the next shot inside a burst.
+    *
+    * <p><b>Deliberately not derived from the weapon's fire rate.</b> Upstream 0.5.5 sets this in {@code shoot()} to
+    * {@code gun.getGeneral().getRate() * mobFireRateMultiplier}, which makes a gunner fire at the weapon's full rate
+    * the moment it sees a target. That line was left out on purpose: the burst rhythm used here instead
+    * ({@link #burstAmount} shots {@link #burstIntervalTimer} apart, {@link #burstTimer} between bursts, and
+    * {@link #MIN_AIM_TIME} of aiming first) already makes gunners hard enough, and restoring it turns them into a
+    * wall of fire. As a consequence {@code Config.COMMON.gameplay.mobFireRateMultiplier} has no reader - it is kept
+    * only so the option does not vanish from existing config files. Do not "fix" this without asking first.</p>
+    */
    protected int attackTime;
    protected final float attackRadiusSqr;
    protected double idealRange;
