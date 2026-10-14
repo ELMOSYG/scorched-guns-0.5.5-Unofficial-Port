@@ -19,12 +19,13 @@ This release focuses on gun addons built against the other 1.21.1 port, such as 
 
 - The gun bench now offers a recipe choice when several gun addons ship duplicate recipes
 - Only recipes matching the bench contents are offered, closing a free-craft exploit
+- **Fixed a server crash from any machine that looks up a recipe** (macerators, presses, the lightning battery) — the Polymorph factory cast the block entity without checking its type
 - Fixed the Polymorph recipe selector not appearing at all
-- The selector's position can be nudged from the client config
+- The selector's position can be nudged from the client config (default: 5 pixels up)
 
 ## HUD and Client
 
-- The ammo HUD position is adjustable, so it can be moved clear of the subtitles
+- The ammo HUD position is adjustable (default: 50 pixels left, which clears the subtitles)
 - Reloading no longer changes the field of view
 
 ## Gameplay and Visuals
