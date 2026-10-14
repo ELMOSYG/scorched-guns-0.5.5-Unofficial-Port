@@ -27,6 +27,8 @@ import java.util.function.Function;
  * so those call sites collapse into the helpers here.</p>
  */
 public final class Caps {
+   /** True once a contained neighbour failure has been reported, to keep the log to one line. */
+   private static boolean reportedNeighbourFailure;
     private Caps() {
     }
 
@@ -42,10 +44,23 @@ public final class Caps {
 
     /** Replaces Forge's {@code LazyOptional#ifPresent}. */
     public static <T> void ifPresent(T value, Consumer<T> action) {
+       // A neighbour's handler can be mid-iteration when we hand it energy: Create: New Age walks its own
+       // member map inside ElectricalNetwork#insert, so a push from our tick threw ConcurrentModificationException,
+       // which killed the server tick and left the save unloadable. Containing it here covers every caller at once
+       // (the lightning battery, the polar generator, anything added later), and leaves this method's signature and
+       // every call site untouched - so mixins that redirect this call keep working. scg2_maid_compat's
+       // PolarGeneratorBlockEntityMixin does exactly that.
+       try {
         if (value != null) {
             action.accept(value);
         }
-    }
+    
+       } catch (RuntimeException var0) {
+          if (!reportedNeighbourFailure) {
+             reportedNeighbourFailure = true;
+             top.ribs.scguns.ScorchedGuns.LOGGER.warn("A neighbour threw while receiving energy; skipping that transfer", var0);
+          }
+       }}
 
     /** Replaces Forge's {@code LazyOptional#map(...).orElse(fallback)}. */
     public static <T, R> R map(T value, Function<T, R> mapper, R fallback) {
