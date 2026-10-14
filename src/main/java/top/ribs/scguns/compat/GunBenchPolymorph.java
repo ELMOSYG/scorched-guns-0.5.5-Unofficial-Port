@@ -23,7 +23,13 @@ public final class GunBenchPolymorph {
    /** Teaches Polymorph how to reach the bench behind a menu and how to read its contents. */
    public static void register() {
       PolymorphApi api = PolymorphApi.getInstance();
-      api.registerBlockEntity(GunBenchBlockEntity.class, blockEntity -> new GunBenchRecipeData((GunBenchBlockEntity) blockEntity));
+      // Polymorph hands every block entity that asks for recipe data to every registered factory, not only the ones
+      // whose registered class matches. The cast therefore has to be guarded: a powered macerator looking up its own
+      // recipe reached it and brought the server down with a ClassCastException (crash-2026-10-14_12.34.37-server).
+      api.registerBlockEntity(
+         GunBenchBlockEntity.class,
+         blockEntity -> blockEntity instanceof GunBenchBlockEntity bench ? new GunBenchRecipeData(bench) : null
+      );
       api.registerMenu(menu -> menu instanceof GunBenchMenu bench ? resolve(bench) : null);
    }
 
