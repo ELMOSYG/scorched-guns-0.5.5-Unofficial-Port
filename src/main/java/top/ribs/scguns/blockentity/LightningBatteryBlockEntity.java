@@ -337,9 +337,6 @@ public class LightningBatteryBlockEntity extends BlockEntity implements MenuProv
                      // save unloadable every time a battery was wired to it. The push itself is worth keeping - it is how
                      // a battery tops up a plain FE machine - so contain it instead: one neighbour skipped this tick is
                      // harmless, whereas an exception here takes the world with it.
-                     // Only every tenth tick: the push is a convenience (powering a plain FE neighbour), and spacing it out
-                     // makes it far less likely to land in the middle of another mod's own iteration.
-                     if (this.level.getGameTime() % 10L == 0L) {
                         if (isExcludedEnergyNeighbour(this.level, this.getBlockPos(), direction)) {
                            return;
                         }
@@ -358,7 +355,6 @@ public class LightningBatteryBlockEntity extends BlockEntity implements MenuProv
                               );
                            }
                         }
-                     }
                      this.setChanged();
                      this.sync();
                   }
