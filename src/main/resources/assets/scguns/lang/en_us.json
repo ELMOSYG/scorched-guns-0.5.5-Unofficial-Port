@@ -123,7 +123,7 @@
   "info.airgun.requires_air_source": "Requires air source (Create tank or air canister)",
   "message.airgun.no_air_source": "No air source available!",
   "message.airgun.requires_canister": "Requires air canister!",
-  "info.scguns.armor_penetration": "Armor Penetration",
+  "info.scguns.armor_penetration": "Armor Weakening",
   "info.scguns.air_canister.usage": "Right-click to hand pump air or use Lightning Battery",
   "info.scguns.air_stored": "Air Stored",
   "item.scguns.pistol_ammo_box.description": "Stores Compact Copper/Advanced rounds, Hog Rounds and Standard/Hardened Bullets",

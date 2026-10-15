@@ -426,7 +426,7 @@
   "info.scguns.ammo": "弹药",
   "info.scguns.ammo_swap_available": "按住 Shift 查看弹药类型",
   "info.scguns.ammo_type": "弹药类型：%s",
-  "info.scguns.armor_penetration": "穿甲",
+  "info.scguns.armor_penetration": "护甲削弱",
   "info.scguns.attachment_help": "在游戏中按 %s 以修改配件",
   "info.scguns.available_ammo_types": "可用弹药类型:",
   "info.scguns.byproduct_chance": "副产物几率",
