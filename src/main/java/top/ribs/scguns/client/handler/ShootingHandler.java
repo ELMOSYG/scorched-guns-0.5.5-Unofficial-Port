@@ -48,17 +48,6 @@ import top.ribs.scguns.util.GunCompositeStatHelper;
 
 public class ShootingHandler {
    private static ShootingHandler instance;
-   /**
-    * Wall-clock time (ms) at which the next shot is allowed.
-    *
-    * <p>The item cooldown this used to rely on counts ticks, so 50 ms is the finest step it can express and
-    * 900 RPM (66.7 ms) was unreachable. Firing is also only attempted once a tick, so a millisecond deadline
-    * alone would still cap a gun near 600 RPM; the deadline is therefore accumulated and drained, letting one
-    * tick release the shots that have come due. Guns that only declare a tick rate keep exactly the interval
-    * they had, rate * 50 ms.</p>
-    */
-   private long shootReadyAt;
-
    private int fireTimer;
    private int burstCooldownTimer;
    private boolean wasRightClickPressed = false;
@@ -309,18 +298,7 @@ public class ShootingHandler {
 
                if (this.canFire(player, heldItem)) {
                   ItemCooldowns tracker = player.getCooldowns();
-                  long now = System.currentTimeMillis();
-                  // Do not try to make up a long gap (a reload, or the weapon being lowered) in one go: fall back to a
-                  // single interval behind, so at most the shots of the last interval are released below.
-                  long interval = gun.getGeneral().getFireIntervalMs();
-                  if (this.shootReadyAt < now - interval) {
-                     this.shootReadyAt = now;
-                  }
-
-                  int subShots = 0;
-                  while (now >= this.shootReadyAt && subShots < 4) {
-                     subShots++;
-                     this.shootReadyAt += interval;
+                  if (!tracker.isOnCooldown(heldItem.getItem())) {
                      if (NeoForge.EVENT_BUS.post(new GunFireEvent.Pre(player, heldItem)).isCanceled()) {
                         return;
                      }
@@ -342,6 +320,8 @@ public class ShootingHandler {
                         }
                      }
 
+                     int rate = GunCompositeStatHelper.getCompositeRate(heldItem, gun, player);
+                     tracker.addCooldown(heldItem.getItem(), rate);
                      if (Gun.hasBurstFire(heldItem)) {
                         if (this.burstCounter == 0) {
                            this.burstCounter = Gun.getBurstCount(heldItem);
@@ -356,9 +336,6 @@ public class ShootingHandler {
                      PacketHandler.getPlayChannel().sendToServer(new C2SMessageShoot(player));
                      NeoForge.EVENT_BUS.post(new GunFireEvent.Post(player, heldItem)).isCanceled();
                   }
-
-                  // HUD only: keep the item looking like it is cooling down for as long as the deadline lasts.
-                  tracker.addCooldown(heldItem.getItem(), (int)Math.max(1L, (this.shootReadyAt - System.currentTimeMillis() + 49L) / 50L));
                }
             } else {
                ItemCooldowns tracker = player.getCooldowns();
