@@ -118,6 +118,11 @@ public class NetworkGunManager extends SimplePreparableReloadListener<Map<GunIte
                                        gun.getProjectile().setDamageFalloffMinMultiplier(scgunsProjectile.get("damageFalloffMinMultiplier").getAsFloat());
                                     }
                                  }
+                                 // RPM as well: same Gson story as criticalChance, and without it a gun that states 900
+                                 // would silently fall back to 1200 / rate.
+                                 if (scgunsGeneral != null && scgunsGeneral.has("rpm")) {
+                                    gun.getGeneral().setRoundsPerMinute(scgunsGeneral.get("rpm").getAsInt());
+                                 }
                                  if (gun != null && Validator.isValidObject(gun)) {
                                     gun.loadAlternateProjectilesFromJson(jsonObject);
                                     map.put((GunItem)item, gun);

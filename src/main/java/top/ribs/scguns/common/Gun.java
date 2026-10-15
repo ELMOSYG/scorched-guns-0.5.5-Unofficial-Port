@@ -1567,6 +1567,31 @@ public class Gun implements IEditorMenu {
    }
 
    public static class General  {
+      /**
+       * Rounds per minute, or 0 when the gun only declares a tick interval ({@code rate}).
+       *
+       * <p>The tick interval the rest of the mod uses is an integer, so it can only express 300, 400, 600 and 1200
+       * RPM and nothing in between - which is why 800 and 900 RPM guns could not be built. RPM is the natural unit
+       * for the data, so a gun may state it directly; the firing code turns it into an interval in milliseconds
+       * rather than in ticks. Primitive and optional on purpose: a non-primitive or non-optional field here makes
+       * the gun validator reject every gun file.</p>
+       */
+      @Optional
+      private int roundsPerMinute = 0;
+
+      /** @return the gun's rate of fire, falling back to {@code 1200 / rate} when no RPM is declared. */
+      public int getRoundsPerMinute() {
+         if (this.roundsPerMinute > 0) {
+            return Math.max(1, Math.min(this.roundsPerMinute, 20000));
+         }
+
+         return Math.max(1, 1200 / Math.max(1, this.rate));
+      }
+
+      public void setRoundsPerMinute(int roundsPerMinute) {
+         this.roundsPerMinute = roundsPerMinute;
+      }
+
 
       /** Set by {@link Gun#getGeneral()}; only used by the compatibility accessor below. */
 
