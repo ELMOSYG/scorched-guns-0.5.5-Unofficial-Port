@@ -238,7 +238,16 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
    }
 
    protected float calculateArmorBypassDamage(LivingEntity target, float damage) {
-      return top.ribs.scguns.util.ArmorPenetration.afterArmor(target, this.armorBypassAmount, damage);
+      int armorValue = target.getArmorValue();
+      float baseReduction = Math.min(0.75F, (float)armorValue * 0.004F);
+      if (this.armorBypassAmount <= 0.0F) {
+         return damage * (1.0F - baseReduction);
+      } else {
+         float bypassPercent = this.armorBypassAmount / 10.0F;
+         float effectiveArmor = (float)armorValue * (1.0F - bypassPercent);
+         float finalReduction = Math.min(0.75F, effectiveArmor * 0.004F);
+         return damage * (1.0F - finalReduction);
+      }
    }
 
    public float getDamage() {

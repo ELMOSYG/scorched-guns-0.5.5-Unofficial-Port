@@ -2,7 +2,6 @@
   "replace": false,
   "values": [
     "scguns:lacerated",
-    "scguns:sulfur_poison",
-    "scguns:bullet"
+    "scguns:sulfur_poison"
   ]
 }
