@@ -1588,7 +1588,19 @@ public class Gun implements IEditorMenu {
          return Math.max(1, 1200 / Math.max(1, this.rate));
       }
 
-      public void setRoundsPerMinute(int roundsPerMinute) {
+      /**
+    * Milliseconds between shots, which is the unit the firing code now schedules on.
+    *
+    * <p>A tick is 50 ms, so scheduling in ticks can only produce intervals of 50, 100, 150 ms and so on: 300, 400,
+    * 600 and 1200 RPM and nothing in between. Milliseconds let a gun state 900 RPM (66.7 ms) directly. Guns that
+    * only declare a tick rate get exactly the interval they had before - {@code rate * 50} - so nothing about them
+    * changes.</p>
+    */
+   public long getFireIntervalMs() {
+      return Math.max(1L, Math.round(60000.0 / (double)this.getRoundsPerMinute()));
+   }
+
+   public void setRoundsPerMinute(int roundsPerMinute) {
          this.roundsPerMinute = roundsPerMinute;
       }
 
