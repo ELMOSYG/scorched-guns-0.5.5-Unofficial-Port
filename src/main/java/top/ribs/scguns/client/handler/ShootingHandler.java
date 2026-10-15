@@ -48,17 +48,6 @@ import top.ribs.scguns.util.GunCompositeStatHelper;
 
 public class ShootingHandler {
    private static ShootingHandler instance;
-   /**
-    * Wall-clock time (ms) of the next allowed shot.
-    *
-    * <p>A tick is 50 ms, so scheduling a gun's cadence on ticks can only produce 300, 400, 600 and 1200 RPM;
-    * a 900 RPM gun (66.7 ms) had no interval that fitted. The deadline below is also checked from the render
-    * frame, so the interval is honoured to within a frame (about 17 ms at 60 fps) and shots come out evenly
-    * rather than in tick-sized steps. A gun that only declares a tick rate keeps precisely the interval it had,
-    * rate * 50 ms.</p>
-    */
-   private long shootReadyAt;
-
    private int fireTimer;
    private int burstCooldownTimer;
    private boolean wasRightClickPressed = false;
@@ -309,14 +298,7 @@ public class ShootingHandler {
 
                if (this.canFire(player, heldItem)) {
                   ItemCooldowns tracker = player.getCooldowns();
-                  long now = System.currentTimeMillis();
-                  long interval = gun.getGeneral().getFireIntervalMs();
-                  if (this.shootReadyAt < now - interval) {
-                     this.shootReadyAt = now;
-                  }
-
-                  if (now >= this.shootReadyAt) {
-                     this.shootReadyAt += interval;
+                  if (!tracker.isOnCooldown(heldItem.getItem())) {
                      if (NeoForge.EVENT_BUS.post(new GunFireEvent.Pre(player, heldItem)).isCanceled()) {
                         return;
                      }
@@ -439,56 +421,6 @@ public class ShootingHandler {
             }
          }
       }
-   }
-
-   /**
-    * Automatic fire is also attempted once per rendered frame.
-    *
-    * <p>The tick event only runs twenty times a second, which is why a fast gun came out in steps and could not
-    * exceed 1200 RPM. Trying again every frame lets a 900 RPM gun place its shots 66.7 ms apart instead of every
-    * other tick. A second attempt within the same interval is harmless: fire() rejects anything the deadline has
-    * not reached, so running this alongside the tick path cannot double-fire.</p>
-    */
-   @SubscribeEvent
-   public void onRenderFrame(net.neoforged.neoforge.client.event.RenderFrameEvent.Pre event) {
-      if (!this.isInGame()) {
-         return;
-      }
-
-      Minecraft mc = Minecraft.getInstance();
-      Player player = mc.player;
-      if (player == null || mc.isPaused() || this.switchCooldown > 0) {
-         return;
-      }
-
-      if (PlayerReviveHelper.isBleeding(player) || this.burstCooldownTimer > 0) {
-         return;
-      }
-
-      if ((Boolean)ModSyncedDataKeys.RELOADING.getValue(player)) {
-         return;
-      }
-
-      boolean holdingFire = KeyBinds.getShootMapping().isDown();
-      if (!holdingFire && ScorchedGuns.controllableLoaded) {
-         holdingFire = ControllerHandler.isShooting();
-      }
-
-      if (!holdingFire) {
-         return;
-      }
-
-      ItemStack heldItem = player.getMainHandItem();
-      if (!(heldItem.getItem() instanceof GunItem gunItem)) {
-         return;
-      }
-
-      Gun gun = gunItem.getModifiedGun(heldItem);
-      if (gun.getGeneral().getFireMode() != FireMode.AUTOMATIC) {
-         return;
-      }
-
-      this.fire(player, heldItem);
    }
 
    @SubscribeEvent
