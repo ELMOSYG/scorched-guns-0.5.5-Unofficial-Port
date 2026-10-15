@@ -260,19 +260,8 @@ public class BeamWeaponHandler {
    }
 
    private static float calculateBeamArmorBypassDamage(ItemStack weapon, Gun modifiedGun, LivingEntity target, float damage) {
-      int armorValue = target.getArmorValue();
-      float baseReduction = Math.min(0.75F, (float)armorValue * 0.004F);
-      float baseArmorBypass = modifiedGun.getProjectile().getArmorPen();
-      float puncturingBypass = GunEnchantmentHelper.getPuncturingArmorBypass(weapon);
-      float totalArmorBypass = baseArmorBypass + puncturingBypass;
-      if (totalArmorBypass <= 0.0F) {
-         return damage * (1.0F - baseReduction);
-      } else {
-         float bypassPercent = totalArmorBypass / 10.0F;
-         float effectiveArmor = (float)armorValue * (1.0F - bypassPercent);
-         float finalReduction = Math.min(0.75F, effectiveArmor * 0.004F);
-         return damage * (1.0F - finalReduction);
-      }
+      float bypass = modifiedGun.getProjectile().getArmorPen() + GunEnchantmentHelper.getPuncturingArmorBypass(weapon);
+return top.ribs.scguns.util.ArmorPenetration.afterArmor(target, bypass, damage);
    }
 
    private static float applyProjectileProtection(LivingEntity target, float damage) {
