@@ -824,6 +824,18 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
          } else {
             boolean hasMatchingTag = false;
 
+            // Ask the entity what it is before consulting the tags. They are keyed on the entity type, which an
+            // entity cannot change, so a mod that swaps its type at runtime was invisible here - the training dummy
+            // counts as undead while it wears a zombie head, and neither the multiplier nor the fire applied to it.
+            // MobType.of already prefers the entity's own answer and falls back to these same tags.
+            top.ribs.scguns.util.MobType reported = top.ribs.scguns.util.MobType.of(entity);
+            String advantagePath = advantage.getPath();
+            if ((advantagePath.equals("undead") && reported == top.ribs.scguns.util.MobType.UNDEAD)
+               || (advantagePath.equals("illager") && reported == top.ribs.scguns.util.MobType.ILLAGER)
+               || (advantagePath.equals("water") && reported == top.ribs.scguns.util.MobType.WATER)) {
+               hasMatchingTag = true;
+            }
+
             for (String targetTag : advantageData.targetTags()) {
                ResourceLocation tagLocation = ResourceLocation.parse(targetTag);
                TagKey<EntityType<?>> entityTag = TagKey.create(Registries.ENTITY_TYPE, tagLocation);
