@@ -80,13 +80,19 @@ Create Ore Excavation、Farmer's Delight、Touhou Little Maid（女仆可以使�
 
 ---
 
-## 归属与致谢
+## 制作人员与致谢
 
-**Scorched Guns 的名称、数值、美术与全部设计属于原作者 ribs。** 本移植版不改名、不重新设计，
-只做移植与修复。
+**Scorched Guns 的名称、数值、美术与全部设计属于原作者 ribs。** 本移植版不改名、不重新设计，只做移植与修复。
 
-- 原模组：Scorched Guns（作者 ribs）
-- 女仆兼容：由本移植版配套提供
-- 附属作者：AsYasya's WW1 Weaponry 等
+- **原模组**：Scorched Guns —— 作者 **ribs**（GPL-3.0）
+- **1.21.1 / NeoForge 移植**：**ELMO_SYG**
+- **女仆兼容**：由本移植版配套提供
+- **附属作者**：AsYasya's WW1 Weaponry 等
+- **音效**：CC0（见原模组 jar 内的 `SOUND-LICENSE.txt`）
+
+### 关于 AI 使用
+
+本项目的**移植过程**与**新增内容的代码**在开发中使用了 AI 辅助（包括代码迁移、调试与文档撰写）。
+原模组的素材与设计未受影响，由移植作者对提交的内容负责。
 
 **请不要把本移植版的问题报告给原作者。**

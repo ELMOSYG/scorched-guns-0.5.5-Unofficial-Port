@@ -141,9 +141,17 @@ So you know what to expect, here is what still follows the original:
 **The name, numbers, art and design of Scorched Guns all belong to the original author, ribs.** This port
 does not rename anything and does not redesign anything; it only ports and fixes.
 
-- Original mod: Scorched Guns by ribs
-- Maid compatibility: provided alongside this port
-- Addon authors: AsYasya's WW1 Weaponry and others
+- **Original mod**: Scorched Guns by **ribs** (GPL-3.0)
+- **1.21.1 / NeoForge port**: **ELMO_SYG**
+- **Maid compatibility**: provided alongside this port
+- **Addon authors**: AsYasya's WW1 Weaponry and others
+- **Sounds**: CC0, as stated in the original jar (`SOUND-LICENSE.txt`)
+
+### On AI use
+
+AI assistance was used for **the porting process and for the code of new content** (including code
+migration, debugging and documentation). The original mod's assets and design are untouched, and the
+port author is responsible for what is committed.
 
 **Please do not report problems with this port to the original author.**
 ```
@@ -232,10 +240,16 @@ Same text as HTML. Use whichever form the editor is in; do not paste both.
 <p>**The name, numbers, art and design of Scorched Guns all belong to the original author, ribs.** This port</p>
 <p>does not rename anything and does not redesign anything; it only ports and fixes.</p>
 <ul>
-<li>Original mod: Scorched Guns by ribs</li>
-<li>Maid compatibility: provided alongside this port</li>
-<li>Addon authors: AsYasya&#x27;s WW1 Weaponry and others</li>
+<li>**Original mod**: Scorched Guns by **ribs** (GPL-3.0)</li>
+<li>**1.21.1 / NeoForge port**: **ELMO_SYG**</li>
+<li>**Maid compatibility**: provided alongside this port</li>
+<li>**Addon authors**: AsYasya&#x27;s WW1 Weaponry and others</li>
+<li>**Sounds**: CC0, as stated in the original jar (`SOUND-LICENSE.txt`)</li>
 </ul>
+<h3>On AI use</h3>
+<p>AI assistance was used for **the porting process and for the code of new content** (including code</p>
+<p>migration, debugging and documentation). The original mod&#x27;s assets and design are untouched, and the</p>
+<p>port author is responsible for what is committed.</p>
 <p>**Please do not report problems with this port to the original author.**</p>
 ```
 
