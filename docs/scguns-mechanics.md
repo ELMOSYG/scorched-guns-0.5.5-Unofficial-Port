@@ -14,12 +14,12 @@
 |---|---|---|
 | `scguns:semi_automatic` | 是 | 半自动 |
 | `scguns:automatic` | 是 | 全自动（按住持续射击） |
-| `scguns:burst` | 是 | 点射 |
+| `scguns:burst` | 是 | 连发 |
 | `scguns:pulse` | 是 | 蓄力 |
 | `scguns:beam` | 是 | 持续光束（按 `beamAmmoConsumptionDelay` 持续扣弹） |
 | `scguns:semi_beam` | 是 | 半自动光束（每段只扣 1 发） |
 | `scguns:automatic_beam` | 是（本移植版补注册） | 全自动光束：按射速反复「开始一段光束」，即 `semi_beam` 的连发版 |
-| `scguns:beam_burst` | 是（本移植版补注册） | 点射光束 |
+| `scguns:beam_burst` | 是（本移植版补注册） | 连发光束 |
 
 > **历史问题**：`automatic_beam` 与 `beam_burst` 的枚举值一直存在，但从未 `registerType`，
 > 所以写进数据也会变成半自动 —— 看上去像「模组只支持半自动光束」，实际是注册遗漏。
