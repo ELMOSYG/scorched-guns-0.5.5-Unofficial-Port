@@ -1,6 +1,6 @@
 # Scorched Guns 0.5.5 — Unofficial 1.21.1 / NeoForge port
 
-**Port version: 0.5.5.1** — the content is the upstream 0.5.5 release, and `0.5.5.1` is this port's own release number (it is what the mod reports in the mod list and what the jar is named).
+**Port version: 1.0.4** — the content is the upstream 0.5.5 release, and `1.0.4` is this port's own release number (it is what the mod reports in the mod list and what the jar is named).
 
 **Download:** [CurseForge — Scorched Guns 2 0.5.5 Unofficial port](https://www.curseforge.com/minecraft/mc-mods/scorched-guns-2-0-5-5-unofficial-port) · [GitHub releases](https://github.com/ELMOSYG/scorched-guns-0.5.5-Unofficial-Port/releases)
 
@@ -27,7 +27,7 @@ Optional integrations (each of them only activates when the other mod is present
 ## Installing
 
 1. Install NeoForge 21.1.150+ for Minecraft 1.21.1.
-2. Drop `scguns-0.5.5.1.jar` into your `mods/` folder.
+2. Drop `scguns-1.0.4.jar` into your `mods/` folder.
 3. Drop Framework, GeckoLib and Curios into `mods/` as well.
 
 The jar also ships **Scorched Guns: Maid Compat** as a nested mod (its own mod id, mixin config and class loader). It only does anything when Touhou Little Maid is installed, and it is completely inert otherwise.
@@ -38,7 +38,7 @@ The build needs the dependency jars in `libs/` — they are **not** distributed 
 
 ```powershell
 $env:JAVA_HOME='<path to a JDK 21>'          # required - a Java 8 on PATH will not work
-cmd /c "gradlew.bat build --console=plain"   # -> build/libs/scguns-0.5.5.1.jar
+cmd /c "gradlew.bat build --console=plain"   # -> build/libs/scguns-1.0.4.jar
 ```
 
 Useful switches and gates:
@@ -82,7 +82,11 @@ Highlights of the mechanical part of the port (1.21 / NeoForge changed all of it
 * **Scorched Guns** — original mod by **ribs** (credits: MrCrayfish, Ribs), licensed **GPL-3.0**. This port inherits that license (see [`LICENSE`](LICENSE)) and redistributes its assets and data.
 * **Sounds** — CC0, as stated in the original jar (`assets/scguns/sounds/SOUND-LICENSE.txt`).
 * **Simplified Chinese translation** (`zh_cn.json`) — provided by a community translation pack; see [`NOTICE`](NOTICE).
-* **Maid compatibility** included as a nested mod — written for this port.
+* **Maid compatibility** included as a nested mod
+* **Port author** - the 1.21.1 / NeoForge port, its fixes and its new content were written by **ELMO_SYG**.
+* **AI assistance** - AI tools were used for the porting work and for the code of new content (code migration,
+  debugging and documentation). The original mod's assets and design are untouched, and the port author is
+  responsible for everything committed here. — written for this port.
 * Framework, GeckoLib, Curios and every optional integration belong to their own authors and are **not** redistributed here.
 
 Full details, including the "this is unofficial" disclaimer, are in [`NOTICE`](NOTICE).
@@ -96,3 +100,4 @@ Full details, including the "this is unofficial" disclaimer, are in [`NOTICE`](N
 * 需要：Minecraft 1.21.1、**NeoForge 21.1.150 或更高**、Framework 0.13.11+、GeckoLib 4.9.3+、Curios 9.5.1+。
 * 移植过程、每一处坑与证据都写在 [`HANDOFF.md`](HANDOFF.md)（中文，70 节）与 [`PORTING_STATUS.md`](PORTING_STATUS.md) 里。
 * 授权：GPL-3.0（沿用上游），原作者 ribs；本移植为非官方作品，与原作者无关。
+* 移植：**ELMO_SYG**；本项目的移植过程与新增内容的代码使用了 AI 辅助（代码迁移、调试与文档）。

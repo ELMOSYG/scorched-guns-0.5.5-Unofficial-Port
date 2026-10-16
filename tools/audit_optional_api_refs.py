@@ -42,7 +42,7 @@ import sys
 
 ROOT = pathlib.Path(r"E:\mod\scgun-0.5.5-1.21.1-neoforge")
 SOURCE = ROOT / "src/main/java"
-JAR = ROOT / "build/libs/scguns-0.5.5.1.jar"
+JAR = max((ROOT / "build/libs").glob("scguns-*.jar"), key=lambda f: f.stat().st_mtime, default=ROOT / "build/libs/scguns.jar")
 
 # Optional mods whose classes this mod compiles against. com.mrcrayfish (Framework) and
 # org.spongepowered (Mixin) are required dependencies, not optional, and are left out on purpose.
@@ -249,7 +249,7 @@ def check_jar():
     import zipfile
 
     if not JAR.exists():
-        print("jar not built yet, skipping the bytecode check (%s)" % JAR.name)
+        print("SKIPPED - no built jar, the bytecode check did NOT run (%s)" % JAR.name)
         return []
     problems = []
     allowed_files = {pathlib.Path(key).name for key in BRIDGES}

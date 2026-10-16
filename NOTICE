@@ -85,3 +85,9 @@ TEMPLATE_LICENSE.txt. It covers nothing else in this repository.
 This project uses the official Mojang mappings, which are covered by their own license:
 https://github.com/NeoForged/NeoForm/blob/main/Mojang.md
 
+AI ASSISTANCE
+-------------
+AI tools were used for the porting process and for the code of new content added by this port
+(code migration, debugging and documentation). The original mod's assets and design are untouched,
+and the port author (ELMO_SYG) is responsible for everything committed here.
+
