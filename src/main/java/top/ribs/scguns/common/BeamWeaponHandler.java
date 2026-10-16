@@ -73,7 +73,7 @@ public class BeamWeaponHandler {
       }
 
       long currentTime = System.currentTimeMillis();
-      boolean isBeamFireMode = modifiedGun.getGeneral().getFireMode() == FireMode.BEAM;
+      boolean isBeamFireMode = FireMode.isBeam(modifiedGun.getGeneral().getFireMode());
       BeamHandler.BeamInfo beamInfo = activeBeams.computeIfAbsent(playerId, k -> new BeamHandler.BeamInfo(beamOrigin, hitPos, currentTime, isBeamFireMode));
       beamInfo.startPos = beamOrigin;
       beamInfo.endPos = hitPos;
@@ -90,7 +90,7 @@ public class BeamWeaponHandler {
       }
 
       FireMode fireMode = modifiedGun.getGeneral().getFireMode();
-      if (fireMode == FireMode.BEAM || fireMode == FireMode.SEMI_BEAM) {
+      if (FireMode.isBeam(fireMode)) {   // AUTOMATIC_BEAM takes the SEMI_BEAM branch below: one round per burst
          if (fireMode == FireMode.BEAM) {
             if (currentTime - beamInfo.startTime >= (long)modifiedGun.getGeneral().getBeamAmmoConsumptionDelay()) {
                consumeBeamAmmo(player, heldItem);

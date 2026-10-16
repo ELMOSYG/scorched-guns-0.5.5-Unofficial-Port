@@ -98,7 +98,7 @@ public class ServerPlayHandler {
                            SpreadTracker.get(player).update(player, item);
                         }
 
-                        if (FireMode.BEAM.equals(modifiedGun.getGeneral().getFireMode()) || FireMode.SEMI_BEAM.equals(modifiedGun.getGeneral().getFireMode())) {
+                        if (FireMode.isBeam(modifiedGun.getGeneral().getFireMode())) {
                            BeamWeaponHandler.handleBeamWeapon(player, heldItem, modifiedGun);
                         } else if (modifiedGun.getProjectile(heldItem).firesArrows()) {
                            int count = modifiedGun.getProjectile().getProjectileAmount();
@@ -112,7 +112,7 @@ public class ServerPlayHandler {
                            fireProjectiles(world, player, heldItem, item, modifiedGun);
                         }
 
-                        if (!FireMode.BEAM.equals(modifiedGun.getGeneral().getFireMode()) && !FireMode.SEMI_BEAM.equals(modifiedGun.getGeneral().getFireMode())
+                        if (!FireMode.isBeam(modifiedGun.getGeneral().getFireMode()) && !FireMode.SEMI_BEAM.equals(modifiedGun.getGeneral().getFireMode())
                            )
                          {
                            consumeAmmo(player, heldItem);

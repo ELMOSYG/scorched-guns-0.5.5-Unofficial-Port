@@ -23,6 +23,15 @@ public record FireMode(ResourceLocation id) {
       fireModeMap.putIfAbsent(mode.id(), mode);
    }
 
+   /**
+    * True for every mode that fires a beam. {@code AUTOMATIC_BEAM} repeats {@code SEMI_BEAM} at the weapon's rate, so
+    * it belongs to this family everywhere the code asks "is this a beam?" - but not where it distinguishes the two,
+    * which is why the ammo branch in {@code BeamWeaponHandler} keeps testing {@code BEAM} on its own.
+    */
+   public static boolean isBeam(FireMode mode) {
+      return mode == BEAM || mode == SEMI_BEAM || mode == AUTOMATIC_BEAM;
+   }
+
    public static FireMode getType(ResourceLocation id) {
       return fireModeMap.getOrDefault(id, SEMI_AUTO);
    }
@@ -38,5 +47,7 @@ public record FireMode(ResourceLocation id) {
       registerType(BEAM);
       registerType(SEMI_BEAM);
       registerType(BURST);
+      registerType(BEAM_BURST);
+      registerType(AUTOMATIC_BEAM);
    }
 }
