@@ -1826,6 +1826,6 @@
   "commands.scguns.requires_player": "Requires Player",
   "creativetab.scorched_items_tab": "Scorched Items",
   "creativetab.scorched_blocks_tab": "Scorched Blocks",
-  "fire_mode.scguns.automatic_beam": "Automatic Beam",
-  "fire_mode.scguns.beam_burst": "Burst Beam"
+  "fire_mode.scguns:automatic_beam": "Automatic Beam",
+  "fire_mode.scguns:beam_burst": "Burst Beam"
 }

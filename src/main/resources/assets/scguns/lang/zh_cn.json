@@ -1826,6 +1826,6 @@
   "subtitle.scguns.jetpack": "喷气背包",
   "subtitle.scguns.loop": "循环音",
   "subtitle.scguns.slap": "拍击声",
-  "fire_mode.scguns.automatic_beam": "全自动光束",
-  "fire_mode.scguns.beam_burst": "点射光束"
+  "fire_mode.scguns:automatic_beam": "全自动光束",
+  "fire_mode.scguns:beam_burst": "点射光束"
 }
