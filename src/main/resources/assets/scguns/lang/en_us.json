@@ -1825,5 +1825,7 @@
   "commands.scguns.raid.check.howto": "Fast test: /time set 12000, then /time set 13000 for the roll and the warning, then /time set 17995 - the raid starts within 5 ticks (minDaysBetweenRaids 0 allows a test every night)",
   "commands.scguns.requires_player": "Requires Player",
   "creativetab.scorched_items_tab": "Scorched Items",
-  "creativetab.scorched_blocks_tab": "Scorched Blocks"
+  "creativetab.scorched_blocks_tab": "Scorched Blocks",
+  "fire_mode.scguns.automatic_beam": "Automatic Beam",
+  "fire_mode.scguns.beam_burst": "Burst Beam"
 }

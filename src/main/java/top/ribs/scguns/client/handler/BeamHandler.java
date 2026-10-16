@@ -90,7 +90,9 @@ public class BeamHandler {
       BeamHandler.BeamInfo beamInfo = activeBeams.get(playerId);
       if (beamInfo != null) {
          beamInfo.isBeamActive = false;
-         long duration = beamInfo.isBeamFireMode ? 200L : 50L;
+         // An automatic beam is a run of short segments rather than one long beam, so it must not linger: the
+         // gap constant ends each segment and a long expiry here would smear them back together.
+         long duration = beamInfo.isAutomaticBeam ? 0L : (beamInfo.isBeamFireMode ? 200L : 50L);
          beamInfo.expiryTime = System.currentTimeMillis() + duration;
       }
    }
@@ -129,7 +131,7 @@ public class BeamHandler {
             if (heldItem.getItem() instanceof GunItem gunItem) {
                Gun modifiedGun = gunItem.getModifiedGun(heldItem);
                if (modifiedGun != null) {
-                  isBeamFireMode = modifiedGun.getGeneral().getFireMode().equals(FireMode.BEAM);
+                  isBeamFireMode = FireMode.isBeam(modifiedGun.getGeneral().getFireMode());
                }
             }
          }
@@ -164,7 +166,7 @@ public class BeamHandler {
       ItemStack heldItem = player.getMainHandItem();
       if (heldItem.getItem() instanceof GunItem gunItem) {
          Gun modifiedGun = gunItem.getModifiedGun(heldItem);
-         if (modifiedGun != null && modifiedGun.getGeneral().getFireMode().equals(FireMode.BEAM)) {
+         if (modifiedGun != null && FireMode.isBeam(modifiedGun.getGeneral().getFireMode())) {
             player.bob = 0.0F;
             player.oBob = 0.0F;
             player.walkDist = 0.0F;

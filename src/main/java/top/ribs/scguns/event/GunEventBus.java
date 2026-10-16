@@ -335,7 +335,7 @@ public class GunEventBus {
          if (gunx.getGeneral().isEnableGunLight()) {
             Vec3 lookVec = player.getLookAngle();
             BlockPos lightPos = player.blockPosition().offset((int)(lookVec.x * 2.0), 2, (int)(lookVec.z * 2.0));
-            boolean isBeamWeapon = gunx.getGeneral().getFireMode() == FireMode.BEAM;
+            boolean isBeamWeapon = FireMode.isBeam(gunx.getGeneral().getFireMode());
             TemporaryLightManager.addTemporaryLight(level, lightPos, isBeamWeapon);
          }
 
