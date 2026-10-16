@@ -39,6 +39,16 @@ public class BeamHandler {
    private static final long SEMI_BEAM_DURATION_MS = 50L;
    private static final long CLEANUP_DELAY_MS = 50L;
 
+   /**
+    * How long an automatic beam keeps drawing after its last update.
+    *
+    * <p>{@code AUTOMATIC_BEAM} repeats {@code SEMI_BEAM} at the weapon's rate, and the client only ever learned that a
+    * beam had ended from the stop message sent when the trigger is released - so between two shots of a burst the
+    * beam stayed active and the whole burst drew as one unbroken line. Letting it lapse this long after the newest
+    * update puts a visible gap between segments; keep it below the shot interval.</p>
+    */
+   private static final long AUTOMATIC_BEAM_GAP_MS = 60L;
+
    public BeamHandler() {
       super();
    }
@@ -61,6 +71,21 @@ public class BeamHandler {
       return interpolateColors(primaryColor, secondaryColor, progress);
    }
 
+   private static boolean isAutomaticBeam(UUID playerId) {
+      if (Minecraft.getInstance().level == null) {
+         return false;
+      }
+
+      Player player = Minecraft.getInstance().level.getPlayerByUUID(playerId);
+      if (player == null) {
+         return false;
+      }
+
+      ItemStack heldItem = player.getMainHandItem();
+      return heldItem.getItem() instanceof GunItem gunItem
+         && gunItem.getModifiedGun(heldItem).getGeneral().getFireMode() == FireMode.AUTOMATIC_BEAM;
+   }
+
    public static void stopBeam(UUID playerId) {
       BeamHandler.BeamInfo beamInfo = activeBeams.get(playerId);
       if (beamInfo != null) {
@@ -77,6 +102,11 @@ public class BeamHandler {
       while (iterator.hasNext()) {
          Entry<UUID, BeamHandler.BeamInfo> entry = iterator.next();
          BeamHandler.BeamInfo beamInfo = entry.getValue();
+         if (beamInfo.isAutomaticBeam && beamInfo.isBeamActive
+            && currentTime - beamInfo.lastUpdateTime > AUTOMATIC_BEAM_GAP_MS) {
+            beamInfo.isBeamActive = false;
+            beamInfo.expiryTime = currentTime;
+         }
          if (!beamInfo.isBeamActive && currentTime > beamInfo.expiryTime + 50L || currentTime - beamInfo.lastUpdateTime > 500L) {
             iterator.remove();
          }
@@ -88,6 +118,7 @@ public class BeamHandler {
       if (beamInfo != null) {
          beamInfo.updatePositions(startPos, endPos);
          beamInfo.isBeamActive = true;
+         beamInfo.isAutomaticBeam = isAutomaticBeam(playerId);
       } else {
          assert Minecraft.getInstance().level != null;
 
@@ -105,6 +136,7 @@ public class BeamHandler {
 
          BeamHandler.BeamInfo newBeamInfo = new BeamHandler.BeamInfo(startPos, endPos, System.currentTimeMillis(), isBeamFireMode);
          newBeamInfo.isBeamActive = true;
+         newBeamInfo.isAutomaticBeam = isAutomaticBeam(playerId);
          activeBeams.put(playerId, newBeamInfo);
       }
    }
@@ -371,6 +403,8 @@ public class BeamHandler {
       public boolean isBeamActive;
       public long expiryTime;
       public boolean isBeamFireMode;
+      /** True for AUTOMATIC_BEAM, whose segments are ended by the timeout below rather than by a stop message. */
+      public boolean isAutomaticBeam;
       public float fadeProgress = 0.0F;
       private static final float FADE_SPEED = 2.0F;
       public List<Vec3> glassPenetrationPoints;
