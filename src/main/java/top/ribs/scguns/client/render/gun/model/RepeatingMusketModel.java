@@ -10,6 +10,7 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import top.ribs.scguns.client.SpecialModels;
 import top.ribs.scguns.client.render.gun.IOverrideModel;
+import top.ribs.scguns.client.util.GunReloadState;
 import top.ribs.scguns.client.util.RenderUtil;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.init.ModItems;
@@ -101,6 +102,13 @@ public class RepeatingMusketModel implements IOverrideModel {
    }
 
    private float calculateMagazinePosition(ItemStack stack) {
+      // While a reload plays, the animation owns the magazine bone (it drives sliding_magazine directly). Returning
+      // no offset here leaves the bone to the animation; feeding it the ammo count as it refilled was what made it
+      // twitch round by round and jump to the empty position once the reload finished.
+      if (GunReloadState.isReloading(stack)) {
+         return 0.0F;
+      }
+
       int maxAmmo = Gun.getMaxAmmo(stack);
       int currentAmmo = Gun.getAmmoCount(stack);
       return Math.min((float)(maxAmmo - currentAmmo) / (float)maxAmmo, 1.0F);
