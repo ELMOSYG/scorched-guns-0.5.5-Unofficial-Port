@@ -330,9 +330,13 @@ public final class PropertyHelper {
                            }
                            JsonArray pivot = GsonHelper.getAsJsonArray(bone, "pivot", null);
                            if (pivot != null && pivot.size() >= 3) {
-                              result = new Vec3(pivot.get(0).getAsDouble(),
-                                                pivot.get(1).getAsDouble(),
-                                                pivot.get(2).getAsDouble());
+                              // The caller subtracts GUN_DEFAULT_ORIGIN from whatever this returns, so a bone
+                              // position has to be expressed in that same space: add the origin's x/z back (its y
+                              // is zero) and the subtraction leaves exactly the bone pivot.
+                              Vec3 origin = GUN_DEFAULT_ORIGIN;
+                              result = new Vec3(pivot.get(0).getAsDouble() + origin.x,
+                                                pivot.get(1).getAsDouble() + origin.y,
+                                                pivot.get(2).getAsDouble() + origin.z);
                               top.ribs.scguns.ScorchedGuns.LOGGER.info(
                                     "CAMERA BONE HIT: {} -> bone '{}' pivot {}",
                                     id, wanted, result);
