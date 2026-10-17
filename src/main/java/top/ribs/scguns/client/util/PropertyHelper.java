@@ -18,6 +18,17 @@ import top.ribs.scguns.item.attachment.IAttachment;
 import top.ribs.scguns.item.attachment.IBarrel;
 import top.ribs.scguns.item.attachment.IScope;
 
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.GsonHelper;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
+import top.ribs.scguns.item.animated.AnimatedGunItem;
+
 public final class PropertyHelper {
    public static final String CACHE_KEY = "properties";
    public static final String MODEL_KEY = "scguns:model";
@@ -60,6 +71,15 @@ public final class PropertyHelper {
          DataArray cameraArray = ironSightObject.getDataArray("camera");
          return arrayToVec3(cameraArray, Vec3.ZERO);
       } else {
+         // Model-driven camera: a gun model can position its own aiming camera with a bone, which is what the
+         // other 1.21.1 port does (TaCZ does the same with its camera bones). Checked before the zoom numbers so a
+         // re-authored model needs no offset tuning; the numbers below remain the fallback for every gun without
+         // such a bone, so nothing that works today can regress.
+         Vec3 fromBone = getCameraBone(stack);
+         if (fromBone != null) {
+            return fromBone;
+         }
+
          Gun.Modules.Zoom zoom = modifiedGun.getModules().getZoom();
          if (zoom != null) {
             double cameraX = 8.0 - modifiedGun.getModules().getZoom().getXOffset();
@@ -261,5 +281,71 @@ public final class PropertyHelper {
                }
             }));
       }
+   }
+
+   /** Camera bone names, highest priority first. */
+   private static final String[] CAMERA_BONES = {"camera_aim", "camera", "iron_sight_camera"};
+
+   private static final Map<String, Vec3> CAMERA_BONE_CACHE = new HashMap<String, Vec3>();
+
+   /**
+    * The aiming camera position recorded in the gun model, or {@code null} when it has no camera bone.
+    *
+    * <p>A bone lets the camera follow the model instead of hand-tuned numbers: move the bone in the model and the
+    * sight lines up. Anything unreadable returns null, so the zoom fallback still applies.</p>
+    */
+   private static Vec3 getCameraBone(ItemStack stack) {
+      if (!(stack.getItem() instanceof AnimatedGunItem gun)) {
+         return null;
+      }
+
+      String id = gun.getGunID();
+      if (id == null) {
+         return null;
+      }
+
+      if (CAMERA_BONE_CACHE.containsKey(id)) {
+         return CAMERA_BONE_CACHE.get(id);
+      }
+
+      Vec3 result = null;
+      try {
+         ResourceLocation location = ResourceLocation.fromNamespaceAndPath("scguns", "geo/item/gun/" + id + ".geo.json");
+         var resource = net.minecraft.client.Minecraft.getInstance().getResourceManager().getResource(location);
+         if (resource.isPresent()) {
+            try (BufferedReader reader = new BufferedReader(
+                  new InputStreamReader(resource.get().open(), StandardCharsets.UTF_8))) {
+               JsonObject json = GsonHelper.parse(reader);
+               JsonArray geometries = GsonHelper.getAsJsonArray(json, "minecraft:geometry", null);
+               if (geometries != null && geometries.size() > 0) {
+                  JsonArray bones = GsonHelper.getAsJsonArray(geometries.get(0).getAsJsonObject(), "bones", null);
+                  if (bones != null) {
+                     for (String wanted : CAMERA_BONES) {
+                        for (int i = 0; i < bones.size() && result == null; i++) {
+                           JsonObject bone = bones.get(i).getAsJsonObject();
+                           if (!wanted.equals(GsonHelper.getAsString(bone, "name", ""))) {
+                              continue;
+                           }
+                           JsonArray pivot = GsonHelper.getAsJsonArray(bone, "pivot", null);
+                           if (pivot != null && pivot.size() >= 3) {
+                              result = new Vec3(pivot.get(0).getAsDouble(),
+                                                pivot.get(1).getAsDouble(),
+                                                pivot.get(2).getAsDouble());
+                           }
+                        }
+                        if (result != null) {
+                           break;
+                        }
+                     }
+                  }
+               }
+            }
+         }
+      } catch (Throwable ignored) {
+         // No bone camera then; the zoom fallback decides.
+      }
+
+      CAMERA_BONE_CACHE.put(id, result);
+      return result;
    }
 }

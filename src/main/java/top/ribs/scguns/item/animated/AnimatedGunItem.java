@@ -67,6 +67,11 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    public static final String RELOAD_STATE = "scguns:ReloadState";
    private final GunRotationHandler rotationHandler = new GunRotationHandler();
 
+   /** The model name this gun was registered with (its path, e.g. {@code laser_rifle}). */
+   public String getGunID() {
+      return this.gunID;
+   }
+
    public GunRotationHandler getRotationHandler() {
       return this.rotationHandler;
    }
