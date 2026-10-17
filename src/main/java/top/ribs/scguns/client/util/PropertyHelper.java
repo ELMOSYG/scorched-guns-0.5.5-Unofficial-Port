@@ -290,6 +290,11 @@ public final class PropertyHelper {
 
    private static final Map<String, Vec3> CAMERA_BONE_CACHE = new HashMap<String, Vec3>();
 
+   /** When each cache entry was written, so a re-exported model is picked up without restarting the game. */
+   private static final Map<String, Long> CAMERA_BONE_STAMP = new HashMap<String, Long>();
+
+   private static final long CAMERA_BONE_TTL_MS = 1000L;
+
    /**
     * The aiming camera position recorded in the gun model, or {@code null} when it has no camera bone.
     *
@@ -306,7 +311,9 @@ public final class PropertyHelper {
          return null;
       }
 
-      if (CAMERA_BONE_CACHE.containsKey(id)) {
+      Long stamped = CAMERA_BONE_STAMP.get(id);
+      if (stamped != null && CAMERA_BONE_CACHE.containsKey(id)
+            && System.currentTimeMillis() - stamped < CAMERA_BONE_TTL_MS) {
          return CAMERA_BONE_CACHE.get(id);
       }
 
@@ -361,6 +368,7 @@ public final class PropertyHelper {
       }
 
       CAMERA_BONE_CACHE.put(id, result);
+      CAMERA_BONE_STAMP.put(id, System.currentTimeMillis());
       return result;
    }
 }
