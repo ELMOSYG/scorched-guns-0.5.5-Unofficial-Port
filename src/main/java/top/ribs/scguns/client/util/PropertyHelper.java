@@ -333,6 +333,9 @@ public final class PropertyHelper {
                               result = new Vec3(pivot.get(0).getAsDouble(),
                                                 pivot.get(1).getAsDouble(),
                                                 pivot.get(2).getAsDouble());
+                              top.ribs.scguns.ScorchedGuns.LOGGER.info(
+                                    "CAMERA BONE HIT: {} -> bone '{}' pivot {}",
+                                    id, wanted, result);
                            }
                         }
                         if (result != null) {
@@ -345,6 +348,12 @@ public final class PropertyHelper {
          }
       } catch (Throwable ignored) {
          // No bone camera then; the zoom fallback decides.
+      }
+
+      if (result == null) {
+         top.ribs.scguns.ScorchedGuns.LOGGER.info(
+               "CAMERA BONE MISS: {} -> no {} bone, falling back to zoom offsets",
+               id, String.join("/", CAMERA_BONES));
       }
 
       CAMERA_BONE_CACHE.put(id, result);
