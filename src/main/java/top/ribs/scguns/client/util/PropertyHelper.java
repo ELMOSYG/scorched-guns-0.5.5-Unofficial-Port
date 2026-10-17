@@ -284,7 +284,9 @@ public final class PropertyHelper {
    }
 
    /** Camera bone names, highest priority first. */
-   private static final String[] CAMERA_BONES = {"camera_aim", "camera", "iron_sight_camera"};
+   private static final String[] CAMERA_BONES = {
+         "camera_aim", "aim_camera", "iron_sight_camera", "camera"
+      };
 
    private static final Map<String, Vec3> CAMERA_BONE_CACHE = new HashMap<String, Vec3>();
 
