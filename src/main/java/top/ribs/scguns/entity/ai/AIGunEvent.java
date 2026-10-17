@@ -67,7 +67,7 @@ public class AIGunEvent {
          }
 
          float difficultyDamageMultiplier = getDifficultyDamageMultiplier(level.getDifficulty());
-         float configDamageMultiplier = ((Double)Config.COMMON.gameplay.mobGunDamageMultiplier.get()).floatValue();
+         float configDamageMultiplier = safeRead(() -> (Double)Config.COMMON.gameplay.mobGunDamageMultiplier.get(), 1.0D).floatValue();
          float finalDamageMultiplier = difficultyDamageMultiplier * configDamageMultiplier;
 
          for (int i = 0; i < count; i++) {
@@ -98,7 +98,7 @@ public class AIGunEvent {
          int radius = (int)shooter.getX();
          int y1 = (int)(shooter.getY() + 1.0);
          int z1 = (int)shooter.getZ();
-         double r = (Double)Config.COMMON.network.projectileTrackingRange.get();
+         double r = safeRead(() -> (Double)Config.COMMON.network.projectileTrackingRange.get(), 32.0D);
          ParticleOptions data = GunEnchantmentHelper.getParticle(itemStack);
          boolean isVisible = !modifiedGun.getProjectile().shouldHideTrail();
          S2CMessageBulletTrail messageBulletTrail = new S2CMessageBulletTrail(spawnedProjectiles, projectileProps, shooter.getId(), data, isVisible);
@@ -111,7 +111,7 @@ public class AIGunEvent {
             PacketHandler.getPlayChannel().sendToNearbyPlayers(() -> LevelLocation.create((ServerLevel)level, (double)radius, (double)y1, (double)z1, r), flashMessage);
          }
 
-         if ((Boolean)Config.COMMON.gameplay.spawnCasings.get()
+         if (safeRead(() -> (Boolean)Config.COMMON.gameplay.spawnCasings.get(), true)
             && modifiedGun.getProjectile().ejectsCasing()
             && !modifiedGun.getProjectile().ejectDuringReload()) {
             ResourceLocation particleLocation = modifiedGun.getProjectile().getCasingParticle();
@@ -121,7 +121,7 @@ public class AIGunEvent {
             }
          }
 
-         if ((Boolean)Config.clientOr(Config.CLIENT.display.fireLights)) {
+         if (safeRead(() -> Config.clientOr(Config.CLIENT.display.fireLights), true)) {
             BlockState targetState = shooter.level().getBlockState(BlockPos.containing(shooter.getEyePosition()));
             if (targetState.getBlock() == ModBlocks.TEMPORARY_LIGHT.get()) {
                if (getValue(shooter.level(), BlockPos.containing(shooter.getEyePosition()), "Delay") < 1.0) {
@@ -132,6 +132,22 @@ public class AIGunEvent {
                shooter.level().setBlock(BlockPos.containing(shooter.getEyePosition()), dynamicLightState, 3);
             }
          }
+      }
+   }
+
+   /**
+    * Reads a config value without blowing up a server tick when the config has not been loaded yet.
+    *
+    * <p>{@code ModConfigSpec.ConfigValue#get()} throws {@link IllegalStateException} ("Cannot get config value
+    * before config is loaded") until the config is bound. A gunner can fire during the short window while a world
+    * is loading, and that took the whole server down. Falling back to the shipped default for one tick is
+    * invisible in practice and keeps the tick alive.</p>
+    */
+   private static <T> T safeRead(java.util.function.Supplier<T> reader, T fallback) {
+      try {
+         return reader.get();
+      } catch (IllegalStateException configNotLoadedYet) {
+         return fallback;
       }
    }
 
