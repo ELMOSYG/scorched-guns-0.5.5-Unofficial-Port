@@ -103,47 +103,47 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
          ExoSuitRenderer.ArmorComponentType activeArmorType = this.determineActiveArmorType(armorStack);
          if (this.isBaseComponent(boneName)) {
             boolean shouldHideBase = activeArmorType.shouldHideBase() && hasPlatingUpgrade;
-            bone.setHidden(shouldHideBase);
+            this.setHiddenIfChanged(bone, shouldHideBase);
          } else if (this.isStandardArmorComponent(boneName)) {
             boolean showStandard = hasPlatingUpgrade && activeArmorType == ExoSuitRenderer.ArmorComponentType.STANDARD;
-            bone.setHidden(!showStandard);
+            this.setHiddenIfChanged(bone, !showStandard);
          } else if (this.isHeavyArmorComponent(boneName)) {
             boolean showHeavy = hasPlatingUpgrade && activeArmorType == ExoSuitRenderer.ArmorComponentType.HEAVY;
-            bone.setHidden(!showHeavy);
+            this.setHiddenIfChanged(bone, !showHeavy);
          } else if (this.isLightArmorComponent(boneName)) {
             boolean showLight = hasPlatingUpgrade && activeArmorType == ExoSuitRenderer.ArmorComponentType.LIGHT;
-            bone.setHidden(!showLight);
+            this.setHiddenIfChanged(bone, !showLight);
          } else if (this.isNightVisionComponent(boneName)) {
             boolean showNightVision = this.hasSpecificHudUpgrade(armorStack, NightVisionModuleItem.class);
-            bone.setHidden(!showNightVision);
+            this.setHiddenIfChanged(bone, !showNightVision);
          } else if (this.isTargetTrackerComponent(boneName)) {
             boolean showTargetTracker = this.hasSpecificHudUpgrade(armorStack, TargetTrackerModuleItem.class);
-            bone.setHidden(!showTargetTracker);
+            this.setHiddenIfChanged(bone, !showTargetTracker);
          } else if (this.isBreathingComponent(boneName)) {
             boolean hasBreathingUpgrade = this.hasUpgradeOfType(armorStack, "breathing");
             if (!hasBreathingUpgrade) {
-               bone.setHidden(true);
+               this.setHiddenIfChanged(bone, true);
             } else {
                ItemStack breathingUpgrade = this.findBreathingUpgrade(armorStack);
                if (!breathingUpgrade.isEmpty()) {
                   boolean isRebreather = breathingUpgrade.getItem() instanceof RebreatherModuleItem;
                   boolean isGasMask = breathingUpgrade.getItem() instanceof GasMaskModuleItem;
                   if (boneName.equals("breathing_unit_1")) {
-                     bone.setHidden(!isRebreather);
+                     this.setHiddenIfChanged(bone, !isRebreather);
                   } else if (boneName.equals("breathing_unit_2")) {
-                     bone.setHidden(!isGasMask);
+                     this.setHiddenIfChanged(bone, !isGasMask);
                   }
                } else {
-                  bone.setHidden(true);
+                  this.setHiddenIfChanged(bone, true);
                }
             }
          } else if (this.isJetpackComponent(boneName)) {
             boolean hasJetpackUpgrade = this.hasUpgradeOfType(armorStack, "jetpack") || this.hasJetpackUtilityUpgrade(armorStack);
-            bone.setHidden(!hasJetpackUpgrade);
+            this.setHiddenIfChanged(bone, !hasJetpackUpgrade);
          } else if (this.isPauldronComponent(boneName)) {
             boolean hasPauldronUpgrade = this.hasUpgradeOfType(armorStack, "pauldron");
             if (!hasPauldronUpgrade) {
-               bone.setHidden(true);
+               this.setHiddenIfChanged(bone, true);
             } else {
                ItemStack pauldronUpgrade = this.findPauldronUpgrade(armorStack);
                if (!pauldronUpgrade.isEmpty()) {
@@ -152,24 +152,24 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
                      String pauldronModel = upgrade.getDisplay().getModel();
                      if (boneName.contains("heavy_")) {
                         boolean showHeavyPauldron = pauldronModel.contains("heavy");
-                        bone.setHidden(!showHeavyPauldron);
+                        this.setHiddenIfChanged(bone, !showHeavyPauldron);
                      } else if (boneName.contains("standard_")) {
                         boolean showStandardPauldron = pauldronModel.contains("standard") || !pauldronModel.contains("heavy");
-                        bone.setHidden(!showStandardPauldron);
+                        this.setHiddenIfChanged(bone, !showStandardPauldron);
                      } else {
-                        bone.setHidden(false);
+                        this.setHiddenIfChanged(bone, false);
                      }
                   } else {
-                     bone.setHidden(boneName.contains("heavy_"));
+                     this.setHiddenIfChanged(bone, boneName.contains("heavy_"));
                   }
                } else {
-                  bone.setHidden(true);
+                  this.setHiddenIfChanged(bone, true);
                }
             }
          } else if (this.isPouchesComponent(boneName)) {
             boolean showPouches = this.hasUpgradeOfType(armorStack, "pouches");
             if (!showPouches) {
-               bone.setHidden(true);
+               this.setHiddenIfChanged(bone, true);
             } else {
                ItemStack pouchesUpgrade = this.findPouchesUpgrade(armorStack);
                if (!pouchesUpgrade.isEmpty()) {
@@ -178,28 +178,28 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
                      String pouchesModel = upgrade.getDisplay().getModel();
                      if (boneName.contains("heavy_")) {
                         boolean showHeavyPouches = pouchesModel.contains("heavy");
-                        bone.setHidden(!showHeavyPouches);
+                        this.setHiddenIfChanged(bone, !showHeavyPouches);
                      } else if (boneName.contains("standard_")) {
                         boolean showStandardPouches = pouchesModel.contains("standard") || !pouchesModel.contains("heavy");
-                        bone.setHidden(!showStandardPouches);
+                        this.setHiddenIfChanged(bone, !showStandardPouches);
                      } else {
-                        bone.setHidden(false);
+                        this.setHiddenIfChanged(bone, false);
                      }
                   } else {
-                     bone.setHidden(boneName.contains("heavy_"));
+                     this.setHiddenIfChanged(bone, boneName.contains("heavy_"));
                   }
                } else {
-                  bone.setHidden(true);
+                  this.setHiddenIfChanged(bone, true);
                }
             }
          } else if (this.isBackpackComponent(boneName)) {
             boolean showBackpack = this.hasUpgradeOfType(armorStack, "backpack") || this.hasUpgradeOfType(armorStack, "utility");
-            bone.setHidden(!showBackpack);
+            this.setHiddenIfChanged(bone, !showBackpack);
          } else if (this.isKneeGuardComponent(boneName)) {
             boolean hasKneeGuardUpgrade = this.hasUpgradeOfType(armorStack, "knee_guard");
             boolean hasPlatingInKneeGuardSlot = this.hasPlatingInKneeGuardSlot(armorStack);
             if (!hasKneeGuardUpgrade && !hasPlatingInKneeGuardSlot) {
-               bone.setHidden(true);
+               this.setHiddenIfChanged(bone, true);
             } else {
                ItemStack kneeGuardUpgrade = this.findKneeGuardOrPlatingUpgrade(armorStack);
                if (!kneeGuardUpgrade.isEmpty()) {
@@ -214,43 +214,43 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
                      String kneeGuardModel = upgrade.getDisplay().getModel();
                      if (boneName.contains("heavy_")) {
                         boolean showHeavyKneeGuard = kneeGuardModel.contains("heavy");
-                        bone.setHidden(!showHeavyKneeGuard);
+                        this.setHiddenIfChanged(bone, !showHeavyKneeGuard);
                      } else if (boneName.contains("standard_")) {
                         boolean showStandardKneeGuard = kneeGuardModel.contains("standard") || !kneeGuardModel.contains("heavy");
-                        bone.setHidden(!showStandardKneeGuard);
+                        this.setHiddenIfChanged(bone, !showStandardKneeGuard);
                      } else {
-                        bone.setHidden(false);
+                        this.setHiddenIfChanged(bone, false);
                      }
                   } else {
-                     bone.setHidden(boneName.contains("heavy_"));
+                     this.setHiddenIfChanged(bone, boneName.contains("heavy_"));
                   }
                } else {
-                  bone.setHidden(true);
+                  this.setHiddenIfChanged(bone, true);
                }
             }
          } else if (this.isMobilityModuleComponent(boneName)) {
             boolean hasMobilityUpgrade = this.hasUpgradeOfType(armorStack, "mobility");
             if (!hasMobilityUpgrade) {
-               bone.setHidden(true);
+               this.setHiddenIfChanged(bone, true);
             } else {
                ItemStack mobilityUpgrade = this.findMobilityUpgrade(armorStack);
                if (!mobilityUpgrade.isEmpty()) {
                   boolean isRabbitModule = mobilityUpgrade.getItem() instanceof RabbitModuleItem;
                   boolean isShockAbsorberModule = mobilityUpgrade.getItem().toString().contains("shock_absorber");
                   if (boneName.contains("rabbit_")) {
-                     bone.setHidden(!isRabbitModule);
+                     this.setHiddenIfChanged(bone, !isRabbitModule);
                   } else if (boneName.contains("shock_absorber_")) {
-                     bone.setHidden(!isShockAbsorberModule);
+                     this.setHiddenIfChanged(bone, !isShockAbsorberModule);
                   } else {
-                     bone.setHidden(false);
+                     this.setHiddenIfChanged(bone, false);
                   }
                } else {
-                  bone.setHidden(true);
+                  this.setHiddenIfChanged(bone, true);
                }
             }
          } else {
             if (this.isFutureUpgradeBone(boneName)) {
-               bone.setHidden(true);
+               this.setHiddenIfChanged(bone, true);
             }
          }
       }
@@ -562,5 +562,19 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
       }
 
       return ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+   }
+
+   /**
+    * Writes a bone's hidden flag only when it actually changes.
+    *
+    * <p>GeckoLib bones are shared by the baked model, and toggling hidden marks the bone (and its children) dirty, so
+    * re-writing the same value every frame rebuilt that state over and over. With every upgrade slot filled the suit
+    * touches most of its bones, which is why a fully kitted suit dropped framerate far more than an empty one.
+    * Comparing first means a stationary suit writes nothing at all.</p>
+    */
+   private void setHiddenIfChanged(GeoBone bone, boolean hidden) {
+      if (bone.isHidden() != hidden) {
+         bone.setHidden(hidden);
+      }
    }
 }
