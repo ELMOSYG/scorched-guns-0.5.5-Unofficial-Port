@@ -546,7 +546,55 @@ public class Gun implements IEditorMenu {
       }
    }
 
+   // Attachment lookups sit on the gun rendering path and were the single most frequent mod entry in a render
+   // profile: every frame asked for the same few attachments and re-parsed their NBT each time. The values only
+   // change when the gun is modified, so they are cached for a tick-ish window and keyed by stack identity, with
+   // that identity re-checked on every hit so two stacks can never share an entry.
+   private static final java.util.Map<Integer, AttachmentCache> ATTACHMENT_CACHE = new java.util.HashMap<>();
+
+   private static final int ATTACHMENT_CACHE_LIMIT = 512;
+
+   private static final long ATTACHMENT_CACHE_WINDOW_MS = 50L;
+
+   private static final class AttachmentCache {
+      private ItemStack source;
+      private long window;
+      private final ItemStack[] byType = new ItemStack[] {
+            ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY
+      };
+      private boolean filled;
+   }
+
    public static ItemStack getAttachment(IAttachment.Type type, ItemStack gun) {
+      if (gun == null || gun.isEmpty() || type == null) {
+         return ItemStack.EMPTY;
+      }
+
+      int key = System.identityHashCode(gun);
+      long window = System.currentTimeMillis() / ATTACHMENT_CACHE_WINDOW_MS;
+      AttachmentCache cached = ATTACHMENT_CACHE.get(key);
+      if (cached == null || cached.source != gun || cached.window != window) {
+         cached = new AttachmentCache();
+         cached.source = gun;
+         cached.window = window;
+         IAttachment.Type[] types = IAttachment.Type.values();
+         for (int i = 0; i < types.length && i < cached.byType.length; i++) {
+            cached.byType[i] = readAttachment(types[i], gun);
+         }
+
+         cached.filled = true;
+         if (ATTACHMENT_CACHE.size() >= ATTACHMENT_CACHE_LIMIT) {
+            ATTACHMENT_CACHE.clear();
+         }
+
+         ATTACHMENT_CACHE.put(key, cached);
+      }
+
+      int index = type.ordinal();
+      return index >= 0 && index < cached.byType.length ? cached.byType[index] : ItemStack.EMPTY;
+   }
+
+   private static ItemStack readAttachment(IAttachment.Type type, ItemStack gun) {
       CompoundTag compound = NbtHelper.getTag(gun);
       if (compound != null && compound.contains("Attachments", 10)) {
          CompoundTag attachment = compound.getCompound("Attachments");
