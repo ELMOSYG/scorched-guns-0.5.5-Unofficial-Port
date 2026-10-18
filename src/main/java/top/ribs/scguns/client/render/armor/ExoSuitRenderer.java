@@ -58,7 +58,7 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
                ? ItemStack.EMPTY
                : ExoSuitData.getUpgradeInSlot(armorStack, slot);
          this.upgradeStacks[slot] = upgradeItem.isEmpty() ? ItemStack.EMPTY : upgradeItem;
-         this.upgradeTypes[slot] = upgradeItem.isEmpty() ? null : ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+         this.upgradeTypes[slot] = upgradeItem.isEmpty() ? null : this.cachedUpgrade(upgradeItem);
       }
 
       this.lastResolvedStack = armorStack;
@@ -147,7 +147,7 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
             } else {
                ItemStack pauldronUpgrade = this.findPauldronUpgrade(armorStack);
                if (!pauldronUpgrade.isEmpty()) {
-                  ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(pauldronUpgrade);
+                  ExoSuitUpgrade upgrade = this.cachedUpgrade(pauldronUpgrade);
                   if (upgrade != null) {
                      String pauldronModel = upgrade.getDisplay().getModel();
                      if (boneName.contains("heavy_")) {
@@ -173,7 +173,7 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
             } else {
                ItemStack pouchesUpgrade = this.findPouchesUpgrade(armorStack);
                if (!pouchesUpgrade.isEmpty()) {
-                  ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(pouchesUpgrade);
+                  ExoSuitUpgrade upgrade = this.cachedUpgrade(pouchesUpgrade);
                   if (upgrade != null) {
                      String pouchesModel = upgrade.getDisplay().getModel();
                      if (boneName.contains("heavy_")) {
@@ -207,7 +207,7 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
                   if (hasPlatingInKneeGuardSlot && !hasKneeGuardUpgrade) {
                      upgrade = ExoSuitUpgradeManager.getUpgradeForItemInSlot(kneeGuardUpgrade, "knee_guard");
                   } else {
-                     upgrade = ExoSuitUpgradeManager.getUpgradeForItem(kneeGuardUpgrade);
+                     upgrade = this.cachedUpgrade(kneeGuardUpgrade);
                   }
 
                   if (upgrade != null) {
@@ -260,7 +260,7 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
       if (this.hasUpgradeInSlot(armorStack, 0)) {
          this.ensureUpgrades(armorStack);
       ItemStack upgradeItem = this.upgradeStacks[0];
-         ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+         ExoSuitUpgrade upgrade = this.cachedUpgrade(upgradeItem);
          if (upgrade != null) {
             String modelType = upgrade.getDisplay().getModel();
 
@@ -309,7 +309,7 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
          if (upgradeItem.isEmpty()) {
             return false;
          } else {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = this.cachedUpgrade(upgradeItem);
             return upgrade != null && upgrade.getType().equals("plating");
          }
       } catch (Exception var4) {
@@ -540,5 +540,27 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
       public boolean shouldHideBase() {
          return this.hidesBase;
       }
+   }
+
+   /**
+    * Upgrade definition for a slot stack, taken from the per-tick cache when possible.
+    *
+    * <p>The cache holds the four resolved upgrades of the piece being rendered, so matching the stack against them
+    * answers the question without walking the registered upgrade table again. Anything the cache cannot answer
+    * (a stack that is not one of those four, or rendering without a slot) falls through to the registry lookup, so
+    * behaviour is unchanged.</p>
+    */
+   private ExoSuitUpgrade cachedUpgrade(ItemStack upgradeItem) {
+      if (this.currentSlot != null && upgradeItem != null && !upgradeItem.isEmpty()) {
+         top.ribs.scguns.client.util.ExoSuitStateCache.Slots cached =
+               top.ribs.scguns.client.util.ExoSuitStateCache.get(this.currentSlot);
+         for (int slot = 0; slot < 4; slot++) {
+            if (cached.stack(slot) == upgradeItem) {
+               return cached.upgrade(slot);
+            }
+         }
+      }
+
+      return ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
    }
 }
