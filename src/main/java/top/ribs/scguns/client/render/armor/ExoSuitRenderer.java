@@ -2,6 +2,7 @@ package top.ribs.scguns.client.render.armor;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.entity.LivingEntity;
@@ -36,8 +37,9 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
    private long lastResolvedAt = 0L;
 
    private void ensureUpgrades(ItemStack armorStack) {
-      // The render hot path never touches NBT: the cache resolved these four slots once this tick.
-      if (this.currentSlot != null) {
+      // The cache holds the local player's suit, so only the local player may read it: other entities carry their
+      // own upgrades, and serving them from this cache made suits flicker between players' configurations.
+      if (this.currentSlot != null && this.currentEntity == Minecraft.getInstance().player) {
          top.ribs.scguns.client.util.ExoSuitStateCache.Slots cached =
                top.ribs.scguns.client.util.ExoSuitStateCache.get(this.currentSlot);
          for (int slot = 0; slot < 4; slot++) {
