@@ -69,7 +69,31 @@ public class NetworkGunManager extends SimplePreparableReloadListener<Map<GunIte
       super();
    }
 
+   private static boolean gsonSelfChecked = false;
+
+   /**
+    * One-shot diagnostic: round-trip a bare gun through the same Gson instance so a reflection failure prints a
+    * full stack trace naming the class and field responsible. The per-file isolation only reports the message,
+    * which is not enough to tell which field's type drags {@code java.util.regex.Pattern} into the adapter graph.
+    */
+   private static void selfCheckGson() {
+      if (gsonSelfChecked) {
+         return;
+      }
+
+      gsonSelfChecked = true;
+      try {
+         Gun probe = new Gun();
+         GSON_INSTANCE.toJson(probe);
+
+      } catch (Throwable selfCheckFailure) {
+         ScorchedGuns.LOGGER.error("Gun Gson self-check failed - this names the culprit field:", selfCheckFailure);
+         selfCheckFailure.printStackTrace();
+      }
+   }
+
    protected Map<GunItem, Gun> prepare(ResourceManager manager, ProfilerFiller profiler) {
+      selfCheckGson();
       Map<GunItem, Gun> map = new HashMap<>();
       BuiltInRegistries.ITEM
          .stream()
