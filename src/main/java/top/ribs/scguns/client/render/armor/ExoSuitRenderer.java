@@ -36,6 +36,18 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
    private long lastResolvedAt = 0L;
 
    private void ensureUpgrades(ItemStack armorStack) {
+      // The render hot path never touches NBT: the cache resolved these four slots once this tick.
+      if (this.currentSlot != null) {
+         top.ribs.scguns.client.util.ExoSuitStateCache.Slots cached =
+               top.ribs.scguns.client.util.ExoSuitStateCache.get(this.currentSlot);
+         for (int slot = 0; slot < 4; slot++) {
+            this.upgradeStacks[slot] = cached.stack(slot);
+            this.upgradeTypes[slot] = cached.upgrade(slot);
+         }
+
+         return;
+      }
+
       long now = System.nanoTime();
       if (armorStack == this.lastResolvedStack && now - this.lastResolvedAt < 50000000L) {
          return;

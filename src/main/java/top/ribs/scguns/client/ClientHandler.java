@@ -300,6 +300,8 @@ public class ClientHandler {
 
    @SubscribeEvent
    public static void onClientTick(ClientTickEvent.Post event) {
+      // Resolve the exosuit upgrade slots once per tick rather than once per rendered bone; see the cache's docs.
+      top.ribs.scguns.client.util.ExoSuitStateCache.tick(Minecraft.getInstance().player);
       {
          // Hit feedback is queued so it lands after the muzzle blast instead of under it (HANDOFF 82.28).
          ClientPlayHandler.tickHitSounds();

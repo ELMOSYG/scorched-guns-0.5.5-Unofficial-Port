@@ -450,6 +450,7 @@ public class ClientPlayHandler {
    }
 
    public static void handleSyncExoSuitUpgrades(S2CMessageSyncExoSuitUpgrades message) {
+      top.ribs.scguns.client.util.ExoSuitStateCache.invalidate();
       LocalPlayer localPlayer = Minecraft.getInstance().player;
       Level level = Minecraft.getInstance().level;
       if (localPlayer != null && level != null) {
