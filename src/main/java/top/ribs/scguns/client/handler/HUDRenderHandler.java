@@ -346,18 +346,20 @@ public class HUDRenderHandler {
          RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
          Minecraft mc = Minecraft.getInstance();
          if ((Boolean)ModSyncedDataKeys.RELOADING.getValue(player) && player.isAlive()) {
-            guiGraphics.drawString(mc.font, cachedReloadingText, ammoPosX, ammoPosY - 10, 16777045);
+            drawHudText(guiGraphics, cachedReloadingText, ammoPosX, ammoPosY - 10, 16777045);
          }
 
          int ammoColor = currentAmmo <= 0 && !isCreative ? 16733525 : 16777215;
-         guiGraphics.drawString(mc.font, cachedAmmoText, ammoPosX, ammoPosY, ammoColor);
+         drawHudText(guiGraphics, cachedAmmoText, ammoPosX, ammoPosY, ammoColor);
          int reserveAmmoPosY = ammoPosY + 10;
          int reserveColor = reserveAmmo <= 0 && !Gun.hasUnlimitedReloads(heldItem) ? 5592405 : 11184810;
-         guiGraphics.drawString(mc.font, cachedReserveAmmoText, ammoPosX, reserveAmmoPosY, reserveColor);
+         drawHudText(guiGraphics, cachedReserveAmmoText, ammoPosX, reserveAmmoPosY, reserveColor);
          ItemStack ammoItemStack = new ItemStack(Objects.requireNonNull(cachedGun.getProjectile(heldItem).getItem()));
          renderAmmoTypeTexture(ammoItemStack, ammoPosX - 20, ammoPosY, guiGraphics, mc);
          RenderSystem.disableBlend();
       }
+      // Submit this HUD's lines here: flushing later would apply whatever pose is current then.
+      flushHudText(guiGraphics);
    }
 
    private static void updateAmmoTextCache(int currentAmmo, int maxAmmo, boolean isCreative) {
