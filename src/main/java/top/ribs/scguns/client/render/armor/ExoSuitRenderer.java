@@ -23,6 +23,41 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
       super(new ExoSuitModel());
    }
 
+   // Resolution of the four upgrade slots is expensive: every slot read hits NBT, and looking an upgrade up walks
+   // the registered upgrade map. The renderer asks about upgrades once per bone, so on a thirty-bone suit that was
+   // a hundred-plus NBT reads every frame. These four slots are filled once and then only re-read when the stack
+   // changes or a frame has passed, which keeps the same behaviour with four reads per frame instead.
+   private final ItemStack[] upgradeStacks = new ItemStack[] {ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY, ItemStack.EMPTY};
+
+   private final ExoSuitUpgrade[] upgradeTypes = new ExoSuitUpgrade[4];
+
+   private ItemStack lastResolvedStack = ItemStack.EMPTY;
+
+   private long lastResolvedAt = 0L;
+
+   private void ensureUpgrades(ItemStack armorStack) {
+      long now = System.nanoTime();
+      if (armorStack == this.lastResolvedStack && now - this.lastResolvedAt < 50000000L) {
+         return;
+      }
+
+      for (int slot = 0; slot < 4; slot++) {
+         ItemStack upgradeItem = armorStack == null || armorStack.isEmpty()
+               ? ItemStack.EMPTY
+               : ExoSuitData.getUpgradeInSlot(armorStack, slot);
+         this.upgradeStacks[slot] = upgradeItem.isEmpty() ? ItemStack.EMPTY : upgradeItem;
+         this.upgradeTypes[slot] = upgradeItem.isEmpty() ? null : ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+      }
+
+      this.lastResolvedStack = armorStack;
+      this.lastResolvedAt = now;
+   }
+
+   private boolean slotHasType(int slot, String upgradeType) {
+      ExoSuitUpgrade upgrade = this.upgradeTypes[slot];
+      return upgrade != null && upgrade.getType().equals(upgradeType);
+   }
+
    @Override
    public void renderRecursively(
       PoseStack poseStack,
@@ -211,7 +246,8 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
 
    private ExoSuitRenderer.ArmorComponentType determineActiveArmorType(ItemStack armorStack) {
       if (this.hasUpgradeInSlot(armorStack, 0)) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, 0);
+         this.ensureUpgrades(armorStack);
+      ItemStack upgradeItem = this.upgradeStacks[0];
          ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
          if (upgrade != null) {
             String modelType = upgrade.getDisplay().getModel();
@@ -231,14 +267,8 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
 
    private boolean hasUpgradeInSlot(ItemStack armorStack, int slot) {
       try {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, slot);
-         boolean hasUpgrade = !upgradeItem.isEmpty();
-         if (hasUpgrade) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
-            return upgrade != null;
-         } else {
-            return false;
-         }
+         this.ensureUpgrades(armorStack);
+         return this.upgradeTypes[slot] != null;
       } catch (Exception var6) {
          System.err.println("ExoSuit: Error checking upgrade slot " + slot + ": " + var6.getMessage());
          return false;
@@ -247,13 +277,10 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
 
    private boolean hasUpgradeOfType(ItemStack armorStack, String upgradeType) {
       try {
+         this.ensureUpgrades(armorStack);
          for (int slot = 0; slot < 4; slot++) {
-            ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, slot);
-            if (!upgradeItem.isEmpty()) {
-               ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
-               if (upgrade != null && upgrade.getType().equals(upgradeType)) {
-                  return true;
-               }
+            if (this.slotHasType(slot, upgradeType)) {
+               return true;
             }
          }
 
@@ -265,7 +292,8 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
 
    private boolean hasPlatingInKneeGuardSlot(ItemStack armorStack) {
       try {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, 1);
+         this.ensureUpgrades(armorStack);
+         ItemStack upgradeItem = this.upgradeStacks[1];
          if (upgradeItem.isEmpty()) {
             return false;
          } else {
@@ -278,10 +306,11 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
    }
 
    private ItemStack findKneeGuardOrPlatingUpgrade(ItemStack armorStack) {
+      this.ensureUpgrades(armorStack);
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, slot);
+         ItemStack upgradeItem = this.upgradeStacks[slot];
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = this.upgradeTypes[slot];
             if (upgrade != null) {
                if (upgrade.getType().equals("knee_guard")) {
                   return upgradeItem;
@@ -299,10 +328,11 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
 
    private boolean hasSpecificHudUpgrade(ItemStack armorStack, Class<?> upgradeClass) {
       try {
+         this.ensureUpgrades(armorStack);
          for (int slot = 0; slot < 4; slot++) {
-            ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, slot);
+            ItemStack upgradeItem = this.upgradeStacks[slot];
             if (!upgradeItem.isEmpty()) {
-               ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+               ExoSuitUpgrade upgrade = this.upgradeTypes[slot];
                if (upgrade != null && upgrade.getType().equals("hud") && upgradeClass.isInstance(upgradeItem.getItem())) {
                   return true;
                }
@@ -316,13 +346,10 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
    }
 
    private ItemStack findBreathingUpgrade(ItemStack armorStack) {
+      this.ensureUpgrades(armorStack);
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, slot);
-         if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
-            if (upgrade != null && upgrade.getType().equals("breathing")) {
-               return upgradeItem;
-            }
+         if (this.slotHasType(slot, "breathing")) {
+            return this.upgradeStacks[slot];
          }
       }
 
@@ -330,13 +357,10 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
    }
 
    private ItemStack findPauldronUpgrade(ItemStack armorStack) {
+      this.ensureUpgrades(armorStack);
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, slot);
-         if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
-            if (upgrade != null && upgrade.getType().equals("pauldron")) {
-               return upgradeItem;
-            }
+         if (this.slotHasType(slot, "pauldron")) {
+            return this.upgradeStacks[slot];
          }
       }
 
@@ -344,13 +368,10 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
    }
 
    private ItemStack findPouchesUpgrade(ItemStack armorStack) {
+      this.ensureUpgrades(armorStack);
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, slot);
-         if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
-            if (upgrade != null && upgrade.getType().equals("pouches")) {
-               return upgradeItem;
-            }
+         if (this.slotHasType(slot, "pouches")) {
+            return this.upgradeStacks[slot];
          }
       }
 
@@ -358,13 +379,10 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
    }
 
    private ItemStack findMobilityUpgrade(ItemStack armorStack) {
+      this.ensureUpgrades(armorStack);
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, slot);
-         if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
-            if (upgrade != null && upgrade.getType().equals("mobility")) {
-               return upgradeItem;
-            }
+         if (this.slotHasType(slot, "mobility")) {
+            return this.upgradeStacks[slot];
          }
       }
 
@@ -420,10 +438,11 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
    }
 
    private boolean hasJetpackUtilityUpgrade(ItemStack armorStack) {
+      this.ensureUpgrades(armorStack);
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(armorStack, slot);
+         ItemStack upgradeItem = this.upgradeStacks[slot];
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = this.upgradeTypes[slot];
             if (upgrade != null && upgrade.getType().equals("utility")) {
                String model = upgrade.getDisplay().getModel();
                return model != null && model.contains("jetpack");
