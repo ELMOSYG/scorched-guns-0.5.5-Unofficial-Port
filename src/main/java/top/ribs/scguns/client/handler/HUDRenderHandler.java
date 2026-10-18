@@ -346,14 +346,14 @@ public class HUDRenderHandler {
          RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
          Minecraft mc = Minecraft.getInstance();
          if ((Boolean)ModSyncedDataKeys.RELOADING.getValue(player) && player.isAlive()) {
-            drawHudText(guiGraphics, cachedReloadingText, ammoPosX, ammoPosY - 10, 16777045);
+            guiGraphics.drawString(mc.font, cachedReloadingText, ammoPosX, ammoPosY - 10, 16777045);
          }
 
          int ammoColor = currentAmmo <= 0 && !isCreative ? 16733525 : 16777215;
-         drawHudText(guiGraphics, cachedAmmoText, ammoPosX, ammoPosY, ammoColor);
+         guiGraphics.drawString(mc.font, cachedAmmoText, ammoPosX, ammoPosY, ammoColor);
          int reserveAmmoPosY = ammoPosY + 10;
          int reserveColor = reserveAmmo <= 0 && !Gun.hasUnlimitedReloads(heldItem) ? 5592405 : 11184810;
-         drawHudText(guiGraphics, cachedReserveAmmoText, ammoPosX, reserveAmmoPosY, reserveColor);
+         guiGraphics.drawString(mc.font, cachedReserveAmmoText, ammoPosX, reserveAmmoPosY, reserveColor);
          ItemStack ammoItemStack = new ItemStack(Objects.requireNonNull(cachedGun.getProjectile(heldItem).getItem()));
          renderAmmoTypeTexture(ammoItemStack, ammoPosX - 20, ammoPosY, guiGraphics, mc);
          RenderSystem.disableBlend();
@@ -537,11 +537,11 @@ public class HUDRenderHandler {
                   lastEnergyColor = energyColor;
                }
 
-               drawHudText(guiGraphics, cachedPowerText, hudX, hudY, energyColor.getColor() != null ? energyColor.getColor() : 16777215);
+               guiGraphics.drawString(mc.font, cachedPowerText, hudX, hudY, energyColor.getColor() != null ? energyColor.getColor() : 16777215);
                currentY = hudY + lineHeight;
             }
          } else {
-            drawHudText(guiGraphics, cachedNoPowerText, hudX, hudY, 16733525);
+            guiGraphics.drawString(mc.font, cachedNoPowerText, hudX, hudY, 16733525);
             currentY = hudY + lineHeight;
          }
       }
@@ -554,7 +554,7 @@ public class HUDRenderHandler {
          String statusText = getModuleStatusText(hudEnabled, canFunction);
          ChatFormatting statusColor = getModuleStatusColor(hudEnabled, canFunction);
          Component helmetText = Component.translatable(hudModuleKey).append(": " + statusText).withStyle(statusColor);
-         drawHudText(guiGraphics, helmetText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
+         guiGraphics.drawString(mc.font, helmetText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
          currentY += lineHeight;
       }
 
@@ -565,7 +565,7 @@ public class HUDRenderHandler {
          String statusText = getModuleStatusText(utilityEnabled, canFunction);
          ChatFormatting statusColor = getModuleStatusColor(utilityEnabled, canFunction);
          Component chestText = Component.translatable(utilityModuleKey).append(": " + statusText).withStyle(statusColor);
-         drawHudText(guiGraphics, chestText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
+         guiGraphics.drawString(mc.font, chestText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
          currentY += lineHeight;
       }
 
@@ -577,10 +577,8 @@ public class HUDRenderHandler {
          String statusText = getModuleStatusText(mobilityEnabled, canFunction);
          ChatFormatting statusColor = getModuleStatusColor(mobilityEnabled, canFunction);
          Component bootsText = Component.translatable(mobilityModuleKey).append(": " + statusText).withStyle(statusColor);
-         drawHudText(guiGraphics, bootsText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
+         guiGraphics.drawString(mc.font, bootsText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
       }
-   
-      flushHudText(guiGraphics);
    }
 
    private static boolean hasUtilityModule(ItemStack chestplate) {
@@ -814,30 +812,5 @@ public class HUDRenderHandler {
 
       // Answered from the cache: calling Player#getItemBySlot here would also run Better Combat's mixin on it.
       return top.ribs.scguns.client.util.ExoSuitStateCache.slotOfLocal(armorStack);
-   }
-
-   /**
-    * Draws one HUD line into the shared batch instead of letting GuiGraphics submit per call.
-    *
-    * <p>GuiGraphics#drawString re-validates its buffer source on every call, and inside an overlay event that check
-    * failed each time: a five line exosuit readout ended up submitting five separate batches. A profile put about
-    * fifteen percent of the render thread in that flush path while the glyphs themselves cost about two percent.
-    * Writing through Font#drawInBatch keeps every line in one buffer; {@link #flushHudText} submits it once.</p>
-    */
-   private static void drawHudText(net.minecraft.client.gui.GuiGraphics guiGraphics,
-         net.minecraft.network.chat.Component text, int x, int y, int color) {
-      net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
-      // drawString fills in an opaque alpha; drawInBatch does not, and the colours here come from ChatFormatting,
-      // which carries no alpha at all. Without this the glyphs were submitted fully transparent and rendered as
-      // black blocks.
-      int argb = (color & 0xFF000000) == 0 ? (color | 0xFF000000) : color;
-      minecraft.font.drawInBatch(text, (float) x, (float) y, argb, false,
-            guiGraphics.pose().last().pose(), guiGraphics.bufferSource(),
-            net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 0xF000F0);
-   }
-
-   /** Submits everything {@link #drawHudText} buffered during this HUD pass. */
-   private static void flushHudText(net.minecraft.client.gui.GuiGraphics guiGraphics) {
-      guiGraphics.flush();
    }
 }
