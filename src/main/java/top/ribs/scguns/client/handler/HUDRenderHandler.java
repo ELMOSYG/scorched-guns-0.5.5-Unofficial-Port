@@ -192,7 +192,7 @@ public class HUDRenderHandler {
          if (pouchUpgrade.isEmpty()) {
             return false;
          } else {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(pouchUpgrade);
+            ExoSuitUpgrade upgrade = cachedUpgradeOf(pouchUpgrade);
             if (upgrade == null) {
                return false;
             } else {
@@ -224,9 +224,9 @@ public class HUDRenderHandler {
 
    private static ItemStack findPouchUpgrade(ItemStack chestplate) {
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(chestplate, slot);
+         ItemStack upgradeItem = upgradeInSlot(chestplate, slot);
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = cachedUpgradeOf(upgradeItem);
             if (upgrade != null && upgrade.getType().equals("pouches")) {
                return upgradeItem;
             }
@@ -583,9 +583,9 @@ public class HUDRenderHandler {
 
    private static boolean hasUtilityModule(ItemStack chestplate) {
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(chestplate, slot);
+         ItemStack upgradeItem = upgradeInSlot(chestplate, slot);
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = cachedUpgradeOf(upgradeItem);
             if (upgrade != null && upgrade.getType().equals("utility")) {
                return true;
             }
@@ -597,9 +597,9 @@ public class HUDRenderHandler {
 
    private static String getUtilityModuleTranslationKey(ItemStack chestplate) {
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(chestplate, slot);
+         ItemStack upgradeItem = upgradeInSlot(chestplate, slot);
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = cachedUpgradeOf(upgradeItem);
             if (upgrade != null && upgrade.getType().equals("utility")) {
                if (upgradeItem.getItem() instanceof JetpackModuleItem) {
                   return "exosuit.upgrade.jetpack";
@@ -659,9 +659,9 @@ public class HUDRenderHandler {
 
    private static ItemStack findPowerCoreInChestplate(ItemStack chestplate) {
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(chestplate, slot);
+         ItemStack upgradeItem = upgradeInSlot(chestplate, slot);
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = cachedUpgradeOf(upgradeItem);
             if (upgrade != null && upgrade.getType().equals("power_core")) {
                return upgradeItem;
             }
@@ -673,9 +673,9 @@ public class HUDRenderHandler {
 
    private static boolean hasHudModule(ItemStack helmet) {
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(helmet, slot);
+         ItemStack upgradeItem = upgradeInSlot(helmet, slot);
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = cachedUpgradeOf(upgradeItem);
             if (upgrade != null && upgrade.getType().equals("hud")) {
                return true;
             }
@@ -687,9 +687,9 @@ public class HUDRenderHandler {
 
    private static boolean hasMobilityModule(ItemStack boots) {
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(boots, slot);
+         ItemStack upgradeItem = upgradeInSlot(boots, slot);
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = cachedUpgradeOf(upgradeItem);
             if (upgrade != null && upgrade.getType().equals("mobility")) {
                return true;
             }
@@ -701,9 +701,9 @@ public class HUDRenderHandler {
 
    private static String getHudModuleTranslationKey(ItemStack helmet) {
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(helmet, slot);
+         ItemStack upgradeItem = upgradeInSlot(helmet, slot);
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = cachedUpgradeOf(upgradeItem);
             if (upgrade != null && upgrade.getType().equals("hud")) {
                if (upgradeItem.getItem() instanceof NightVisionModuleItem) {
                   return "exosuit.upgrade.night_vision";
@@ -723,9 +723,9 @@ public class HUDRenderHandler {
 
    private static String getMobilityModuleTranslationKey(ItemStack boots) {
       for (int slot = 0; slot < 4; slot++) {
-         ItemStack upgradeItem = ExoSuitData.getUpgradeInSlot(boots, slot);
+         ItemStack upgradeItem = upgradeInSlot(boots, slot);
          if (!upgradeItem.isEmpty()) {
-            ExoSuitUpgrade upgrade = ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+            ExoSuitUpgrade upgrade = cachedUpgradeOf(upgradeItem);
             if (upgrade != null && upgrade.getType().equals("mobility")) {
                return "exosuit.upgrade.mobility";
             }
@@ -763,5 +763,64 @@ public class HUDRenderHandler {
       } else {
          return !canFunction ? ChatFormatting.RED : ChatFormatting.GREEN;
       }
+   }
+
+   /**
+    * The upgrade stack in a suit slot, taken from the tick cache when the stack belongs to the local player.
+    *
+    * <p>The status HUD reads six or more upgrade slots every second frame, and each read walks NBT and the upgrade
+    * registry. The cache resolved all four slots once this tick, so the HUD can simply read them; a stack that is
+    * not one of the local player's still falls back to the NBT read, so behaviour is unchanged.</p>
+    */
+   private static ItemStack upgradeInSlot(ItemStack armorStack, int slot) {
+      net.minecraft.world.entity.EquipmentSlot equipmentSlot = localSlotOf(armorStack);
+      if (equipmentSlot != null) {
+         return top.ribs.scguns.client.util.ExoSuitStateCache.get(equipmentSlot).stack(slot);
+      }
+
+      return ExoSuitData.getUpgradeInSlot(armorStack, slot);
+   }
+
+   private static ExoSuitUpgrade cachedUpgradeOf(ItemStack upgradeItem) {
+      if (upgradeItem != null && !upgradeItem.isEmpty()) {
+         for (net.minecraft.world.entity.EquipmentSlot equipmentSlot : LOCAL_SLOTS) {
+            top.ribs.scguns.client.util.ExoSuitStateCache.Slots cached =
+                  top.ribs.scguns.client.util.ExoSuitStateCache.get(equipmentSlot);
+            for (int slot = 0; slot < 4; slot++) {
+               if (cached.stack(slot) == upgradeItem) {
+                  return cached.upgrade(slot);
+               }
+            }
+         }
+      }
+
+      return ExoSuitUpgradeManager.getUpgradeForItem(upgradeItem);
+   }
+
+   private static final net.minecraft.world.entity.EquipmentSlot[] LOCAL_SLOTS = {
+         net.minecraft.world.entity.EquipmentSlot.HEAD,
+         net.minecraft.world.entity.EquipmentSlot.CHEST,
+         net.minecraft.world.entity.EquipmentSlot.LEGS,
+         net.minecraft.world.entity.EquipmentSlot.FEET
+   };
+
+   @javax.annotation.Nullable
+   private static net.minecraft.world.entity.EquipmentSlot localSlotOf(ItemStack armorStack) {
+      if (armorStack == null || armorStack.isEmpty()) {
+         return null;
+      }
+
+      net.minecraft.client.player.LocalPlayer player = net.minecraft.client.Minecraft.getInstance().player;
+      if (player == null) {
+         return null;
+      }
+
+      for (net.minecraft.world.entity.EquipmentSlot slot : LOCAL_SLOTS) {
+         if (player.getItemBySlot(slot) == armorStack) {
+            return slot;
+         }
+      }
+
+      return null;
    }
 }
