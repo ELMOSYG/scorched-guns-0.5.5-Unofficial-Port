@@ -537,11 +537,11 @@ public class HUDRenderHandler {
                   lastEnergyColor = energyColor;
                }
 
-               guiGraphics.drawString(mc.font, cachedPowerText, hudX, hudY, energyColor.getColor() != null ? energyColor.getColor() : 16777215);
+               drawHudText(guiGraphics, cachedPowerText, hudX, hudY, energyColor.getColor() != null ? energyColor.getColor() : 16777215);
                currentY = hudY + lineHeight;
             }
          } else {
-            guiGraphics.drawString(mc.font, cachedNoPowerText, hudX, hudY, 16733525);
+            drawHudText(guiGraphics, cachedNoPowerText, hudX, hudY, 16733525);
             currentY = hudY + lineHeight;
          }
       }
@@ -554,7 +554,7 @@ public class HUDRenderHandler {
          String statusText = getModuleStatusText(hudEnabled, canFunction);
          ChatFormatting statusColor = getModuleStatusColor(hudEnabled, canFunction);
          Component helmetText = Component.translatable(hudModuleKey).append(": " + statusText).withStyle(statusColor);
-         guiGraphics.drawString(mc.font, helmetText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
+         drawHudText(guiGraphics, helmetText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
          currentY += lineHeight;
       }
 
@@ -565,7 +565,7 @@ public class HUDRenderHandler {
          String statusText = getModuleStatusText(utilityEnabled, canFunction);
          ChatFormatting statusColor = getModuleStatusColor(utilityEnabled, canFunction);
          Component chestText = Component.translatable(utilityModuleKey).append(": " + statusText).withStyle(statusColor);
-         guiGraphics.drawString(mc.font, chestText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
+         drawHudText(guiGraphics, chestText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
          currentY += lineHeight;
       }
 
@@ -577,8 +577,9 @@ public class HUDRenderHandler {
          String statusText = getModuleStatusText(mobilityEnabled, canFunction);
          ChatFormatting statusColor = getModuleStatusColor(mobilityEnabled, canFunction);
          Component bootsText = Component.translatable(mobilityModuleKey).append(": " + statusText).withStyle(statusColor);
-         guiGraphics.drawString(mc.font, bootsText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
+         drawHudText(guiGraphics, bootsText, hudX, currentY, statusColor.getColor() != null ? statusColor.getColor() : 16777215);
       }
+      flushHudText(guiGraphics);
    }
 
    private static boolean hasUtilityModule(ItemStack chestplate) {
@@ -812,5 +813,28 @@ public class HUDRenderHandler {
 
       // Answered from the cache: calling Player#getItemBySlot here would also run Better Combat's mixin on it.
       return top.ribs.scguns.client.util.ExoSuitStateCache.slotOfLocal(armorStack);
+   }
+
+   /**
+    * Draws one exosuit status line into the shared batch.
+    *
+    * <p>GuiGraphics#drawString re-validates its buffer source per call and, inside an overlay event, ended up
+    * submitting a separate batch for every line: a profile put about fifteen percent of the render thread in that
+    * flush path. Only the exosuit readout is batched. The ammo readouts stay on drawString, because flushing the
+    * shared batch here made their already-written vertices submit a second time and they drew twice.</p>
+    */
+   private static void drawHudText(net.minecraft.client.gui.GuiGraphics guiGraphics,
+         net.minecraft.network.chat.Component text, int x, int y, int color) {
+      net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+      // drawString would fill in an opaque alpha; drawInBatch does not, and ChatFormatting carries no alpha.
+      int argb = (color & 0xFF000000) == 0 ? (color | 0xFF000000) : color;
+      minecraft.font.drawInBatch(text, (float) x, (float) y, argb, false,
+            guiGraphics.pose().last().pose(), guiGraphics.bufferSource(),
+            net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 0xF000F0);
+   }
+
+   /** Submits the buffered exosuit status lines, once per HUD pass. */
+   private static void flushHudText(net.minecraft.client.gui.GuiGraphics guiGraphics) {
+      guiGraphics.flush();
    }
 }
