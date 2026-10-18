@@ -89,55 +89,65 @@ public class NetworkGunManager extends SimplePreparableReloadListener<Map<GunIte
                      }
                   });
                   resources.forEach(resourceLocation -> {
-                     String path = resourceLocation.getPath().substring(0, resourceLocation.getPath().length() - FILE_TYPE_LENGTH_VALUE);
-                     String[] splitPath = path.split("/");
-                     if (id.getPath().equals(splitPath[splitPath.length - 1])) {
-                        if (id.getNamespace().equals(resourceLocation.getNamespace())) {
-                           manager.getResource(resourceLocation).ifPresent(resource -> {
-                              try (Reader reader = new BufferedReader(new InputStreamReader(resource.open(), StandardCharsets.UTF_8))) {
-                                 JsonObject jsonObject = GsonHelper.parse(reader);
-                                 Gun gun = (Gun)GSON_INSTANCE.fromJson(jsonObject, Gun.class);
-                                 // Gson leaves General#criticalChance at zero however the JSON spells it, while the same section's
-                                 // recoil and pellet values come through fine. Read this one straight out of the JSON instead, so addons
-                                 // that declare a crit chance (scgunsww1 sets 0.05 on most of its guns) actually get one.
-                                 JsonObject scgunsGeneral = jsonObject.getAsJsonObject("general");
-                                 if (scgunsGeneral != null && scgunsGeneral.has("criticalChance")) {
-                                    gun.getGeneral().setCriticalChance(scgunsGeneral.get("criticalChance").getAsFloat());
-                                 }
-                                 // Same story for the damage falloff: scgunsww1 declares it on the projectile section
-                                 // (sawnoff_shotgun: start 8, end 20, minimum 0.4) and Gson does not carry it across.
-                                 JsonObject scgunsProjectile = jsonObject.getAsJsonObject("projectile");
-                                 if (scgunsProjectile != null) {
-                                    if (scgunsProjectile.has("damageFalloffStart")) {
-                                       gun.getProjectile().setDamageFalloffStart(scgunsProjectile.get("damageFalloffStart").getAsFloat());
+   // One malformed gun file must not take the whole data load down with it: this used to let a single bad JSON -
+   // an addon's definition, say - abort NetworkGunManager.prepare and leave the save unloadable. Each file is now
+   // isolated, and the failing one is named in the log so it can be fixed.
+   try {
+                        String path = resourceLocation.getPath().substring(0, resourceLocation.getPath().length() - FILE_TYPE_LENGTH_VALUE);
+                        String[] splitPath = path.split("/");
+                        if (id.getPath().equals(splitPath[splitPath.length - 1])) {
+                           if (id.getNamespace().equals(resourceLocation.getNamespace())) {
+                              manager.getResource(resourceLocation).ifPresent(resource -> {
+                                 try (Reader reader = new BufferedReader(new InputStreamReader(resource.open(), StandardCharsets.UTF_8))) {
+                                    JsonObject jsonObject = GsonHelper.parse(reader);
+                                    Gun gun = (Gun)GSON_INSTANCE.fromJson(jsonObject, Gun.class);
+                                    // Gson leaves General#criticalChance at zero however the JSON spells it, while the same section's
+                                    // recoil and pellet values come through fine. Read this one straight out of the JSON instead, so addons
+                                    // that declare a crit chance (scgunsww1 sets 0.05 on most of its guns) actually get one.
+                                    JsonObject scgunsGeneral = jsonObject.getAsJsonObject("general");
+                                    if (scgunsGeneral != null && scgunsGeneral.has("criticalChance")) {
+                                       gun.getGeneral().setCriticalChance(scgunsGeneral.get("criticalChance").getAsFloat());
                                     }
-                                    if (scgunsProjectile.has("damageFalloffEnd")) {
-                                       gun.getProjectile().setDamageFalloffEnd(scgunsProjectile.get("damageFalloffEnd").getAsFloat());
+                                    // Same story for the damage falloff: scgunsww1 declares it on the projectile section
+                                    // (sawnoff_shotgun: start 8, end 20, minimum 0.4) and Gson does not carry it across.
+                                    JsonObject scgunsProjectile = jsonObject.getAsJsonObject("projectile");
+                                    if (scgunsProjectile != null) {
+                                       if (scgunsProjectile.has("damageFalloffStart")) {
+                                          gun.getProjectile().setDamageFalloffStart(scgunsProjectile.get("damageFalloffStart").getAsFloat());
+                                       }
+                                       if (scgunsProjectile.has("damageFalloffEnd")) {
+                                          gun.getProjectile().setDamageFalloffEnd(scgunsProjectile.get("damageFalloffEnd").getAsFloat());
+                                       }
+                                       if (scgunsProjectile.has("damageFalloffMinMultiplier")) {
+                                          gun.getProjectile().setDamageFalloffMinMultiplier(scgunsProjectile.get("damageFalloffMinMultiplier").getAsFloat());
+                                       }
                                     }
-                                    if (scgunsProjectile.has("damageFalloffMinMultiplier")) {
-                                       gun.getProjectile().setDamageFalloffMinMultiplier(scgunsProjectile.get("damageFalloffMinMultiplier").getAsFloat());
+                                    if (gun != null && Validator.isValidObject(gun)) {
+                                       gun.loadAlternateProjectilesFromJson(jsonObject);
+                                       map.put((GunItem)item, gun);
+                                    } else {
+                                       ScorchedGuns.LOGGER
+                                          .error("Couldn't load data file {} as it is missing or malformed. Using default gun data", resourceLocation);
+                                       map.putIfAbsent((GunItem)item, new Gun());
                                     }
+                                 } catch (InvalidObjectException var9) {
+                                    ScorchedGuns.LOGGER.error("Missing required properties for {}", resourceLocation);
+                                    var9.printStackTrace();
+                                 } catch (IOException var10) {
+                                    ScorchedGuns.LOGGER.error("Couldn't parse data file {}", resourceLocation);
+                                 } catch (IllegalAccessException var11) {
+                                    var11.printStackTrace();
                                  }
-                                 if (gun != null && Validator.isValidObject(gun)) {
-                                    gun.loadAlternateProjectilesFromJson(jsonObject);
-                                    map.put((GunItem)item, gun);
-                                 } else {
-                                    ScorchedGuns.LOGGER
-                                       .error("Couldn't load data file {} as it is missing or malformed. Using default gun data", resourceLocation);
-                                    map.putIfAbsent((GunItem)item, new Gun());
-                                 }
-                              } catch (InvalidObjectException var9) {
-                                 ScorchedGuns.LOGGER.error("Missing required properties for {}", resourceLocation);
-                                 var9.printStackTrace();
-                              } catch (IOException var10) {
-                                 ScorchedGuns.LOGGER.error("Couldn't parse data file {}", resourceLocation);
-                              } catch (IllegalAccessException var11) {
-                                 var11.printStackTrace();
-                              }
-                           });
+                              });
+                           }
                         }
-                     }
-                  });
+                  
+   } catch (Throwable gunJsonLoadFailed) {
+      ScorchedGuns.LOGGER.error("Skipping gun definition {} - it could not be read: {}",
+            resourceLocation, gunJsonLoadFailed.toString());
+      gunJsonLoadFailed.printStackTrace();
+   }
+});
                }
             }
          );
