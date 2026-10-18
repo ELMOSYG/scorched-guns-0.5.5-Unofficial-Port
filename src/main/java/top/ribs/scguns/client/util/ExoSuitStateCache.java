@@ -117,8 +117,20 @@ public final class ExoSuitStateCache {
       }
    }
 
-   /** Forces every piece to re-resolve on the next read; used when the server syncs upgrades. */
+   /**
+    * Re-resolves every piece immediately, used when the server syncs new upgrades.
+    *
+    * <p>It has to rebuild right away rather than blanking the entries: a blanked entry used to be rebuilt from an
+    * empty stack on the next read, which hid every upgrade model for the frames between the sync packet and the
+    * following tick - the one-or-two-frame flicker.</p>
+    */
    public static void invalidate() {
+      net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+      if (minecraft != null && minecraft.player != null) {
+         tick(minecraft.player);
+         return;
+      }
+
       for (Slots entry : BY_SLOT.values()) {
          entry.source = null;
       }
@@ -127,7 +139,10 @@ public final class ExoSuitStateCache {
    public static Slots get(EquipmentSlot slot) {
       Slots entry = BY_SLOT.computeIfAbsent(slot, ignored -> new Slots());
       if (entry.source == null) {
-         entry.rebuild(ItemStack.EMPTY);
+         net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
+         if (minecraft != null && minecraft.player != null) {
+            tick(minecraft.player);
+         }
       }
 
       return entry;
