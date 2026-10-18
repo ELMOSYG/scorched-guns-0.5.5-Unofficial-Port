@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.HashMap;
 import java.util.WeakHashMap;
 import java.util.function.Consumer;
 import javax.annotation.Nullable;
@@ -50,7 +51,13 @@ import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
 
 public class GunItem extends Item implements IColored, IMeta {
-   private final WeakHashMap<CompoundTag, Gun> modifiedGunCache = new WeakHashMap<>();
+   // Keyed by the Gun compound only, not the whole stack tag: the tag also carries AmmoCount, so keying on all of it
+   // invalidated the cache on every shot. A WeakHashMap made it worse still - NbtHelper.getTag returns a fresh tag
+   // each call, so every entry was collectable immediately and nothing ever hit. With this key the definition is
+   // reused until an attachment actually changes, instead of being deep-copied and re-parsed on every lookup.
+   private final Map<Integer, Gun> modifiedGunCache = new HashMap<>();
+
+   private static final int MODIFIED_GUN_CACHE_LIMIT = 64;
    private Gun gun = new Gun();
 
    private boolean reportedRepair;
@@ -281,15 +288,24 @@ public class GunItem extends Item implements IColored, IMeta {
          return this.gun;
       }
 
-      Gun stored = this.modifiedGunCache.computeIfAbsent(tagCompound, tag -> {
-         if (tagCompound.getBoolean("Custom")) {
-            return Gun.create(tagCompound.getCompound("Gun"));
+      CompoundTag gunTag = tagCompound.getCompound("Gun");
+      boolean custom = tagCompound.getBoolean("Custom");
+      int cacheKey = 31 * gunTag.hashCode() + (custom ? 1 : 0);
+      Gun stored = this.modifiedGunCache.get(cacheKey);
+      if (stored == null) {
+         if (custom) {
+            stored = Gun.create(gunTag);
+         } else {
+            stored = this.gun.copy();
+            stored.deserializeNBT(gunTag);
          }
 
-         Gun gunCopy = this.gun.copy();
-         gunCopy.deserializeNBT(tagCompound.getCompound("Gun"));
-         return gunCopy;
-      });
+         if (this.modifiedGunCache.size() >= MODIFIED_GUN_CACHE_LIMIT) {
+            this.modifiedGunCache.clear();
+         }
+
+         this.modifiedGunCache.put(cacheKey, stored);
+      }
 
       // Repair on read: a definition that came back without usable data is replaced by this gun's own one for
       // the rest of the read, so a stack whose NBT holds a broken "Gun" compound still works. Nothing is written
