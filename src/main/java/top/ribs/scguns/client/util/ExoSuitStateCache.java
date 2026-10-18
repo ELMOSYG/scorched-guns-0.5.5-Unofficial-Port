@@ -54,6 +54,11 @@ public final class ExoSuitStateCache {
          }
       }
 
+      /** The suit stack this entry was resolved from; compare by identity. */
+      public ItemStack source() {
+         return this.source;
+      }
+
       public ItemStack stack(int slot) {
          return this.stacks[slot];
       }
@@ -134,6 +139,29 @@ public final class ExoSuitStateCache {
       for (Slots entry : BY_SLOT.values()) {
          entry.source = null;
       }
+   }
+
+   /**
+    * Which of the local player's armour slots holds this exact stack, or null.
+    *
+    * <p>The render hot paths need that answer constantly, and asking {@code Player#getItemBySlot} is not free here -
+    * Better Combat mixes into it, so every call paid for that mod's hook too. The cache already holds the four
+    * stacks, so identifying a suit is a reference comparison against them.</p>
+    */
+   @Nullable
+   public static EquipmentSlot slotOfLocal(ItemStack stack) {
+      if (stack == null || stack.isEmpty()) {
+         return null;
+      }
+
+      for (EquipmentSlot slot : ARMOR_SLOTS) {
+         Slots entry = BY_SLOT.get(slot);
+         if (entry != null && entry.source == stack) {
+            return slot;
+         }
+      }
+
+      return null;
    }
 
    public static Slots get(EquipmentSlot slot) {

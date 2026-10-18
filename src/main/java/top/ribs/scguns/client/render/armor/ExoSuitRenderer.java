@@ -32,6 +32,14 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
 
    private final ExoSuitUpgrade[] upgradeTypes = new ExoSuitUpgrade[4];
 
+   private ItemStack cachedStack = ItemStack.EMPTY;
+
+   private Object cachedStackEntity = null;
+
+   private Object cachedStackSlot = null;
+
+   private long cachedStackAt = 0L;
+
    private ItemStack lastResolvedStack = ItemStack.EMPTY;
 
    private long lastResolvedAt = 0L;
@@ -86,10 +94,23 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
       int packedOverlay,
       int color
    ) {
-      ItemStack liveArmorStack = this.getCurrentStack();
-      if (this.currentEntity instanceof LivingEntity livingEntity && this.currentSlot != null) {
-         liveArmorStack = livingEntity.getItemBySlot(this.currentSlot);
+      // Resolved once per render pass rather than once per bone: with Better Combat mixing into getItemBySlot, the
+      // per-bone read was the single largest piece of this renderer's own cost.
+      long now = System.nanoTime();
+      if (this.currentSlot != this.cachedStackSlot || this.currentEntity != this.cachedStackEntity
+            || now - this.cachedStackAt > 50000000L) {
+         ItemStack resolved = this.getCurrentStack();
+         if (this.currentEntity instanceof LivingEntity livingEntity && this.currentSlot != null) {
+            resolved = livingEntity.getItemBySlot(this.currentSlot);
+         }
+
+         this.cachedStack = resolved;
+         this.cachedStackSlot = this.currentSlot;
+         this.cachedStackEntity = this.currentEntity;
+         this.cachedStackAt = now;
       }
+
+      ItemStack liveArmorStack = this.cachedStack;
 
       this.handleComponentVisibility(bone, liveArmorStack);
       // GeckoLib 4.6+ replaced the four red/green/blue/alpha floats with one packed ARGB colour.

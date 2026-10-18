@@ -810,17 +810,7 @@ public class HUDRenderHandler {
          return null;
       }
 
-      net.minecraft.client.player.LocalPlayer player = net.minecraft.client.Minecraft.getInstance().player;
-      if (player == null) {
-         return null;
-      }
-
-      for (net.minecraft.world.entity.EquipmentSlot slot : LOCAL_SLOTS) {
-         if (player.getItemBySlot(slot) == armorStack) {
-            return slot;
-         }
-      }
-
-      return null;
+      // Answered from the cache: calling Player#getItemBySlot here would also run Better Combat's mixin on it.
+      return top.ribs.scguns.client.util.ExoSuitStateCache.slotOfLocal(armorStack);
    }
 }
