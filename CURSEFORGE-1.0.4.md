@@ -1,6 +1,6 @@
 # Scorched Guns 0.5.5 · 非官方 1.21.1 / NeoForge 移植
 
-**移植版 1.0.4** ｜ 文件名 `scguns-1.0.4.jar`
+**移植版 1.0.5** ｜ 文件名 `scguns-1.0.5.jar`
 
 这是 **Scorched Guns 0.5.5**（原版为 Minecraft 1.20.1 / Forge）的**非官方**移植，目标是让它在
 **Minecraft 1.21.1 / NeoForge** 上完整运行，同时**尽量贴近原版**：141 把枪的数值与原版逐一核对，

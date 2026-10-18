@@ -1,6 +1,6 @@
 # Scorched Guns 0.5.5 · Unofficial 1.21.1 / NeoForge Port
 
-**Port version 1.0.4** | file name `scguns-1.0.4.jar`
+**Port version 1.0.5** | file name `scguns-1.0.5.jar`
 
 An **unofficial** port of **Scorched Guns 0.5.5** (originally Minecraft 1.20.1 / Forge) to
 **Minecraft 1.21.1 / NeoForge**, built to stay close to the original: all 141 guns were checked

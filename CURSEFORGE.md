@@ -19,12 +19,12 @@ Ready-to-paste fields for the project page, modelled on the layout of the existi
 | Project id | 1709719 |
 | Game / Category | Minecraft → Mods |
 | Version / Loader | 1.21.1, NeoForge |
-| **Port version** | **1.0.4** (release/file version — the content is upstream 0.5.5) |
+| **Port version** | **1.0.5** (release/file version — the content is upstream 0.5.5) |
 | License | **GNU General Public License v3.0** (the upstream mod is GPL-3.0, so this port must be too) |
 | Source | https://github.com/ELMOSYG/scorched-guns-0.5.5-Unofficial-Port |
 | Summary | An unofficial port of Scorched Guns 0.5.5 (Minecraft 1.20.1 / Forge 47.x) to Minecraft 1.21.1 / NeoForge. |
 
-Upload `build/libs/scguns-1.0.4.jar` (≈18.5 MB) as the file, with **1.0.4** as its display name.
+Upload `build/libs/scguns-1.0.5.jar` (≈18.5 MB) as the file, with **1.0.5** as its display name.
 
 ## State of the live page (checked after it was created)
 
@@ -34,9 +34,9 @@ Upload `build/libs/scguns-1.0.4.jar` (≈18.5 MB) as the file, with **1.0.4** as
 | Categories | ✅ Armor/Tools and Weapons, Ores and Resources, Mobs, Technology, Redstone |
 | Relations (required deps) | ❓ not visible through the public API — set Framework / GeckoLib / Curios as **Required** |
 | License | ❓ not visible through the public API — it must be **GPL-3.0**, the upstream licence |
-| First file | ⚠️ **`scguns-0.5.5.jar` (19,393,354 bytes)** — that build predates the fixes for `scguns:niami` (HANDOFF §72) and the 1.0.4 version bump (§73) |
+| First file | ⚠️ **`scguns-0.5.5.jar` (19,393,354 bytes)** — that build predates the fixes for `scguns:niami` (HANDOFF §72) and the 1.0.5 version bump (§73) |
 
-**Replace that file**: upload `build/libs/scguns-1.0.4.jar` (**19,519,472 bytes**, version `1.0.4`) as a
+**Replace that file**: upload `build/libs/scguns-1.0.5.jar` (**19,519,472 bytes**, version `1.0.5`) as a
 new release file, then retire/delete the old one. CurseForge files are immutable, so a re-upload of the same
 name is not possible anyway — and the byte size is the quickest way to tell them apart.
 
@@ -45,7 +45,7 @@ name is not possible anyway — and the byte size is the quickest way to tell th
 ```markdown
 # Scorched Guns 0.5.5 · Unofficial 1.21.1 / NeoForge Port
 
-**Port version 1.0.4** | file name `scguns-1.0.4.jar`
+**Port version 1.0.5** | file name `scguns-1.0.5.jar`
 
 An **unofficial** port of **Scorched Guns 0.5.5** (originally Minecraft 1.20.1 / Forge) to
 **Minecraft 1.21.1 / NeoForge**, built to stay close to the original: all 141 guns were checked
@@ -162,7 +162,7 @@ Same text as HTML. Use whichever form the editor is in; do not paste both.
 
 ```html
 <h1>Scorched Guns 0.5.5 · Unofficial 1.21.1 / NeoForge Port</h1>
-<p>**Port version 1.0.4** | file name `scguns-1.0.4.jar`</p>
+<p>**Port version 1.0.5** | file name `scguns-1.0.5.jar`</p>
 <p>An **unofficial** port of **Scorched Guns 0.5.5** (originally Minecraft 1.20.1 / Forge) to</p>
 <p>**Minecraft 1.21.1 / NeoForge**, built to stay close to the original: all 141 guns were checked</p>
 <p>against the upstream 0.5.5 data, and the advancements, raids, loot and production chain are kept as</p>
@@ -280,7 +280,7 @@ Minimum **NeoForge 21.1.150** (GeckoLib 4.9.3 itself requires that).
 ## Changelog for the first release (paste into "Changelog")
 
 ```markdown
-First public release of the unofficial 1.21.1 / NeoForge port of Scorched Guns 0.5.5 (port version 1.0.4).
+First public release of the unofficial 1.21.1 / NeoForge port of Scorched Guns 0.5.5 (port version 1.0.5).
 
 * Ported from the 0.5.5 1.20.1 release: 141 animated guns, attachments, grenades, turrets, exo-suits,
   raids, blueprints, gun bench, machines, mob factions.
@@ -297,7 +297,7 @@ First public release of the unofficial 1.21.1 / NeoForge port of Scorched Guns 0
 
 ## Before you press upload
 
-1. `gradlew build` passes and `build/libs/scguns-1.0.4.jar` is the file you want (≈18.5 MB).
+1. `gradlew build` passes and `build/libs/scguns-1.0.5.jar` is the file you want (≈18.5 MB).
 2. The GitHub repository is pushed — CurseForge asks for the source URL, and GPL-3.0 requires the
    source to be available for the binary you publish.
 3. Do **not** upload the dependency jars from `libs/` — they belong to their own authors; list them as
