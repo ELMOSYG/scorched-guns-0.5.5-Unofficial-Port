@@ -148,10 +148,10 @@ public class ExoSuitScreen extends AbstractContainerScreen<ExoSuitMenu> {
             if (mouseX >= slotX && mouseX < slotX + 18 && mouseY >= slotY && mouseY < slotY + 18) {
                Slot upgradeSlot = ((ExoSuitMenu)this.menu).getSlot(37 + i);
                if (!((ExoSuitMenu)this.menu).isUpgradeSlotEnabled(1 + i)) {
-                  guiGraphics.renderTooltip(this.font, Component.literal("Slot not available"), mouseX, mouseY);
+                  guiGraphics.renderTooltip(this.font, Component.translatable("tooltip.scguns.exosuit.slot_not_available"), mouseX, mouseY);
                } else if (upgradeSlot.getItem().isEmpty()) {
                   String slotType = this.getSlotTypeTooltip(((ExoSuitItem)armorPiece.getItem()).getType(), i);
-                  guiGraphics.renderTooltip(this.font, Component.literal(slotType), mouseX, mouseY);
+                  guiGraphics.renderTooltip(this.font, slotType.startsWith("tooltip.") ? Component.translatable(slotType) : Component.literal(slotType), mouseX, mouseY);
                }
                break;
             }
