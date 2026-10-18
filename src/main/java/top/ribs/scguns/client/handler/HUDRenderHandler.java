@@ -827,7 +827,11 @@ public class HUDRenderHandler {
    private static void drawHudText(net.minecraft.client.gui.GuiGraphics guiGraphics,
          net.minecraft.network.chat.Component text, int x, int y, int color) {
       net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
-      minecraft.font.drawInBatch(text, (float) x, (float) y, color, false,
+      // drawString fills in an opaque alpha; drawInBatch does not, and the colours here come from ChatFormatting,
+      // which carries no alpha at all. Without this the glyphs were submitted fully transparent and rendered as
+      // black blocks.
+      int argb = (color & 0xFF000000) == 0 ? (color | 0xFF000000) : color;
+      minecraft.font.drawInBatch(text, (float) x, (float) y, argb, false,
             guiGraphics.pose().last().pose(), guiGraphics.bufferSource(),
             net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 0xF000F0);
    }
