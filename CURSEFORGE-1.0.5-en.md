@@ -28,8 +28,6 @@ Upgrade slots are now resolved once per client tick and cached; the render path 
 lookups hit that cache too, and bone visibility is only written when it actually changes (GeckoLib marks bones
 dirty on every write).
 
-Two bugs fell out of the same work: suits from other players no longer flicker between each other's upgrade
-configurations, and upgrade models no longer vanish for a frame or two right after the server syncs upgrades.
 
 ### Gun HUD
 
@@ -78,11 +76,9 @@ The bone is cached with a one-second expiry, so re-exporting a model and pressin
 
 | Issue | Fix |
 |---|---|
-| HUD text sat too low | Removed the extra line-height offset |
-| Exosuit upgrade models vanished for 1–2 frames after a sync | Rebuild the cache immediately instead of blanking it |
-| Suits flickered between players' configurations | The cache now only serves the local player |
-| Exosuit status HUD was expensive | Slot reads come from the cache; text is submitted in one batch |
-| Ammo readout drew a second copy | Submission is scoped to each HUD |
+| Wearing an exosuit cost framerate, and more upgrades meant more cost | Upgrade slots are resolved once per tick and the render path reads that cache |
+| The gun HUD submitted one batch per line | All lines of a HUD pass share a single batch |
+| A single malformed gun file made the save unloadable | Each definition loads inside its own error boundary |
 
 ---
 
