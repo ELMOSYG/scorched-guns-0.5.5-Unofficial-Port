@@ -830,9 +830,9 @@ public class HUDRenderHandler {
       net.minecraft.client.Minecraft minecraft = net.minecraft.client.Minecraft.getInstance();
       // drawString would fill in an opaque alpha; drawInBatch does not, and ChatFormatting carries no alpha.
       int argb = (color & 0xFF000000) == 0 ? (color | 0xFF000000) : color;
-      // drawString takes the top of the line and adds the shadow; drawInBatch takes the baseline and draws no
-      // shadow unless asked. Offsetting by the font's ascent and enabling the shadow reproduces the original look.
-      float baseline = (float) y + minecraft.font.lineHeight - 1.0F;
+      // drawString documents y as the top of the line and its internal drawInBatch call receives that same y, so no
+      // baseline shift is needed here; adding the font height pushed every readout one line lower than before.
+      float baseline = (float) y;
       minecraft.font.drawInBatch(text, (float) x, baseline, argb, true,
             guiGraphics.pose().last().pose(), guiGraphics.bufferSource(),
             net.minecraft.client.gui.Font.DisplayMode.NORMAL, 0, 0xF000F0);
