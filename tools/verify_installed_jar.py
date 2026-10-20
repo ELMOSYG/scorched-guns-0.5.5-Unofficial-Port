@@ -656,9 +656,15 @@ def main():
                        not _check_resource_contains(
                            zf, "data/minecraft/tags/enchantment/non_treasure.json",
                            b"scguns:gun_rust", "")[1]))
+        # gun_rust reaches random loot through the gun pool now, not through an override of
+        # #minecraft:on_random_loot. That override made every loot table in the game able to roll
+        # gun_rust - helmets included - and, because a table without an explicit options tag draws
+        # from the whole enchantment registry, guns were also rolling sword and armour enchantments.
+        # The pool below is what the gun entries in our loot tables point at instead; entries that
+        # hand out armour keep drawing from the vanilla pool, which is what they should do.
         checks.append(_check_resource_contains(
-            zf, "data/minecraft/tags/enchantment/on_random_loot.json", b"scguns:gun_rust",
-            "gun rust can still appear on random loot"))
+            zf, "data/scguns/tags/enchantment/gun_random_loot.json", b"scguns:gun_rust",
+            "gun rust can still appear on random loot, through the gun pool"))
 
         # 22. the Chinese translation is embedded (HANDOFF section 33). The user had a translation
         # pack enabled for it; the pack covered every English key, so it is shipped inside the mod
