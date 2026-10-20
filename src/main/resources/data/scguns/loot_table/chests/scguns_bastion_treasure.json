@@ -15,7 +15,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:super_shotgun"

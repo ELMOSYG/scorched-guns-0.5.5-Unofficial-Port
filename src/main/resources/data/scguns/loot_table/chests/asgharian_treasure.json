@@ -84,7 +84,6 @@
           "name": "scguns:small_iron_casing",
           "weight": 7
         },
-
         {
           "type": "minecraft:item",
           "functions": [
@@ -207,7 +206,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "minecraft:iron_leggings",
@@ -224,7 +224,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:anthralite_helmet",
@@ -241,7 +242,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:anthralite_leggings",
@@ -258,7 +260,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:bruiser",

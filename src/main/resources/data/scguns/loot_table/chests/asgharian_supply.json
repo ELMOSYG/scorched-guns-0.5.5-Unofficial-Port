@@ -164,7 +164,6 @@
           "name": "scguns:small_copper_casing",
           "weight": 2
         },
-
         {
           "type": "minecraft:item",
           "functions": [
@@ -207,7 +206,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "minecraft:iron_helmet",
@@ -224,7 +224,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:rusty_gnat",
@@ -241,7 +242,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "minecraft:iron_chestplate",
@@ -277,7 +279,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:anthralite_leggings",

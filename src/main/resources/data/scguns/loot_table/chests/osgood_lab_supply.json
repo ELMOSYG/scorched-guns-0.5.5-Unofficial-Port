@@ -206,7 +206,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:anthralite_helmet",
@@ -265,7 +266,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:boomstick",
@@ -282,7 +284,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:anthralite_chestplate",
@@ -299,7 +302,8 @@
               }
             },
             {
-              "function": "minecraft:enchant_randomly"
+              "function": "minecraft:enchant_randomly",
+              "options": "#scguns:gun_random_loot"
             }
           ],
           "name": "scguns:scrapper",
