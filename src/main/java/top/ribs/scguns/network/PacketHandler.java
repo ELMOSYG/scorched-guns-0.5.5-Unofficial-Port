@@ -48,6 +48,7 @@ import top.ribs.scguns.network.message.S2CMessageStopBeam;
 import top.ribs.scguns.network.message.S2CMessageStopReload;
 import top.ribs.scguns.network.message.S2CMessageStunGrenade;
 import top.ribs.scguns.network.message.S2CMessageSyncExoSuitUpgrades;
+import top.ribs.scguns.network.message.S2CMessageSyncTurrets;
 import top.ribs.scguns.network.message.S2CMessageSyncUpgradeRegistry;
 import top.ribs.scguns.network.message.S2CMessageTurretBulletTrail;
 import top.ribs.scguns.network.message.S2CMessageUpdateAmmo;
@@ -112,6 +113,7 @@ public class PacketHandler {
                 .registerPlayMessage("s2c_stun_grenade", S2CMessageStunGrenade.class, FrameworkMessageBridge.codec(S2CMessageStunGrenade.class), FrameworkMessageBridge.handler(S2CMessageStunGrenade.class), PacketFlow.CLIENTBOUND)
                 .registerPlayMessage("s2c_sync_exo_suit_upgrades", S2CMessageSyncExoSuitUpgrades.class, FrameworkMessageBridge.codec(S2CMessageSyncExoSuitUpgrades.class), FrameworkMessageBridge.handler(S2CMessageSyncExoSuitUpgrades.class), PacketFlow.CLIENTBOUND)
                 .registerPlayMessage("s2c_sync_upgrade_registry", S2CMessageSyncUpgradeRegistry.class, FrameworkMessageBridge.codec(S2CMessageSyncUpgradeRegistry.class), FrameworkMessageBridge.handler(S2CMessageSyncUpgradeRegistry.class), PacketFlow.CLIENTBOUND)
+                .registerPlayMessage("s2c_sync_turrets", S2CMessageSyncTurrets.class, FrameworkMessageBridge.codec(S2CMessageSyncTurrets.class), FrameworkMessageBridge.handler(S2CMessageSyncTurrets.class), PacketFlow.CLIENTBOUND)
                 .registerPlayMessage("s2c_turret_bullet_trail", S2CMessageTurretBulletTrail.class, FrameworkMessageBridge.codec(S2CMessageTurretBulletTrail.class), FrameworkMessageBridge.handler(S2CMessageTurretBulletTrail.class), PacketFlow.CLIENTBOUND)
                 .registerPlayMessage("s2c_update_ammo", S2CMessageUpdateAmmo.class, FrameworkMessageBridge.codec(S2CMessageUpdateAmmo.class), FrameworkMessageBridge.handler(S2CMessageUpdateAmmo.class), PacketFlow.CLIENTBOUND)
                 .registerPlayMessage("s2c_update_guns", S2CMessageUpdateGuns.class, FrameworkMessageBridge.codec(S2CMessageUpdateGuns.class), FrameworkMessageBridge.handler(S2CMessageUpdateGuns.class), PacketFlow.CLIENTBOUND)

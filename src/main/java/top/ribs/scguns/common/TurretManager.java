@@ -10,16 +10,21 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 import javax.annotation.Nullable;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.resources.Resource;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimplePreparableReloadListener;
 import net.minecraft.util.profiling.ProfilerFiller;
 import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import top.ribs.scguns.network.PacketHandler;
+import top.ribs.scguns.network.message.S2CMessageSyncTurrets;
 
 @EventBusSubscriber(
    modid = "scguns"
@@ -28,6 +33,8 @@ public class TurretManager {
    private static final Logger LOGGER = LogManager.getLogger();
    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
    private static final Map<ResourceLocation, Turret> TURRET_CONFIGS = new HashMap<>();
+   /** The JSON each config was parsed from, kept so a joining client can be sent the same text. */
+   private static final Map<ResourceLocation, JsonObject> TURRET_SOURCES = new HashMap<>();
    private static final String TURRET_FOLDER = "turrets";
 
    public TurretManager() {
@@ -53,6 +60,7 @@ public class TurretManager {
                Turret turret = parseTurret(json);
                if (turret != null) {
                   TURRET_CONFIGS.put(turretId, turret);
+                  TURRET_SOURCES.put(turretId, json);
                   LOGGER.info("Successfully loaded turret config: {}", turretId);
                }
             }
@@ -232,6 +240,56 @@ public class TurretManager {
 
    public static void clearAll() {
       TURRET_CONFIGS.clear();
+      TURRET_SOURCES.clear();
+   }
+
+   /** The raw JSON of every loaded turret, wrapped in a tag so the existing message codec can carry it. */
+   public static Map<ResourceLocation, CompoundTag> serializeTurrets() {
+      Map<ResourceLocation, CompoundTag> serialized = new HashMap<>();
+
+      for (Map.Entry<ResourceLocation, JsonObject> entry : TURRET_SOURCES.entrySet()) {
+         CompoundTag tag = new CompoundTag();
+         tag.putString("JSON", GSON.toJson(entry.getValue()));
+         serialized.put(entry.getKey(), tag);
+      }
+
+      return serialized;
+   }
+
+   /**
+    * Fills the config map on a client. Without this the map stays empty there, the turret's {@code tick()} returns
+    * early on every tick, and the barrel never turns - it only worked after a single-player session because that
+    * filled the static map inside the same JVM.
+    */
+   public static void acceptSynced(Map<ResourceLocation, CompoundTag> turretData) {
+      for (Map.Entry<ResourceLocation, CompoundTag> entry : turretData.entrySet()) {
+         try {
+            JsonObject json = (JsonObject)GSON.fromJson(entry.getValue().getString("JSON"), JsonObject.class);
+
+            if (json != null) {
+               Turret turret = parseTurret(json);
+
+               if (turret != null) {
+                  TURRET_CONFIGS.put(entry.getKey(), turret);
+               }
+            }
+         } catch (Exception exception) {
+            LOGGER.error("Failed to read the synced turret config {}", entry.getKey(), exception);
+         }
+      }
+   }
+
+   @SubscribeEvent
+   public static void onDatapackSync(OnDatapackSyncEvent event) {
+      S2CMessageSyncTurrets message = new S2CMessageSyncTurrets(serializeTurrets());
+
+      if (event.getPlayer() != null) {
+         PacketHandler.getPlayChannel().sendToPlayer(event::getPlayer, message);
+      } else {
+         for (ServerPlayer player : event.getPlayerList().getPlayers()) {
+            PacketHandler.getPlayChannel().sendToPlayer(() -> player, message);
+         }
+      }
    }
 
    @SubscribeEvent

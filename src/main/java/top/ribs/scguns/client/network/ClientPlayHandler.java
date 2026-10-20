@@ -50,6 +50,7 @@ import top.ribs.scguns.client.handler.HUDRenderHandler;
 import top.ribs.scguns.client.particle.BloodParticle;
 import top.ribs.scguns.common.Gun;
 import top.ribs.scguns.common.NetworkGunManager;
+import top.ribs.scguns.common.TurretManager;
 import top.ribs.scguns.common.exosuit.ExoSuitData;
 import top.ribs.scguns.common.exosuit.ExoSuitUpgradeManager;
 import top.ribs.scguns.init.ModParticleTypes;
@@ -72,6 +73,7 @@ import top.ribs.scguns.network.message.S2CMessageStopBeam;
 import top.ribs.scguns.network.message.S2CMessageStopReload;
 import top.ribs.scguns.network.message.S2CMessageStunGrenade;
 import top.ribs.scguns.network.message.S2CMessageSyncExoSuitUpgrades;
+import top.ribs.scguns.network.message.S2CMessageSyncTurrets;
 import top.ribs.scguns.network.message.S2CMessageSyncUpgradeRegistry;
 import top.ribs.scguns.network.message.S2CMessageUpdateGuns;
 import top.ribs.scguns.particles.BulletHoleData;
@@ -447,6 +449,15 @@ public class ClientPlayHandler {
 
    public static void handleSyncUpgradeRegistry(S2CMessageSyncUpgradeRegistry message) {
       Minecraft.getInstance().execute(() -> ExoSuitUpgradeManager.deserializeUpgrades(message.getUpgradeData()));
+   }
+
+   /**
+    * Stores the turret definitions this client was sent. Until this lands the block entities return early from
+    * their tick and never move their barrel, which is why turrets used to aim only after a single-player session
+    * had filled the same static map inside this JVM.
+    */
+   public static void handleSyncTurrets(S2CMessageSyncTurrets message) {
+      Minecraft.getInstance().execute(() -> TurretManager.acceptSynced(message.getTurretData()));
    }
 
    public static void handleSyncExoSuitUpgrades(S2CMessageSyncExoSuitUpgrades message) {
