@@ -665,6 +665,16 @@ def main():
         checks.append(_check_resource_contains(
             zf, "data/scguns/tags/enchantment/gun_random_loot.json", b"scguns:gun_rust",
             "gun rust can still appear on random loot, through the gun pool"))
+        # Unbreaking and Mending are the two vanilla enchantments that belong on a gun: the mod's
+        # guns are in #minecraft:enchantable/durability, so both are valid on them, and a gun found
+        # in a chest should be able to roll them like any other durable item.
+        checks.append(("the gun loot pool carries unbreaking and mending",
+                       _check_resource_contains(
+                           zf, "data/scguns/tags/enchantment/gun_random_loot.json",
+                           b"minecraft:unbreaking", "")[1]
+                       and _check_resource_contains(
+                           zf, "data/scguns/tags/enchantment/gun_random_loot.json",
+                           b"minecraft:mending", "")[1]))
         # Enchanted books in vanilla loot draw from #minecraft:on_random_loot, so the mod's
         # enchantments have to be in it or a book can never carry one. Guns must not draw from it
         # though: a loot entry without an explicit options tag rolls the whole enchantment
