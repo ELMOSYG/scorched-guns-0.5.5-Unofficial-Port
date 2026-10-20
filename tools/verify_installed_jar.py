@@ -665,6 +665,13 @@ def main():
         checks.append(_check_resource_contains(
             zf, "data/scguns/tags/enchantment/gun_random_loot.json", b"scguns:gun_rust",
             "gun rust can still appear on random loot, through the gun pool"))
+        # Enchanted books in vanilla loot draw from #minecraft:on_random_loot, so the mod's
+        # enchantments have to be in it or a book can never carry one. Guns must not draw from it
+        # though: a loot entry without an explicit options tag rolls the whole enchantment
+        # registry, which is how guns ended up with sword and armour enchantments.
+        checks.append(_check_resource_contains(
+            zf, "data/minecraft/tags/enchantment/on_random_loot.json", b"scguns:accelerator",
+            "the mod's enchantments can appear on randomly generated enchanted books"))
 
         # 22. the Chinese translation is embedded (HANDOFF section 33). The user had a translation
         # pack enabled for it; the pack covered every English key, so it is shipped inside the mod
