@@ -226,6 +226,16 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
 
    /** Back out of melee, hold the gun's range, or close in - the reference's positioning, kept as it was. */
    private void position(LivingEntity target, double distanceSqr, boolean canSee) {
+      // Guard Villagers' RaiseShieldGoal puts a shield in the offhand and starts using it, which slows the guard and
+      // competes for navigation. Its goal owns the movement while the shield is up, so attempting to retreat here
+      // just lost the race and left the guard standing against the enemy it was supposed to back away from. While
+      // the shield is up this goal holds position and keeps shooting: a shield in front is worth staying for.
+      if (this.guard.isUsingItem()) {
+         this.retreating = false;
+         this.guard.getNavigation().stop();
+         return;
+      }
+
       if (distanceSqr < RETREAT_RANGE_SQR) {
          this.retreating = true;
          if (this.guard.getNavigation().isDone()) {
