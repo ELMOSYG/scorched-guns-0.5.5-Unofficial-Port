@@ -4,6 +4,7 @@ package top.ribs.scguns.entity.monster;
 
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.core.Holder;
+import net.minecraft.core.HolderLookup;
 import java.time.LocalDate;
 import java.time.Month;
 import java.util.Comparator;
@@ -763,11 +764,17 @@ public class SupplyScampEntity extends TamableAnimal {
       super.readAdditionalSaveData(compound);
       ListTag listnbt = compound.getList("Items", 10);
 
+      // Decode with the registries of the level this scamp belongs to. The no-provider overload reads NbtHelper's
+      // static registry access, which is only filled once a level is up, so a pack whose chunk loaded before that
+      // read every occupied slot as an empty stack - items came back empty after a save even though they had been
+      // written correctly. When there is no level yet, the static fallback is the best available answer.
+      HolderLookup.Provider registries = this.level() != null ? this.level().registryAccess() : null;
+
       for (int i = 0; i < listnbt.size(); i++) {
          CompoundTag compoundnbt = listnbt.getCompound(i);
          int j = compoundnbt.getByte("Slot") & 255;
          if (j < this.inventory.getContainerSize()) {
-            this.inventory.setItem(j, top.ribs.scguns.util.NbtHelper.itemFromTag(compoundnbt));
+            this.inventory.setItem(j, top.ribs.scguns.util.NbtHelper.itemFromTag(compoundnbt, registries));
          }
       }
 

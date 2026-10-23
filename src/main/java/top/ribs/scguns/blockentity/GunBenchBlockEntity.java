@@ -45,7 +45,10 @@ public class GunBenchBlockEntity extends BlockEntity implements MenuProvider {
       for (int i = 0; i < this.inventory.getContainerSize(); i++) {
          CompoundTag itemTag = tag.getCompound("Item" + i);
          if (!itemTag.isEmpty()) {
-            this.inventory.setItem(i, top.ribs.scguns.util.NbtHelper.itemFromTag(itemTag));
+            // Pass the registries this call was handed. The one-argument overload reads from NbtHelper's static
+            // registry access, which is only filled once the level is up - a bench whose chunk loaded before then
+            // decoded every slot as an empty stack and came back empty.
+            this.inventory.setItem(i, top.ribs.scguns.util.NbtHelper.itemFromTag(itemTag, registries));
          }
       }
    }
