@@ -90,6 +90,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private final T guard;
    private final float accuracyModifier;
    private final double attackRadiusSqr;
+   /** Where the guard stops firing and walks closer instead; capped by the config. */
+   private final double fireRangeSqr;
    private final int aimTicks;
 
    private int seeTime;
@@ -113,6 +115,11 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       }
 
       this.attackRadiusSqr = idealRange * idealRange;
+      // Positioning only ever said "stop walking here"; nothing stopped the guard firing from fifty blocks away
+      // while it was still closing in. This is that missing gate, capped so a pack can shorten the range.
+      this.fireRangeSqr = Math.pow(
+         Math.min(idealRange, (Double)top.ribs.scguns.Config.COMMON.compat.guardGunMaxRange.get()), 2.0
+      );
       // A tougher guard needs less time on target before its first shot (1..4 from the config data).
       this.aimTicks = (int)Mth.clamp(9 - difficulty, AIM_GATE, 8);
       // Positioning is this goal's job while it runs - see the class documentation.
@@ -224,6 +231,11 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       }
 
       if (!canSee || this.retreating || this.seeTime < AIM_GATE || this.timeUntilShoot > 0) {
+         return;
+      }
+
+      if (distanceSqr > this.fireRangeSqr) {
+         // Too far to be worth a shot: keep closing. Without this the guard fired at anything it could see.
          return;
       }
 

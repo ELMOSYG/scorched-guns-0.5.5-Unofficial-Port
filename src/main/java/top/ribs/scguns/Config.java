@@ -174,6 +174,7 @@ public class Config {
       public final DoubleValue guardGunAccuracy;
       public final BooleanValue guardGunsReplaceExistingWeapons;
       public final DoubleValue guardGunMoveSpeed;
+      public final DoubleValue guardGunMaxRange;
 
       public Compat(Builder builder) {
          builder.comment("Options for the optional mod integrations").push("compat");
@@ -210,6 +211,17 @@ public class Config {
                }
             )
             .defineInRange("guard_gun_move_speed", 1.0, 0.25, 2.0);
+            // Positioning and firing are separate decisions: a guard used to shoot the moment anything came
+            // into view, while still walking towards it, which made a rifle guard open fire from across the
+            // village. Shots are now gated on this distance (and never further than the gun's own ideal range).
+            this.guardGunMaxRange = builder.comment(
+                new String[]{
+                   "How far a Guard Villagers guard will shoot, in blocks.",
+                   "The gun's own ideal attack range caps this; lower it to make guards hold their fire until",
+                   "the target is closer, or raise it for long-range defenders."
+                }
+            )
+            .defineInRange("guard_gun_max_range", 20.0, 4.0, 64.0);
          builder.pop();
       }
    }
