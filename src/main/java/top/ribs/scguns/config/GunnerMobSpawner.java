@@ -369,37 +369,65 @@ public class GunnerMobSpawner {
       return true;
    }
 
+   /**
+    * Gives a mob its gun AI if it does not have it yet.
+    *
+    * <p>A goal lives in the in-memory {@code goalSelector}, not in the entity's saved data, so unloading a chunk and
+    * coming back leaves a gunner with its vanilla goals again - a zombie walks up and punches, a skeleton draws a bow
+    * it does not have. This method runs on join for exactly that reason, so it has to be allowed to repair a raid
+    * member as well. It used to return early for anything tagged {@code RaidMember_}, which meant raid henchmen were
+    * the one group nothing ever fixed: they lost their AI on the first chunk reload and never got it back.</p>
+    *
+    * <p>Raid members do record the profile they were spawned with in an {@code AI_<TYPE>} tag, and tags are saved
+    * with the entity, so the repaired goal keeps the firing style its raid config asked for instead of a random one.
+    * The goal sits at priority 0 because a vanilla mob registers its own attack goal at 2 or later, and equal
+    * priorities run in registration order - the vanilla goal is always registered first, so a tie at 2 is a loss.</p>
+    */
    public static void reassessWeaponGoal(PathfinderMob mob) {
-      if (!mob.level().isClientSide && !hasGunAttackGoal(mob)) {
-         for (String tag : mob.getTags()) {
-            if (tag.startsWith("RaidMember_")) {
-               return;
+      if (mob.level().isClientSide || hasGunAttackGoal(mob)) {
+         return;
+      }
+
+      ItemStack heldItem = mob.getMainHandItem();
+
+      // Mounts and unarmed members carry nothing to shoot with; giving them a gun goal would just leave them
+      // standing at range with a sword.
+      if (!(heldItem.getItem() instanceof GunItem)) {
+         return;
+      }
+
+      AIType aiType = AIType.values()[mob.getRandom().nextInt(AIType.values().length)];
+      int aiDifficulty = mob.getRandom().nextInt(4) + 1;
+
+      for (String tag : mob.getTags()) {
+         if (tag.startsWith("AI_")) {
+            try {
+               aiType = AIType.valueOf(tag.substring(3));
+            } catch (IllegalArgumentException ignored) {
+               // An addon may write a profile this build does not know; the random one is a fine fallback.
             }
          }
-
-         AIType aiType = AIType.values()[mob.getRandom().nextInt(AIType.values().length)];
-         int aiDifficulty = mob.getRandom().nextInt(4) + 1;
-         ItemStack heldItem = mob.getMainHandItem();
-         if (GuardVillagersCompat.isGuard(mob)) {
-            // A guard armed by anything other than this config's data file - a command, another mod, a
-            // player handing it a gun - still gets the guard's own gun AI, built from the gun it is
-            // actually holding so it fights at that gun's ideal range (HANDOFF section 82.14). It also
-            // gets resetFollowRange rather than the raiders' extendFollowRange below: a guard with a
-            // 64 block follow range abandons the village it exists to defend (section 82).
-            GunnerMobConfig.MobGunnerData guardData = GunnerMobConfig.getGunnerData(mob.getType());
-            mob.goalSelector.addGoal(
-               2,
-               new GuardGunAttackGoal(mob, heldItem, guardData != null ? guardData.aiDifficulty() : 1, GuardVillagersCompat.accuracy())
-            );
-            mob.addTag("GunAttackAssigned");
-            resetFollowRange(mob);
-            return;
-         }
-
-         mob.goalSelector.addGoal(2, new GunAttackGoal<>(mob, heldItem, 1.2F, aiType, aiDifficulty));
-         mob.addTag("GunAttackAssigned");
-         extendFollowRange(mob);
       }
+
+      if (GuardVillagersCompat.isGuard(mob)) {
+         // A guard armed by anything other than this config's data file - a command, another mod, a
+         // player handing it a gun - still gets the guard's own gun AI, built from the gun it is
+         // actually holding so it fights at that gun's ideal range (HANDOFF section 82.14). It also
+         // gets resetFollowRange rather than the raiders' extendFollowRange below: a guard with a
+         // 64 block follow range abandons the village it exists to defend (section 82).
+         GunnerMobConfig.MobGunnerData guardData = GunnerMobConfig.getGunnerData(mob.getType());
+         mob.goalSelector.addGoal(
+            2,
+            new GuardGunAttackGoal(mob, heldItem, guardData != null ? guardData.aiDifficulty() : 1, GuardVillagersCompat.accuracy())
+         );
+         mob.addTag("GunAttackAssigned");
+         resetFollowRange(mob);
+         return;
+      }
+
+      mob.goalSelector.addGoal(0, new GunAttackGoal<>(mob, heldItem, 1.2F, aiType, aiDifficulty));
+      mob.addTag("GunAttackAssigned");
+      extendFollowRange(mob);
    }
 
    private static ItemStack createModifiedGun(PathfinderMob mob, Item gun) {
