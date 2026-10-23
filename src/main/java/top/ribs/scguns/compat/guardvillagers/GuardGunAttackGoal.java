@@ -88,6 +88,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
 
    /** The target has to be visible this many ticks before the guard shoots, as the reference requires. */
    private static final int AIM_GATE = 5;
+   /** How long a guard waits after finding an ally in its line of fire before trying again. */
+   private static final int BLOCKED_RETRY_TICKS = 10;
 
    private final T guard;
    private final float accuracyModifier;
@@ -97,6 +99,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private final int aimTicks;
 
    private int seeTime;
+   /** Ticks left before the guard tries a blocked shot again; stops the per-tick shuffle. */
+   private int blockedTicks;
    private int timeUntilShoot;
    private boolean retreating;
    private boolean reloading;
@@ -147,6 +151,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    public void start() {
       this.guard.setAggressive(true);
       this.seeTime = 0;
+      this.blockedTicks = 0;
       this.timeUntilShoot = this.aimTicks;
       this.reloading = false;
       this.reloadTick = 0;
@@ -241,9 +246,17 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
          return;
       }
 
+      if (this.blockedTicks > 0) {
+         this.blockedTicks--;
+         return;
+      }
+
       if (this.allyInLineOfFire(target)) {
-         // Do not shoot a villager in the back: step aside and hold fire for a moment.
+         // An ally is in the way: step aside and hold fire for a moment. The cooldown matters - re-testing every
+         // tick made the guard shuffle in place instead of walking to a clear angle, which read as a broken
+         // sidestep.
          this.stepAside(target);
+         this.blockedTicks = BLOCKED_RETRY_TICKS;
          return;
       }
 
@@ -267,6 +280,10 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
     * reference implementation to copy here. Being stricter than the reference is the point.</p>
     */
    private boolean allyInLineOfFire(LivingEntity target) {
+      if (!((Boolean)top.ribs.scguns.Config.COMMON.compat.guardFriendlyFire.get()).booleanValue()) {
+         return false;
+      }
+
       Vec3 from = this.guard.getEyePosition();
       Vec3 to = target.getBoundingBox().getCenter();
       EntityHitResult hit = ProjectileUtil.getEntityHitResult(
@@ -277,7 +294,15 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
          this.guard.getBoundingBox().expandTowards(to.subtract(from)).inflate(1.0),
          entity -> entity != this.guard && entity != target && entity instanceof LivingEntity
       );
-      return hit != null && GuardVillagersCompat.isFriendlyShot(this.guard, hit.getEntity());
+      if (hit == null || !GuardVillagersCompat.isFriendlyShot(this.guard, hit.getEntity())) {
+         return false;
+      }
+
+      // The reference also requires the ally to sit within an angle of the shot, and exposes that as a config
+      // cosine. The ray already proves the ally is on the line, so this only has to honour a tighter setting.
+      Vec3 toAlly = hit.getEntity().position().subtract(this.guard.position()).normalize();
+      double alignment = toAlly.dot(this.guard.getViewVector(1.0F));
+      return alignment >= (Double)top.ribs.scguns.Config.COMMON.compat.guardFriendlyFireCheckValue.get();
    }
 
    private void stepAside(LivingEntity target) {

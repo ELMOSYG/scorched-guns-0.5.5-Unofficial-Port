@@ -176,6 +176,8 @@ public class Config {
       public final DoubleValue guardGunMoveSpeed;
       public final DoubleValue guardGunMaxRange;
       public final BooleanValue guardGunsFromConfig;
+      public final BooleanValue guardFriendlyFire;
+      public final DoubleValue guardFriendlyFireCheckValue;
 
       public Compat(Builder builder) {
          builder.comment("Options for the optional mod integrations").push("compat");
@@ -234,6 +236,23 @@ public class Config {
                 }
             )
             .define("guard_guns_from_config", false);
+            // Guard Villagers gates the same behaviour with two config values (FriendlyFire and
+            // friendlyFireCheckValue). Mirror both so a pack can tune a guard exactly like the reference.
+            this.guardFriendlyFire = builder.comment(
+                new String[]{
+                   "Whether a Guard Villagers guard holds fire when an ally is in the line of fire.",
+                   "It steps aside and tries again instead of shooting through the villager."
+                }
+            )
+            .define("guard_friendly_fire", true);
+            this.guardFriendlyFireCheckValue = builder.comment(
+                new String[]{
+                   "How tightly an ally has to line up with the shot before the guard refuses to fire.",
+                   "This is a cosine: 1.0 only matches a perfectly aligned ally, 0.0 is a 90 degree cone.",
+                   "Guard Villagers calls the same value friendlyFireCheckValue."
+                }
+            )
+            .defineInRange("guard_friendly_fire_check_value", 0.9, 0.0, 0.9999);
          builder.pop();
       }
    }
