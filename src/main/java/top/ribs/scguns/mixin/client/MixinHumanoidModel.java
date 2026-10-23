@@ -106,9 +106,11 @@ public abstract class MixinHumanoidModel {
       float headPitch = this.head.xRot;
       float headYaw = this.head.yRot;
 
-      // A crouched body is tipped forward by vanilla's crouch pose; subtract rather than add so the barrel stays
-      // level instead of being pushed towards the floor.
-      float crouchCompensation = this.crouching ? -0.4F : 0.0F;
+      // No crouch compensation at all. Vanilla's crouch pose tips the body and the arm hierarchy with it, so
+      // adding the constant made the barrel dive at the floor and inverting it swung the barrel at the sky: the
+      // arm is already at -90 degrees, and the value vanilla uses (+0.4) exists for arms that hang at zero. The
+      // crouch is only used while reloading anyway (GuardGunAttackGoal), where a lowered muzzle is correct.
+      float crouchCompensation = 0.0F;
 
       this.rightArm.visible = true;
       this.leftArm.visible = true;
