@@ -1,125 +1,34 @@
-# Scorched Guns — 1.0.6
+# Scorched Guns 1.0.6
 
 **Minecraft 1.21.1 · NeoForge 21.1.150+**
 
-Three fixes. All of them are problems the mod has had since well before 1.0.5 — two of them since the very first
-port, and one that an earlier release only half-fixed.
+Four fixes. Nothing was rebalanced — no gun stats, recipes or art changed.
 
 ---
 
-## Containers no longer empty themselves
+## Fixes
 
-**Put anything in a gun bench, or in a supply scamp's pack, save and reload — it came back empty.**
+**Gun benches and supply scamp packs no longer empty themselves.**
+Put something in, save and reload, and it came back empty. The 1.21 `ItemStack#save` method returns the encoded data
+instead of filling the tag passed to it, and the port had carried the 1.20.1 call over unchanged — so every slot was
+written as `{}`. Both containers now save through vanilla's own `ContainerHelper`. Saves that were already emptied
+cannot be recovered (the items were never written); a backup from before the loss will load fine.
 
-Ask the block for its data and you saw the signature: `Item11: {}`. The key was there, the contents were not.
+**Raid gunners keep their AI after a chunk unloads.**
+Gun-carrying raid mobs punched with their fists or mimed a bow after a reload, because a mob's gun AI lives in memory
+only. Naturally spawned gunners get it re-attached on join; raid members were explicitly skipped. Fixed, and their
+configured firing style is restored from the tag the raid wrote.
 
-**The cause is a 1.21 API change that the port carried over from 1.20.1 unchanged.** Upstream 0.5.5 writes:
+**Turrets turn their barrel on servers.**
+Joining a server directly left turrets aiming but never moving — their definitions were loaded server-side and never
+sent to clients. They now sync on join.
 
-```java
-CompoundTag itemTag = new CompoundTag();
-itemstack.save(itemTag);          // 1.20.1: fills in and returns that same tag
-tag.put("Item" + i, itemTag);
-```
-
-In 1.21, `ItemStack#save(...)` **returns** the encoded tag instead of filling the one you hand it. Ported as-is, the
-tag stayed empty `{}` for every slot — no id, no count, no components. Loading skips an empty tag, and the next save
-writes nothing at all.
-
-So the bug had three layers, each hiding the next:
-
-| Layer | Status |
-|---|---|
-| `save` throws `Cannot encode empty ItemStack` for an empty slot, and the block entity gets dropped | fixed in 1.0.4 (skip empty slots) |
-| A non-empty stack cannot be written either, because the return value carries the data | **fixed here** |
-| Loading decoded through a static registry that may not be initialised yet | also fixed here |
-
-This is why 0.5.5.3's fix appeared to work and then came back: the port re-introduced the second layer by treating the
-1.21 method as if it were the 1.20.1 one.
-
-Both containers now save through vanilla's `ContainerHelper.saveAllItems` / `loadAllItems`, the same path the mod's
-ammo boxes, composter and ammo module already use. Old saves that still carry the previous `Item<n>` keys or the
-`Slot`-tagged list are read as a fallback, so changing the format does not throw anything away.
-
-After the fix the block data reads:
-
-```json
-Items: [{count: 1b, Slot: 11b, id: "scguns:iron_blueprint"}]
-```
-
-**Old saves cannot be rescued by this build** — the items were never written, only empty tags were. A backup from
-before the loss is fine: it holds real NBT and will load on this version.
+**The attachment screen zooms with the mouse wheel again.**
+1.21 added a parameter to `mouseScrolled`, so the port's version was a harmless-looking overload that never ran.
 
 ---
 
-## Raid gunners keep their AI across chunk reloads
+## Notes
 
-**Gun-carrying mobs from a raid fight with their fists (zombies) or mime an archery animation (skeletons,
-pillagers) instead of shooting. Worse after a reload.**
-
-The gun AI is a goal, and goals live in memory — they are not part of an entity's saved data. Unload a chunk and the
-entity is rebuilt from scratch with only its vanilla goals: a zombie's melee, a skeleton's bow.
-
-Naturally spawned gunners get repaired when they join the world, because `GunnerMobSpawner.reassessWeaponGoal` runs
-on join. That method had an early return for anything tagged `RaidMember_`, and raid members are exactly the mobs
-that carry that tag — so raids were the one group of gunners nothing ever repaired, and the first chunk reload
-downgraded them permanently.
-
-The early return is gone. Raid members record their firing profile in an `AI_<TYPE>` tag, which *is* saved, so the
-repaired goal keeps the style their raid config asked for rather than a random one. The goal also moved to priority
-0: a vanilla mob registers its own attack goal at 2 or later, equal priorities run in registration order, and the
-vanilla goal is always registered first — a tie at 2 is a loss.
-
----
-
-## Turrets turn their barrel on servers
-
-**Join a server directly and turrets aim and fire but never move. Visiting a single-player world once "fixes" it.**
-
-Turret definitions were loaded by a server-side data listener and never sent to clients. A turret's `tick()` returns
-early while its definition is missing, so on the client it did nothing at all and the barrel never turned.
-
-The single-player detour worked only because the client and server share a JVM there: the static definition map the
-server filled was visible to the client's renderer. Nothing was actually repaired — shared memory was covering for a
-missing packet.
-
-Definitions now ride to the client on join as a normal play message, the same way the addon upgrade registry already
-did.
-
----
-
-## The attachment screen ignores the mouse wheel
-
-**The gun modification screen will not zoom its preview, no matter how the wheel is turned.**
-
-1.21 added a parameter to the callback:
-
-```java
-// 1.20.1
-public boolean mouseScrolled(double mouseX, double mouseY, double scroll)
-// 1.21.1
-public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY)
-```
-
-The port kept the three-argument form. It is a perfectly legal *overload*, so it compiles and nothing complains — but
-it does not override anything, `Screen` never calls it, and the wheel does nothing.
-
-This is the second time this release has run into the same shape (an earlier one was `Entity#readAdditionalSaveData`),
-and it stayed hidden because there was no `@Override` to make the compiler object and the existing signature audit only
-looked for methods with *extra* parameters, never for methods that lost one.
-
-Fixed: the four-argument signature with `@Override`, a zoom floor of 1 (it used to reach 0, where the preview
-vanished) and a ceiling of 40, and the wheel now consumes the event inside the preview instead of scrolling the
-player's inventory behind it. A new audit, `tools/audit_dropped_parameters.py`, scans all 1,475 compiled classes for
-methods that drop a parameter a supertype expects; across the whole tree it found **only this one**, plus two
-same-name-but-unrelated getters which are whitelisted with their reasoning.
-
----
-
-## Verification
-
-- All 53 gate scripts pass. One of them, `audit_override_drift.py`, rejected an earlier attempt at the container fix:
-  it had added a two-argument `readAdditionalSaveData` overload to an entity, and 1.21.1's `Entity` only declares the
-  one-argument form — the overload would never have run. The gate caught a fix that would have looked correct and
-  done nothing.
-- Install verification 291/291.
-- All three fixes are server-side behaviour, so client and server both need this build.
+- Client and server both need this build.
+- Container saves use vanilla's format now: this build reads old saves, old builds will not read new ones.
