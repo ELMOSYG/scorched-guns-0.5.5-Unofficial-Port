@@ -13,40 +13,58 @@
 
 ## 一、枪械工作台与支援小鬼背包：物品在区块重载后消失
 
-**这是本版最重要的修复**，而且问题比表面看起来更深。
+**这是本版最重要的修复。**
 
 ### 现象
 
 在工作台或支援小鬼背包里放了东西，退出存档或走远让区块卸载，回来后容器是空的。
+用 `/data get block` 看，槽位长这样：`Item11: {}` —— 键在，内容是空的。
 
-### 真实原因（两层）
+### 原因：1.21 改了 `ItemStack#save` 的语义，移植时照抄了 1.20.1 的写法
 
-**第一层（1.0.4 修过）**：`saveAdditional` 里逐个 `ItemStack#save`，而原版对**空栈**会抛
-`Cannot encode empty ItemStack`。工作台必然有空槽，于是**每次区块保存都抛异常**，整个方块实体被丢弃，
-一个字节都没写进去。1.0.4 的 `7de2c089` 加了“空槽跳过”，这一层修好了。
+上游 0.5.5（1.20.1）这样写，是对的：
 
-**第二层（本版才修）**：读取端一直在用 `NbtHelper.itemFromTag(tag)` 这个**不带注册表参数**的重载，
-它内部读一个**静态**的 `registryAccess`。而这个静态字段只在世界/服务器加载事件里赋值，
-区块如果比它先加载，每次解码都得到 `ItemStack.EMPTY` —— 物品**写进去了，读不出来**。
+```java
+CompoundTag itemTag = new CompoundTag();
+itemstack.save(itemTag);          // 1.20.1：填充并返回同一个 tag
+tag.put("Item" + i, itemTag);
+```
 
-所以 1.0.4 之后这个 bug 从“必定丢失”变成了**竞态**：有时正常、有时丢。它不是回归，是一个一直被前一层掩盖的缺陷。
+1.21 把 `ItemStack#save(...)` 改成**返回**编码结果，不再保证填充传进去的那个 tag。
+移植时把这段原样搬了过来，于是 `itemTag` 一直是空的 `{}`，**每个槽位都存成空**——
+物品的数量、id、组件一个都没写进去。读取时空 tag 被跳过，再保存就彻底没有了。
+
+所以这个 bug 有三层，越往后越隐蔽：
+
+| 层 | 状态 |
+|---|---|
+| 空栈调用 `save` 抛 `Cannot encode empty ItemStack`，整个方块实体被丢弃 | 1.0.4 修好（跳过空槽） |
+| 非空栈同样写不进数据（返回值的语义变了） | **本版才修** |
+| 读取依赖一个尚未初始化的静态注册表 | 本版顺带改成显式传注册表 |
+
+用户反馈 0.5.5.3 曾经修过这个问题，之后又复现——原因就是第二层：移植把 1.21 的 API 当成 1.20.1 用。
 
 ### 修复
 
+工作台和小鬼的背包都改为走原版 `ContainerHelper.saveAllItems` / `loadAllItems`，
+和本 mod 其它容器（弹药箱、堆肥桶、弹药模块）一致：
+
 | 位置 | 改动 |
 |---|---|
-| `GunBenchBlockEntity.loadAdditional` | 改用 `itemFromTag(itemTag, registries)`，用方法参数里的注册表 |
-| `SupplyScampEntity.readAdditionalSaveData` | 改用 `this.level().registryAccess()`，无 level 时回退 |
+| `GunBenchBlockEntity` | 存档改为标准 `"Items"` ListTag（`ContainerHelper` 自己会写 `Slot` 字节） |
+| `SupplyScampEntity` | 同上 |
+| 读旧档 | 仍识别旧 `Item<n>` 键与旧 `Slot` 列表，老存档不会因为换格式而丢东西 |
 
-### 旧存档能不能救回来
+修好之后 `/data get block` 应该看到：
 
-物品的 NBT 当初是**正常写进存档**的，只是读失败。因此：
+```json
+Items: [{count: 1b, Slot: 11b, id: "scguns:iron_blueprint"}]
+```
 
-- 如果那个区块在“读空”之后**没有被再次保存过**（例如发现丢失后就没继续玩，或用了备份），
-  装上本版后加载会**重新读出来**；
-- 如果之后正常保存过，空容器已经把 `Item*` 覆盖掉了，那就恢复不了。
+### 已经丢掉的旧存档
 
-建议用丢失前的备份存档试一次。
+物品当初**没有被写进存档**（写进去的是空 tag），所以本版救不回来。
+但用丢失之前的备份存档试一次，它有正常的 NBT，装上本版后能正常读出。
 
 ---
 

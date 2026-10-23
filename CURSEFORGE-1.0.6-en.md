@@ -11,24 +11,43 @@ port, and one that an earlier release only half-fixed.
 
 **Put anything in a gun bench, or in a supply scamp's pack, save and reload — it came back empty.**
 
-This is the release's headline fix, and it is two bugs stacked on top of each other.
+Ask the block for its data and you saw the signature: `Item11: {}`. The key was there, the contents were not.
 
-The first one was known: the bench saved each slot with `ItemStack#save`, which throws
-`Cannot encode empty ItemStack` for an empty stack. A bench always has empty slots, so every chunk save threw, the
-block entity was dropped, and nothing was written at all. 1.0.4 added a skip for empty slots, and that half was
-genuinely fixed.
+**The cause is a 1.21 API change that the port carried over from 1.20.1 unchanged.** Upstream 0.5.5 writes:
 
-The second one was never found. Loading used `NbtHelper.itemFromTag(tag)` — the overload without registries — which
-reads a **static** registry access populated when a level loads. A chunk that loaded before that point decoded every
-slot as an empty stack. The items were being written correctly; they just could not be read back. So after 1.0.4 the
-bug stopped being "always lost" and became a race: sometimes fine, sometimes empty. It was not a regression — it was
-a second defect that the first one had been hiding.
+```java
+CompoundTag itemTag = new CompoundTag();
+itemstack.save(itemTag);          // 1.20.1: fills in and returns that same tag
+tag.put("Item" + i, itemTag);
+```
 
-Both the bench and the scamp now decode with the registries their level already holds.
+In 1.21, `ItemStack#save(...)` **returns** the encoded tag instead of filling the one you hand it. Ported as-is, the
+tag stayed empty `{}` for every slot — no id, no count, no components. Loading skips an empty tag, and the next save
+writes nothing at all.
 
-**Can an affected save be rescued?** Possibly. The item NBT was written normally, only the read failed — so a chunk
-that has not been saved again since it came back empty will read its contents back after this update. If the chunk
-was saved again in the meantime, the empty container overwrote it. Try a backup from before the loss.
+So the bug had three layers, each hiding the next:
+
+| Layer | Status |
+|---|---|
+| `save` throws `Cannot encode empty ItemStack` for an empty slot, and the block entity gets dropped | fixed in 1.0.4 (skip empty slots) |
+| A non-empty stack cannot be written either, because the return value carries the data | **fixed here** |
+| Loading decoded through a static registry that may not be initialised yet | also fixed here |
+
+This is why 0.5.5.3's fix appeared to work and then came back: the port re-introduced the second layer by treating the
+1.21 method as if it were the 1.20.1 one.
+
+Both containers now save through vanilla's `ContainerHelper.saveAllItems` / `loadAllItems`, the same path the mod's
+ammo boxes, composter and ammo module already use. Old saves that still carry the previous `Item<n>` keys or the
+`Slot`-tagged list are read as a fallback, so changing the format does not throw anything away.
+
+After the fix the block data reads:
+
+```json
+Items: [{count: 1b, Slot: 11b, id: "scguns:iron_blueprint"}]
+```
+
+**Old saves cannot be rescued by this build** — the items were never written, only empty tags were. A backup from
+before the loss is fine: it holds real NBT and will load on this version.
 
 ---
 
