@@ -531,18 +531,29 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentContaine
       }
    }
 
-   public boolean mouseScrolled(double mouseX, double mouseY, double scroll) {
+   /**
+    * Zoom the gun preview with the wheel.
+    *
+    * <p>1.21 passes two scroll amounts - horizontal first, vertical second - so the 1.20.1 three-argument signature
+    * this used to have did not override anything and was never called: the wheel did nothing at all. Only the
+    * vertical amount is used here, which is what a mouse wheel produces.</p>
+    */
+   @Override
+   public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY) {
       int startX = (this.width - this.imageWidth) / 2 - 6;
       int startY = (this.height - this.imageHeight) / 2 + 19;
-      if (RenderUtil.isMouseWithin((int)mouseX, (int)mouseY, startX + 8 - 14, startY + 17 - 82, 204, 146)) {
-         if (scroll < 0.0 && this.windowZoom > 0) {
+
+      if (RenderUtil.isMouseWithin((int) mouseX, (int) mouseY, startX + 8 - 14, startY + 17 - 82, 204, 146)) {
+         if (scrollY < 0.0 && this.windowZoom > 1) {
             this.windowZoom--;
-         } else if (scroll > 0.0) {
+         } else if (scrollY > 0.0 && this.windowZoom < 40) {
             this.windowZoom++;
          }
+
+         return true;
       }
 
-      return false;
+      return super.mouseScrolled(mouseX, mouseY, scrollX, scrollY);
    }
 
    public boolean mouseClicked(double mouseX, double mouseY, int button) {
