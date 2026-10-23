@@ -87,6 +87,34 @@ did.
 
 ---
 
+## The attachment screen ignores the mouse wheel
+
+**The gun modification screen will not zoom its preview, no matter how the wheel is turned.**
+
+1.21 added a parameter to the callback:
+
+```java
+// 1.20.1
+public boolean mouseScrolled(double mouseX, double mouseY, double scroll)
+// 1.21.1
+public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY)
+```
+
+The port kept the three-argument form. It is a perfectly legal *overload*, so it compiles and nothing complains — but
+it does not override anything, `Screen` never calls it, and the wheel does nothing.
+
+This is the second time this release has run into the same shape (an earlier one was `Entity#readAdditionalSaveData`),
+and it stayed hidden because there was no `@Override` to make the compiler object and the existing signature audit only
+looked for methods with *extra* parameters, never for methods that lost one.
+
+Fixed: the four-argument signature with `@Override`, a zoom floor of 1 (it used to reach 0, where the preview
+vanished) and a ceiling of 40, and the wheel now consumes the event inside the preview instead of scrolling the
+player's inventory behind it. A new audit, `tools/audit_dropped_parameters.py`, scans all 1,475 compiled classes for
+methods that drop a parameter a supertype expects; across the whole tree it found **only this one**, plus two
+same-name-but-unrelated getters which are whitelisted with their reasoning.
+
+---
+
 ## Verification
 
 - All 53 gate scripts pass. One of them, `audit_override_drift.py`, rejected an earlier attempt at the container fix:

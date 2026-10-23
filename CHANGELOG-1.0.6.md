@@ -119,7 +119,38 @@ Items: [{count: 1b, Slot: 11b, id: "scguns:iron_blueprint"}]
 
 ---
 
-## 四、验证
+## 四、改装页面滚轮缩放失效
+
+### 现象
+
+枪械改装界面里，鼠标滚轮不能缩放枪械预览。
+
+### 原因：1.21 的 `mouseScrolled` 多了一个参数
+
+```java
+// 1.20.1
+public boolean mouseScrolled(double mouseX, double mouseY, double scroll)
+// 1.21.1
+public boolean mouseScrolled(double mouseX, double mouseY, double scrollX, double scrollY)
+```
+
+移植保留了 3 参数版本。它是一个合法的**重载**，能编译，所以没有报错——
+但它**不是覆盖**，`Screen` 永远调不到它，滚轮因此毫无反应。
+
+这类问题是本版第二次遇到：之前 `Entity#readAdditionalSaveData` 也是同样形状。
+之所以一直没被发现，是因为既没有 `@Override`（那会让编译器报错），
+现有的签名漂移审计也**只检查“我们多参数”**的方向，不检查“我们少参数”。
+
+### 修复
+
+- 改成 4 参数签名并加 `@Override`；
+- 缩放加了下限 1（原来能掉到 0，预览会消失）和上限 40；
+- 滚轮在预览框内返回 `true`，不再把事件继续传给物品栏；
+- 同时新增 `tools/audit_dropped_parameters.py`：扫全部 1475 个编译类，
+  找“同名、参数比父类少、且父类能看到但不是精确匹配”的方法。
+  全量扫描结果：**只有这一处**，另有两处同名不同用途的误报已加白名单并写明理由。
+
+## 五、验证
 
 - 53 项门禁脚本全过，其中 `audit_override_drift.py` 在本版拦下过一次错误的修复尝试：
   给 `Entity` 加了一个 2 参数的 `readAdditionalSaveData` 重载，而 1.21.1 的 `Entity` 只有 1 参数版本，
