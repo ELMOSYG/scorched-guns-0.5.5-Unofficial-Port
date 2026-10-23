@@ -7,8 +7,10 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.util.LandRandomPos;
+import net.minecraft.world.entity.projectile.ProjectileUtil;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import top.ribs.scguns.Config;
 import top.ribs.scguns.common.Gun;
@@ -252,28 +254,30 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       }
    }
 
-   /** Whether an ally is standing in the firing line, using the same ally rule the projectile gate uses. */
+   /**
+    * Whether an ally is standing in the firing line.
+    *
+    * <p>The first version sampled a box six blocks in front of the guard. A shot travels far further than that,
+    * so a villager ten or fifteen blocks away, dead in the line of fire, was never sampled and the guard fired
+    * straight through it. This walks the actual shot instead: the first living entity between the guard's eyes
+    * and the target decides.</p>
+    *
+    * <p>Guard Villagers' own ranged goal only ever reasons about the mob it is aiming at - its musket path
+    * ({@code ModCompat.shootGun}) fires along the look vector without testing what is in the way - so there is no
+    * reference implementation to copy here. Being stricter than the reference is the point.</p>
+    */
    private boolean allyInLineOfFire(LivingEntity target) {
-      Vec3 look = this.guard.getViewVector(1.0F);
-      AABB reach = this.guard.getBoundingBox().expandTowards(look.scale(ALLY_CHECK_REACH)).inflate(1.0);
-      for (Entity entity : this.guard.level().getEntities(this.guard, reach)) {
-         if (entity == target || entity == this.guard) {
-            continue;
-         }
-
-         if (!GuardVillagersCompat.isFriendlyShot(this.guard, entity)) {
-            continue;
-         }
-
-         // `entity -> guard` dotted with the view direction is negative when the ally is in front of the
-         // guard, which is the reference's own test.
-         Vec3 towardsGuard = entity.position().vectorTo(this.guard.position()).normalize();
-         if (towardsGuard.dot(look) < 0.0 && this.guard.hasLineOfSight(entity)) {
-            return true;
-         }
-      }
-
-      return false;
+      Vec3 from = this.guard.getEyePosition();
+      Vec3 to = target.getBoundingBox().getCenter();
+      EntityHitResult hit = ProjectileUtil.getEntityHitResult(
+         this.guard.level(),
+         this.guard,
+         from,
+         to,
+         this.guard.getBoundingBox().expandTowards(to.subtract(from)).inflate(1.0),
+         entity -> entity != this.guard && entity != target && entity instanceof LivingEntity
+      );
+      return hit != null && GuardVillagersCompat.isFriendlyShot(this.guard, hit.getEntity());
    }
 
    private void stepAside(LivingEntity target) {
