@@ -6,6 +6,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.MenuProvider;
+import net.minecraft.core.NonNullList;
+import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Inventory;
@@ -39,37 +41,53 @@ public class GunBenchBlockEntity extends BlockEntity implements MenuProvider {
       return new GunBenchMenu(id, playerInventory, this.inventory, ContainerLevelAccess.create(this.level, this.worldPosition));
    }
 
+   /**
+    * The container contents as a plain list, which is the shape {@link ContainerHelper} saves.
+    *
+    * <p>The bench used to write one {@code Item<n>} tag per slot with {@code ItemStack#save(provider, tag)}. In 1.21
+    * that method returns the encoded tag rather than filling the one passed in, so every slot was written as an
+    * empty compound - a blueprint in the blueprint slot came back as {@code Item11: {}} and was gone on the next
+    * load. Marshalling through {@code ContainerHelper} uses the code path the rest of the mod's containers already
+    * use, so the encoding is done by vanilla rather than by this class.</p>
+    */
+   private NonNullList<ItemStack> snapshotContents() {
+      NonNullList<ItemStack> items = NonNullList.withSize(this.inventory.getContainerSize(), ItemStack.EMPTY);
+
+      for (int i = 0; i < items.size(); i++) {
+         items.set(i, this.inventory.getItem(i));
+      }
+
+      return items;
+   }
+
    public void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
       super.loadAdditional(tag, registries);
 
-      for (int i = 0; i < this.inventory.getContainerSize(); i++) {
-         CompoundTag itemTag = tag.getCompound("Item" + i);
-         if (!itemTag.isEmpty()) {
-            // Pass the registries this call was handed. The one-argument overload reads from NbtHelper's static
-            // registry access, which is only filled once the level is up - a bench whose chunk loaded before then
-            // decoded every slot as an empty stack and came back empty.
-            this.inventory.setItem(i, top.ribs.scguns.util.NbtHelper.itemFromTag(itemTag, registries));
+      NonNullList<ItemStack> items = NonNullList.withSize(this.inventory.getContainerSize(), ItemStack.EMPTY);
+      ContainerHelper.loadAllItems(tag, items, registries);
+
+      for (int i = 0; i < items.size(); i++) {
+         if (!items.get(i).isEmpty()) {
+            this.inventory.setItem(i, items.get(i));
+         }
+      }
+
+      // Saves made before this fix stored one "Item<n>" tag per slot. Those tags were written empty by the broken
+      // encoder, but a save that predates that regression may still hold real data, so read them as a fallback.
+      for (int i = 0; i < items.size(); i++) {
+         CompoundTag legacy = tag.getCompound("Item" + i);
+
+         if (!legacy.isEmpty() && this.inventory.getItem(i).isEmpty()) {
+            this.inventory.setItem(i, top.ribs.scguns.util.NbtHelper.itemFromTag(legacy, registries));
          }
       }
    }
 
    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
       super.saveAdditional(tag, registries);
-
-      for (int i = 0; i < this.inventory.getContainerSize(); i++) {
-         ItemStack itemstack = this.inventory.getItem(i);
-         // ItemStack#save throws "Cannot encode empty ItemStack" on an empty stack, and a bench
-         // always has empty slots - so this loop used to throw on every chunk save, and the block
-         // entity was dropped with "It will not persist": the bench silently lost everything in it
-         // (HANDOFF section 45). Load treats a missing tag as empty, so skipping is enough.
-         if (itemstack.isEmpty()) {
-            continue;
-         }
-
-         CompoundTag itemTag = new CompoundTag();
-         itemstack.save(registries, itemTag);
-         tag.put("Item" + i, itemTag);
-      }
+      // Vanilla writes the whole 12-slot grid as an "Items" list, skipping empty stacks itself. The previous
+      // hand-rolled per-slot loop is explained above snapshotContents().
+      ContainerHelper.saveAllItems(tag, this.snapshotContents(), registries);
    }
 
    public SimpleContainer getInventory() {

@@ -5,6 +5,8 @@ package top.ribs.scguns.entity.monster;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.NonNullList;
+import net.minecraft.world.ContainerHelper;
 import java.time.LocalDate;
 import java.time.Month;
 import java.util.Comparator;
@@ -729,16 +731,13 @@ public class SupplyScampEntity extends TamableAnimal {
 
    public void addAdditionalSaveData(@NotNull CompoundTag compound) {
       super.addAdditionalSaveData(compound);
-      ListTag listnbt = new ListTag();
+      // The pack is written by vanilla: the old loop called ItemStack#save(provider, tag) and kept the tag it passed
+      // in, but 1.21 returns the encoded tag instead of filling that one, so every entry went in empty and the pack
+      // came back empty after a reload.
+      NonNullList<ItemStack> savedItems = NonNullList.withSize(this.inventory.getContainerSize(), ItemStack.EMPTY);
 
-      for (int i = 0; i < this.inventory.getContainerSize(); i++) {
-         ItemStack itemstack = this.inventory.getItem(i);
-         if (!itemstack.isEmpty()) {
-            CompoundTag compoundnbt = new CompoundTag();
-            compoundnbt.putByte("Slot", (byte)i);
-            itemstack.save(this.level().registryAccess(), compoundnbt);
-            listnbt.add(compoundnbt);
-         }
+      for (int i = 0; i < savedItems.size(); i++) {
+         savedItems.set(i, this.inventory.getItem(i));
       }
 
       compound.putBoolean("Patrolling", this.isPatrolling());
@@ -747,7 +746,7 @@ public class SupplyScampEntity extends TamableAnimal {
          compound.putInt("PatrolOriginY", pos.getY());
          compound.putInt("PatrolOriginZ", pos.getZ());
       });
-      compound.put("Items", listnbt);
+      ContainerHelper.saveAllItems(compound, savedItems, this.level().registryAccess());
       compound.putInt("MaskColor", this.getMaskColor());
       compound.putBoolean("WearingPumpkin", this.isWearingPumpkin());
       compound.putInt("ArmorPlates", this.getArmorPlates());
@@ -768,13 +767,25 @@ public class SupplyScampEntity extends TamableAnimal {
       // static registry access, which is only filled once a level is up, so a pack whose chunk loaded before that
       // read every occupied slot as an empty stack - items came back empty after a save even though they had been
       // written correctly. When there is no level yet, the static fallback is the best available answer.
-      HolderLookup.Provider registries = this.level() != null ? this.level().registryAccess() : null;
+      NonNullList<ItemStack> loadedItems = NonNullList.withSize(this.inventory.getContainerSize(), ItemStack.EMPTY);
+      ContainerHelper.loadAllItems(compound, loadedItems, this.level().registryAccess());
 
-      for (int i = 0; i < listnbt.size(); i++) {
-         CompoundTag compoundnbt = listnbt.getCompound(i);
-         int j = compoundnbt.getByte("Slot") & 255;
-         if (j < this.inventory.getContainerSize()) {
-            this.inventory.setItem(j, top.ribs.scguns.util.NbtHelper.itemFromTag(compoundnbt, registries));
+      for (int i = 0; i < loadedItems.size(); i++) {
+         if (!loadedItems.get(i).isEmpty()) {
+            this.inventory.setItem(i, loadedItems.get(i));
+         }
+      }
+
+      // Older saves wrote a "Slot" byte into each entry. ContainerHelper ignores that key but keeps list order, so
+      // this only has to handle the case where it produced nothing at all.
+      if (this.inventory.isEmpty()) {
+         for (int i = 0; i < listnbt.size(); i++) {
+            CompoundTag compoundnbt = listnbt.getCompound(i);
+            int slot = compoundnbt.getByte("Slot") & 255;
+
+            if (slot < this.inventory.getContainerSize()) {
+               this.inventory.setItem(slot, top.ribs.scguns.util.NbtHelper.itemFromTag(compoundnbt));
+            }
          }
       }
 
