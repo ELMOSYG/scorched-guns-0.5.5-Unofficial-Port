@@ -179,6 +179,7 @@ public class Config {
       public final BooleanValue guardFriendlyFire;
       public final DoubleValue guardFriendlyFireCheckValue;
       public final BooleanValue guardGunCrouchWhenShooting;
+      public final BooleanValue guardGunCrouchWhenReloading;
 
       public Compat(Builder builder) {
          builder.comment("Options for the optional mod integrations").push("compat");
@@ -257,13 +258,24 @@ public class Config {
             // Guards have no gun-holding animation of their own (a player arm pose on a mob reads as detached
             // hands), but the vanilla crouch pose is driven by the model and costs nothing, so it is what makes a
             // guard look like it is aiming rather than standing around holding a rifle.
+            // The crouch pose pulls a humanoid's arms down, and the gun model with them, so a crouched guard
+            // aimed its barrel at the floor. It is off while shooting for that reason and on while reloading,
+            // where a lowered muzzle is exactly what the pose should look like.
             this.guardGunCrouchWhenShooting = builder.comment(
                 new String[]{
-                   "Whether a guard crouches while it is lining up and firing a gun.",
-                   "Purely visual: the pose comes from the vanilla model and does not change speed or hitbox."
+                   "Whether a guard crouches while lining up and firing a gun.",
+                   "Off by default: the crouch pose lowers a humanoid's arms, which points the gun at the floor.",
+                   "Purely visual; it does not change speed or hitbox."
                 }
             )
-            .define("guard_gun_crouch_when_shooting", true);
+            .define("guard_gun_crouch_when_shooting", false);
+            this.guardGunCrouchWhenReloading = builder.comment(
+                new String[]{
+                   "Whether a guard crouches while it reloads a gun.",
+                   "On by default: the crouch lowers the muzzle, which reads as reloading rather than aiming."
+                }
+            )
+            .define("guard_gun_crouch_when_reloading", true);
          builder.pop();
       }
    }

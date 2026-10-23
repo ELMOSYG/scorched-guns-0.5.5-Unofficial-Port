@@ -206,6 +206,9 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       this.guard.getLookControl().setLookAt(target, 30.0F, 30.0F);
 
       if (this.isMagazineEmpty(heldItem)) {
+         // Pose first: the reload branch returns early, so an update after it would never run.
+         this.reloading = true;
+         this.updateAimPose(false);
          this.reload(gun);
          return;
       }
@@ -281,8 +284,11 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
     * a single animation curve. The hitbox is unchanged - {@code getDimensions} only shrinks for players.</p>
     */
    private void updateAimPose(boolean aiming) {
-      boolean wanted = aiming
-         && ((Boolean)top.ribs.scguns.Config.COMMON.compat.guardGunCrouchWhenShooting.get()).booleanValue()
+      boolean crouchForReload = this.reloading
+         && ((Boolean)top.ribs.scguns.Config.COMMON.compat.guardGunCrouchWhenReloading.get()).booleanValue();
+      boolean crouchForAim = aiming
+         && ((Boolean)top.ribs.scguns.Config.COMMON.compat.guardGunCrouchWhenShooting.get()).booleanValue();
+      boolean wanted = (crouchForReload || crouchForAim)
          && !this.guard.isInWater()
          && !this.guard.isPassenger()
          && !this.guard.isSleeping();
