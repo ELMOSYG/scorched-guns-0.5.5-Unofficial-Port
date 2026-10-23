@@ -172,6 +172,7 @@ public class Config {
     */
    public static class Compat {
       public final DoubleValue guardGunAccuracy;
+      public final BooleanValue guardGunsReplaceExistingWeapons;
       public final DoubleValue guardGunMoveSpeed;
 
       public Compat(Builder builder) {
@@ -184,6 +185,18 @@ public class Config {
                }
             )
             .defineInRange("guard_gun_accuracy", 3.5, 0.1, 10.0);
+            // A guard may already be holding a weapon because a player handed it one - that is how Guard
+            // Villagers turns a villager into a guard. Swapping that weapon for a gun takes the player's item
+            // away, so the default only fills an empty hand.
+            this.guardGunsReplaceExistingWeapons = builder.comment(
+                new String[]{
+                   "If true, a Guard Villagers guard has whatever it holds replaced by a gun from the",
+                   "guardvillagers:guard entry, which is what this compat did originally.",
+                   "Leaving it false only arms guards whose hands are empty, so a weapon a player gave a",
+                   "villager - the way Guard Villagers turns one into a guard - is never taken away."
+                }
+            )
+            .define("guard_guns_replace_existing_weapons", false);
          // HANDOFF section 82.19. Guard Villagers' own goals walk a guard at 0.6 of its movement speed
          // attribute (Guard$GuardMeleeGoal's constants are 0.6 and 0.65), while the guard gun AI this compat
          // ports asked for 1.0 - the mob's full attribute speed - so an armed guard crossed the village at

@@ -345,6 +345,14 @@ public class GunnerMobSpawner {
          return false;
       }
 
+      // A guard can already be holding something because a player handed it that weapon - that is how Guard
+      // Villagers turns a villager into a guard in the first place. Replacing it makes the player watch their own
+      // sword turn into a gun, so by default only an empty hand is filled.
+      if (!((Boolean)top.ribs.scguns.Config.COMMON.compat.guardGunsReplaceExistingWeapons.get()).booleanValue()
+         && !mob.getMainHandItem().isEmpty()) {
+         return false;
+      }
+
       Item gun = gunnerData.getRandomWeapon(mob.getRandom());
       if (gun == null) {
          return false;
