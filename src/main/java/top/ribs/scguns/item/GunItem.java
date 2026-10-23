@@ -5,6 +5,9 @@ package top.ribs.scguns.item;
 
 
 import top.ribs.scguns.util.ScEnchants;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.resources.ResourceKey;
+import java.util.Set;
 import net.minecraft.core.Holder;
 import top.ribs.scguns.util.NbtHelper;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -33,6 +36,7 @@ import net.minecraft.world.item.Item.Properties;
 import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
@@ -406,15 +410,44 @@ public class GunItem extends Item implements IColored, IMeta {
 
 
 
+   /**
+    * Whether this gun accepts the given enchantment.
+    *
+    * <p>This has to be a real answer, not a restatement of {@link #isEnchantable}: the anvil asks it through
+    * {@link #isBookEnchantable}, and {@code Item#isBookEnchantable} answers true for everything, which let any
+    * enchantment book in the game - Density and Efficiency included - be applied to a gun. Density is a mace
+    * enchantment and has no business on a firearm. The enchanting table was never the problem: vanilla filters its
+    * offers through each enchantment's own {@code supported_items} tag.</p>
+    *
+    * <p>Addons mix into this method to narrow the list further, so it stays public and instance-level.</p>
+    */
    public boolean supportsEnchantment(ItemStack stack, Holder<Enchantment> enchantment) {
+      ResourceKey<Enchantment> key = enchantment.unwrapKey().orElse(null);
 
+      if (key == null) {
+         return false;
+      }
 
+      // The mod's own enchantments are the point of the gun enchantment system.
+      if (key.location().getNamespace().equals("scguns")) {
+         return true;
+      }
 
-      return this.isEnchantable(stack);
+      if (ALLOWED_GUN_BOOK_ENCHANTMENTS.contains(key)) {
+         return true;
+      }
 
-
-
+      // A mining gun is the one that legitimately behaves like a pickaxe.
+      return stack.is(ModTags.Items.MINING_GUN) && ALLOWED_MINING_GUN_BOOK_ENCHANTMENTS.contains(key);
    }
+
+   /** Vanilla enchantments any gun may take from a book: durability support and nothing else. */
+   private static final Set<ResourceKey<Enchantment>> ALLOWED_GUN_BOOK_ENCHANTMENTS = Set.of(Enchantments.UNBREAKING, Enchantments.MENDING);
+
+   /** Vanilla enchantments a mining gun may take from a book, on top of the ones above. */
+   private static final Set<ResourceKey<Enchantment>> ALLOWED_MINING_GUN_BOOK_ENCHANTMENTS = Set.of(
+      Enchantments.EFFICIENCY, Enchantments.SILK_TOUCH, Enchantments.FORTUNE
+   );
 
 
 
@@ -508,7 +541,26 @@ public class GunItem extends Item implements IColored, IMeta {
       return this.gun;
    }
 
+   /**
+    * Whether an enchanted book may be applied to this gun at an anvil.
+    *
+    * <p>{@code Item#isBookEnchantable} answers true for every item in the game, so deferring to it (which the code
+    * did for every gun that is not a mining gun) accepted any book. Each enchantment in the book now has to pass
+    * {@link #supportsEnchantment}.</p>
+    */
    public boolean isBookEnchantable(ItemStack stack, ItemStack book) {
-      return stack.is(ModTags.Items.MINING_GUN) ? true : super.isBookEnchantable(stack, book);
+      ItemEnchantments stored = book.get(DataComponents.STORED_ENCHANTMENTS);
+
+      if (stored == null || stored.isEmpty()) {
+         return false;
+      }
+
+      for (Holder<Enchantment> enchantment : stored.keySet()) {
+         if (!this.supportsEnchantment(stack, enchantment)) {
+            return false;
+         }
+      }
+
+      return true;
    }
 }
