@@ -5,6 +5,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.PathfinderMob;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.util.LandRandomPos;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
@@ -101,6 +102,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private int seeTime;
    /** Ticks left before the guard tries a blocked shot again; stops the per-tick shuffle. */
    private int blockedTicks;
+   /** True while this goal owns the crouch pose, so it never leaves a guard crouched. */
+   private boolean posedCrouch;
    private int timeUntilShoot;
    private boolean retreating;
    private boolean reloading;
@@ -165,6 +168,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       this.reloading = false;
       this.reloadTick = 0;
       this.guard.getNavigation().stop();
+      this.updateAimPose(false);
       if (this.guard.isUsingItem()) {
          this.guard.stopUsingItem();
       }
@@ -206,6 +210,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
          return;
       }
 
+      this.updateAimPose(canSee && distanceSqr <= this.fireRangeSqr);
       this.position(target, distanceSqr, canSee);
       this.tryToFire(target, heldItem, gun, distanceSqr, canSee);
    }
@@ -264,6 +269,38 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
          this.timeUntilShoot = MobGunFire.fireInterval(heldItem, gun);
       } else {
          this.timeUntilShoot = AIM_GATE;
+      }
+   }
+
+   /**
+    * Crouches while the guard is lining up a shot, and only while this goal is the thing that posed it.
+    *
+    * <p>Guards have no gun-holding animation: applying the player's arm pose to a mob leaves the hands doing one
+    * thing and the body another, which looked worse than no animation at all (tested). The crouch, though, is a
+    * pose the vanilla model already knows how to draw, so a guard that is aiming reads as aiming without touching
+    * a single animation curve. The hitbox is unchanged - {@code getDimensions} only shrinks for players.</p>
+    */
+   private void updateAimPose(boolean aiming) {
+      boolean wanted = aiming
+         && ((Boolean)top.ribs.scguns.Config.COMMON.compat.guardGunCrouchWhenShooting.get()).booleanValue()
+         && !this.guard.isInWater()
+         && !this.guard.isPassenger()
+         && !this.guard.isSleeping();
+
+      if (wanted) {
+         if (this.guard.getPose() != Pose.CROUCHING) {
+            this.guard.setPose(Pose.CROUCHING);
+         }
+
+         this.posedCrouch = true;
+         return;
+      }
+
+      if (this.posedCrouch) {
+         this.posedCrouch = false;
+         if (this.guard.getPose() == Pose.CROUCHING) {
+            this.guard.setPose(Pose.STANDING);
+         }
       }
    }
 

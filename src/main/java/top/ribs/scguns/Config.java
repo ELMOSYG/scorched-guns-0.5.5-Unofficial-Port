@@ -178,6 +178,7 @@ public class Config {
       public final BooleanValue guardGunsFromConfig;
       public final BooleanValue guardFriendlyFire;
       public final DoubleValue guardFriendlyFireCheckValue;
+      public final BooleanValue guardGunCrouchWhenShooting;
 
       public Compat(Builder builder) {
          builder.comment("Options for the optional mod integrations").push("compat");
@@ -253,6 +254,16 @@ public class Config {
                 }
             )
             .defineInRange("guard_friendly_fire_check_value", 0.9, 0.0, 0.9999);
+            // Guards have no gun-holding animation of their own (a player arm pose on a mob reads as detached
+            // hands), but the vanilla crouch pose is driven by the model and costs nothing, so it is what makes a
+            // guard look like it is aiming rather than standing around holding a rifle.
+            this.guardGunCrouchWhenShooting = builder.comment(
+                new String[]{
+                   "Whether a guard crouches while it is lining up and firing a gun.",
+                   "Purely visual: the pose comes from the vanilla model and does not change speed or hitbox."
+                }
+            )
+            .define("guard_gun_crouch_when_shooting", true);
          builder.pop();
       }
    }
