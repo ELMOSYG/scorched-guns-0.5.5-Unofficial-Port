@@ -20,6 +20,7 @@ import top.ribs.scguns.entity.ai.GunAttackGoal;
 import top.ribs.scguns.entity.ai.MobGunFire;
 import top.ribs.scguns.init.ModSounds;
 import top.ribs.scguns.item.GunItem;
+import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.NbtHelper;
 import net.minecraft.sounds.SoundSource;
 
@@ -91,8 +92,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private static final int AIM_GATE = 5;
    /** How long a guard waits after finding an ally in its line of fire before trying again. */
    private static final int BLOCKED_RETRY_TICKS = 10;
-   /** Floor on a reload, so a gun whose data says zero ticks still pauses visibly. */
-   private static final int MIN_RELOAD_TICKS = 10;
+   /** Anti-zero floor only: the gun supplies the real duration, this just stops a 0-tick reload existing. */
+   private static final int MIN_RELOAD_TICKS = 4;
 
    private final T guard;
    private final float accuracyModifier;
@@ -390,7 +391,19 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private void reload(Gun gun) {
       if (!this.reloading) {
          this.reloading = true;
-         this.reloadTick = Math.max(gun.getReloads().getReloadTimer(), MIN_RELOAD_TICKS);
+         // The gun's own reload time, exactly as a player would experience it: getRealReloadSpeed picks the
+         // magazine path or the per-round path from the reload type, applies Quick Hands and the attachments that
+         // change reload speed, and floors the result the same way. Using the raw reloadTimer ignored all of that.
+         int reloadTicks;
+
+         try {
+            reloadTicks = GunEnchantmentHelper.getRealReloadSpeed(this.guard.getMainHandItem());
+         } catch (Throwable broken) {
+            // An addon gun with incomplete data: fall back to its raw timer rather than not reloading at all.
+            reloadTicks = gun.getReloads().getReloadTimer();
+         }
+
+         this.reloadTick = Math.max(reloadTicks, MIN_RELOAD_TICKS);
          this.guard
             .level()
             .playSound(
