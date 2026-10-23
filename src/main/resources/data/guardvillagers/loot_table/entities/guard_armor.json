@@ -1,0 +1,100 @@
+{
+  "type": "guardvillagers:slot",
+  "pools": [
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:loot_table",
+          "value": "guardvillagers:entities/armor_sets/armor"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:iron_sword",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:crossbow",
+          "weight": 8
+        },
+        {
+          "type": "minecraft:item",
+          "name": "scguns:longarm",
+          "weight": 3
+        },
+        {
+          "type": "minecraft:item",
+          "name": "scguns:musket",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "scguns:saketini",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "scguns:winnie_millend",
+          "weight": 2
+        },
+        {
+          "type": "minecraft:item",
+          "name": "scguns:pax",
+          "weight": 1
+        }
+      ],
+      "functions": [
+        {
+          "function": "guardvillagers:slot",
+          "slot": "mainhand"
+        }
+      ]
+    },
+    {
+      "rolls": 1,
+      "entries": [
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:bread",
+          "functions": [
+            {
+              "function": "minecraft:set_count",
+              "count": {
+                "min": 1,
+                "max": 8
+              }
+            }
+          ],
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.1
+            }
+          ]
+        },
+        {
+          "type": "minecraft:item",
+          "name": "minecraft:shield",
+          "conditions": [
+            {
+              "condition": "minecraft:random_chance",
+              "chance": 0.5
+            }
+          ]
+        }
+      ],
+      "functions": [
+        {
+          "function": "guardvillagers:slot",
+          "slot": "offhand"
+        }
+      ]
+    }
+  ]
+}
