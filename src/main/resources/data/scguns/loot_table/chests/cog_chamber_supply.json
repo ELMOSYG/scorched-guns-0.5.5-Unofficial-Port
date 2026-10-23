@@ -207,7 +207,7 @@
             },
             {
               "function": "minecraft:enchant_randomly",
-              "options": "#scguns:gun_random_loot"
+              "options": "#minecraft:on_random_loot"
             }
           ],
           "name": "scguns:treated_brass_helmet",
@@ -267,7 +267,7 @@
             },
             {
               "function": "minecraft:enchant_randomly",
-              "options": "#scguns:gun_random_loot"
+              "options": "#minecraft:on_random_loot"
             }
           ],
           "name": "scguns:treated_brass_boots",
@@ -285,7 +285,7 @@
             },
             {
               "function": "minecraft:enchant_randomly",
-              "options": "#scguns:gun_random_loot"
+              "options": "#minecraft:on_random_loot"
             }
           ],
           "name": "scguns:treated_brass_chestplate",
@@ -303,7 +303,7 @@
             },
             {
               "function": "minecraft:enchant_randomly",
-              "options": "#scguns:gun_random_loot"
+              "options": "#minecraft:on_random_loot"
             }
           ],
           "name": "scguns:treated_brass_leggings",

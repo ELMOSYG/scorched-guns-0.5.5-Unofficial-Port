@@ -207,7 +207,7 @@
             },
             {
               "function": "minecraft:enchant_randomly",
-              "options": "#scguns:gun_random_loot"
+              "options": "#minecraft:on_random_loot"
             }
           ],
           "name": "minecraft:iron_leggings",
@@ -225,7 +225,7 @@
             },
             {
               "function": "minecraft:enchant_randomly",
-              "options": "#scguns:gun_random_loot"
+              "options": "#minecraft:on_random_loot"
             }
           ],
           "name": "scguns:anthralite_helmet",
@@ -243,7 +243,7 @@
             },
             {
               "function": "minecraft:enchant_randomly",
-              "options": "#scguns:gun_random_loot"
+              "options": "#minecraft:on_random_loot"
             }
           ],
           "name": "scguns:anthralite_leggings",
