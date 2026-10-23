@@ -119,6 +119,14 @@ public class GunnerMobSpawner {
             }
          }
 
+         // A guard's equipment arrives with its loot table, which can land on the same tick or a tick after the
+         // entity joins the level. Re-check the first two seconds so a gun the loot table handed out still gets
+         // its AI whatever the ordering was.
+         if (mob.tickCount <= 40 && mob.tickCount % 5 == 0 && GuardVillagersCompat.isGuard(mob)
+            && mob.getMainHandItem().getItem() instanceof GunItem && !hasGunAttackGoal(mob)) {
+            reassessWeaponGoal(mob);
+         }
+
          if (mob.tickCount < 2) {
             ItemStack heldItem = mob.getMainHandItem();
             if (GunMobValues.enabled) {
@@ -308,7 +316,8 @@ public class GunnerMobSpawner {
                // needs, because goals are not saved with the entity. It keeps its own follow range either
                // way.
                resetFollowRange(mob);
-            } else if (!GuardVillagersCompat.equipGuardGun(mob)) {
+            } else if (!((Boolean)top.ribs.scguns.Config.COMMON.compat.guardGunsFromConfig.get()).booleanValue()
+               || !GuardVillagersCompat.equipGuardGun(mob)) {
                // Guard Villagers compat (HANDOFF section 82): a guard spawns holding a sword or a
                // crossbow like any other guard, and is equipped from this config's
                // "guardvillagers:guard" entry instead. Every other mob falls through to the reset.

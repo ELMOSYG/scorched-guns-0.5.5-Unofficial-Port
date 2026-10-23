@@ -175,6 +175,7 @@ public class Config {
       public final BooleanValue guardGunsReplaceExistingWeapons;
       public final DoubleValue guardGunMoveSpeed;
       public final DoubleValue guardGunMaxRange;
+      public final BooleanValue guardGunsFromConfig;
 
       public Compat(Builder builder) {
          builder.comment("Options for the optional mod integrations").push("compat");
@@ -222,6 +223,17 @@ public class Config {
                 }
             )
             .defineInRange("guard_gun_max_range", 20.0, 4.0, 64.0);
+            // Armour now comes from data (this mod overrides guardvillagers:entities/guard_armor and puts a gun
+            // in the mainhand pool). Also arming from code meant two systems filled the same slot and the guard
+            // visibly swapped weapons right after spawning, so the code path is off by default.
+            this.guardGunsFromConfig = builder.comment(
+                new String[]{
+                   "If true, guards are also armed from the guardvillagers:guard entry in the mob config,",
+                   "in addition to the gun that this mod places in Guard Villagers' equipment loot table.",
+                   "Leave it false: two systems filling the same hand makes a guard swap weapons on spawn."
+                }
+            )
+            .define("guard_guns_from_config", false);
          builder.pop();
       }
    }
