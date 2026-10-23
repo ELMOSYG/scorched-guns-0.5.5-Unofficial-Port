@@ -4,6 +4,7 @@ import java.util.EnumSet;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.PathfinderMob;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.goal.Goal;
@@ -95,6 +96,13 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    /** Anti-zero floor only: the gun supplies the real duration, this just stops a 0-tick reload existing. */
    private static final int MIN_RELOAD_TICKS = 4;
 
+   // The reload lives on the entity, not in this goal object. A goal is thrown away and rebuilt whenever the guard
+   // re-acquires a target or the weapon is reassessed, and start() used to zero the timer - so a guard whose reload
+   // takes longer than the gap between rebuilds never finished reloading at all.
+   private static final String TAG_RELOADING = "ScgunsGuardReloading";
+   private static final String TAG_RELOAD_TICKS = "ScgunsGuardReloadTicks";
+   private static final String TAG_SHOTS = "ScgunsGuardShots";
+
    private final T guard;
    private final float accuracyModifier;
    private final double attackRadiusSqr;
@@ -161,8 +169,11 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       this.seeTime = 0;
       this.blockedTicks = 0;
       this.timeUntilShoot = this.aimTicks;
-      this.reloading = false;
-      this.reloadTick = 0;
+      // Adopt any reload that was already in progress rather than restarting it from zero.
+      CompoundTag data = this.guard.getPersistentData();
+      this.reloading = data.getBoolean(TAG_RELOADING);
+      this.reloadTick = data.getInt(TAG_RELOAD_TICKS);
+      this.shotsSinceReload = data.getInt(TAG_SHOTS);
    }
 
    @Override
@@ -286,6 +297,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
 
       if (MobGunFire.fire(this.guard, target, heldItem, this.accuracyModifier)) {
          this.shotsSinceReload++;
+         this.guard.getPersistentData().putInt(TAG_SHOTS, this.shotsSinceReload);
          this.timeUntilShoot = MobGunFire.fireInterval(heldItem, gun);
       } else {
          this.timeUntilShoot = AIM_GATE;
@@ -414,6 +426,9 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
          }
 
          this.reloadTick = Math.max(reloadTicks, MIN_RELOAD_TICKS);
+         CompoundTag persist = this.guard.getPersistentData();
+         persist.putBoolean(TAG_RELOADING, true);
+         persist.putInt(TAG_RELOAD_TICKS, this.reloadTick);
          this.guard
             .level()
             .playSound(
@@ -432,11 +447,16 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       if (this.reloadTick > 0) {
          this.guard.getNavigation().stop();
          this.reloadTick--;
+         this.guard.getPersistentData().putInt(TAG_RELOAD_TICKS, this.reloadTick);
          return;
       }
 
       NbtHelper.getOrCreateTag(this.guard.getMainHandItem()).putInt("AmmoCount", gun.getReloads().getMaxAmmo());
       this.shotsSinceReload = 0;
+      CompoundTag done = this.guard.getPersistentData();
+      done.putBoolean(TAG_RELOADING, false);
+      done.putInt(TAG_RELOAD_TICKS, 0);
+      done.putInt(TAG_SHOTS, 0);
       this.guard
          .level()
          .playSound(
