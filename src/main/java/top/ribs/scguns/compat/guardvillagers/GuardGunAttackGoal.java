@@ -91,6 +91,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private static final int AIM_GATE = 5;
    /** How long a guard waits after finding an ally in its line of fire before trying again. */
    private static final int BLOCKED_RETRY_TICKS = 10;
+   /** Floor on a reload, so a gun whose data says zero ticks still pauses visibly. */
+   private static final int MIN_RELOAD_TICKS = 10;
 
    private final T guard;
    private final float accuracyModifier;
@@ -104,6 +106,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private int blockedTicks;
    /** True while this goal owns the crouch pose, so it never leaves a guard crouched. */
    private boolean posedCrouch;
+   /** Shots fired since the last reload. Drives the magazine directly instead of trusting the gun's NBT. */
+   private int shotsSinceReload;
    private int timeUntilShoot;
    private boolean retreating;
    private boolean reloading;
@@ -205,11 +209,12 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       this.seeTime += canSee ? 1 : -1;
       this.guard.getLookControl().setLookAt(target, 30.0F, 30.0F);
 
-      if (this.isMagazineEmpty(heldItem)) {
-         // Pose first: the reload branch returns early, so an update after it would never run.
-         this.reloading = true;
-         this.updateAimPose(false);
+      if (this.isMagazineEmpty(heldItem, gun)) {
+         // Do NOT set `reloading` here: reload() does that itself, and setting it first made the method skip the
+         // branch that initialises reloadTick, so reloadTick stayed 0 and the magazine refilled on the very next
+         // tick - a zero-tick reload, which read as a guard that never stops firing.
          this.reload(gun);
+         this.updateAimPose(false);
          return;
       }
 
@@ -269,6 +274,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       }
 
       if (MobGunFire.fire(this.guard, target, heldItem, this.accuracyModifier)) {
+         this.shotsSinceReload++;
          this.timeUntilShoot = MobGunFire.fireInterval(heldItem, gun);
       } else {
          this.timeUntilShoot = AIM_GATE;
@@ -357,8 +363,18 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       this.timeUntilShoot = Math.max(this.timeUntilShoot, 10);
    }
 
-   private boolean isMagazineEmpty(ItemStack heldItem) {
-      return GunAttackGoal.getAmmoCount(heldItem) <= 0;
+   /**
+    * Whether the magazine is spent.
+    *
+    * <p>This counts shots instead of trusting {@code AmmoCount} on the stack. A gun handed out by an equipment loot
+    * table - which is how a guard gets its gun now - carries no custom data at all, so the stack reported zero
+    * rounds, and any write to it could be lost depending on which copy the mob's hand held. Counting here makes the
+    * cycle deterministic: fire {@code maxAmmo} shots, reload, repeat. The stack is still topped up on reload so a
+    * player who takes the gun sees a sensible magazine.</p>
+    */
+   private boolean isMagazineEmpty(ItemStack heldItem, Gun gun) {
+      int capacity = Math.max(1, gun.getReloads().getMaxAmmo());
+      return this.shotsSinceReload >= capacity || GunAttackGoal.getAmmoCount(heldItem) < 0;
    }
 
    /** Guard Villagers' own pace for this action, scaled by the config multiplier (HANDOFF section 82.19). */
@@ -374,7 +390,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private void reload(Gun gun) {
       if (!this.reloading) {
          this.reloading = true;
-         this.reloadTick = gun.getReloads().getReloadTimer();
+         this.reloadTick = Math.max(gun.getReloads().getReloadTimer(), MIN_RELOAD_TICKS);
          this.guard
             .level()
             .playSound(
@@ -397,6 +413,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       }
 
       NbtHelper.getOrCreateTag(this.guard.getMainHandItem()).putInt("AmmoCount", gun.getReloads().getMaxAmmo());
+      this.shotsSinceReload = 0;
       this.guard
          .level()
          .playSound(
