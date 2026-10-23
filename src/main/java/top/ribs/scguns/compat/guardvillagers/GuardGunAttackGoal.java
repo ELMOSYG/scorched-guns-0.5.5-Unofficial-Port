@@ -105,6 +105,12 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private static final String TAG_RELOADING = "ScgunsGuardReloading";
    private static final String TAG_RELOAD_TICKS = "ScgunsGuardReloadTicks";
    private static final String TAG_SHOTS = "ScgunsGuardShots";
+   // Reload state written by an older build cannot be trusted: a save can carry Reloading=true with a timer
+   // nothing ever decrements, or a timer from before the value meant what it means now, and the guard then stands
+   // there reloading forever. Stamping the format lets a guard in an existing world discard the stale state and
+   // start clean instead of having to be killed.
+   private static final String TAG_RELOAD_STAMP = "ScgunsGuardReloadVersion";
+   private static final int RELOAD_STATE_VERSION = 2;
 
    private final T guard;
    private final float accuracyModifier;
@@ -172,11 +178,23 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       this.seeTime = 0;
       this.blockedTicks = 0;
       this.timeUntilShoot = this.aimTicks;
-      // Adopt any reload that was already in progress rather than restarting it from zero.
+      // Adopt any reload that was already in progress rather than restarting it from zero - unless the state was
+      // written by an older build, in which case it is dropped and a stamp records the format that is now in use.
       CompoundTag data = this.guard.getPersistentData();
-      this.reloading = data.getBoolean(TAG_RELOADING);
-      this.reloadTick = Mth.clamp(data.getInt(TAG_RELOAD_TICKS), 0, MAX_RELOAD_TICKS);
-      this.shotsSinceReload = Math.max(0, data.getInt(TAG_SHOTS));
+
+      if (data.getInt(TAG_RELOAD_STAMP) != RELOAD_STATE_VERSION) {
+         this.reloading = false;
+         this.reloadTick = 0;
+         this.shotsSinceReload = 0;
+         data.putBoolean(TAG_RELOADING, false);
+         data.putInt(TAG_RELOAD_TICKS, 0);
+         data.putInt(TAG_SHOTS, 0);
+         data.putInt(TAG_RELOAD_STAMP, RELOAD_STATE_VERSION);
+      } else {
+         this.reloading = data.getBoolean(TAG_RELOADING);
+         this.reloadTick = Mth.clamp(data.getInt(TAG_RELOAD_TICKS), 0, MAX_RELOAD_TICKS);
+         this.shotsSinceReload = Math.max(0, data.getInt(TAG_SHOTS));
+      }
    }
 
    @Override
@@ -449,6 +467,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
          CompoundTag persist = this.guard.getPersistentData();
          persist.putBoolean(TAG_RELOADING, true);
          persist.putInt(TAG_RELOAD_TICKS, this.reloadTick);
+         persist.putInt(TAG_RELOAD_STAMP, RELOAD_STATE_VERSION);
          this.guard
             .level()
             .playSound(
