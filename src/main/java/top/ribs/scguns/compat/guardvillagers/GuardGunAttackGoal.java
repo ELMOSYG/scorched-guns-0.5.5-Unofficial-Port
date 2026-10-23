@@ -16,6 +16,7 @@ import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
 import top.ribs.scguns.Config;
 import top.ribs.scguns.common.Gun;
+import top.ribs.scguns.common.ReloadType;
 import top.ribs.scguns.entity.ai.AIType;
 import top.ribs.scguns.entity.ai.GunAttackGoal;
 import top.ribs.scguns.entity.ai.MobGunFire;
@@ -95,6 +96,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private static final int BLOCKED_RETRY_TICKS = 10;
    /** Anti-zero floor only: the gun supplies the real duration, this just stops a 0-tick reload existing. */
    private static final int MIN_RELOAD_TICKS = 4;
+   /** Upper bound on a persisted reload timer, so a stale tag can never wedge the goal. */
+   private static final int MAX_RELOAD_TICKS = 600;
 
    // The reload lives on the entity, not in this goal object. A goal is thrown away and rebuilt whenever the guard
    // re-acquires a target or the weapon is reassessed, and start() used to zero the timer - so a guard whose reload
@@ -172,8 +175,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       // Adopt any reload that was already in progress rather than restarting it from zero.
       CompoundTag data = this.guard.getPersistentData();
       this.reloading = data.getBoolean(TAG_RELOADING);
-      this.reloadTick = data.getInt(TAG_RELOAD_TICKS);
-      this.shotsSinceReload = data.getInt(TAG_SHOTS);
+      this.reloadTick = Mth.clamp(data.getInt(TAG_RELOAD_TICKS), 0, MAX_RELOAD_TICKS);
+      this.shotsSinceReload = Math.max(0, data.getInt(TAG_SHOTS));
    }
 
    @Override
@@ -396,8 +399,25 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
     * player who takes the gun sees a sensible magazine.</p>
     */
    private boolean isMagazineEmpty(ItemStack heldItem, Gun gun) {
-      int capacity = Math.max(1, gun.getReloads().getMaxAmmo());
-      return this.shotsSinceReload >= capacity || GunAttackGoal.getAmmoCount(heldItem) < 0;
+      return this.shotsSinceReload >= this.magazineCapacity(gun);
+   }
+
+   /**
+    * How many shots the gun holds before it has to be reloaded.
+    *
+    * <p>Read from the reload type, not just {@code maxAmmo}. A single-item gun loads one round and fires one round,
+    * so its capacity is one no matter what the data says; a magazine-fed or manual gun uses {@code maxAmmo}, and a
+    * zero or missing value is treated as one instead of producing a gun that reloads forever without ever
+    * finishing.</p>
+    */
+   private int magazineCapacity(Gun gun) {
+      var reloads = gun.getReloads();
+
+      if (reloads.getReloadType() == ReloadType.SINGLE_ITEM) {
+         return 1;
+      }
+
+      return Math.max(1, reloads.getMaxAmmo());
    }
 
    /** Guard Villagers' own pace for this action, scaled by the config multiplier (HANDOFF section 82.19). */
