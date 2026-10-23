@@ -81,8 +81,11 @@ def main() -> int:
     if "MINING_GUN" not in gun:
         problems.append("GunItem no longer knows about the mining gun tag at all, so isBookEnchantable's "
                         "special case for it is gone too")
-    elif not re.search(r"MINING_GUN\s*\)\s*\?\s*true", gun):
-        problems.append("GunItem.isBookEnchantable no longer lets a mining gun take any book")
+    elif re.search(r"MINING_GUN\s*\)\s*\?\s*true", gun):
+        problems.append("GunItem.isBookEnchantable hands a mining gun any book again - that is how Density and "
+                        "Efficiency reached guns")
+    elif "ALLOWED_GUN_BOOK_ENCHANTMENTS" not in gun or "ALLOWED_MINING_GUN_BOOK_ENCHANTMENTS" not in gun:
+        problems.append("GunItem no longer checks a book's enchantments against its allow-lists")
 
     for problem in problems:
         print("BROKEN %s" % problem)
