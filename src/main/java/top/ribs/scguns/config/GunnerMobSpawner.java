@@ -32,6 +32,7 @@ import top.ribs.scguns.entity.player.GunTier;
 import top.ribs.scguns.entity.player.PlayerGunProgression;
 import top.ribs.scguns.init.ModTags;
 import top.ribs.scguns.compat.guardvillagers.GuardGunAttackGoal;
+import top.ribs.scguns.compat.guardvillagers.GuardRetaliateGoal;
 import top.ribs.scguns.compat.guardvillagers.GuardVillagersCompat;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.util.GunCurseUtil;
@@ -198,6 +199,11 @@ public class GunnerMobSpawner {
             // never visibly reloaded.
             if (GuardVillagersCompat.isGuard(mob)) {
                mob.goalSelector.addGoal(2, new GuardGunAttackGoal<>(mob, modifiedGun, aiLevel, GuardVillagersCompat.accuracy()));
+         // Guards were seen ignoring whoever shot them. A dedicated target selector makes retaliation explicit
+         // instead of relying on Guard Villagers' own hurt-by goal, which did not fire for armed guards.
+         if (mob.targetSelector.getAvailableGoals().stream().noneMatch(goal -> goal.getGoal() instanceof GuardRetaliateGoal)) {
+            mob.targetSelector.addGoal(1, new GuardRetaliateGoal(mob));
+         }
             } else {
                mob.goalSelector.addGoal(2, new GunAttackGoal<>(mob, modifiedGun, 1.2F, aiType, aiLevel));
             }
