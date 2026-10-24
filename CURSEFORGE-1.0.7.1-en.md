@@ -44,6 +44,11 @@ inflated outer one, and it always used the vanilla head proxy as the model - so 
 with an armour texture on it. Both are fixed; the layer now asks the item for its client extension and falls back to the
 vanilla model only when there is no such extension.
 
+**Armed guards move faster by default.** `guard_gun_move_speed` now defaults to 1.5 instead of 1.0. The multiplier
+feeds into the guard's base pace (0.6 when closing in, 0.65 when backing off, matching Guard Villagers' own rhythm);
+at 1.0 a gunner took noticeably longer than a melee guard to reach an enemy. The range is unchanged, so anyone who
+preferred the old pace can set it back to 1.0.
+
 ---
 
 ## Notes

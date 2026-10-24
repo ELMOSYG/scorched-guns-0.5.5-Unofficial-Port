@@ -215,7 +215,7 @@ public class Config {
                   "lower it if armed guards look like they are sprinting past unarmed ones."
                }
             )
-            .defineInRange("guard_gun_move_speed", 1.0, 0.25, 2.0);
+            .defineInRange("guard_gun_move_speed", 1.5, 0.25, 2.0);
             // Positioning and firing are separate decisions: a guard used to shoot the moment anything came
             // into view, while still walking towards it, which made a rifle guard open fire from across the
             // village. Shots are now gated on this distance (and never further than the gun's own ideal range).
