@@ -192,7 +192,15 @@ public class GunnerMobSpawner {
 
          if (!mob.level().isClientSide && !hasGunAttackGoal(mob)) {
             ItemStack modifiedGun = createModifiedGun(mob, gun);
-            mob.goalSelector.addGoal(2, new GunAttackGoal<>(mob, modifiedGun, 1.2F, aiType, aiLevel));
+            // A guard gets the guard goal, not the raider one: reloading, firing range, the friendly-fire test and the
+            // aiming pose all live in GuardGunAttackGoal, and the raider goal reads its magazine from the gun's NBT -
+            // which a gun handed out by an equipment loot table does not carry, so it refilled instantly and the guard
+            // never visibly reloaded.
+            if (GuardVillagersCompat.isGuard(mob)) {
+               mob.goalSelector.addGoal(2, new GuardGunAttackGoal<>(mob, modifiedGun, aiLevel, GuardVillagersCompat.accuracy()));
+            } else {
+               mob.goalSelector.addGoal(2, new GunAttackGoal<>(mob, modifiedGun, 1.2F, aiType, aiLevel));
+            }
             mob.addTag("GunAttackAssigned");
          }
 
