@@ -270,7 +270,7 @@ public class CogKnightEntity extends Monster {
    /** Upper bound on the raw charge damage, applied before the difficulty multiplier and armour. */
    /** Wind-up ticks before the charge moves: the window in which it can be dodged. */
    private static final int CHARGE_WIND_UP_TICKS = 8;
-   private static final float CHARGE_DAMAGE_CAP = 11.0F;
+   private static final float CHARGE_DAMAGE_CAP = 18.0F;
 
    public class ChargeAttackGoal extends Goal {
       private final CogKnightEntity mob;
@@ -377,7 +377,10 @@ public class CogKnightEntity extends Monster {
       private void performChargeAttack() {
          if (this.target != null) {
             this.hasHitThisCharge = true;
-            float chargeDamage = Math.min((float)this.mob.getAttributeValue(Attributes.ATTACK_DAMAGE) * 1.5F, CHARGE_DAMAGE_CAP);   // capped: with a weapon and the difficulty multiplier the burst was too large
+            float difficultyScale = this.mob.level().getDifficulty() == net.minecraft.world.Difficulty.HARD ? 1.5F : 1.0F;
+            // CHARGE_DAMAGE_CAP is the ceiling the player sees, and the difficulty multiplier is applied later,
+            // so divide by it here to keep the final number at the cap on every difficulty.
+            float chargeDamage = Math.min((float)this.mob.getAttributeValue(Attributes.ATTACK_DAMAGE) * 1.5F, CHARGE_DAMAGE_CAP / difficultyScale);   
             this.target.hurt(this.mob.damageSources().mobAttack(this.mob), chargeDamage);
             double knockbackStrength = 1.0;
             double dx = this.target.getX() - this.mob.getX();
