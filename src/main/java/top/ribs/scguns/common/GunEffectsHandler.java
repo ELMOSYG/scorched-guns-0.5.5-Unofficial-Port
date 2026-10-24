@@ -165,7 +165,22 @@ public class GunEffectsHandler {
          return true;
       }
 
-      return entity instanceof TamableAnimal tamable && tamable.isOwnedBy(player);
+      if (entity instanceof TamableAnimal tamable && tamable.isOwnedBy(player)) {
+         return true;
+      }
+
+      // Not every summon uses OwnableEntity. Iron's Spells' creatures implement their own IMagicSummon interface and
+      // expose the owner as getSummoner(), so the two checks above miss them: a gunshot still marked the summon as
+      // hostile and its GenericHurtByTargetGoal / GenericOwnerHurtByTargetGoal locked onto the player. Called
+      // reflectively because this mod must still load without Iron's Spells installed.
+      try {
+         Object summoner = entity.getClass().getMethod("getSummoner").invoke(entity);
+         return summoner == player;
+      } catch (NoSuchMethodException absent) {
+         return false;
+      } catch (ReflectiveOperationException broken) {
+         return false;
+      }
    }
 
    private static boolean isTamedMob(LivingEntity entity) {
