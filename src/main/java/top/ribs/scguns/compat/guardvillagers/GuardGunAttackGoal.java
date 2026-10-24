@@ -110,7 +110,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    // there reloading forever. Stamping the format lets a guard in an existing world discard the stale state and
    // start clean instead of having to be killed.
    private static final String TAG_RELOAD_STAMP = "ScgunsGuardReloadVersion";
-   private static final int RELOAD_STATE_VERSION = 2;
+   private static final int RELOAD_STATE_VERSION = 3;
 
    private final T guard;
    private final float accuracyModifier;
@@ -417,6 +417,14 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
     * player who takes the gun sees a sensible magazine.</p>
     */
    private boolean isMagazineEmpty(ItemStack heldItem, Gun gun) {
+      // Either signal means the magazine is spent. The stack is authoritative when it carries an ammo count, and a
+      // gun handed out by an equipment loot table carries none at all - which reads as zero rounds, so it has to
+      // count as empty or the guard would stand there with an empty gun that never reloads: the fire path refuses
+      // to shoot with no ammo, and this test said the magazine was fine.
+      if (GunAttackGoal.getAmmoCount(heldItem) <= 0) {
+         return true;
+      }
+
       return this.shotsSinceReload >= this.magazineCapacity(gun);
    }
 
