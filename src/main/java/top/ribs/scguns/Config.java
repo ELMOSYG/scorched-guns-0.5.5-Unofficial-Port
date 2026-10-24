@@ -264,11 +264,12 @@ public class Config {
             this.guardGunCrouchWhenShooting = builder.comment(
                 new String[]{
                    "Whether a guard crouches while lining up and firing a gun.",
-                   "Off by default: the crouch pose lowers a humanoid's arms, which points the gun at the floor.",
+                   "On by default: in play the crouched guard reads clearly as aiming, provided no arm compensation is",
+                   "applied - adding one tilted the barrel into the floor, and inverting it aimed at the sky.",
                    "Purely visual; it does not change speed or hitbox."
                 }
             )
-            .define("guard_gun_crouch_when_shooting", false);
+            .define("guard_gun_crouch_when_shooting", true);
             this.guardGunCrouchWhenReloading = builder.comment(
                 new String[]{
                    "Whether a guard crouches while it reloads a gun.",
