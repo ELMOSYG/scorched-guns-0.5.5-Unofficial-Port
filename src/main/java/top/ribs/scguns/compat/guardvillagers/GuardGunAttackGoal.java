@@ -118,6 +118,11 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
    private final float accuracyModifier;
    private final double attackRadiusSqr;
    /** Where the guard stops firing and walks closer instead; capped by the config. */
+   /** How many monsters near a candidate position make it unacceptable. */
+   private static final int CROWD_LIMIT = 3;
+   /** Score penalty per monster around a candidate, so emptier spots win ties. */
+   private static final double CROWD_PENALTY = 20.0;
+
    private final double fireRangeSqr;
    private final int aimTicks;
 
@@ -418,8 +423,17 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
             continue;
          }
 
+         // A position can clear every earlier test and still sit in the middle of a pack, which is how a guard ended
+         // up walking into a group of monsters and being beaten down. Crowded spots are rejected outright and the
+         // survivors are penalised by how crowded they are.
+         int crowd = this.crowdAt(candidate);
+
+         if (crowd >= CROWD_LIMIT) {
+            continue;
+         }
+
          // Prefer the position closest to the gun's own ideal distance rather than the closest to the target.
-         double score = Math.abs(distanceSqr - this.attackRadiusSqr);
+         double score = Math.abs(distanceSqr - this.attackRadiusSqr) + crowd * CROWD_PENALTY;
          if (score < bestScore) {
             bestScore = score;
             best = candidate;
@@ -644,5 +658,20 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
 
       this.lastRetaliateStamp = stamp;
       this.guard.setTarget(attacker);
+   }
+
+   /**
+    * Counts monsters standing within four blocks of a position.
+    *
+    * <p>A guard that keeps its distance from its target but stands inside a pack is still going to be surrounded, so
+    * range alone is not enough when picking a firing position.</p>
+    */
+   private int crowdAt(Vec3 position) {
+      return this.guard.level().getEntitiesOfClass(
+         net.minecraft.world.entity.LivingEntity.class,
+         new net.minecraft.world.phys.AABB(position.x - 4.0, position.y - 3.0, position.z - 4.0,
+                                          position.x + 4.0, position.y + 3.0, position.z + 4.0),
+         entity -> entity != this.guard && entity.isAlive() && entity instanceof net.minecraft.world.entity.monster.Monster
+      ).size();
    }
 }
