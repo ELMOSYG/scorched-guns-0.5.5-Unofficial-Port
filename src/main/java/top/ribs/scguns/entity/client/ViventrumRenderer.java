@@ -50,6 +50,7 @@ public class ViventrumRenderer extends MobRenderer<ViventrumEntity, ViventrumMod
    private static class ViventrumHelmetLayer extends RenderLayer<ViventrumEntity, ViventrumModel<ViventrumEntity>> {
       private final ItemInHandRenderer itemInHandRenderer;
       private final HumanoidModel<ViventrumEntity> helmetModel;
+      private final HumanoidModel<ViventrumEntity> helmetOuterModel;
       private final HumanoidModel<ViventrumEntity> geoArmorProxy;
 
       public ViventrumHelmetLayer(
@@ -58,6 +59,7 @@ public class ViventrumRenderer extends MobRenderer<ViventrumEntity, ViventrumMod
          super(renderer);
          this.itemInHandRenderer = itemInHandRenderer;
          this.helmetModel = new HumanoidModel(modelSet.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR));
+         this.helmetOuterModel = new HumanoidModel(modelSet.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR));
          this.geoArmorProxy = new HumanoidModel(modelSet.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR));
       }
 
@@ -151,6 +153,18 @@ public class ViventrumRenderer extends MobRenderer<ViventrumEntity, ViventrumMod
          this.helmetModel.head.visible = true;
          ResourceLocation texture = this.getArmorTexture(helmetStack);
          RenderType renderType = RenderType.armorCutoutNoCull(texture);
+         // Vanilla helmets are two models: the inner shell and the inflated outer one. The outer one is the shell
+         // players actually recognise, so drawing only the inner model leaves the helmet looking hollow.
+         this.helmetOuterModel.head.copyFrom(this.helmetModel.head);
+         this.helmetOuterModel.hat.copyFrom(this.helmetModel.hat);
+         this.helmetOuterModel.head.visible = true;
+         this.helmetOuterModel.hat.visible = true;
+         this.helmetOuterModel.body.visible = false;
+         this.helmetOuterModel.rightArm.visible = false;
+         this.helmetOuterModel.leftArm.visible = false;
+         this.helmetOuterModel.rightLeg.visible = false;
+         this.helmetOuterModel.leftLeg.visible = false;
+         this.helmetOuterModel.head.render(poseStack, buffer.getBuffer(RenderType.armorCutoutNoCull(texture)), packedLight, OverlayTexture.NO_OVERLAY);
          VertexConsumer vertexConsumer = buffer.getBuffer(renderType);
          this.helmetModel.head.render(poseStack, vertexConsumer, packedLight, OverlayTexture.NO_OVERLAY);
          this.helmetModel.body.visible = true;
