@@ -46,7 +46,18 @@ GitHub issue #4：打死枪手会看到好几乎叠在一起的枪。
 而 `setItemSlot` 会把旧枪丢到地上；区块重载、袭击重新评估、守卫 AI 复查都会再次触发。
 现在只在手上没有枪时才写入，同时保住枪的磨损与附魔。
 
-## 六、文档
+## 六、使用手册是空白，而且打不开
+
+支援小鬼包与维文特鲁姆包会附带一本怪物指南，那本书**没有文字、也翻不开**。
+
+原因：书的标题/作者/页面在 1.20.1 是物品 NBT 上的 `title`/`author`/`pages` 标签，移植版照旧那样写，
+而 1.21.1 把成书内容搬进了 `WRITTEN_BOOK_CONTENT` 数据组件——没有组件就是一本空白书；
+另外 `resolved` 必须为真，为假时客户端认为书还在编辑中，会直接拒绝打开。
+
+修法：改用 `WrittenBookContent` 组件（标题 `Filterable<String>`、页面 `List<Filterable<Component>>`、`resolved = true`）。
+顺带修好两个开包物品，它们共用同一个 helper。
+
+## 七、文档
 
 新增 `docs/sable-aeronautics.md`：Sable / Create: Aeronautics 的兼容约定
 （世界坐标直接使用、方块内偏移过 `PhysicsToWorld` 变换）、支持矩阵与一张 8 条的进游戏验证清单。

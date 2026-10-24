@@ -30,6 +30,11 @@ which use their own owner interface.
 on the ground. A mob that was re-armed a few times left several guns behind. The main hand is now only written when it
 is empty.
 
+**The monster guidebook has pages and opens again.** The book a supply scamp or viventrum package hands out had
+no text and refused to open: its contents were still written as the 1.20 tags (`title`, `author`, `pages`) while
+1.21 reads a `WRITTEN_BOOK_CONTENT` component - and a book that is not marked resolved is treated as still being edited
+and will not open at all. Both package items are fixed, since they share the same helper.
+
 ---
 
 ## Notes
