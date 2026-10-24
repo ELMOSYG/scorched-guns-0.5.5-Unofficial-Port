@@ -274,6 +274,8 @@ public class CogKnightEntity extends Monster {
       private final int chargeCooldown;
       private int cooldownTicks;
       private int chargeTicks;
+      /** Cleared when a charge starts and set on the first hit, so one charge lands once. */
+      private boolean hasHitThisCharge;
       private LivingEntity target;
       private boolean isCharging;
 
@@ -311,6 +313,7 @@ public class CogKnightEntity extends Monster {
       public void start() {
          this.isCharging = true;
          this.chargeTicks = 20;
+      this.hasHitThisCharge = false;
          this.mob.setCharging(true);
          this.mob.level().broadcastEntityEvent(this.mob, (byte)4);
       }
@@ -328,7 +331,7 @@ public class CogKnightEntity extends Monster {
                   dx = dx / distance * this.speedModifier;
                   dz = dz / distance * this.speedModifier;
                   this.mob.setDeltaMovement(dx, this.mob.getDeltaMovement().y, dz);
-                  if (this.mob.distanceToSqr(this.target) <= 2.0) {
+                  if (!this.hasHitThisCharge && this.mob.distanceToSqr(this.target) <= 2.0) {
                      this.performChargeAttack();
                   }
                }
@@ -342,10 +345,12 @@ public class CogKnightEntity extends Monster {
          this.cooldownTicks = this.chargeCooldown;
          this.target = null;
          this.chargeTicks = 0;
+      this.hasHitThisCharge = false;
       }
 
       private void performChargeAttack() {
          if (this.target != null) {
+            this.hasHitThisCharge = true;
             float chargeDamage = (float)this.mob.getAttributeValue(Attributes.ATTACK_DAMAGE) * 1.5F;
             this.target.hurt(this.mob.damageSources().mobAttack(this.mob), chargeDamage);
             double knockbackStrength = 1.0;
