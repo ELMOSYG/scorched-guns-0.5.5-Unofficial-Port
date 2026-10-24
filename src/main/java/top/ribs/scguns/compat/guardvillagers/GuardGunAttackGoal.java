@@ -123,6 +123,9 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
 
    private int seeTime;
    /** Ticks left before the guard tries a blocked shot again; stops the per-tick shuffle. */
+   /** Timestamp of the last attack this guard reacted to, so one hit does not re-target every tick. */
+   private int lastRetaliateStamp;
+
    private int blockedTicks;
    /** True while this goal owns the crouch pose, so it never leaves a guard crouched. */
    private boolean posedCrouch;
@@ -220,6 +223,8 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
 
    @Override
    public void tick() {
+      this.retaliateAgainstAttacker();
+
       LivingEntity target = this.guard.getTarget();
       if (target == null) {
          return;
@@ -606,5 +611,38 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
             1.0F
          );
       this.reloading = false;
+   }
+
+   /**
+    * Turns the guard on whoever just hit it.
+    *
+    * <p>A separate target-selector goal only ever ran once, because the goal selector keeps a single goal per flag
+    * active - Guard Villagers' own target goals then took the flag back. Doing the check here instead runs every tick
+    * the goal is active, which is what a guard that is being shot at needs.</p>
+    */
+   private void retaliateAgainstAttacker() {
+      net.minecraft.world.entity.LivingEntity attacker = this.guard.getLastHurtByMob();
+
+      if (attacker == null || attacker == this.guard || !attacker.isAlive()) {
+         return;
+      }
+
+      int stamp = this.guard.getLastHurtByMobTimestamp();
+
+      if (stamp == this.lastRetaliateStamp) {
+         return;
+      }
+
+      if (attacker instanceof net.minecraft.world.entity.player.Player player
+         && (player.isCreative() || player.isSpectator())) {
+         return;
+      }
+
+      if (GuardVillagersCompat.isFriendlyShot(this.guard, attacker)) {
+         return;
+      }
+
+      this.lastRetaliateStamp = stamp;
+      this.guard.setTarget(attacker);
    }
 }
