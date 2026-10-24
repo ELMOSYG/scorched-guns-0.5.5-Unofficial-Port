@@ -268,6 +268,8 @@ public class CogKnightEntity extends Monster {
    }
 
    /** Upper bound on the raw charge damage, applied before the difficulty multiplier and armour. */
+   /** Wind-up ticks before the charge moves: the window in which it can be dodged. */
+   private static final int CHARGE_WIND_UP_TICKS = 8;
    private static final float CHARGE_DAMAGE_CAP = 11.0F;
 
    public class ChargeAttackGoal extends Goal {
@@ -277,6 +279,11 @@ public class CogKnightEntity extends Monster {
       private final int chargeCooldown;
       private int cooldownTicks;
       private int chargeTicks;
+      /** Ticks left in the wind-up before the charge actually moves the knight. */
+      private int windUpTicks;
+      /** Direction captured when the charge starts; the knight no longer re-aims while charging. */
+      private double chargeDirX;
+      private double chargeDirZ;
       /** Cleared when a charge starts and set on the first hit, so one charge lands once. */
       private boolean hasHitThisCharge;
       private LivingEntity target;
@@ -316,6 +323,20 @@ public class CogKnightEntity extends Monster {
       public void start() {
          this.isCharging = true;
          this.chargeTicks = 20;
+         this.windUpTicks = CHARGE_WIND_UP_TICKS;
+
+         // Capture the direction once. Re-aiming every tick made the charge impossible to sidestep, which is what
+         // players were complaining about: the only counter-play was to out-run a 0.8-block-per-tick homing dash.
+         double dirX = this.target.getX() - this.mob.getX();
+         double dirZ = this.target.getZ() - this.mob.getZ();
+         double len = Math.sqrt(dirX * dirX + dirZ * dirZ);
+         if (len > 0.01) {
+            this.chargeDirX = dirX / len;
+            this.chargeDirZ = dirZ / len;
+         } else {
+            this.chargeDirX = 0.0;
+            this.chargeDirZ = 0.0;
+         }
       this.hasHitThisCharge = false;
          this.mob.setCharging(true);
          this.mob.level().broadcastEntityEvent(this.mob, (byte)4);
@@ -325,18 +346,20 @@ public class CogKnightEntity extends Monster {
          if (this.target != null) {
             this.mob.getLookControl().setLookAt(this.target, 30.0F, 30.0F);
             if (this.chargeTicks > 0) {
+               if (this.windUpTicks > 0) {
+                  // Telegraph: stand still and face the target so the player can read the charge and step aside.
+                  this.windUpTicks--;
+                  this.mob.getLookControl().setLookAt(this.target, 30.0F, 30.0F);
+                  this.mob.setDeltaMovement(0.0, this.mob.getDeltaMovement().y, 0.0);
+                  return;
+               }
+
                this.chargeTicks--;
-               double dx = this.target.getX() - this.mob.getX();
-               double dy = this.target.getY() - this.mob.getY();
-               double dz = this.target.getZ() - this.mob.getZ();
-               double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-               if (distance > 0.1) {
-                  dx = dx / distance * this.speedModifier;
-                  dz = dz / distance * this.speedModifier;
-                  this.mob.setDeltaMovement(dx, this.mob.getDeltaMovement().y, dz);
-                  if (!this.hasHitThisCharge && this.mob.distanceToSqr(this.target) <= 2.0) {
-                     this.performChargeAttack();
-                  }
+               this.mob.setDeltaMovement(
+                  this.chargeDirX * this.speedModifier, this.mob.getDeltaMovement().y, this.chargeDirZ * this.speedModifier);
+
+               if (!this.hasHitThisCharge && this.mob.distanceToSqr(this.target) <= 2.0) {
+                  this.performChargeAttack();
                }
             }
          }
