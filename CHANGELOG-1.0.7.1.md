@@ -57,7 +57,27 @@ GitHub issue #4：打死枪手会看到好几乎叠在一起的枪。
 修法：改用 `WrittenBookContent` 组件（标题 `Filterable<String>`、页面 `List<Filterable<Component>>`、`resolved = true`）。
 顺带修好两个开包物品，它们共用同一个 helper。
 
-## 七、文档
+## 七、护甲相关的两个问题
+
+### 下界合金防毒面具与边疆帽可以堆叠 64 个
+
+这两个物品注册时漏了 `stacksTo(1)`（其它护甲都通过 `ModArmorMaterials.durability(...)` 间接设了上限），
+于是 `Item.Properties` 的默认值 64 生效——一件护甲能堆在物品栏里。
+
+修法：补 `stacksTo(1)`；并把 `ModItems` 里所有 `ArmorItem` 注册行全量复查了一遍，现在没有遗漏。
+
+### 生物戴上护甲只有内层，而且看起来是个方块
+
+COG 小兵与 Viventrum 的护甲由自己的 `RenderLayer` 手动画，这里有两个问题叠在一起：
+
+- **只画了内层**：原版头盔是内层 + 外层两个模型（外层是略膨胀的帽檐，玩家看到的主要是它）。只画内层会显得头盔是空心的。
+- **模型永远取默认代理**：`getArmorModel(...)` 无条件返回原版 `HumanoidModel` 代理，所以即使是 GeckoLib 护甲，
+  画出来的也是"贴着护甲纹理的一个方块"。
+
+修法：补上外层模型；`getArmorModel` 改为先向物品索取 `IClientItemExtensions`，拿到真正的 Geo 装甲模型再用，
+取不到才回退到原版代理（与原版做法一致）。原版头盔、南瓜头等路径不受影响。
+
+## 八、文档
 
 新增 `docs/sable-aeronautics.md`：Sable / Create: Aeronautics 的兼容约定
 （世界坐标直接使用、方块内偏移过 `PhysicsToWorld` 变换）、支持矩阵与一张 8 条的进游戏验证清单。

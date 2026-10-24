@@ -35,6 +35,15 @@ no text and refused to open: its contents were still written as the 1.20 tags (`
 1.21 reads a `WRITTEN_BOOK_CONTENT` component - and a book that is not marked resolved is treated as still being edited
 and will not open at all. Both package items are fixed, since they share the same helper.
 
+**The netherite respirator and the ridgetop hat no longer stack to 64.** Both were registered without a stack
+limit, unlike every other armour piece in the mod, so the default of 64 applied and armour could pile up in a slot.
+
+**Armour on mobs shows its real model.** The cog minion and the viventrum draw armour through their own render layer,
+and that layer had two problems: it only drew the inner helmet model, where vanilla helmets are an inner shell plus an
+inflated outer one, and it always used the vanilla head proxy as the model - so even GeckoLib armour came out as a cube
+with an armour texture on it. Both are fixed; the layer now asks the item for its client extension and falls back to the
+vanilla model only when there is no such extension.
+
 ---
 
 ## Notes
