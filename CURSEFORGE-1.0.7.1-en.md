@@ -49,6 +49,18 @@ feeds into the guard's base pace (0.6 when closing in, 0.65 when backing off, ma
 at 1.0 a gunner took noticeably longer than a melee guard to reach an enemy. The range is unchanged, so anyone who
 preferred the old pace can set it back to 1.0.
 
+**Armed guards fight back when something hits them.** Guard Villagers registers its own retaliation goal, but it
+never fired on armed guards: the goal selector keeps a single goal per flag, and ours already held the target flag. The
+first attempt made it a separate goal, which is why the guard only ever retaliated once. The check now lives inside the
+gun goal's tick, so it runs every tick the guard is fighting. The same hit only re-targets once (tracked by timestamp),
+and friendly fire, creative players and spectators are ignored.
+
+**Guards no longer walk into a pack while keeping their distance.** Picking a firing position checked range, terrain
+and allies in the line of fire - but not whether the spot itself was surrounded. A spot could pass every check and still
+sit in the middle of a group. Positions with three or more monsters within four blocks are now rejected, and the rest
+are scored with a per-monster penalty so open ground wins. If no sample is clear, the guard keeps shooting from where it
+is instead of standing still.
+
 ---
 
 ## Notes
