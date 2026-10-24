@@ -268,8 +268,14 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
          this.retreating = false;
 
          if (distanceSqr > this.fireRangeSqr) {
-            // Shield up is a reason to hold position, not a reason to stand still while the target is out of
-            // range. A guard facing a ranged enemy with its shield raised used to freeze here and never close in.
+            // Out of range: lower the shield and close in. A raised shield halves the approach for no benefit when
+            // the target cannot be shot yet, and a guard that kept it up used to simply stand there. Guard
+            // Villagers' own RaiseShieldGoal puts it back up by itself once this branch stops firing - which is
+            // exactly when the guard is back inside its firing range.
+            if (this.guard.isUsingItem()) {
+               this.guard.stopUsingItem();
+            }
+
             this.guard.getNavigation().moveTo(target, moveSpeed(APPROACH_SPEED));
          } else {
             this.guard.getNavigation().stop();
