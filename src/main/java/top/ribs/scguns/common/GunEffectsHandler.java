@@ -13,6 +13,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.animal.Animal;
 import net.minecraft.world.entity.animal.horse.AbstractHorse;
@@ -130,7 +131,7 @@ public class GunEffectsHandler {
             applyKnockbackEffect(entity, player);
          }
 
-         if (shouldEntityAggro(entity)) {
+         if (shouldEntityAggro(entity, player)) {
             handleAggroBehavior(entity, player);
          }
       }
@@ -140,8 +141,31 @@ public class GunEffectsHandler {
       return (Boolean)Config.COMMON.fleeingMobs.enabled.get() && FLEEING_ENTITIES.test(entity) && !isTamedMob(entity) && entity.getPassengers().isEmpty();
    }
 
-   private static boolean shouldEntityAggro(LivingEntity entity) {
-      return (Boolean)Config.COMMON.aggroMobs.enabled.get() && HOSTILE_ENTITIES.test(entity);
+   private static boolean shouldEntityAggro(LivingEntity entity, ServerPlayer player) {
+      return (Boolean)Config.COMMON.aggroMobs.enabled.get()
+         && HOSTILE_ENTITIES.test(entity)
+         && !isPlayersAlly(entity, player);
+   }
+
+   /**
+    * Whether this hostile entity belongs to the shooter and must not be turned against them.
+    *
+    * <p>Gunfire deliberately alerts nearby monsters - the aggro setting is the point of that block - but it used to
+    * do so blindly, with {@code setTarget(player)}. A summon that its owner hostile-flagged (Iron's Spells' summons
+    * are {@code Monster} entities) was therefore told to attack the very player who summoned it, and it obeyed. Any
+    * entity that is allied to the player, owned by the player, or a tamed animal belonging to the player is exempt:
+    * a gunshot is not a command to mutiny.</p>
+    */
+   private static boolean isPlayersAlly(LivingEntity entity, ServerPlayer player) {
+      if (entity == player || entity.isAlliedTo(player)) {
+         return true;
+      }
+
+      if (entity instanceof OwnableEntity ownable && ownable.getOwner() == player) {
+         return true;
+      }
+
+      return entity instanceof TamableAnimal tamable && tamable.isOwnedBy(player);
    }
 
    private static boolean isTamedMob(LivingEntity entity) {
@@ -190,7 +214,8 @@ public class GunEffectsHandler {
       for (LivingEntity entity : getOptimizedNearbyEntities(player.level(), player, chainRadius)) {
          if (entity.getType() == mobType && entity instanceof Monster) {
             Monster nearbyMonster = (Monster)entity;
-            if (entity != alertedMob && player.level().random.nextFloat() < chainChance) {
+            if (entity != alertedMob && player.level().random.nextFloat() < chainChance
+               && !isPlayersAlly(nearbyMonster, player)) {
                nearbyMonster.setTarget(player);
             }
          }
