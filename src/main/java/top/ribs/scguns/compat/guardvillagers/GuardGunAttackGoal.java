@@ -266,7 +266,15 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       // the shield is up this goal holds position and keeps shooting: a shield in front is worth staying for.
       if (this.guard.isUsingItem()) {
          this.retreating = false;
-         this.guard.getNavigation().stop();
+
+         if (distanceSqr > this.fireRangeSqr) {
+            // Shield up is a reason to hold position, not a reason to stand still while the target is out of
+            // range. A guard facing a ranged enemy with its shield raised used to freeze here and never close in.
+            this.guard.getNavigation().moveTo(target, moveSpeed(APPROACH_SPEED));
+         } else {
+            this.guard.getNavigation().stop();
+         }
+
          return;
       }
 
