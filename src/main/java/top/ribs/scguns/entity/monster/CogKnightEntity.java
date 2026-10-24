@@ -270,6 +270,8 @@ public class CogKnightEntity extends Monster {
    /** Upper bound on the raw charge damage, applied before the difficulty multiplier and armour. */
    /** Wind-up ticks before the charge moves: the window in which it can be dodged. */
    private static final int CHARGE_WIND_UP_TICKS = 8;
+   /** Ticks of the target's momentum used to lead the charge. */
+   private static final double CHARGE_LEAD_TICKS = 5.0;
    private static final float CHARGE_DAMAGE_CAP = 18.0F;
 
    public class ChargeAttackGoal extends Goal {
@@ -347,10 +349,22 @@ public class CogKnightEntity extends Monster {
             this.mob.getLookControl().setLookAt(this.target, 30.0F, 30.0F);
             if (this.chargeTicks > 0) {
                if (this.windUpTicks > 0) {
-                  // Telegraph: stand still and face the target so the player can read the charge and step aside.
+                  // Telegraph: the knight stands still and keeps tracking, so the player can see the charge coming.
                   this.windUpTicks--;
                   this.mob.getLookControl().setLookAt(this.target, 30.0F, 30.0F);
                   this.mob.setDeltaMovement(0.0, this.mob.getDeltaMovement().y, 0.0);
+
+                  // Keep re-aiming through the wind-up, and lead the target: charging where the player is standing
+                  // made a simple sidestep enough, while a straight dash at a moving player was free damage.
+                  double predictedX = this.target.getX() + this.target.getDeltaMovement().x * CHARGE_LEAD_TICKS;
+                  double predictedZ = this.target.getZ() + this.target.getDeltaMovement().z * CHARGE_LEAD_TICKS;
+                  double dx = predictedX - this.mob.getX();
+                  double dz = predictedZ - this.mob.getZ();
+                  double len = Math.sqrt(dx * dx + dz * dz);
+                  if (len > 0.01) {
+                     this.chargeDirX = dx / len;
+                     this.chargeDirZ = dz / len;
+                  }
                   return;
                }
 
