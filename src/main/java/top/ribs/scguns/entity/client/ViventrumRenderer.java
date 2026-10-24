@@ -19,6 +19,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.ArmorItem;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
@@ -132,9 +133,23 @@ public class ViventrumRenderer extends MobRenderer<ViventrumEntity, ViventrumMod
          target.zScale = source.zScale;
       }
 
+      /**
+       * Ask the item for its client extension first. This used to return the default proxy unconditionally, which is a
+       * plain vanilla head cube - so a GeoLib helmet was drawn as a block with the armour texture on it instead of as
+       * its actual model. That is the "mob helmets look like a cube" report.
+       */
       private HumanoidModel<?> getArmorModel(ViventrumEntity entity, ItemStack stack, EquipmentSlot slot, HumanoidModel<?> defaultModel) {
-         return (HumanoidModel<?>)defaultModel;
+         IClientItemExtensions extensions = IClientItemExtensions.of(stack);
+         if (extensions != null) {
+            HumanoidModel<?> model = extensions.getHumanoidArmorModel(entity, stack, slot, defaultModel);
+            if (model != null) {
+               return model;
+            }
+         }
+
+         return defaultModel;
       }
+
 
       private void renderVanillaHelmet(
          PoseStack poseStack, MultiBufferSource buffer, int packedLight, ViventrumEntity entity, ItemStack helmetStack, ArmorItem armorItem
