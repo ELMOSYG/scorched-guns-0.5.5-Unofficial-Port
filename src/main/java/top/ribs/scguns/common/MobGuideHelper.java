@@ -1,19 +1,25 @@
 package top.ribs.scguns.common;
 
-
-import top.ribs.scguns.util.NbtHelper;
+import java.util.ArrayList;
+import java.util.List;
 import javax.annotation.Nullable;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.Component.Serializer;
+import net.minecraft.server.network.Filterable;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
+import net.minecraft.world.item.component.WrittenBookContent;
 import top.ribs.scguns.config.MobGuideConfig;
 
+/**
+ * Builds the written guidebook a scamp or viventrum package hands out.
+ *
+ * <p>A written book's contents are a {@link DataComponents#WRITTEN_BOOK_CONTENT} component in 1.21, not the
+ * {@code title}/{@code author}/{@code pages} tags 1.20 had. The port kept writing the old tags, so the book arrived
+ * blank and could not be opened at all - a written book whose content component is missing has nothing to show. The
+ * {@code resolved} flag matters too: an unresolved book is treated as still being edited and refuses to open.</p>
+ */
 public class MobGuideHelper {
    public MobGuideHelper() {
       super();
@@ -22,29 +28,32 @@ public class MobGuideHelper {
    @Nullable
    public static ItemStack createGuideBook(EntityType<?> entityType) {
       MobGuideConfig.MobGuide guide = MobGuideConfig.getGuide(entityType);
+
       if (guide == null) {
          return null;
-      } else {
-         ItemStack book = new ItemStack(Items.WRITTEN_BOOK);
-         CompoundTag tag = NbtHelper.getOrCreateTag(book);
-         tag.putString("title", guide.getTitle().getString());
-         String authorKey = guide.titleKey().replace(".title", ".author");
-         Component authorComponent = Component.translatable(authorKey);
-         tag.putString("author", authorComponent.getString());
-         tag.putInt("generation", 0);
-         ListTag pages = new ListTag();
-
-         for (MobGuideConfig.GuidePage page : guide.getPages()) {
-            Component textComponent = page.getTextComponent();
-            // Guide pages are always plain translatable components and this helper has no level in
-            // scope, so an empty lookup provider gives exactly the 1.20.1 provider-less JSON.
-            String jsonText = Serializer.toJson(textComponent, RegistryAccess.EMPTY);
-            pages.add(StringTag.valueOf(jsonText));
-         }
-
-         tag.put("pages", pages);
-         tag.putBoolean("resolved", false);
-         return book;
       }
+
+      String authorKey = guide.titleKey().replace(".title", ".author");
+      Component author = Component.translatable(authorKey);
+
+      List<Filterable<Component>> pages = new ArrayList<>();
+
+      for (MobGuideConfig.GuidePage page : guide.getPages()) {
+         pages.add(Filterable.passThrough(page.getTextComponent()));
+      }
+
+      ItemStack book = new ItemStack(Items.WRITTEN_BOOK);
+      book.set(
+         DataComponents.WRITTEN_BOOK_CONTENT,
+         new WrittenBookContent(
+            // 1.21.1 takes the title as a Filterable<String> (the component title arrived later).
+            Filterable.passThrough(guide.getTitle().getString()),
+            author.getString(),
+            0,
+            pages,
+            true
+         )
+      );
+      return book;
    }
 }
