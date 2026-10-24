@@ -10,9 +10,11 @@ import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.goal.Goal;
 import net.minecraft.world.entity.ai.util.LandRandomPos;
 import net.minecraft.world.entity.projectile.ProjectileUtil;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import top.ribs.scguns.Config;
 import top.ribs.scguns.common.Gun;
@@ -308,10 +310,12 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
       }
 
       if (this.allyInLineOfFire(target)) {
-         // An ally is in the way: step aside and hold fire for a moment. The cooldown matters - re-testing every
-         // tick made the guard shuffle in place instead of walking to a clear angle, which read as a broken
-         // sidestep.
-         this.stepAside(target);
+         // An ally is in the way: look for a spot with a clear shot before settling for a sidestep. The cooldown
+         // matters - re-testing every tick made the guard shuffle in place instead of walking to a clear angle,
+         // which read as a broken sidestep.
+         if (!this.seekFiringPosition(target)) {
+            this.stepAside(target);
+         }
          this.blockedTicks = BLOCKED_RETRY_TICKS;
          return;
       }
@@ -358,6 +362,77 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
             this.guard.setPose(Pose.STANDING);
          }
       }
+   }
+
+   /**
+    * Walks the guard to a spot it can actually shoot from.
+    *
+    * <p>The reference implementation only decides between standing still, walking at the target and backing off;
+    * recovery from a blocked or obstructed shot is left to a random sidestep. This samples a handful of positions
+    * around the guard and keeps the best one that satisfies all three conditions that matter: inside the gun's
+    * firing range, with a clear line of sight to the target, and with no ally on that new line of fire.</p>
+    *
+    * @return whether navigation was sent to a new position
+    */
+   private boolean seekFiringPosition(LivingEntity target) {
+      Vec3 best = null;
+      double bestScore = Double.MAX_VALUE;
+
+      for (int attempt = 0; attempt < 8; attempt++) {
+         Vec3 candidate = LandRandomPos.getPos(this.guard, 8, 4);
+
+         if (candidate == null) {
+            continue;
+         }
+
+         double distanceSqr = candidate.distanceToSqr(target.position());
+         if (distanceSqr < RETREAT_RANGE_SQR || distanceSqr > this.fireRangeSqr) {
+            continue;
+         }
+
+         Vec3 from = new Vec3(candidate.x, candidate.y + this.guard.getEyeHeight(), candidate.z);
+         if (!this.clearsTerrain(from, target)) {
+            continue;
+         }
+
+         if (this.allyBlocks(from, target)) {
+            continue;
+         }
+
+         // Prefer the position closest to the gun's own ideal distance rather than the closest to the target.
+         double score = Math.abs(distanceSqr - this.attackRadiusSqr);
+         if (score < bestScore) {
+            bestScore = score;
+            best = candidate;
+         }
+      }
+
+      if (best == null) {
+         return false;
+      }
+
+      return this.guard.getNavigation().moveTo(best.x, best.y, best.z, moveSpeed(APPROACH_SPEED));
+   }
+
+   /** Whether a shot from {@code from} reaches the target without a block in the way. */
+   private boolean clearsTerrain(Vec3 from, LivingEntity target) {
+      Vec3 to = target.getBoundingBox().getCenter();
+      HitResult hit = this.guard.level().clip(new ClipContext(from, to, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, this.guard));
+      return hit.getType() == HitResult.Type.MISS;
+   }
+
+   /** Whether a shot from {@code from} would pass through an ally before reaching the target. */
+   private boolean allyBlocks(Vec3 from, LivingEntity target) {
+      Vec3 to = target.getBoundingBox().getCenter();
+      EntityHitResult hit = ProjectileUtil.getEntityHitResult(
+         this.guard.level(),
+         this.guard,
+         from,
+         to,
+         new AABB(from, to).inflate(1.0),
+         entity -> entity != this.guard && entity != target && entity instanceof LivingEntity
+      );
+      return hit != null && GuardVillagersCompat.isFriendlyShot(this.guard, hit.getEntity());
    }
 
    /**
