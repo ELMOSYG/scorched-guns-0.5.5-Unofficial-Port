@@ -324,7 +324,7 @@ public class CogKnightEntity extends Monster {
 
       public void start() {
          this.isCharging = true;
-         this.chargeTicks = 16;
+         this.chargeTicks = 12;   // 6 tick wind-up + 6 tick dash
          this.windUpTicks = CHARGE_WIND_UP_TICKS;
 
          // Capture the direction once. Re-aiming every tick made the charge impossible to sidestep, which is what
