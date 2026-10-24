@@ -206,7 +206,9 @@ public class GunnerMobSpawner {
 
          ItemStack modifiedGun = createModifiedGun(mob, gun);
          GunCurseUtil.applyCurseIfRoll(modifiedGun, mob.getRandom());
-         mob.setItemSlot(EquipmentSlot.MAINHAND, modifiedGun);
+                  if (!(mob.getMainHandItem().getItem() instanceof GunItem)) {
+            mob.setItemSlot(EquipmentSlot.MAINHAND, modifiedGun);
+         }
          extendFollowRange(mob);
       }
    }
@@ -302,7 +304,9 @@ public class GunnerMobSpawner {
 
                ItemStack modifiedGun = createModifiedGun(mob, gun);
                GunCurseUtil.applyCurseIfRoll(modifiedGun, mob.getRandom());
-               mob.setItemSlot(EquipmentSlot.MAINHAND, modifiedGun);
+                        if (!(mob.getMainHandItem().getItem() instanceof GunItem)) {
+            mob.setItemSlot(EquipmentSlot.MAINHAND, modifiedGun);
+         }
                extendFollowRange(mob);
             }
          }
@@ -377,7 +381,9 @@ public class GunnerMobSpawner {
 
       ItemStack modifiedGun = createModifiedGun(mob, gun);
       GunCurseUtil.applyCurseIfRoll(modifiedGun, mob.getRandom());
-      mob.setItemSlot(EquipmentSlot.MAINHAND, modifiedGun);
+               if (!(mob.getMainHandItem().getItem() instanceof GunItem)) {
+            mob.setItemSlot(EquipmentSlot.MAINHAND, modifiedGun);
+         }
       mob.setDropChance(EquipmentSlot.MAINHAND, gunnerData.weaponDropChance());
       if (!hasGunAttackGoal(mob)) {
          // The mod's own gunner AI, not a guard-specific one (HANDOFF section 82.9): guards fight at the
