@@ -189,7 +189,7 @@ public class CogKnightEntity extends Monster {
    }
 
    protected void registerGoals() {
-      this.goalSelector.addGoal(1, new CogKnightEntity.ChargeAttackGoal(this, 0.8, 12.0, 80));
+      this.goalSelector.addGoal(1, new CogKnightEntity.ChargeAttackGoal(this, 1.15, 12.0, 80));
       this.goalSelector.addGoal(2, new MeleeAttackGoal(this, 1.2, false) {
          @Override
          protected void checkAndPerformAttack(LivingEntity pEnemy) {
@@ -269,7 +269,7 @@ public class CogKnightEntity extends Monster {
 
    /** Upper bound on the raw charge damage, applied before the difficulty multiplier and armour. */
    /** Wind-up ticks before the charge moves: the window in which it can be dodged. */
-   private static final int CHARGE_WIND_UP_TICKS = 8;
+   private static final int CHARGE_WIND_UP_TICKS = 6;
    /** Ticks of the target's momentum used to lead the charge. */
    private static final double CHARGE_LEAD_TICKS = 5.0;
    private static final float CHARGE_DAMAGE_CAP = 18.0F;
@@ -324,7 +324,7 @@ public class CogKnightEntity extends Monster {
 
       public void start() {
          this.isCharging = true;
-         this.chargeTicks = 20;
+         this.chargeTicks = 16;
          this.windUpTicks = CHARGE_WIND_UP_TICKS;
 
          // Capture the direction once. Re-aiming every tick made the charge impossible to sidestep, which is what
