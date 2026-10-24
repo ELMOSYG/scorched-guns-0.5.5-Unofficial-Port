@@ -107,7 +107,7 @@ COG 小兵与 Viventrum 的护甲由自己的 `RenderLayer` 手动画，这里�
 
 配置项本身的取值范围不变（0.25 ~ 2.0），想要原来的节奏改回 1.0 即可。
 
-## 九、文档
+## 十一、文档
 
 新增 `docs/sable-aeronautics.md`：Sable / Create: Aeronautics 的兼容约定
 （世界坐标直接使用、方块内偏移过 `PhysicsToWorld` 变换）、支持矩阵与一张 8 条的进游戏验证清单。
