@@ -267,6 +267,9 @@ public class CogKnightEntity extends Monster {
       }
    }
 
+   /** Upper bound on the raw charge damage, applied before the difficulty multiplier and armour. */
+   private static final float CHARGE_DAMAGE_CAP = 11.0F;
+
    public class ChargeAttackGoal extends Goal {
       private final CogKnightEntity mob;
       private final double speedModifier;
@@ -351,7 +354,7 @@ public class CogKnightEntity extends Monster {
       private void performChargeAttack() {
          if (this.target != null) {
             this.hasHitThisCharge = true;
-            float chargeDamage = (float)this.mob.getAttributeValue(Attributes.ATTACK_DAMAGE) * 1.5F;
+            float chargeDamage = Math.min((float)this.mob.getAttributeValue(Attributes.ATTACK_DAMAGE) * 1.5F, CHARGE_DAMAGE_CAP);   // capped: with a weapon and the difficulty multiplier the burst was too large
             this.target.hurt(this.mob.damageSources().mobAttack(this.mob), chargeDamage);
             double knockbackStrength = 1.0;
             double dx = this.target.getX() - this.mob.getX();
