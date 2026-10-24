@@ -61,6 +61,24 @@ sit in the middle of a group. Positions with three or more monsters within four 
 are scored with a per-monster penalty so open ground wins. If no sample is clear, the guard keeps shooting from where it
 is instead of standing still.
 
+**The cog knight's charge is now readable and survivable.** On hard difficulty a charge from a cog knight carrying
+the gear mace took roughly 19 of a player's 20 health through iron armour - close to a one-shot - and it could not be
+avoided: the knight re-aimed every tick and set its velocity straight at the player for the whole 20 ticks, with no
+wind-up.
+
+Four things were fixed:
+
+- A charge could land twice (a 20-tick charge against a 10-tick hurt cooldown, with the hit check running every tick).
+  It now lands once per charge.
+- It could not be dodged. It is now **6 ticks of wind-up + 6 ticks of dash**: the knight stands still, keeps tracking and
+  leads the player's movement by 5 ticks during the wind-up, then commits to that direction and does not turn.
+- The damage was too high. Charge damage is capped at **18 after the difficulty scale**.
+- It dragged on. Dash speed went from 0.8 to **1.15** and the whole move from 20 to **12 ticks** (about 10 blocks).
+
+Dodging now means reading the wind-up and changing direction or stopping: plain strafing gets led and caught, but a
+deliberate turn inside the 0.3-second window clears the charge, and the 4-second cooldown afterwards is a real opening.
+That matters most before the player has a gun - kiting was the only option, and now melee is viable.
+
 ---
 
 ## Notes
