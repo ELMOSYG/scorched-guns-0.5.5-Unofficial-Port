@@ -48,6 +48,8 @@ public class CogMinionRenderer extends MobRenderer<CogMinionEntity, CogMinionMod
       private final ItemInHandRenderer itemInHandRenderer;
       private final HumanoidModel<CogMinionEntity> helmetModel;
       private final HumanoidModel<CogMinionEntity> geoArmorProxy;
+      private final HumanoidModel<CogMinionEntity> helmetOuterModel;
+      private final HumanoidModel<CogMinionEntity> geoArmorOuterProxy;
 
       public CogMinionHelmetLayer(
          MobRenderer<CogMinionEntity, CogMinionModel<CogMinionEntity>> renderer, EntityModelSet modelSet, ItemInHandRenderer itemInHandRenderer
@@ -56,6 +58,8 @@ public class CogMinionRenderer extends MobRenderer<CogMinionEntity, CogMinionMod
          this.itemInHandRenderer = itemInHandRenderer;
          this.helmetModel = new HumanoidModel(modelSet.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR));
          this.geoArmorProxy = new HumanoidModel(modelSet.bakeLayer(ModelLayers.PLAYER_INNER_ARMOR));
+         this.helmetOuterModel = new HumanoidModel(modelSet.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR));
+         this.geoArmorOuterProxy = new HumanoidModel(modelSet.bakeLayer(ModelLayers.PLAYER_OUTER_ARMOR));
       }
 
       public void render(
@@ -148,6 +152,18 @@ public class CogMinionRenderer extends MobRenderer<CogMinionEntity, CogMinionMod
          this.helmetModel.head.visible = true;
          ResourceLocation texture = this.getArmorTexture(helmetStack);
          RenderType renderType = RenderType.armorCutoutNoCull(texture);
+         // A vanilla helmet is two models: the inner shell and a slightly inflated outer one. Drawing only the
+         // inner model is why mod helmets looked like the shell was missing on these mobs.
+         this.helmetOuterModel.head.copyFrom(this.helmetModel.head);
+         this.helmetOuterModel.hat.copyFrom(this.helmetModel.hat);
+         this.helmetOuterModel.head.visible = true;
+         this.helmetOuterModel.hat.visible = true;
+         this.helmetOuterModel.body.visible = false;
+         this.helmetOuterModel.rightArm.visible = false;
+         this.helmetOuterModel.leftArm.visible = false;
+         this.helmetOuterModel.rightLeg.visible = false;
+         this.helmetOuterModel.leftLeg.visible = false;
+         this.helmetOuterModel.head.render(poseStack, buffer.getBuffer(renderType), packedLight, OverlayTexture.NO_OVERLAY);
          VertexConsumer vertexConsumer = buffer.getBuffer(renderType);
          this.helmetModel.head.render(poseStack, vertexConsumer, packedLight, OverlayTexture.NO_OVERLAY);
          this.helmetModel.body.visible = true;
