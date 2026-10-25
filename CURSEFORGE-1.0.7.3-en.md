@@ -19,6 +19,21 @@ gun is invalid, and the game split it into three separate items on pickup. The f
 own rules - unstackable drops are never grown, and stackable ones never exceed their stack limit. A pack that installs the
 enchantment addon still gets the original "raise the level" path.
 
+**Gunfire can knock a shield out of a mob's hands.** Vanilla only has one way to break a shield: a player struck by an
+axe-wielding mob runs `Player#disableShield()`, which puts the shield on a 100-tick cooldown. Nothing does the equivalent
+for a mob holding a shield - `disableShield()` lives on `Player`, and non-players do not even have item cooldowns - so a
+skeleton or a guard with a raised shield blocked everything forever.
+
+The mod's shield handling had the same gap: it bailed out for any non-player. It now works for any living entity. If the
+disable roll succeeds, a player's shield goes on cooldown as before and a mob's shield is knocked to the ground (mobs have
+no cooldowns, and the player can pick it up). If it fails, the hit is still blocked and the shield takes 12 durability,
+exactly as before.
+
+**This is off by default.** Mobs that raise shields - Guard Villagers' guards, skeletons given shields by other mods -
+usually drive that shield with their own logic, so removing it can disturb their AI. The switch is
+`guns_break_mob_shields`, default `false`; packs that need it can turn it on. Even with the option off, blocking still
+wears the shield down, so those shields are not invulnerable.
+
 ---
 
 ## Notes
