@@ -1400,53 +1400,73 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       }
 
       public static boolean handleShieldHit(Entity target, Entity projectile, float damage, float shieldDisableChance) {
-         if (!(target instanceof Player player)) {
+         // Any living entity can hold a shield, not just players. Restricting this to players meant a skeleton or a
+         // Guard Villagers guard with a raised shield blocked every round forever: the disable roll never ran, and
+         // vanilla only drains shield durability for players, so the shield could not break either.
+         if (!(target instanceof net.minecraft.world.entity.LivingEntity living)) {
             return false;
-         } else {
-            ItemStack mainHandItem = player.getMainHandItem();
-            ItemStack offHandItem = player.getOffhandItem();
-            boolean isBlockingMainHand = player.isBlocking() && mainHandItem.getItem() instanceof ShieldItem;
-            boolean isBlockingOffHand = player.isBlocking() && offHandItem.getItem() instanceof ShieldItem;
-            if (!isBlockingMainHand && !isBlockingOffHand) {
-               return false;
+         }
+
+         ItemStack mainHandItem = living.getMainHandItem();
+         ItemStack offHandItem = living.getOffhandItem();
+         boolean isBlockingMainHand = living.isBlocking() && mainHandItem.getItem() instanceof ShieldItem;
+         boolean isBlockingOffHand = living.isBlocking() && offHandItem.getItem() instanceof ShieldItem;
+
+         if (!isBlockingMainHand && !isBlockingOffHand) {
+            return false;
+         }
+
+         ItemStack shield = isBlockingMainHand ? mainHandItem : offHandItem;
+         InteractionHand hand = isBlockingMainHand ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+
+         if (projectile.level().getRandom().nextFloat() < shieldDisableChance) {
+            living.stopUsingItem();
+
+            if (living instanceof Player player) {
+               player.getCooldowns().addCooldown(shield.getItem(), 100);
             } else {
-               ItemStack shield = isBlockingMainHand ? mainHandItem : offHandItem;
-               InteractionHand hand = isBlockingMainHand ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
-               if (projectile.level().getRandom().nextFloat() < shieldDisableChance) {
-                  player.getCooldowns().addCooldown(shield.getItem(), 100);
-                  player.stopUsingItem();
-                  player.level().broadcastEntityEvent(player, (byte)30);
-                  player.level()
-                     .playSound(
-                        null,
-                        player.getX(),
-                        player.getY(),
-                        player.getZ(),
-                        SoundEvents.SHIELD_BREAK,
-                        SoundSource.PLAYERS,
-                        1.0F,
-                        0.8F + player.level().getRandom().nextFloat() * 0.4F
-                     );
-                  return false;
-               } else {
-                  player.hurt(player.damageSources().generic(), 0.5F);
-                  shield.hurtAndBreak(12, player, net.minecraft.world.entity.LivingEntity.getSlotForHand(player.getUsedItemHand()));
-                  player.level()
-                     .playSound(
-                        null,
-                        player.getX(),
-                        player.getY(),
-                        player.getZ(),
-                        SoundEvents.SHIELD_BLOCK,
-                        SoundSource.PLAYERS,
-                        1.0F,
-                        0.8F + player.level().getRandom().nextFloat() * 0.4F
-                     );
-                  return true;
+               // Non-players have no item cooldowns, so the shield is knocked out of their hands instead. The effect
+               // is the same - they cannot keep blocking - and the player can pick the shield up afterwards.
+               living.setItemSlot(net.minecraft.world.entity.EquipmentSlot.MAINHAND,
+                  isBlockingMainHand ? ItemStack.EMPTY : mainHandItem);
+               living.setItemSlot(net.minecraft.world.entity.EquipmentSlot.OFFHAND,
+                  isBlockingMainHand ? offHandItem : ItemStack.EMPTY);
+
+               if (!living.level().isClientSide()) {
+                  living.spawnAtLocation(shield);
                }
             }
+            living.level().broadcastEntityEvent(living, (byte)30);
+            living.level()
+               .playSound(
+                  null,
+                  living.getX(),
+                  living.getY(),
+                  living.getZ(),
+                  SoundEvents.SHIELD_BREAK,
+                  SoundSource.PLAYERS,
+                  1.0F,
+                  0.8F + living.level().getRandom().nextFloat() * 0.4F
+               );
+            return false;
          }
+
+         living.hurt(living.damageSources().generic(), 0.5F);
+         shield.hurtAndBreak(12, living, net.minecraft.world.entity.LivingEntity.getSlotForHand(hand));
+         living.level()
+            .playSound(
+               null,
+               living.getX(),
+               living.getY(),
+               living.getZ(),
+               SoundEvents.SHIELD_BLOCK,
+               SoundSource.PLAYERS,
+               1.0F,
+               0.8F + living.level().getRandom().nextFloat() * 0.4F
+            );
+         return true;
       }
+
 
       public static boolean handleShieldHit(Entity target, Entity projectile, float damage) {
          return handleShieldHit(target, projectile, damage, 0.3F);
