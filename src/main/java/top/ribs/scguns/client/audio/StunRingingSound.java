@@ -29,8 +29,8 @@ public class StunRingingSound extends AbstractTickableSoundInstance {
             this.x = (double)((float)player.getX());
             this.y = (double)((float)player.getY());
             this.z = (double)((float)player.getZ());
-            float percent = Math.min((float)effect.getDuration() / (float)((Integer)Config.SERVER.soundFadeThreshold.get()).intValue(), 1.0F);
-            this.volume = (float)((double)percent * (Double)Config.SERVER.ringVolume.get());
+            float percent = Math.min((float)effect.getDuration() / (float)((Integer)Config.CLIENT.soundFadeThreshold.get()).intValue(), 1.0F);
+            this.volume = (float)((double)percent * (Double)Config.CLIENT.ringVolume.get());
             return;
          }
       }

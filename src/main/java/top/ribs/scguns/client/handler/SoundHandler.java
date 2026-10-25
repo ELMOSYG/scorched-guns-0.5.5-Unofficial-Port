@@ -58,7 +58,7 @@ public class SoundHandler {
       if (Minecraft.getInstance().player != null && this.soundEngine != null) {
          MobEffectInstance effect = Minecraft.getInstance().player.getEffect(ModEffects.DEAFENED);
          if (effect != null || this.isDeafened) {
-            if (!((Double)Config.SERVER.ringVolume.get() > 0.0) || this.ringing != null && Minecraft.getInstance().getSoundManager().isActive(this.ringing)) {
+            if (!((Double)Config.CLIENT.ringVolume.get() > 0.0) || this.ringing != null && Minecraft.getInstance().getSoundManager().isActive(this.ringing)) {
                Map<SoundInstance, ChannelHandle> playingSounds;
                try {
                   playingSounds = (Map<SoundInstance, ChannelHandle>)this.playingSounds.get(this.soundEngine);
@@ -122,8 +122,8 @@ public class SoundHandler {
    }
 
    private float getMutedVolume(float duration, float volumeBase) {
-      float volumeMin = (float)((double)volumeBase * (Double)Config.SERVER.soundPercentage.get());
-      float percent = Math.min(duration / (float)((Integer)Config.SERVER.soundFadeThreshold.get()).intValue(), 1.0F);
+      float volumeMin = (float)((double)volumeBase * (Double)Config.CLIENT.soundPercentage.get());
+      float percent = Math.min(duration / (float)((Integer)Config.CLIENT.soundFadeThreshold.get()).intValue(), 1.0F);
       return volumeMin + (1.0F - percent) * (volumeBase - volumeMin);
    }
 

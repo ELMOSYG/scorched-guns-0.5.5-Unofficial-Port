@@ -115,6 +115,14 @@ public class Config {
       public final BooleanValue hideConfigButton;
       public final EnumValue<ButtonAlignment> buttonAlignment;
 
+      // Player-side feel: audio and screen effects. Moved out of the server config, which used to own them.
+      public final IntValue alphaOverlay;
+      public final IntValue alphaFadeThreshold;
+      public final DoubleValue soundPercentage;
+      public final IntValue soundFadeThreshold;
+      public final DoubleValue ringVolume;
+      public final BooleanValue enableCameraRecoil;
+
       /** Player preference: aim by toggle instead of by holding. Client-side so each player picks their own. */
       public final BooleanValue toggleADS;
 
@@ -134,6 +142,18 @@ public class Config {
                "If true, aiming down sights toggles instead of holding the button.",
                "A player preference, so it lives in the client config instead of the server's.")
             .define("toggleADS", false);
+         this.alphaOverlay = builder.comment("Transparency of the blinded overlay.")
+            .defineInRange("alphaOverlay", 255, 0, 255);
+         this.alphaFadeThreshold = builder.comment("Overlay alpha starts fading at this value.")
+            .defineInRange("alphaFadeThreshold", 40, 0, Integer.MAX_VALUE);
+         this.soundPercentage = builder.comment("Volume multiplier on most sounds while deafened.")
+            .defineInRange("soundPercentage", 0.05, 0.0, 1.0);
+         this.soundFadeThreshold = builder.comment("Ticks after which the ringing fades out and other sounds fade back in.")
+            .defineInRange("soundFadeThreshold", 90, 0, Integer.MAX_VALUE);
+         this.ringVolume = builder.comment("Volume of the ringing sound while deafened.")
+            .defineInRange("ringVolume", 1.0, 0.0, 1.0);
+         this.enableCameraRecoil = builder.comment("If true, firing pushes the camera.")
+            .define("enableCameraRecoil", true);
       }
    }
 
@@ -1070,14 +1090,8 @@ public class Config {
    }
 
    public static class Server {
-      public final IntValue alphaOverlay;
-      public final IntValue alphaFadeThreshold;
-      public final DoubleValue soundPercentage;
-      public final IntValue soundFadeThreshold;
-      public final DoubleValue ringVolume;
       public final DoubleValue gunShotMaxDistance;
       public final DoubleValue reloadMaxDistance;
-      public final BooleanValue enableCameraRecoil;
       public final IntValue cooldownThreshold;
       public final Config.Server.Experimental experimental;
       public final BooleanValue bloodFromAnyDamage;
@@ -1091,20 +1105,6 @@ public class Config {
             "told about it.")
             .define("bloodFromAnyDamage", false);
          builder.comment("Stun Grenade related properties").push("grenade");
-         this.alphaOverlay = builder.comment(
-               "After the duration drops to this many ticks, the transparency of the overlay when blinded will gradually fade to 0 alpha."
-            )
-            .defineInRange("alphaOverlay", 255, 0, 255);
-         this.alphaFadeThreshold = builder.comment("Transparency of the overlay when blinded will be this alpha value, before eventually fading to 0 alpha.")
-            .defineInRange("alphaFadeThreshold", 40, 0, Integer.MAX_VALUE);
-         this.soundPercentage = builder.comment("Volume of most game sounds when deafened will play at this percent, before eventually fading back to %100.")
-            .defineInRange("soundPercentage", 0.05, 0.0, 1.0);
-         this.soundFadeThreshold = builder.comment(
-               "After the duration drops to this many ticks, the ringing volume will gradually fade to 0 and other sound volumes will fade back to %100."
-            )
-            .defineInRange("soundFadeThreshold", 90, 0, Integer.MAX_VALUE);
-         this.ringVolume = builder.comment("Volume of the ringing sound when deafened will play at this volume, before eventually fading to 0.")
-            .defineInRange("ringVolume", 1.0, 0.0, 1.0);
          builder.pop();
          builder.comment("Audio properties").push("audio");
          this.gunShotMaxDistance = builder.comment("The maximum distance weapons can be heard by players.")
@@ -1112,7 +1112,6 @@ public class Config {
          this.reloadMaxDistance = builder.comment("The maximum distance reloading can be heard by players.")
             .defineInRange("reloadMaxDistance", 24.0, 0.0, Double.MAX_VALUE);
          builder.pop();
-         this.enableCameraRecoil = builder.comment("If true, enables camera recoil when firing a weapon").define("enableCameraRecoil", true);
          this.cooldownThreshold = builder.comment(
                "The maximum amount of cooldown time remaining before the server will accept another shoot packet from a client. This allows for a litle slack since the server may be lagging"
             )

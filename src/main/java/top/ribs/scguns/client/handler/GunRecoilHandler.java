@@ -40,14 +40,14 @@ public class GunRecoilHandler {
 
    @SubscribeEvent
    public void preShoot(GunFireEvent.Pre event) {
-      if (event.isClient() && (Boolean)Config.SERVER.enableCameraRecoil.get()) {
+      if (event.isClient() && (Boolean)Config.CLIENT.enableCameraRecoil.get()) {
          recoilRand = new Random().nextInt(2);
       }
    }
 
    @SubscribeEvent
    public void onGunFire(GunFireEvent.Post event) {
-      if (event.isClient() && (Boolean)Config.SERVER.enableCameraRecoil.get()) {
+      if (event.isClient() && (Boolean)Config.CLIENT.enableCameraRecoil.get()) {
          ItemStack heldItem = event.getStack();
          GunItem gunItem = (GunItem)heldItem.getItem();
          Gun modifiedGun = gunItem.getModifiedGun(heldItem);
@@ -73,7 +73,7 @@ public class GunRecoilHandler {
    public void onRenderTick(RenderFrameEvent.Post event) {
       if (!(this.cameraRecoil <= 0.0F)) {
          Minecraft mc = Minecraft.getInstance();
-         if (mc.player != null && (Boolean)Config.SERVER.enableCameraRecoil.get()) {
+         if (mc.player != null && (Boolean)Config.CLIENT.enableCameraRecoil.get()) {
             // 0.5.5 read Minecraft#getDeltaFrameTime() (ticks elapsed this frame);
             // the 1.21 equivalent is DeltaTracker#getGameTimeDeltaTicks(), not the
             // partial tick.

@@ -42,8 +42,8 @@ public class RecoilHandler {
 
    public void updateConfig() {
       try {
-         if (Config.SERVER != null && Config.SERVER.enableCameraRecoil != null) {
-            this.enableRecoil = (Boolean)Config.SERVER.enableCameraRecoil.get();
+         if (Config.SERVER != null && Config.CLIENT.enableCameraRecoil != null) {
+            this.enableRecoil = (Boolean)Config.CLIENT.enableCameraRecoil.get();
          }
       } catch (IllegalStateException var2) {
       }

@@ -51,11 +51,11 @@ public final class BlindnessOverlay {
             return;
         }
 
-        int fadeThreshold = (Integer)Config.SERVER.alphaFadeThreshold.get();
+        int fadeThreshold = (Integer)Config.CLIENT.alphaFadeThreshold.get();
         float percent = fadeThreshold <= 0
             ? 1.0F
             : Math.min((float)effect.getDuration() / (float)fadeThreshold, 1.0F);
-        int alpha = (int)((double)(percent * (float)((Integer)Config.SERVER.alphaOverlay.get()).intValue()) + 0.5);
+        int alpha = (int)((double)(percent * (float)((Integer)Config.CLIENT.alphaOverlay.get()).intValue()) + 0.5);
 
         guiGraphics.fill(0, 0, guiGraphics.guiWidth(), guiGraphics.guiHeight(),
             (alpha << 24) | 0xFFFFFF);
