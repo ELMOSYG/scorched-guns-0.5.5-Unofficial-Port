@@ -143,7 +143,7 @@ public class AimingHandler {
 
             if (!isReloading && !inCriticalPhase) {
                boolean currentKeyPressed = KeyBinds.getAimMapping().isDown();
-               boolean toggleAdsEnabled = (Boolean)Config.COMMON.gameplay.toggleADS.get();
+               boolean toggleAdsEnabled = (Boolean)Config.CLIENT.toggleADS.get();
                if (toggleAdsEnabled) {
                   if (currentKeyPressed && !this.wasKeyPressed) {
                      this.aiming = !this.aiming;

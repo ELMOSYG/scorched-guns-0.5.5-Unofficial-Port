@@ -115,6 +115,9 @@ public class Config {
       public final BooleanValue hideConfigButton;
       public final EnumValue<ButtonAlignment> buttonAlignment;
 
+      /** Player preference: aim by toggle instead of by holding. Client-side so each player picks their own. */
+      public final BooleanValue toggleADS;
+
       public Client(Builder builder) {
          super();
          builder.push("client");
@@ -127,6 +130,10 @@ public class Config {
          this.hideConfigButton = builder.comment("If enabled, hides the config button from the backpack screen").define("hideConfigButton", false);
          this.buttonAlignment = builder.comment("The alignment of the buttons in the backpack inventory screen")
             .defineEnum("buttonAlignment", ButtonAlignment.RIGHT);
+         this.toggleADS = builder.comment(
+               "If true, aiming down sights toggles instead of holding the button.",
+               "A player preference, so it lives in the client config instead of the server's.")
+            .define("toggleADS", false);
       }
    }
 
@@ -578,7 +585,6 @@ public class Config {
       public final DoubleValue ammoBoxCapacityMultiplier;
       public final IntValue energyProductionRate;
       public final BooleanValue drawAnimation;
-      public final BooleanValue toggleADS;
       public final DoubleValue globalDamageMultiplier;
       public final DoubleValue globalTurretDamageMultiplier;
       public final BooleanValue disableVillagerSpawning;
@@ -651,8 +657,7 @@ public class Config {
          this.enemyBulletDamage = builder.comment("Damage dealt by the Enemy Guns").defineInRange("enemyBulletDamage", 4.5, 0.0, Double.MAX_VALUE);
          this.energyProductionRate = builder.comment("Energy produced per tick by the Polar Generator. Adjust this value to balance the generator's output.")
             .defineInRange("energyProductionRate", 50, 1, Integer.MAX_VALUE);
-         this.toggleADS = builder.comment("If true, guns will toggle ADS mode.").define("toggleADS", false);
-         this.globalDamageMultiplier = builder.comment(
+            this.globalDamageMultiplier = builder.comment(
                "Global multiplier for all gun damage. 1.0 = normal damage, 0.5 = half damage, 2.0 = double damage. Affects all projectile damage from guns."
             )
             .defineInRange("globalDamageMultiplier", 1.0, 0.01, 100.0);
