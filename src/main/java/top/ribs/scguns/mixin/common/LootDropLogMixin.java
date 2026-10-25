@@ -28,4 +28,21 @@ public abstract class LootDropLogMixin {
          "[scguns-loot] {} dropped {} x{}", type,
          net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(stack.getItem()), stack.getCount());
    }
+
+   @Inject(method = "die", at = @At("HEAD"))
+   private void scguns$logDie(net.minecraft.world.damagesource.DamageSource source, org.spongepowered.asm.mixin.injection.callback.CallbackInfo ci) {
+      LivingEntity self = (LivingEntity)(Object)this;
+      String type = String.valueOf(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(self.getType()));
+
+      if (!type.contains("guard")) {
+         return;
+      }
+
+      org.slf4j.LoggerFactory.getLogger("scguns-loot").info(
+         "[scguns-loot] {} die() called, source={} direct={}",
+         type,
+         source.typeHolder().unwrapKey().map(k -> k.location().toString()).orElse("?"),
+         source.getDirectEntity() == null ? "null"
+            : String.valueOf(net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(source.getDirectEntity().getType())));
+   }
 }
