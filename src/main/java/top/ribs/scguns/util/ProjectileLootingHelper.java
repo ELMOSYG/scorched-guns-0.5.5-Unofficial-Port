@@ -100,6 +100,13 @@ public final class ProjectileLootingHelper {
       }
 
       for (ItemEntity drop : event.getDrops()) {
+         // Growing a stack past its limit is how a single dropped gun turned into three: guns and shields are
+         // unstackable, so a count of 3 is invalid and the game splits it into three separate items once picked up.
+         // Looting only ever adds to stacks that can actually hold more than one.
+         if (drop.getItem().getMaxStackSize() <= 1) {
+            continue;
+         }
+
          int extra = event.getEntity().getRandom().nextInt(bonus + 1);
          if (extra > 0) {
             drop.getItem().grow(extra);
