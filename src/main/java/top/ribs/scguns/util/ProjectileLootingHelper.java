@@ -4,6 +4,7 @@ import net.minecraft.core.Holder;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.item.ItemEntity;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.storage.loot.LootContext;
@@ -22,6 +23,10 @@ import top.ribs.scguns.entity.projectile.turret.TurretProjectileEntity;
  * <p>Upstream 0.5.5 registered a Forge {@code LootingLevelEvent} handler in each projectile class and simply added
  * a flat looting level ({@code +3} for the Beowulf round, {@code +4} for the Gibbs round and for turret fire).
  * NeoForge 21.1 has no such event, so the port dropped the feature.</p>
+ *
+ * <p>The upstream 0.5.5 behaviour is therefore "raise the looting level by 3 or 4" - the loot tables' own
+ * {@code minecraft:enchanted_count_increase} functions then decide what that means, which is why a gun or a
+ * shield never multiplied: no table attaches that function to them.</p>
  *
  * <p>Two ways to get it back live here:</p>
  * <ul>
@@ -100,16 +105,21 @@ public final class ProjectileLootingHelper {
       }
 
       for (ItemEntity drop : event.getDrops()) {
+         ItemStack stack = drop.getItem();
+         int max = stack.getMaxStackSize();
+
          // Growing a stack past its limit is how a single dropped gun turned into three: guns and shields are
-         // unstackable, so a count of 3 is invalid and the game splits it into three separate items once picked up.
-         // Looting only ever adds to stacks that can actually hold more than one.
-         if (drop.getItem().getMaxStackSize() <= 1) {
+         // unstackable, so a count of 3 is invalid and the game splits it into three separate items on pickup.
+         // Looting only ever adds to stacks that can hold more than one, and never past their limit.
+         if (max <= 1 || stack.getCount() >= max) {
             continue;
          }
 
          int extra = event.getEntity().getRandom().nextInt(bonus + 1);
+         extra = Math.min(extra, max - stack.getCount());
+
          if (extra > 0) {
-            drop.getItem().grow(extra);
+            stack.grow(extra);
          }
       }
    }
