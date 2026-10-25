@@ -1407,6 +1407,14 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
             return false;
          }
 
+         // Mobs that hold shields are usually driven by their own logic (Guard Villagers' RaiseShieldGoal, or whatever
+         // a pack gave them), so knocking the shield away is opt-in: the default is to leave a mob's shield alone even
+         // though the round was blocked.
+         if (!(living instanceof Player)
+            && !((Boolean)top.ribs.scguns.Config.COMMON.compat.gunsBreakMobShields.get()).booleanValue()) {
+            return false;
+         }
+
          ItemStack mainHandItem = living.getMainHandItem();
          ItemStack offHandItem = living.getOffhandItem();
          boolean isBlockingMainHand = living.isBlocking() && mainHandItem.getItem() instanceof ShieldItem;

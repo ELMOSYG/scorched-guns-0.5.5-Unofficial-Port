@@ -173,6 +173,8 @@ public class Config {
    public static class Compat {
       public final DoubleValue guardGunAccuracy;
       public final BooleanValue guardGunsReplaceExistingWeapons;
+      /** Whether a gunshot can disable a shield held by a non-player mob. */
+      public final BooleanValue gunsBreakMobShields;
       public final DoubleValue guardGunMoveSpeed;
       public final DoubleValue guardGunMaxRange;
       public final BooleanValue guardGunsFromConfig;
@@ -208,6 +210,13 @@ public class Config {
          // ports asked for 1.0 - the mob's full attribute speed - so an armed guard crossed the village at
          // nearly twice the pace of the same guard holding a sword. The AI now uses Guard Villagers' own two
          // numbers, and this is the multiplier on top of them for players who want a different pace.
+         this.gunsBreakMobShields = builder.comment(
+               "Allow gunfire to knock a shield out of a non-player mob's hands.",
+               "Mobs that raise shields (Guard Villagers guards, skeletons given shields by other mods) often",
+               "drive that shield with their own logic, so knocking it away can disturb their AI. Left off by",
+               "default; turn it on in packs where mobs holding shields are otherwise unbreakable.")
+            .define("guns_break_mob_shields", false);
+
          this.guardGunMoveSpeed = builder.comment(
                new String[]{
                   "A multiplier on how fast a Guard Villagers guard moves while fighting with a gun.",
