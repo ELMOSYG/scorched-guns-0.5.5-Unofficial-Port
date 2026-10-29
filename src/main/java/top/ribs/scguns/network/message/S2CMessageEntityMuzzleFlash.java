@@ -42,8 +42,14 @@ public class S2CMessageEntityMuzzleFlash {
       return new S2CMessageEntityMuzzleFlash(entityId, randomValue, flashPosition, useEnchantedTexture);
    }
 
+   /** How long a gun's moving parts take to settle after a shot, in ticks. */
+   private static final int RECOIL_TICKS = 10;
+
    public void handle(S2CMessageEntityMuzzleFlash message, MessageContext context) {
       context.execute(() -> {
+         // Reuse the flash broadcast to tell clients which entity just fired: only the local player's own
+         // cooldown can be read directly, so this is how another player's bolt gets to move at all.
+         top.ribs.scguns.client.GunRecoilSync.record(message.entityId, RECOIL_TICKS);
          GunRenderingHandler.get().showMuzzleFlashForPlayer(message.entityId);
          GunRenderingHandler.entityIdToRandomValue.put(message.entityId, message.randomValue);
          GunRenderingHandler.entityIdToFlashPosition.put(message.entityId, message.flashPosition);
