@@ -108,10 +108,11 @@ public class Mk43RifleModel implements IOverrideModel {
       matrixStack.pushPose();
       matrixStack.translate(0.0, -0.3625, 0.0);
       // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
-      ItemCooldowns tracker = Minecraft.getInstance().player != null
+      float cooldown = Minecraft.getInstance().player != null
          ? Minecraft.getInstance().player.getCooldowns()
-         : new ItemCooldowns();
-      float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
+            .getCooldownPercent(stack.getItem(),
+               Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false))
+         : 0.0F;
       cooldown = (float)this.ease((double)cooldown);
       float scale = cooldown > 0.0F ? 1.0F : 0.0F;
       matrixStack.scale(scale, scale, scale);

@@ -107,10 +107,8 @@ public class M3MarksmanModel implements IOverrideModel {
          matrixStack.pushPose();
          matrixStack.translate(0.0, -0.3625, 0.0);
          // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
-      ItemCooldowns tracker = Minecraft.getInstance().player != null
-         ? Minecraft.getInstance().player.getCooldowns()
-         : new ItemCooldowns();
-         float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
+      float cooldown = top.ribs.scguns.client.GunRecoilSync.recoilProgress(
+         entity, stack, Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
          cooldown = (float)this.ease((double)cooldown);
          matrixStack.translate(0.0F, 0.0F, cooldown / 8.0F);
          matrixStack.translate(0.0, 0.3625, 0.0);
