@@ -107,7 +107,10 @@ public class CogloaderModel implements IOverrideModel {
    private void renderBoltAndMagazine(PoseStack matrixStack, MultiBufferSource buffer, ItemStack stack, int light, int overlay) {
       assert Minecraft.getInstance().player != null;
 
-      ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();
+      // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
+         ? Minecraft.getInstance().player.getCooldowns()
+         : new ItemCooldowns();
       float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
       matrixStack.pushPose();
       matrixStack.translate(0.0, -0.3625, 0.0);

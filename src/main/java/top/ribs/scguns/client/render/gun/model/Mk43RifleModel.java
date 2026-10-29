@@ -107,7 +107,10 @@ public class Mk43RifleModel implements IOverrideModel {
    private void renderFlame(PoseStack matrixStack, MultiBufferSource buffer, ItemStack stack, int light, int overlay, boolean isLeft) {
       matrixStack.pushPose();
       matrixStack.translate(0.0, -0.3625, 0.0);
-      ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();
+      // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
+         ? Minecraft.getInstance().player.getCooldowns()
+         : new ItemCooldowns();
       float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
       cooldown = (float)this.ease((double)cooldown);
       float scale = cooldown > 0.0F ? 1.0F : 0.0F;

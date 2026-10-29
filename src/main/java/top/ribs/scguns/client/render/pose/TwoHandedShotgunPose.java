@@ -195,7 +195,10 @@ public class TwoHandedShotgunPose extends WeaponPose {
          boolean slim = Minecraft.getInstance().player.getSkin().model() == PlayerSkin.Model.SLIM;
          float armWidth = slim ? 3.0F : 4.0F;
          poseStack.pushPose();
-         ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();
+         // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
+         ? Minecraft.getInstance().player.getCooldowns()
+         : new ItemCooldowns();
          float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
          cooldown = (float)this.ease((double)cooldown);
          poseStack.translate(0.0F, -cooldown * 0.05F, -cooldown * 0.15F);

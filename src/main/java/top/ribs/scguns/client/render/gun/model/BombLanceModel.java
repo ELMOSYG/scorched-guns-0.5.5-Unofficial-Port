@@ -35,7 +35,10 @@ public class BombLanceModel implements IOverrideModel {
          // which for anyone else is simply zero and leaves the bolt at rest.
          matrixStack.pushPose();
          matrixStack.translate(0.0, -0.3625, 0.0);
-         ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();
+         // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
+         ? Minecraft.getInstance().player.getCooldowns()
+         : new ItemCooldowns();
          float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
          cooldown = (float)this.ease((double)cooldown);
          matrixStack.translate(0.0F, 0.0F, cooldown / 12.0F);

@@ -44,7 +44,10 @@ public class UltraKnightHawkModel implements IOverrideModel {
          // which for anyone else is simply zero and leaves the bolt at rest.
          matrixStack.pushPose();
          matrixStack.translate(0.0, -0.28, 0.36);
-         ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();
+         // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
+         ? Minecraft.getInstance().player.getCooldowns()
+         : new ItemCooldowns();
          float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
          cooldown = (float)this.ease((double)cooldown);
          float rotationAngle = -cooldown * 38.0F;
@@ -59,7 +62,10 @@ public class UltraKnightHawkModel implements IOverrideModel {
    private void renderDrumRotation(PoseStack matrixStack, MultiBufferSource buffer, ItemStack stack, float partialTicks, int light, int overlay) {
       assert Minecraft.getInstance().player != null;
 
-      ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();
+      // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
+         ? Minecraft.getInstance().player.getCooldowns()
+         : new ItemCooldowns();
       float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
       int shotCount = UltraKnightHawkModel.GunFireEventKnightHandler.getShotCount();
       float targetRotation = (float)shotCount * 51.42857F;
