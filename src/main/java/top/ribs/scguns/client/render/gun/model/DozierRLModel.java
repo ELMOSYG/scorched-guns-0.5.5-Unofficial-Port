@@ -71,11 +71,10 @@ public class DozierRLModel implements IOverrideModel {
       assert Minecraft.getInstance().player != null;
 
       // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
-      float cooldown = Minecraft.getInstance().player != null
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
          ? Minecraft.getInstance().player.getCooldowns()
-            .getCooldownPercent(stack.getItem(),
-               Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false))
-         : 0.0F;
+         : new ItemCooldowns();
+      float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
       matrixStack.pushPose();
       matrixStack.translate(0.0, -0.3625, 0.0);
       if (cooldown > 0.0F) {
@@ -101,11 +100,10 @@ public class DozierRLModel implements IOverrideModel {
       matrixStack.pushPose();
       matrixStack.translate(0.0, -0.3625, 0.0);
       // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
-      float cooldown = Minecraft.getInstance().player != null
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
          ? Minecraft.getInstance().player.getCooldowns()
-            .getCooldownPercent(stack.getItem(),
-               Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false))
-         : 0.0F;
+         : new ItemCooldowns();
+      float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
       cooldown = (float)this.ease((double)cooldown);
       float scale = cooldown > 0.0F ? 1.0F : 0.0F;
       matrixStack.scale(scale, scale, scale);

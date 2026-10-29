@@ -45,11 +45,10 @@ public class UltraKnightHawkModel implements IOverrideModel {
          matrixStack.pushPose();
          matrixStack.translate(0.0, -0.28, 0.36);
          // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
-      float cooldown = Minecraft.getInstance().player != null
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
          ? Minecraft.getInstance().player.getCooldowns()
-            .getCooldownPercent(stack.getItem(),
-               Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false))
-         : 0.0F;
+         : new ItemCooldowns();
+         float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
          cooldown = (float)this.ease((double)cooldown);
          float rotationAngle = -cooldown * 38.0F;
          matrixStack.mulPose(Axis.XP.rotationDegrees(rotationAngle));
@@ -64,11 +63,10 @@ public class UltraKnightHawkModel implements IOverrideModel {
       assert Minecraft.getInstance().player != null;
 
       // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
-      float cooldown = Minecraft.getInstance().player != null
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
          ? Minecraft.getInstance().player.getCooldowns()
-            .getCooldownPercent(stack.getItem(),
-               Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false))
-         : 0.0F;
+         : new ItemCooldowns();
+      float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
       int shotCount = UltraKnightHawkModel.GunFireEventKnightHandler.getShotCount();
       float targetRotation = (float)shotCount * 51.42857F;
       this.currentRotation = this.currentRotation + (targetRotation - this.currentRotation) * partialTicks;

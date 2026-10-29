@@ -75,8 +75,10 @@ public class SaketiniModel implements IOverrideModel {
          matrixStack.pushPose();
          matrixStack.translate(0.0, -0.5, 0.5);
          // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
-      float cooldown = top.ribs.scguns.client.GunRecoilSync.recoilProgress(
-         entity, stack, Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
+      ItemCooldowns tracker = Minecraft.getInstance().player != null
+         ? Minecraft.getInstance().player.getCooldowns()
+         : new ItemCooldowns();
+         float cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
          cooldown = (float)this.ease((double)cooldown);
          float rotationAngle = -cooldown * 15.0F;
          matrixStack.mulPose(Axis.XP.rotationDegrees(rotationAngle));
