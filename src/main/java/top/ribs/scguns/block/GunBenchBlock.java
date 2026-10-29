@@ -49,7 +49,7 @@ public class GunBenchBlock extends Block implements EntityBlock {
          // removes the whole failure mode. See tools/audit_menu_extra_data.py.
          // TEMPORARY PROBE (removed before the next round): see MaceratorBlock. This one now always
          // writes the position, so a reproduction should name the opener that still does not.
-         top.ribs.scguns.ScorchedGuns.LOGGER.info("SCGUNS-MENU gun_bench pos={} player={} spectator={}",
+         top.ribs.scguns.ScorchedGuns.LOGGER.debug("SCGUNS-MENU gun_bench pos={} player={} spectator={}",
             pos, player.getGameProfile().getName(), player.isSpectator());
          player.openMenu(state.getMenuProvider(level, pos), buf -> buf.writeBlockPos(pos));
          player.awardStat(Stats.INTERACT_WITH_CRAFTING_TABLE);

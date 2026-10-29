@@ -646,7 +646,7 @@ public class ClientPlayHandler {
             // Opt-in diagnostic (Config bloodDebugLog): what the packet carries and what sits below the
             // hit point, which is what decides whether a burst looks like it starts on the ground.
             if (Config.CLIENT.particle.bloodDebugLog.get()) {
-               top.ribs.scguns.ScorchedGuns.LOGGER.info(
+               top.ribs.scguns.ScorchedGuns.LOGGER.debug(
                   "SCGUNS-BLOOD packet x={} y={} z={} entity={} count={} spread={} speed={} below={}",
                   message.getX(), message.getY(), message.getZ(), entityType, count, spread,
                   Config.CLIENT.particle.bloodParticleSpeed.get(),

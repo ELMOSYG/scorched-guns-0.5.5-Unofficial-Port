@@ -78,7 +78,7 @@ public class MaceratorBlock extends BaseEntityBlock implements SimpleWaterlogged
          // TEMPORARY PROBE (removed before the next round): the player was kicked with "Network protocol
          // error" from a MaceratorMenu built on the client with a null buffer, which means some opener
          // sent no extra data. This says whether this opener ran at all, and for whom.
-         top.ribs.scguns.ScorchedGuns.LOGGER.info("SCGUNS-MENU macerator pos={} player={} spectator={}",
+         top.ribs.scguns.ScorchedGuns.LOGGER.debug("SCGUNS-MENU macerator pos={} player={} spectator={}",
             pos, player.getGameProfile().getName(), player.isSpectator());
          ((ServerPlayer)player).openMenu((MenuProvider)entity, buf -> buf.writeBlockPos(pos));
       }

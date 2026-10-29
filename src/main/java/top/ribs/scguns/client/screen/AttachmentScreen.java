@@ -267,7 +267,7 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentContaine
             // port reads. Only runs while the attachment screen is open.
             if (gunStack.getItem() instanceof top.ribs.scguns.item.GunItem scgunsCritItem) {
                top.ribs.scguns.common.Gun scgunsCritGun = scgunsCritItem.getModifiedGun(gunStack);
-               top.ribs.scguns.ScorchedGuns.LOGGER.info(
+               top.ribs.scguns.ScorchedGuns.LOGGER.debug(
                   "SCGUNS-CRIT item={} helper={} general={} projectile={}",
                   net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(gunStack.getItem()),
                   critChance,
@@ -281,7 +281,7 @@ public class AttachmentScreen extends AbstractContainerScreen<AttachmentContaine
                   ? scgunsCritTag.getCompound("Gun").getCompound("General").getFloat("CriticalChance") : -1.0F;
                float nbtProjectile = hasGunTag && scgunsCritTag.getCompound("Gun").contains("Projectile", 10)
                   ? scgunsCritTag.getCompound("Gun").getCompound("Projectile").getFloat("CriticalChance") : -1.0F;
-               top.ribs.scguns.ScorchedGuns.LOGGER.info(
+               top.ribs.scguns.ScorchedGuns.LOGGER.debug(
                   "SCGUNS-CRIT2 item={} hasGunTag={} nbtGeneral={} nbtProjectile={}",
                   net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(gunStack.getItem()),
                   hasGunTag, nbtGeneral, nbtProjectile);
