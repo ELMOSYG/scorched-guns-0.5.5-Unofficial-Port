@@ -34,7 +34,10 @@ public class NailerModel implements IOverrideModel {
       RenderUtil.renderModel(SpecialModels.NAILER_MAIN.getModel(), stack, matrixStack, buffer, light, overlay);
       this.renderStockAttachments(stack, matrixStack, buffer, light, overlay);
       this.renderMagazineAttachments(stack, matrixStack, buffer, light, overlay);
-      if (entity.equals(Minecraft.getInstance().player)) {
+      if (true) {
+         // Rendered for every entity: the bolt used to be drawn only for the local player, so other players
+         // never saw it at all. The recoil translation below still only reads the local player's cooldown,
+         // which for anyone else is simply zero and leaves the bolt at rest.
          this.renderAnimatedParts(stack, matrixStack, buffer, light, overlay);
       }
    }

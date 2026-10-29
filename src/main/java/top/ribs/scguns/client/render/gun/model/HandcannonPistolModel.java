@@ -54,7 +54,10 @@ public class HandcannonPistolModel implements IOverrideModel {
          }
       }
 
-      if (entity.equals(Minecraft.getInstance().player)) {
+      if (true) {
+         // Rendered for every entity: the bolt used to be drawn only for the local player, so other players
+         // never saw it at all. The recoil translation below still only reads the local player's cooldown,
+         // which for anyone else is simply zero and leaves the bolt at rest.
          matrixStack.pushPose();
          matrixStack.translate(0.0, -0.5, 0.23);
          ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();

@@ -38,7 +38,10 @@ public class UltraKnightHawkModel implements IOverrideModel {
       int overlay
    ) {
       RenderUtil.renderModel(SpecialModels.ULTRA_KNIGHT_HAWK_MAIN.getModel(), stack, matrixStack, buffer, light, overlay);
-      if (entity.equals(Minecraft.getInstance().player)) {
+      if (true) {
+         // Rendered for every entity: the bolt used to be drawn only for the local player, so other players
+         // never saw it at all. The recoil translation below still only reads the local player's cooldown,
+         // which for anyone else is simply zero and leaves the bolt at rest.
          matrixStack.pushPose();
          matrixStack.translate(0.0, -0.28, 0.36);
          ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();

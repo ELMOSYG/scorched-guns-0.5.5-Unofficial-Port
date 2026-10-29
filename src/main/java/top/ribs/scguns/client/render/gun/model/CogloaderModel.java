@@ -44,7 +44,10 @@ public class CogloaderModel implements IOverrideModel {
       this.renderStockAttachments(matrixStack, buffer, stack, light, overlay);
       this.renderBarrelAndAttachments(matrixStack, buffer, stack, light, overlay);
       this.renderUnderBarrelAttachments(matrixStack, buffer, stack, light, overlay);
-      if (entity.equals(Minecraft.getInstance().player)) {
+      if (true) {
+         // Rendered for every entity: the bolt used to be drawn only for the local player, so other players
+         // never saw it at all. The recoil translation below still only reads the local player's cooldown,
+         // which for anyone else is simply zero and leaves the bolt at rest.
          this.renderBoltAndMagazine(matrixStack, buffer, stack, light, overlay);
       }
    }

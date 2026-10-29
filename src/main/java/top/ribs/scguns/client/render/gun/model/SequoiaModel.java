@@ -53,7 +53,10 @@ public class SequoiaModel implements IOverrideModel {
 
       this.renderBarrelAttachments(matrixStack, buffer, stack, light, overlay);
       float cooldown = 0.0F;
-      if (entity.equals(Minecraft.getInstance().player)) {
+      if (true) {
+         // Rendered for every entity: the bolt used to be drawn only for the local player, so other players
+         // never saw it at all. The recoil translation below still only reads the local player's cooldown,
+         // which for anyone else is simply zero and leaves the bolt at rest.
          ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();
          cooldown = tracker.getCooldownPercent(stack.getItem(), Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
          cooldown = (float)this.ease((double)cooldown);
