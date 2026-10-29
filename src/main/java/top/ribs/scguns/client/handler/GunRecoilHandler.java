@@ -118,10 +118,7 @@ public class GunRecoilHandler {
 
             assert Minecraft.getInstance().player != null;
 
-            // Null-safe: rendering can happen with no local player (item frames, dropped items, the main menu).
-      ItemCooldowns tracker = Minecraft.getInstance().player != null
-         ? Minecraft.getInstance().player.getCooldowns()
-         : new ItemCooldowns();
+            ItemCooldowns tracker = Minecraft.getInstance().player.getCooldowns();
             float cooldown = tracker.getCooldownPercent(gunItem, Minecraft.getInstance().getTimer().getGameTimeDeltaPartialTick(false));
             cooldown = cooldown >= modifiedGun.getGeneral().getRecoilDurationOffset()
                ? (cooldown - modifiedGun.getGeneral().getRecoilDurationOffset()) / (1.0F - modifiedGun.getGeneral().getRecoilDurationOffset())
