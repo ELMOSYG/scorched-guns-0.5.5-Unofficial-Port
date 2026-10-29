@@ -51,14 +51,14 @@ public class ExoSuitAmmoHelper {
                               }
                            }
                         } catch (Exception var12) {
-                           System.out.println("Error reading AmmoBox contents: " + var12.getMessage());
+                           top.ribs.scguns.ScorchedGuns.LOGGER.debug("Error reading AmmoBox contents: " + var12.getMessage());
                            var12.printStackTrace();
                         }
                      }
                   }
                }
 
-               System.out.println("No ammo found in exo suit pouches");
+               top.ribs.scguns.ScorchedGuns.LOGGER.debug("No ammo found in exo suit pouches");
                return ItemStack.EMPTY;
             }
          }
@@ -99,7 +99,7 @@ public class ExoSuitAmmoHelper {
                            }
                         }
                      } catch (Exception var13) {
-                        System.out.println("Error reading AmmoBox contents in findAllAmmoInExoSuit: " + var13.getMessage());
+                        top.ribs.scguns.ScorchedGuns.LOGGER.debug("Error reading AmmoBox contents in findAllAmmoInExoSuit: " + var13.getMessage());
                      }
                   }
                }
@@ -144,7 +144,7 @@ public class ExoSuitAmmoHelper {
                            }
                         }
                      } catch (Exception var13) {
-                        System.out.println("Error reading AmmoBox contents in getAmmoCountInExoSuit: " + var13.getMessage());
+                        top.ribs.scguns.ScorchedGuns.LOGGER.debug("Error reading AmmoBox contents in getAmmoCountInExoSuit: " + var13.getMessage());
                      }
                   }
                }
@@ -272,7 +272,7 @@ public class ExoSuitAmmoHelper {
                            }
                         }
                      } catch (Exception var22) {
-                        System.out.println("Error shrinking ammo from AmmoBox: " + var22.getMessage());
+                        top.ribs.scguns.ScorchedGuns.LOGGER.debug("Error shrinking ammo from AmmoBox: " + var22.getMessage());
                         var22.printStackTrace();
                      }
                   }

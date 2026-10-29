@@ -305,7 +305,7 @@ public class ExoSuitRenderer extends GeoArmorRenderer<ExoSuitItem> {
          this.ensureUpgrades(armorStack);
          return this.upgradeTypes[slot] != null;
       } catch (Exception var6) {
-         System.err.println("ExoSuit: Error checking upgrade slot " + slot + ": " + var6.getMessage());
+         top.ribs.scguns.ScorchedGuns.LOGGER.warn("ExoSuit: Error checking upgrade slot " + slot + ": " + var6.getMessage());
          return false;
       }
    }

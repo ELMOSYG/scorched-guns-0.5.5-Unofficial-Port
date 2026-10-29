@@ -71,7 +71,7 @@ public class BloodParticle extends TextureSheetParticle {
       // appears on the ground": the droplets do spawn at the hit point and do fly - they are simply in
       // the air for 6-10 ticks and then lie flat on the ground for the remaining 80% of their life.
       if (Config.CLIENT.particle.bloodDebugLog.get()) {
-         top.ribs.scguns.ScorchedGuns.LOGGER.info(
+         top.ribs.scguns.ScorchedGuns.LOGGER.debug(
             "SCGUNS-BLOOD drop spawn y={} xd={} yd={} zd={} gravity={} life={}",
             this.y, this.xd, this.yd, this.zd, this.gravity, this.lifetime);
       }
@@ -110,7 +110,7 @@ public class BloodParticle extends TextureSheetParticle {
       super.tick();
       // Opt-in diagnostic (Config bloodDebugLog): does the droplet move, and does it land?
       if (Config.CLIENT.particle.bloodDebugLog.get() && this.age % 4 == 0) {
-         top.ribs.scguns.ScorchedGuns.LOGGER.info(
+         top.ribs.scguns.ScorchedGuns.LOGGER.debug(
             "SCGUNS-BLOOD tick age={} y={} xd={} yd={} zd={} onGround={} quad={} removed={} renderType={}",
             this.age, this.y, this.xd, this.yd, this.zd, this.onGround, this.quadSize, this.removed,
             this.getRenderType());
@@ -126,7 +126,7 @@ public class BloodParticle extends TextureSheetParticle {
       // Opt-in diagnostic (Config bloodDebugLog): is the quad really being drawn, with a real sprite?
       // A degenerate sprite (u0 == u1) or a zero alpha would make it invisible.
       if (Config.CLIENT.particle.bloodDebugLog.get() && this.age <= 1 && this.sprite != null) {
-         top.ribs.scguns.ScorchedGuns.LOGGER.info(
+         top.ribs.scguns.ScorchedGuns.LOGGER.debug(
             "SCGUNS-BLOOD render age={} pos={},{},{} quad={} sprite={} u={}-{} v={}-{} light={} alpha={} rCol={}",
             this.age, this.x, this.y, this.z, this.getQuadSize(partialTicks), this.sprite.contents().name(),
             this.getU0(), this.getU1(), this.getV0(), this.getV1(), this.getLightColor(partialTicks),

@@ -98,7 +98,7 @@ public class AmmoBoxBlockEntity extends RandomizableContainerBlockEntity {
       }
 
       if (tag.contains("LootTable")) {
-         System.out.println("Loaded loot table: " + tag.getString("LootTable"));
+         top.ribs.scguns.ScorchedGuns.LOGGER.debug("Loaded loot table: " + tag.getString("LootTable"));
       }
    }
 

@@ -50,7 +50,7 @@ public class ExoSuitUpgradeManager extends SimpleJsonResourceReloadListener {
             var6.printStackTrace();
          }
       });
-      System.out.println("ExoSuitUpgradeManager: Loaded " + itemUpgrades.size() + " upgrades");
+      top.ribs.scguns.ScorchedGuns.LOGGER.debug("ExoSuitUpgradeManager: Loaded " + itemUpgrades.size() + " upgrades");
    }
 
    @SubscribeEvent
@@ -85,7 +85,7 @@ public class ExoSuitUpgradeManager extends SimpleJsonResourceReloadListener {
          itemUpgrades.put(entry.getKey(), upgrade);
       }
 
-      System.out.println("ExoSuitUpgradeManager: Synced " + itemUpgrades.size() + " upgrades from server");
+      top.ribs.scguns.ScorchedGuns.LOGGER.debug("ExoSuitUpgradeManager: Synced " + itemUpgrades.size() + " upgrades from server");
    }
 
    private ResourceLocation getItemIdFromJson(JsonObject json, ResourceLocation fileLocation) {
