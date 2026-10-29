@@ -26,6 +26,7 @@ import net.minecraft.world.entity.ai.goal.MeleeAttackGoal;
 import net.minecraft.world.entity.ai.goal.RandomLookAroundGoal;
 import net.minecraft.world.entity.ai.goal.WaterAvoidingRandomStrollGoal;
 import net.minecraft.world.entity.ai.goal.target.HurtByTargetGoal;
+import net.minecraft.world.entity.monster.ZombifiedPiglin;
 import net.minecraft.world.entity.ai.goal.target.NearestAttackableTargetGoal;
 import net.minecraft.world.entity.ai.memory.MemoryModuleType;
 import net.minecraft.world.entity.boss.wither.WitherBoss;
@@ -124,7 +125,8 @@ public class HornlinEntity extends Monster implements RangedAttackMob, IGoldCons
       this.goalSelector.addGoal(7, new WaterAvoidingRandomStrollGoal(this, 1.0));
       this.goalSelector.addGoal(8, new LookAtPlayerGoal(this, Player.class, 8.0F));
       this.goalSelector.addGoal(9, new RandomLookAroundGoal(this));
-      this.targetSelector.addGoal(1, new HurtByTargetGoal(this, new Class[0]).setAlertOthers(new Class[0]));
+      this.targetSelector.addGoal(1, new HurtByTargetGoal(this, Piglin.class, ZombifiedPiglin.class,
+      HornlinEntity.class, ZombifiedHornlinEntity.class).setAlertOthers(new Class[0]));
       this.targetSelector
          .addGoal(
             2,
