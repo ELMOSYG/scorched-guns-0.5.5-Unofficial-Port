@@ -1150,9 +1150,8 @@ public class Config {
          builder.comment("Control sounds triggered by guns").push("sounds");
          this.playSoundWhenHeadshot = builder.comment("If true, a sound will play when you successfully hit a headshot on a entity with a gun")
             .define("playSoundWhenHeadshot", true);
-         this.headshotSound = builder.comment(
-               "The sound to play when a headshot occurs. scguns:hit.hitmarker is the gun's own 0.106 s click, which was made for this")
-            .define("headshotSound", "scguns:hit.hitmarker");
+         this.headshotSound = builder.comment("The sound to play when a headshot occurs")
+            .define("headshotSound", "minecraft:entity.player.attack.knockback");
          this.playSoundWhenCritical = builder.comment("If true, a sound will play when you successfully hit a critical on a entity with a gun")
             .define("playSoundWhenCritical", true);
          this.criticalSound = builder.comment("The sound to play when a critical occurs").define("criticalSound", "minecraft:entity.player.attack.crit");
