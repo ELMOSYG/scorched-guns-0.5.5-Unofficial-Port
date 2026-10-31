@@ -436,20 +436,24 @@ public class GunRenderingHandler {
                // A stab reads as powerful because of its timing, not its shape: pull back, drive forward fast, then
                // bring the gun back slowly. The old curve moved at one constant speed from start to finish, which is
                // what made the attack look like the arm was being pushed by a machine.
+               // Numbers taken from the bayonet keyframes: pull back 6 px (0.375 blocks) with the muzzle up 17.5
+               // degrees, then drive out to 6.53 px (0.408 blocks) and return. Keeping the pose in step with the
+               // keyframed version means an addon gun, which has no animation file of its own, still gets the same
+               // attack instead of a different one.
                float z;
                float rot;
-               if (progress < 0.15F) {
-                  float wind = progress / 0.15F;
-                  z = 0.14F * wind;                        // back, away from the target
-                  rot = -12.0F * wind;                     // muzzle lifts while winding up
-               } else if (progress < 0.45F) {
-                  float drive = (progress - 0.15F) / 0.30F;
-                  z = 0.14F - 0.76F * drive;               // out to -0.62
-                  rot = -12.0F + 28.0F * drive;
+               if (progress < 0.143F) {                     // ~0.0417s of 0.2917s
+                  float wind = progress / 0.143F;
+                  z = 0.375F * wind;
+                  rot = -17.5F * wind;
+               } else if (progress < 0.429F) {              // ~0.125s
+                  float drive = (progress - 0.143F) / 0.286F;
+                  z = 0.375F - 0.783F * drive;              // out to -0.408
+                  rot = -17.5F + 26.5F * drive;
                } else {
-                  float back = (progress - 0.45F) / 0.55F;
-                  z = -0.62F * (1.0F - back);
-                  rot = 16.0F * (1.0F - back);
+                  float back = (progress - 0.429F) / 0.571F;
+                  z = -0.408F * (1.0F - back);
+                  rot = 9.0F * (1.0F - back);
                }
                poseStack.translate(0.0, 0.0, (double)z);
                poseStack.mulPose(Axis.XP.rotationDegrees(rot));
