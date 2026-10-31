@@ -440,26 +440,33 @@ public class GunRenderingHandler {
                // degrees, then drive out to 6.53 px (0.408 blocks) and return. Keeping the pose in step with the
                // keyframed version means an addon gun, which has no animation file of its own, still gets the same
                // attack instead of a different one.
+               // The keyframes rotate [0, -5, 17.5]: yaw -5 and roll 17.5, so the gun tilts over to the left as it
+               // winds up rather than lifting its muzzle. Both axes are animated here; the pitch axis is left alone.
                float z;
-               float rot;
+               float roll;
+               float yaw;
                if (progress < 0.143F) {                     // ~0.0417s of 0.2917s
                   float wind = progress / 0.143F;
                   z = 0.375F * wind;
-                  rot = -17.5F * wind;
+                  roll = 17.5F * wind;
+                  yaw = -5.0F * wind;
                } else if (progress < 0.429F) {              // ~0.125s
                   // Smoothstep on the drive: linear motion from a dead stop reads as mechanical, and this is the
                   // segment that has to look like force.
                   float drive = (progress - 0.143F) / 0.286F;
                   drive = drive * drive * (3.0F - 2.0F * drive);
                   z = 0.375F - 0.783F * drive;              // out to -0.408
-                  rot = -17.5F + 26.5F * drive;
+                  roll = 17.5F - 26.5F * drive;             // through zero and slightly past
+                  yaw = -5.0F + 14.0F * drive;
                } else {
                   float back = (progress - 0.429F) / 0.571F;
                   z = -0.408F * (1.0F - back);
-                  rot = 9.0F * (1.0F - back);
+                  roll = -9.0F * (1.0F - back);
+                  yaw = 9.0F * (1.0F - back);
                }
                poseStack.translate(0.0, 0.0, (double)z);
-               poseStack.mulPose(Axis.XP.rotationDegrees(rot));
+               poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
+               poseStack.mulPose(Axis.YP.rotationDegrees(yaw));
                if ((Boolean)Config.CLIENT.display.cinematicGunEffects.get() && gun.getGeneral().hasCameraShake()) {
                   this.addCameraShake(gun, 0.42F * Math.max(0.0F, -z), 3);
                }
