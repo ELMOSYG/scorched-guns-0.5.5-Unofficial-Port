@@ -163,6 +163,13 @@ public abstract class ProjectileExplosion extends Explosion {
             }
          }
       }
+
+      // The blast also has to reach physics structures, which are not entities and so are not in the loop above.
+      // Server side only: the physics solve runs there, and a client asking for it would do nothing.
+      if (!this.world.isClientSide) {
+         top.ribs.scguns.util.PhysicsStructureHelper.applyExplosionImpulse(
+            this.world, explosionPos, (double)radius, Math.max(1.0, (double)this.size) * 2.0);
+      }
    }
 
    /**
