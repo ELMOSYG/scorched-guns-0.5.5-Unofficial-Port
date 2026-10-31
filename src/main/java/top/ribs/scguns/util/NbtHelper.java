@@ -234,4 +234,35 @@ public final class NbtHelper {
         Tag tag = encoded.result().get();
         return tag instanceof CompoundTag compound ? compound : new CompoundTag();
     }
+
+    /**
+     * Writes an int into the stack's custom data, building the tag and attaching it in one go.
+     *
+     * <p>Addons that copied the 0.5.5 pattern {@code NbtHelper.getOrCreateTag(stack).putInt(...)} lose the write when
+     * the stack has no custom data yet: an empty tag resolves to the shared {@code CustomData.EMPTY}, so the mutation
+     * never reaches the stack. That is why addon guns arrived in the creative tab with an empty magazine while the
+     * mod's own guns - which now go through this method - were fine.</p>
+     *
+     * <p>Prefer this over mutating whatever {@link #getOrCreateTag(ItemStack)} returns.</p>
+     */
+    public static void setInt(ItemStack stack, String key, int value) {
+        CompoundTag existing = getTag(stack);
+        CompoundTag copy = existing == null ? new CompoundTag() : existing.copy();
+        copy.putInt(key, value);
+        setTag(stack, copy);
+    }
+
+    /**
+     * Gives a gun a full magazine. Convenience for creative tabs and addons handing out guns.
+     *
+     * <p>Does nothing for items that are not guns or whose gun data is not loaded yet.</p>
+     */
+    public static void fillMagazine(ItemStack stack) {
+        if (stack.getItem() instanceof top.ribs.scguns.item.GunItem gunItem) {
+            int max = gunItem.getGun().getReloads().getMaxAmmo();
+            if (max > 0) {
+                setInt(stack, "AmmoCount", max);
+            }
+        }
+    }
 }

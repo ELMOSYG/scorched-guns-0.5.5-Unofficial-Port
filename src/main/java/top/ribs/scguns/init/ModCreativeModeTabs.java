@@ -663,10 +663,7 @@ public class ModCreativeModeTabs {
        * the stack. That is why creative-tab guns came out with an empty magazine.</p>
        */
       private static void writeInt(ItemStack stack, String key, int value) {
-         CompoundTag tag = NbtHelper.getTag(stack);
-         CompoundTag copy = tag == null ? new CompoundTag() : tag.copy();
-         copy.putInt(key, value);
-         NbtHelper.setTag(stack, copy);
+         NbtHelper.setInt(stack, key, value);
       }
       public CreativeTabHelper() {
          super();
