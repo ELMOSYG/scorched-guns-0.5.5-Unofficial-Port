@@ -195,6 +195,7 @@ public final class SablePhysicsBridge {
         // Try Sable's own point-force path first, then fall back to its punch curve. The fallback matters: without it
         // a shot that the point-force path does not find (no force group, a structure whose bounds miss the contact
         // point) produced no reaction at all, which read as "bullets stopped pushing things".
+        ScorchedGuns.LOGGER.debug("ShotImpulse: hit={} dir={} punchScale={}", hitPoint, direction, punchScale);
         double newtons = punchScale * NEWTONS_PER_PUNCH;
         if (worldPoint != null) {
             if (applyPointForce(level, worldPoint, unit.scale(newtons), SableForceGroups.IMPACT.get())) {
@@ -493,25 +494,31 @@ public final class SablePhysicsBridge {
 
         SubLevelContainer container = SubLevelContainer.getContainer(level);
         if (container == null) {
+            ScorchedGuns.LOGGER.debug("PointForce: no SubLevelContainer for {}", level.dimension().location());
             return false;
         }
 
         BoundingBox3d probe = new BoundingBox3d(worldContact, worldContact).expand(0.05);
+        int examined = 0;
         for (SubLevel subLevel : container.queryIntersecting(probe)) {
+            examined++;
             BoundingBox3dc bounds = subLevel.boundingBox();
             if (bounds != null && !bounds.contains(worldContact.x, worldContact.y, worldContact.z)) {
                 continue;
             }
             if (!(subLevel instanceof ServerSubLevel serverSubLevel)) {
+                ScorchedGuns.LOGGER.debug("PointForce: sublevel is not a ServerSubLevel");
                 continue;
             }
             RigidBodyHandle handle = RigidBodyHandle.of(serverSubLevel);
             if (handle == null || !handle.isValid()) {
+                ScorchedGuns.LOGGER.debug("PointForce: no valid rigid body handle");
                 continue;
             }
 
             Pose3dc pose = serverSubLevel.logicalPose();
             if (pose == null) {
+                ScorchedGuns.LOGGER.debug("PointForce: no logical pose");
                 continue;
             }
 
@@ -525,8 +532,11 @@ public final class SablePhysicsBridge {
 
             serverSubLevel.getOrCreateQueuedForceGroup(group)
                 .applyAndRecordPointForce(localPoint, localForce);
+            ScorchedGuns.LOGGER.debug("PointForce: recorded {} N at world {} under {}",
+               String.format("%.1f", worldForce.length()), worldContact, group.name().getString());
             return true;
         }
+        ScorchedGuns.LOGGER.debug("PointForce: no structure at {} (examined {})", worldContact, examined);
         return false;
     }
 }
