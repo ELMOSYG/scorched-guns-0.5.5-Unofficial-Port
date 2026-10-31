@@ -378,13 +378,6 @@ public class GunEventBus {
       Vec3 lookVec = player.getLookAngle();
       float baseStrength = gun.getProjectile().getPlayerKnockBackStrength();
 
-      // Standing on a Sable physics structure changes what the recoil should do. Pushing the player's own velocity
-      // there does not push the structure at all: the player is simply thrown off it, which is what "you take off when
-      // you fire on a contraption" was. The structure is the thing that should absorb the shot, so the launch is
-      // dropped and only a fraction of the shove remains, enough to feel it without leaving the deck.
-      if (isOnPhysicsStructure(player)) {
-         baseStrength *= 0.25F;
-      }
       float totalKnockbackResistance = 0.0F;
       totalKnockbackResistance += (float)player.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE) * 0.5F;
 
@@ -400,8 +393,13 @@ public class GunEventBus {
       totalKnockbackResistance = Math.min(0.75F, totalKnockbackResistance);
       float effectiveStrength = baseStrength * (1.0F - totalKnockbackResistance);
       if (effectiveStrength > 0.0F) {
+         // Standing on a Sable sub-level reports onGround() == false, because the block under the player belongs to a
+         // moving body rather than to the level. Firing downwards then took this branch - the "in the air, aiming down"
+         // case that boosts the player upwards by 1.25x - and launched them off the deck. A physics structure is a
+         // floor, so it counts as one here.
+         boolean onFloor = player.onGround() || isOnPhysicsStructure(player);
          double verticalBoost;
-         if (lookVec.y < -0.5 && !player.onGround() && player.getDeltaMovement().y > 0.0) {
+         if (lookVec.y < -0.5 && !onFloor && player.getDeltaMovement().y > 0.0) {
             verticalBoost = (double)effectiveStrength * 1.25;
          } else {
             verticalBoost = 0.1 * (double)effectiveStrength;
