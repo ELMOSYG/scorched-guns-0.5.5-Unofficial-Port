@@ -388,4 +388,67 @@ public final class SablePhysicsBridge {
     private static boolean isFinite(double value) {
         return Double.isFinite(value);
     }
+
+    /**
+     * Pushes every physics structure inside {@code radius} away from an explosion.
+     *
+     * <p>Only points that the structure actually contains are used as contact points, because the force point handed to
+     * Sable has to be in the structure's own frame. Directions are radial, so a structure caught at the edge of the
+     * blast is nudged rather than thrown.</p>
+     *
+     * @return how many structures were pushed
+     */
+    public static int applyExplosionImpulse(Level level, Vec3 centre, double radius, double punchScale) {
+        if (level == null || !(radius > 0.0) || !(punchScale > 0.0) || !isFinite(radius) || !isFinite(punchScale)) {
+            return 0;
+        }
+
+        SubLevelContainer container = SubLevelContainer.getContainer(level);
+        if (container == null) {
+            return 0;
+        }
+
+        BoundingBox3d probe = new BoundingBox3d(centre, centre).expand(radius);
+        int pushed = 0;
+        for (SubLevel subLevel : container.queryIntersecting(probe)) {
+            BoundingBox3dc bounds = subLevel.boundingBox();
+            if (bounds == null) {
+                continue;
+            }
+
+            // Look for a contact point on the structure: the centre first (a direct hit), then a point on each axis at
+            // the blast radius, so a structure whose body does not contain the centre is still reachable.
+            Vec3 contact = null;
+            if (bounds.contains(centre.x, centre.y, centre.z)) {
+                contact = centre;
+            } else {
+                Vec3[] samples = {
+                    centre.add(radius, 0.0, 0.0), centre.add(-radius, 0.0, 0.0),
+                    centre.add(0.0, radius, 0.0), centre.add(0.0, -radius, 0.0),
+                    centre.add(0.0, 0.0, radius), centre.add(0.0, 0.0, -radius)
+                };
+                for (Vec3 sample : samples) {
+                    if (bounds.contains(sample.x, sample.y, sample.z)) {
+                        contact = sample;
+                        break;
+                    }
+                }
+            }
+            if (contact == null) {
+                continue;
+            }
+
+            Vec3 away = contact.subtract(centre);
+            if (away.lengthSqr() < 1.0E-6) {
+                // The blast centre is inside the structure: push it straight up so it does not sit still.
+                away = new Vec3(0.0, 1.0, 0.0);
+            }
+
+            double falloff = Math.max(0.0, 1.0 - contact.distanceTo(centre) / radius);
+            if (applyPunchAt(level, contact, centre, away.normalize(), punchScale * (0.25 + 0.75 * falloff))) {
+                pushed++;
+            }
+        }
+        return pushed;
+    }
 }
