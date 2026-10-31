@@ -428,20 +428,28 @@ public class GunRenderingHandler {
 
             boolean isBayonetEquipped = gunItem.hasBayonet(heldItem);
             if (isBayonetEquipped) {
-               if (progress < 0.3F) {
-                  float stabProgress = progress / 0.3F;
-                  poseStack.translate(0.0, 0.0, -0.35 * (double)stabProgress);
-                  poseStack.mulPose(Axis.XP.rotationDegrees(10.0F * stabProgress));
-                  if ((Boolean)Config.CLIENT.display.cinematicGunEffects.get() && gun.getGeneral().hasCameraShake()) {
-                     this.addCameraShake(gun, 0.3F * stabProgress, 3);
-                  }
+               // A stab reads as powerful because of its timing, not its shape: pull back, drive forward fast, then
+               // bring the gun back slowly. The old curve moved at one constant speed from start to finish, which is
+               // what made the attack look like the arm was being pushed by a machine.
+               float z;
+               float rot;
+               if (progress < 0.15F) {
+                  float wind = progress / 0.15F;
+                  z = 0.14F * wind;                        // back, away from the target
+                  rot = -12.0F * wind;                     // muzzle lifts while winding up
+               } else if (progress < 0.45F) {
+                  float drive = (progress - 0.15F) / 0.30F;
+                  z = 0.14F - 0.76F * drive;               // out to -0.62
+                  rot = -12.0F + 28.0F * drive;
                } else {
-                  float returnProgress = (progress - 0.3F) / 0.7F;
-                  poseStack.translate(0.0, 0.0, 0.35 * (double)(returnProgress - 1.0F));
-                  poseStack.mulPose(Axis.XP.rotationDegrees(10.0F * (1.0F - returnProgress)));
-                  if ((Boolean)Config.CLIENT.display.cinematicGunEffects.get() && gun.getGeneral().hasCameraShake()) {
-                     this.addCameraShake(gun, 0.1F * (1.0F - returnProgress), 2);
-                  }
+                  float back = (progress - 0.45F) / 0.55F;
+                  z = -0.62F * (1.0F - back);
+                  rot = 16.0F * (1.0F - back);
+               }
+               poseStack.translate(0.0, 0.0, (double)z);
+               poseStack.mulPose(Axis.XP.rotationDegrees(rot));
+               if ((Boolean)Config.CLIENT.display.cinematicGunEffects.get() && gun.getGeneral().hasCameraShake()) {
+                  this.addCameraShake(gun, 0.42F * Math.max(0.0F, -z), 3);
                }
             } else if (progress < 0.33F) {
                float raiseProgress = progress / 0.33F;
