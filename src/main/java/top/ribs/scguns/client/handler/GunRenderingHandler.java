@@ -456,12 +456,10 @@ public class GunRenderingHandler {
          ItemStack heldItem = Minecraft.getInstance().player.getMainHandItem();
          if (heldItem.getItem() instanceof GunItem gunItem) {
             Gun gun = gunItem.getModifiedGun(heldItem);
-            // The gun's own keyframed animation wins; the hand-written pose below is only the fallback for guns that do
-            // not have one. This used to be the other way round, gated on a data flag, so a gun with a perfectly good
-            // bayonet animation still got the generic pose unless someone remembered to turn the flag on.
-            if (heldItem.getItem() instanceof AnimatedGunItem
-               && (GunMeleeAnimationLookup.hasBayonetAnimation(heldItem)
-                  || GunMeleeAnimationLookup.hasMeleeAnimation(heldItem))) {
+            // Keyframed animations are opt-in through the gun's data. Reading the animation file at render time was
+            // tried and taken back out: it made the client stall while loading, so the pose below is the only path
+            // unless a gun opts in.
+            if (gun.getGeneral().usesCustomMeleeAnimation() && heldItem.getItem() instanceof AnimatedGunItem) {
                return;
             }
 
