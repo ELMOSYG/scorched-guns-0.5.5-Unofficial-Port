@@ -1880,7 +1880,8 @@ public class ModItems {
       "anthralite_boots", () -> new AnthraliteArmorItem(ModArmorMaterials.ANTHRALITE, Type.BOOTS, ModArmorMaterials.durability(new Properties(), ModArmorMaterials.ANTHRALITE, Type.BOOTS))
    );
    public static final DeferredItem< Item> RIDGETOP = REGISTER.register(
-      "ridgetop", () -> new RidgetopArmorItem(ArmorMaterials.LEATHER, Type.HELMET, new Properties().stacksTo(1))
+      "ridgetop", () -> new RidgetopArmorItem(ArmorMaterials.LEATHER, Type.HELMET,
+   ModArmorMaterials.durability(new Properties(), ArmorMaterials.LEATHER, Type.HELMET))
    );
    public static final DeferredItem< Item> BRASS_MASK = REGISTER.register(
       "brass_mask", () -> new BrassMaskArmorItem(ModArmorMaterials.TREATED_BRASS, Type.HELMET, ModArmorMaterials.durability(new Properties(), ModArmorMaterials.TREATED_BRASS, Type.HELMET))
@@ -2002,7 +2003,8 @@ public class ModItems {
       "anthralite_respirator", () -> new AnthraliteGasMaskArmorItem(ModArmorMaterials.ANTHRALITE, Type.HELMET, ModArmorMaterials.durability(new Properties(), ModArmorMaterials.ANTHRALITE, Type.HELMET))
    );
    public static final DeferredItem< Item> NETHERITE_RESPIRATOR = REGISTER.register(
-      "netherite_respirator", () -> new NetheriteGasMaskArmorItem(ArmorMaterials.NETHERITE, Type.HELMET, new Properties().stacksTo(1))
+      "netherite_respirator", () -> new NetheriteGasMaskArmorItem(ArmorMaterials.NETHERITE, Type.HELMET,
+   ModArmorMaterials.durability(new Properties(), ArmorMaterials.NETHERITE, Type.HELMET))
    );
    public static final DeferredItem< Item> DIAMOND_STEEL_HELMET = REGISTER.register(
       "diamond_steel_helmet", () -> new DiamondSteelArmorItem(ModArmorMaterials.DIAMOND_STEEL, Type.HELMET, ModArmorMaterials.durability(new Properties(), ModArmorMaterials.DIAMOND_STEEL, Type.HELMET))
