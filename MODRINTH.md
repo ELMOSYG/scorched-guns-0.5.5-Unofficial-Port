@@ -57,6 +57,24 @@ Create Ore Excavation、Farmer's Delight、Touhou Little Maid（女仆可以用�
 
 ---
 
+---
+
+## 给附属作者
+
+本模组的 mod id 是 `scguns`，依赖声明里的兼容版本是 **1.5.0**（与移植版本号分开维护，专门给附属的
+`versionRange` 用）。所以在附属的 `neoforge.mods.toml` 里写：
+
+```toml
+[[dependencies.yourmod]]
+modId = "scguns"
+type = "required"
+versionRange = "[1.5.0,)"
+```
+
+Minecraft 1.21.1、NeoForge 21.1.150+。可用的公开 API 与数据格式沿用上游 0.5.5。
+
+---
+
 ## 致谢
 
 - 原作者 **ribs**：枪械、美术、数据与设计全部来自 Scorched Guns。

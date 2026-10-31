@@ -65,6 +65,24 @@ Guard Villagers (guards carry guns).
 
 ---
 
+---
+
+## For addon authors
+
+The mod id is `scguns`. Its compatibility version is **1.5.0**, kept separate from the port version so addons
+can depend on it with a range:
+
+```toml
+[[dependencies.yourmod]]
+modId = "scguns"
+type = "required"
+versionRange = "[1.5.0,)"
+```
+
+Minecraft 1.21.1, NeoForge 21.1.150+. The public API and data formats follow upstream 0.5.5.
+
+---
+
 ## Credits
 
 - **ribs**, the original author: the guns, art, data and design are all Scorched Guns.
