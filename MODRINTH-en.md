@@ -1,54 +1,72 @@
-# Scorched Guns (unofficial 1.21.1 / NeoForge port)
+# Scorched Guns 0.5.5 · Unofficial 1.21.1 / NeoForge Port
 
-Scorched Guns is a gun mod by ribs. This is the 0.5.5 version brought to Minecraft 1.21.1 on NeoForge.
-Community-maintained, not official.
+**Port version 1.0.8** | file name `scguns-1.0.8.jar`
 
-The original targets 1.20.1 Forge. This is not a recompile: 1.21 rewrote item data, enchantments, armour,
-loot and networking, and a lot of code that still compiles no longer does what it did. Beyond getting it to
-build, a long list of runtime problems had to be fixed. What follows describes the current state and the
-known gaps.
+An **unofficial** port of **Scorched Guns 0.5.5** (originally Minecraft 1.20.1 / Forge) to
+**Minecraft 1.21.1 / NeoForge**. Community-maintained; not affiliated with the original author's releases.
+
+The port aims to stay close to the original: every gun was checked against the upstream 0.5.5 data, and the
+advancements, raids, loot and production chain are kept as they were.
+
+---
+
+## Contents
+
+| Item | Count |
+|---|---|
+| Guns | **Over 140**, all animated |
+| Weapon types | 13 (pistol, SMG, rifle, shotgun, sniper, machine gun, heavy, rail, laser, plasma, shock, flamethrower, special) |
+| Advancements | **261** |
+| Raids | 11, each with a boss and henchmen |
+| Production chain | From **power generation** (lightning battery, polar generator) through **ammunition and moulds** (stamping press, macerator) to the guns themselves |
+
+Also included: turrets and combat machines, ExoSuit equipment, custom enchantments, blueprints and a gun
+bench recipe book.
+
+---
 
 ## Requirements
 
-| | |
+| Item | Requirement |
 |---|---|
-| Minecraft | 1.21.1 |
-| NeoForge | 21.1.150 or newer |
-| Required | Framework, GeckoLib 4.9.3+, Curios 9.5.1+ |
+| Minecraft | **1.21.1** |
+| NeoForge | **21.1.150 or newer** |
+| Required mods | **Framework (MrCrayfish) 0.13.11+**, **GeckoLib 4.9.3+**, **Curios API 9.5.1+** |
+| Where to install | **Both client and server** (a server without it will refuse to start) |
 
-Controllable, Backpacked and Guard Villagers are optional compatibilities; the mod runs without them.
+Optional compatibility: Create, Create Aeronautics / Sable, Immersive Engineering, Mekanism,
+Create: New Age, Create Ore Excavation, Farmer's Delight, Touhou Little Maid (maids can use the guns),
+Guard Villagers (guards carry guns).
 
-## What's in it
+---
 
-- Over a hundred guns, flintlocks to energy weapons, with attachments (scopes, barrels, stocks, magazines, bayonets)
-- An ammunition chain: casings, projectiles, powder, and machines that reclaim spent casings
-- Gun bench, ammunition bench, mechanical press, turrets
-- A set of gun-specific enchantments that use the vanilla enchantment system, so the table, anvil and loot all work
-- Armed hostiles: pillagers, piglins, and the mod's own machines
-- Gas masks, poison gas, and an exosuit
+## What this port does
 
-## On balance
+- **A compatibility layer for addons built against other ports.** Many gun addons are compiled against a
+  different 1.21.1 port. Dropped into this one, their attachments would not render, recoil and spread did
+  nothing, critical hits and damage falloff were ignored, and enchanting failed. All of that is fixed here.
+- **Three problems that made the game or a save unplayable were fixed**: wiring the lightning battery to
+  another mod's energy network crashed the server and left the save unloadable; bullet holes never appeared
+  on a dedicated server; and without Polymorph installed the mod failed to load and the game would not start.
+- **The ammo-counter magazines no longer twitch during a reload**, and no longer flash back to the empty
+  position when the reload finishes.
+- **Two things upstream defined but never registered** now work: automatic and burst beam fire modes.
+  Mob-type detection now asks the entity first and falls back to entity type tags, so a training dummy
+  wearing a zombie head counts as undead.
 
-Early guns are cheap in materials: across the copper, iron, frontier and antique blueprints a gun resolves to
-5-14 base items. The real gate is the blueprint (loot, gunsmith trades), not the ingredients. Recipe data lives
-in `data/scguns/recipe/guns/` and `data/scguns/recipe/` if you want to change that.
+---
 
-## With other mods
+## Notes
 
-- Guard Villagers: guards carry guns with their own AI (keeps distance, reloads, avoids friendly fire)
-- Sable / Create: Aeronautics: muzzle and hit points are converted for sub-levels
-- Touhou Little Maid: a separate submodule lets maids use guns (shooting, reloading, repositioning, grenades)
-- Combat mods that animate mob attacks: the mod cancels the melee swing for mobs holding a gun
+- Gun damage, ammunition and attachment data are all datapack-editable; nothing is hard-locked.
+- Running alongside another gun mod can make gun bench recipes collide; installing Polymorph lets you pick
+  in the interface.
+- When reporting a problem, include `latest.log` and the steps to reproduce. A screenshot helps.
 
-## Known limits
+---
 
-- Other players' gun parts **are** visible, but they do not move with that player's own shots. That state is not
-  available client-side; a sync attempt did not work and was reverted.
-- The mod's cog minion and viventrum draw inner and outer armour layers only; mobs with custom models (maids,
-  and similar) do not show armour at all.
-- Against `Enchanting Infuser`-style tables the mod's enchantments are expensive (21 for several), so a 30-point
-  budget fits very little.
+## Credits
 
-## Reporting problems
-
-Include `latest.log` and the steps to reproduce. A screenshot helps.
+- **ribs**, the original author: the guns, art, data and design are all Scorched Guns.
+- The 0.5.5 contributors and translators upstream.
+- This port is community-maintained and unofficial.
