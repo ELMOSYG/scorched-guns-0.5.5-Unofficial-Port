@@ -375,7 +375,7 @@ public class GunEventBus {
    }
 
    /** The most upward speed, in blocks per tick, that firing may ever add. */
-   private static final double MAX_RECOIL_LIFT = 0.25;
+   private static final double MAX_RECOIL_LIFT = 0.08;
 
    private static void applyGunKnockback(Player player, Gun gun) {
       Vec3 lookVec = player.getLookAngle();
@@ -408,10 +408,20 @@ public class GunEventBus {
          // kick-heavy gun were normal and then the shooter took off.
          double currentY = player.getDeltaMovement().y;
          double verticalBoost;
-         if (lookVec.y < -0.5 && !onFloor && currentY > 0.0) {
-            verticalBoost = Math.min((double)effectiveStrength * 1.25, MAX_RECOIL_LIFT - currentY);
+         // On a physics structure the recoil gets no upward component at all. A moving body cannot be leaned against,
+         // so any lift there does not read as a kick - it reads as floating off the deck, and sustained fire kept the
+         // player aloft. Horizontal recoil still applies normally.
+         if (isOnPhysicsStructure(player)) {
+            verticalBoost = 0.0;
+         } else if (!onFloor) {
+            // Nothing pushes upwards once the player is off the floor. Any lift while airborne kept them airborne, so
+            // sustained fire held them in the air - "it takes off even when I am not aiming at the floor". A real jump
+            // plus a downward shot still gets the 1.25x below, which is the manoeuvre that branch is for.
+            verticalBoost = lookVec.y < -0.5 && currentY > 0.0
+               ? Math.min((double)effectiveStrength * 1.25, MAX_RECOIL_LIFT - currentY)
+               : 0.0;
          } else {
-            // Only fill up to the lift a single shot is worth, never add on top of it.
+            // On the floor: fill up to the lift a single shot is worth, never add on top of it.
             verticalBoost = Math.min(0.1 * (double)effectiveStrength, MAX_RECOIL_LIFT - currentY);
          }
          verticalBoost = Math.max(0.0, verticalBoost);
