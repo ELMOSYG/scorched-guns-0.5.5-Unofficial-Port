@@ -409,6 +409,44 @@ public class GunRenderingHandler {
       }
    }
 
+   /** Duration of the bayonet attack in seconds - the keyframes' own animation_length. */
+   private static final float BAYONET_LENGTH = 0.2917F;
+   /** Keyframe times in seconds, from bayonet.animation.json. */
+   private static final float[] BAYONET_T = {0.0F, 0.0417F, 0.125F, 0.2917F};
+   /** gun_body position Z per keyframe, in model pixels. */
+   private static final float[] BAYONET_Z = {0.0F, 5.99619F, -6.53237F, 0.0F};
+   /** gun_body rotation Z (roll) per keyframe, in degrees - the leftward tilt. */
+   private static final float[] BAYONET_ROLL = {0.0F, 17.5F, 17.5F, 0.0F};
+   /** gun_body rotation Y (yaw) per keyframe, in degrees. */
+   private static final float[] BAYONET_YAW = {0.0F, -5.0F, -5.0F, 0.0F};
+
+   /** Catmull-Rom sample of a keyframe channel, ends clamped. */
+   private static float catmullRom(float[] times, float[] values, float time) {
+      int last = times.length - 1;
+      if (time <= times[0]) {
+         return values[0];
+      }
+      if (time >= times[last]) {
+         return values[last];
+      }
+      int i = 0;
+      while (i < last - 1 && time >= times[i + 1]) {
+         i++;
+      }
+      float span = times[i + 1] - times[i];
+      float u = span <= 1.0E-6F ? 1.0F : (time - times[i]) / span;
+      float p0 = values[Math.max(0, i - 1)];
+      float p1 = values[i];
+      float p2 = values[i + 1];
+      float p3 = values[Math.min(last, i + 2)];
+      float u2 = u * u;
+      float u3 = u2 * u;
+      return 0.5F * (2.0F * p1
+         + (-p0 + p2) * u
+         + (2.0F * p0 - 5.0F * p1 + 4.0F * p2 - p3) * u2
+         + (-p0 + 3.0F * p1 - 3.0F * p2 + p3) * u3);
+   }
+
    private void applyMeleeTransforms(PoseStack poseStack, float partialTicks) {
       if (this.isMeleeAttacking) {
          float progress = Mth.lerp(partialTicks, this.prevMeleeProgress, this.meleeProgress);
@@ -442,31 +480,15 @@ public class GunRenderingHandler {
                // attack instead of a different one.
                // The keyframes rotate [0, -5, 17.5]: yaw -5 and roll 17.5, so the gun tilts over to the left as it
                // winds up rather than lifting its muzzle. Both axes are animated here; the pitch axis is left alone.
-               float z;
-               float roll;
-               float yaw;
-               if (progress < 0.143F) {                     // ~0.0417s of 0.2917s
-                  float wind = progress / 0.143F;
-                  z = 0.375F * wind;
-                  roll = 17.5F * wind;
-                  yaw = -5.0F * wind;
-               } else if (progress < 0.429F) {              // ~0.125s
-                  // Smoothstep on the drive: linear motion from a dead stop reads as mechanical, and this is the
-                  // segment that has to look like force.
-                  float drive = (progress - 0.143F) / 0.286F;
-                  drive = drive * drive * (3.0F - 2.0F * drive);
-                  z = 0.375F - 0.783F * drive;              // out to -0.408
-                  roll = 17.5F - 26.5F * drive;             // through zero and slightly past
-                  yaw = -5.0F + 14.0F * drive;
-               } else {
-                  float back = (progress - 0.429F) / 0.571F;
-                  z = -0.408F * (1.0F - back);
-                  roll = -9.0F * (1.0F - back);
-                  yaw = 9.0F * (1.0F - back);
-               }
-               // Rotate first, translate second: the pose stack multiplies in call order, so this makes the push run
-               // along the gun's own axis instead of along world Z. Thrusting along the weapon's direction is what
-               // makes the motion flow - the same reason the keyframes were authored that way.
+               // The bayonet keyframes, in their own units: z in model pixels (16 per block), angles in degrees,
+               // sampled with Catmull-Rom because that is the interpolation the source animation used - the overshoot
+               // around the drive is what gives the attack its snap, and linear segments do not reproduce it.
+               float t = progress * BAYONET_LENGTH;
+               float z = catmullRom(BAYONET_T, BAYONET_Z, t) / 16.0F;
+               float roll = catmullRom(BAYONET_T, BAYONET_ROLL, t);
+               float yaw = catmullRom(BAYONET_T, BAYONET_YAW, t);
+               // Rotate first, translate second: the pose stack multiplies in call order, so the push runs along the
+               // gun's own axis rather than along world Z.
                poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
                poseStack.mulPose(Axis.YP.rotationDegrees(yaw));
                poseStack.translate(0.0, 0.0, (double)z);
