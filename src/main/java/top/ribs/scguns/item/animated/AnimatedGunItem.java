@@ -38,6 +38,7 @@ import top.ribs.scguns.animations.GunAnimations;
 import top.ribs.scguns.attributes.SCAttributes;
 import top.ribs.scguns.client.KeyBinds;
 import top.ribs.scguns.client.handler.AimingHandler;
+import top.ribs.scguns.client.handler.GunMeleeAnimationLookup;
 import top.ribs.scguns.client.handler.MeleeAttackHandler;
 import top.ribs.scguns.client.render.gun.animated.AnimatedGunRenderer;
 import top.ribs.scguns.client.util.GunRotationHandler;
@@ -397,7 +398,9 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
       boolean isMeleeActive = (Boolean)ModSyncedDataKeys.MELEE.getValue(player);
       if (isMeleeActive) {
          Gun modifiedGun = ((GunItem)stack.getItem()).getModifiedGun(stack);
-         if (modifiedGun.getGeneral().usesCustomMeleeAnimation()) {
+         if (modifiedGun.getGeneral().usesCustomMeleeAnimation()
+               || GunMeleeAnimationLookup.hasBayonetAnimation(stack)
+               || GunMeleeAnimationLookup.hasMeleeAnimation(stack)) {
             this.handleMeleeState(nbtCompound, animationController, stack, player);
             return;
          }
@@ -471,7 +474,9 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
          boolean isMeleeActive = (Boolean)ModSyncedDataKeys.MELEE.getValue(player);
          if (isMeleeActive) {
             Gun modifiedGun = ((GunItem)stack.getItem()).getModifiedGun(stack);
-            if (modifiedGun.getGeneral().usesCustomMeleeAnimation()) {
+            if (modifiedGun.getGeneral().usesCustomMeleeAnimation()
+               || GunMeleeAnimationLookup.hasBayonetAnimation(stack)
+               || GunMeleeAnimationLookup.hasMeleeAnimation(stack)) {
                return;
             }
          }
@@ -541,7 +546,9 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
          boolean isMeleeActive = (Boolean)ModSyncedDataKeys.MELEE.getValue(player);
          if (isMeleeActive) {
             Gun modifiedGun = ((GunItem)stack.getItem()).getModifiedGun(stack);
-            if (modifiedGun.getGeneral().usesCustomMeleeAnimation()) {
+            if (modifiedGun.getGeneral().usesCustomMeleeAnimation()
+               || GunMeleeAnimationLookup.hasBayonetAnimation(stack)
+               || GunMeleeAnimationLookup.hasMeleeAnimation(stack)) {
                return;
             }
          }
