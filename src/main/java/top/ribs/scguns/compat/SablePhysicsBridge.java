@@ -469,7 +469,14 @@ public final class SablePhysicsBridge {
     }
 
     /** Newtons of force one player punch is worth, so a shot's force reads as "how many punches". */
-    private static final double NEWTONS_PER_PUNCH = 400.0;
+    /**
+    * Newtons one player punch is worth.
+    *
+    * <p>Calibrated against Sable's own punch: a punch moves a small contraption by a fraction of a block, and a
+    * 10-damage round is meant to be worth one of those. At 400 N a turret shell (5-8 punches at once) threw light
+    * structures across the map, so this is a tenth of that.</p>
+    */
+   private static final double NEWTONS_PER_PUNCH = 40.0;
 
     /**
      * Records a point force on the physics structure containing {@code worldContact}, for Sable to apply during its
@@ -528,6 +535,25 @@ public final class SablePhysicsBridge {
                 new Vector3d(worldForce.x, worldForce.y, worldForce.z));
             if (!isFinite(localPoint.x) || !isFinite(localForce.x)) {
                 continue;
+            }
+
+            // Clamp the force to what the structure may gain in one physics step, so neither a shell nor a burst of
+            // automatic fire can launch it: cap = mass * (maxSpeed - currentSpeed) / stepSeconds.
+            double stepSeconds = 0.05;
+            MassData massData = serverSubLevel.getMassTracker();
+            double mass = massData == null ? 0.0 : massData.getMass();
+            Vector3dc velocity = handle.getLinearVelocity();
+            double speed = velocity == null ? 0.0 : velocity.length();
+            double maxSpeed = (Double)Config.COMMON.gameplay.physicsStructureMaxSpeed.get();
+            double budgetSpeed = Math.max(0.0, maxSpeed - speed);
+            if (mass > 0.0) {
+                double capNewtons = mass * budgetSpeed / stepSeconds;
+                double magnitude = localForce.length();
+                if (capNewtons > 0.0 && magnitude > capNewtons) {
+                    localForce.mul(capNewtons / magnitude);
+                } else if (capNewtons <= 0.0) {
+                    return false;
+                }
             }
 
             serverSubLevel.getOrCreateQueuedForceGroup(group)
