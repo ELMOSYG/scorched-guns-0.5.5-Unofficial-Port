@@ -354,9 +354,37 @@ public class GunEventBus {
       }
    }
 
+   /**
+    * Whether the player is standing inside a Sable sub-level.
+    *
+    * <p>A block position inside a sub-level converts to a different world position - its coordinates are plot
+    * coordinates, in the tens of millions - so a non-identity conversion is a reliable test, and it needs no new API
+    * beyond what the physics helper already exposes. Returns false when Sable is not installed.</p>
+    */
+   private static boolean isOnPhysicsStructure(Player player) {
+      if (!ScorchedGuns.physicsStructuresLoaded) {
+         return false;
+      }
+      try {
+         Vec3 converted = top.ribs.scguns.util.PhysicsStructureHelper.toWorld(
+            player.level(), player.blockPosition(), Vec3.ZERO);
+         return converted != null && converted.distanceToSqr(Vec3.ZERO) > 1.0E-4;
+      } catch (RuntimeException e) {
+         return false;
+      }
+   }
+
    private static void applyGunKnockback(Player player, Gun gun) {
       Vec3 lookVec = player.getLookAngle();
       float baseStrength = gun.getProjectile().getPlayerKnockBackStrength();
+
+      // Standing on a Sable physics structure changes what the recoil should do. Pushing the player's own velocity
+      // there does not push the structure at all: the player is simply thrown off it, which is what "you take off when
+      // you fire on a contraption" was. The structure is the thing that should absorb the shot, so the launch is
+      // dropped and only a fraction of the shove remains, enough to feel it without leaving the deck.
+      if (isOnPhysicsStructure(player)) {
+         baseStrength *= 0.25F;
+      }
       float totalKnockbackResistance = 0.0F;
       totalKnockbackResistance += (float)player.getAttributeValue(Attributes.KNOCKBACK_RESISTANCE) * 0.5F;
 
