@@ -303,7 +303,9 @@ public final class SablePhysicsBridge {
             }
 
             double magnitude = Math.min(strength, mass * MAX_SPEED_GAIN_PER_HIT);
-            magnitude = Math.max(magnitude, mass * MIN_DELTA_V_PER_HIT);
+            // The floor is scaled by this hit's share of the shot: a shotgun fires many low-damage pellets, and a
+            // full floor on each of them added up to one huge shove.
+            magnitude = Math.max(magnitude, mass * MIN_DELTA_V_PER_HIT * Math.min(1.0, punchScale));
 
             Vector3dc velocity = handle.getLinearVelocity();
             double currentSpeed = velocity == null ? 0.0 : velocity.length();
@@ -526,7 +528,9 @@ public final class SablePhysicsBridge {
         }
 
         double magnitude = Math.min(strength, mass * MAX_SPEED_GAIN_PER_HIT);
-        magnitude = Math.max(magnitude, mass * MIN_DELTA_V_PER_HIT);
+        // The floor is scaled by this hit's share of the shot: a shotgun fires many low-damage pellets, and a
+            // full floor on each of them added up to one huge shove.
+            magnitude = Math.max(magnitude, mass * MIN_DELTA_V_PER_HIT * Math.min(1.0, punchScale));
         Vector3dc velocity = handle.getLinearVelocity();
         double currentSpeed = velocity == null ? 0.0 : velocity.length();
         double maxSpeed = (Double)Config.COMMON.gameplay.physicsStructureMaxSpeed.get();
