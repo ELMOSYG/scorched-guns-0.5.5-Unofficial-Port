@@ -447,7 +447,10 @@ public class GunRenderingHandler {
                   z = 0.375F * wind;
                   rot = -17.5F * wind;
                } else if (progress < 0.429F) {              // ~0.125s
+                  // Smoothstep on the drive: linear motion from a dead stop reads as mechanical, and this is the
+                  // segment that has to look like force.
                   float drive = (progress - 0.143F) / 0.286F;
+                  drive = drive * drive * (3.0F - 2.0F * drive);
                   z = 0.375F - 0.783F * drive;              // out to -0.408
                   rot = -17.5F + 26.5F * drive;
                } else {
