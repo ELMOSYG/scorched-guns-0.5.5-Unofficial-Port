@@ -6,6 +6,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.CreativeModeTab.Output;
 import net.minecraft.world.level.ItemLike;
@@ -653,6 +654,20 @@ public class ModCreativeModeTabs {
    }
 
    public static class CreativeTabHelper {
+
+      /**
+       * Puts an int into the stack's custom data by building the tag first and setting it in one go.
+       *
+       * <p>Writing through {@code NbtHelper.getOrCreateTag(stack).putInt(...)} silently lost the value when the stack
+       * had no custom data yet: an empty tag maps to the shared {@code CustomData.EMPTY}, so the mutation never reached
+       * the stack. That is why creative-tab guns came out with an empty magazine.</p>
+       */
+      private static void writeInt(ItemStack stack, String key, int value) {
+         CompoundTag tag = NbtHelper.getTag(stack);
+         CompoundTag copy = tag == null ? new CompoundTag() : tag.copy();
+         copy.putInt(key, value);
+         NbtHelper.setTag(stack, copy);
+      }
       public CreativeTabHelper() {
          super();
       }
@@ -660,7 +675,7 @@ public class ModCreativeModeTabs {
       public static void addItemWithFullAmmo(Output output, Item item) {
          if (item instanceof GunItem gunItem) {
             ItemStack stack = new ItemStack(gunItem);
-            NbtHelper.getOrCreateTag(stack).putInt("AmmoCount", gunItem.getGun().getReloads().getMaxAmmo());
+            writeInt(stack, "AmmoCount", gunItem.getGun().getReloads().getMaxAmmo());
             output.accept(stack);
          } else {
             output.accept(item);
@@ -670,11 +685,11 @@ public class ModCreativeModeTabs {
       public static void addGunOrEnergyWeaponWithFullResources(Output output, Item item) {
          ItemStack stack = new ItemStack(item);
          if (item instanceof GunItem gunItem) {
-            NbtHelper.getOrCreateTag(stack).putInt("AmmoCount", gunItem.getGun().getReloads().getMaxAmmo());
+            writeInt(stack, "AmmoCount", gunItem.getGun().getReloads().getMaxAmmo());
          }
 
          if (item instanceof EnergyGunItem energyGunItem) {
-            NbtHelper.getOrCreateTag(stack).putInt("Energy", energyGunItem.getMaxEnergyStored(stack));
+            writeInt(stack, "Energy", energyGunItem.getMaxEnergyStored(stack));
          }
 
          output.accept(stack);
@@ -683,7 +698,7 @@ public class ModCreativeModeTabs {
       public static void addAirCanisterWithFullAir(Output output, Item item) {
          if (item instanceof AirCanisterItem airCanisterItem) {
             ItemStack stack = new ItemStack(airCanisterItem);
-            NbtHelper.getOrCreateTag(stack).putInt("AirStored", airCanisterItem.getMaxAirStored(stack));
+            writeInt(stack, "AirStored", airCanisterItem.getMaxAirStored(stack));
             output.accept(stack);
          } else {
             output.accept(item);
@@ -693,7 +708,7 @@ public class ModCreativeModeTabs {
       public static void addExoSuitCoreItemWithFullEnergy(Output output, Item item) {
          if (item instanceof ExoSuitCoreItem exoSuitCoreItem) {
             ItemStack stack = new ItemStack(exoSuitCoreItem);
-            NbtHelper.getOrCreateTag(stack).putInt("Energy", exoSuitCoreItem.getMaxEnergyStored(stack));
+            writeInt(stack, "Energy", exoSuitCoreItem.getMaxEnergyStored(stack));
             output.accept(stack);
          } else {
             output.accept(item);
