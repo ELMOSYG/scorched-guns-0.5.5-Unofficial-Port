@@ -1828,5 +1828,9 @@
   "upgrade.scguns.exosuit.power_core": "Power Core",
   "upgrade.scguns.exosuit.rebreather": "Rebreather",
   "upgrade.scguns.exosuit.target_tracker": "Target Tracker",
-  "upgrade.scguns.exosuit.utility_module": "Utility Module"
+  "upgrade.scguns.exosuit.utility_module": "Utility Module",
+  "force_group.scguns.gun_impact": "Gun impact",
+  "force_group.scguns.gun_impact.desc": "Force recorded when a shot strikes a physics structure",
+  "force_group.scguns.gun_explosion": "Explosion blast",
+  "force_group.scguns.gun_explosion.desc": "Force recorded when one of the mod's explosions pushes a physics structure"
 }

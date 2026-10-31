@@ -1828,5 +1828,9 @@
   "upgrade.scguns.exosuit.power_core": "动力核心",
   "upgrade.scguns.exosuit.rebreather": "呼吸循环器",
   "upgrade.scguns.exosuit.target_tracker": "追踪仪",
-  "upgrade.scguns.exosuit.utility_module": "实用工具模块"
+  "upgrade.scguns.exosuit.utility_module": "实用工具模块",
+  "force_group.scguns.gun_impact": "枪弹冲击",
+  "force_group.scguns.gun_impact.desc": "枪弹命中物理结构时施加的力",
+  "force_group.scguns.gun_explosion": "爆炸冲击波",
+  "force_group.scguns.gun_explosion.desc": "本模组的爆炸推挤物理结构时施加的力"
 }

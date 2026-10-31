@@ -3,6 +3,7 @@ package top.ribs.scguns.compat;
 import dev.ryanhcode.sable.SableConfig;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.physics.mass.MassData;
+import dev.ryanhcode.sable.api.physics.force.ForceGroup;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3d;
 import dev.ryanhcode.sable.companion.math.BoundingBox3dc;
@@ -191,10 +192,11 @@ public final class SablePhysicsBridge {
             return false;
         }
 
-        if (worldPoint != null) {
-            return applyPunchAt(level, worldPoint,
-                forcePoint == null || !isFinite(forcePoint) ? worldPoint : forcePoint,
-                unit, punchScale);
+        // Same physical model either way: the impulse is a point force in newtons recorded under the impact group.
+        double newtons = punchScale * NEWTONS_PER_PUNCH;
+        if (worldPoint != null && applyPointForce(level, worldPoint, unit.scale(newtons),
+              SableForceGroups.IMPACT.get())) {
+            return true;
         }
 
         return applyPunchAt(level, hitPoint, forcePoint == null ? hitPoint : forcePoint, unit, punchScale);
@@ -445,10 +447,75 @@ public final class SablePhysicsBridge {
             }
 
             double falloff = Math.max(0.0, 1.0 - contact.distanceTo(centre) / radius);
-            if (applyPunchAt(level, contact, centre, away.normalize(), punchScale * (0.25 + 0.75 * falloff))) {
+            double newtons = punchScale * NEWTONS_PER_PUNCH * (0.25 + 0.75 * falloff);
+            if (applyPointForce(level, contact, away.normalize().scale(newtons),
+                  SableForceGroups.EXPLOSION.get())) {
                 pushed++;
             }
         }
         return pushed;
+    }
+
+    /** Newtons of force one player punch is worth, so a shot's force reads as "how many punches". */
+    private static final double NEWTONS_PER_PUNCH = 400.0;
+
+    /**
+     * Records a point force on the physics structure containing {@code worldContact}, for Sable to apply during its
+     * own physics step.
+     *
+     * <p>This is the interface Sable actually exposes - {@code getOrCreateQueuedForceGroup} plus
+     * {@code applyAndRecordPointForce} - and it takes both the point and the force in the structure's local frame.
+     * The mod used to go through Sable's player-punch curve instead, which is a different code path with its own
+     * mass-based strength: that is why an explosion could go off right next to a contraption and move nothing.</p>
+     *
+     * @param worldContact where the force lands, in world space
+     * @param worldForce   the force in world space; its length is in newtons
+     * @param group        which force group to record under
+     * @return true when a structure was found
+     */
+    public static boolean applyPointForce(Level level, Vec3 worldContact, Vec3 worldForce,
+                                          ForceGroup group) {
+        if (level == null || group == null || !isFinite(worldContact) || !isFinite(worldForce)
+            || worldForce.lengthSqr() < 1.0E-8) {
+            return false;
+        }
+
+        SubLevelContainer container = SubLevelContainer.getContainer(level);
+        if (container == null) {
+            return false;
+        }
+
+        BoundingBox3d probe = new BoundingBox3d(worldContact, worldContact).expand(0.05);
+        for (SubLevel subLevel : container.queryIntersecting(probe)) {
+            BoundingBox3dc bounds = subLevel.boundingBox();
+            if (bounds != null && !bounds.contains(worldContact.x, worldContact.y, worldContact.z)) {
+                continue;
+            }
+            if (!(subLevel instanceof ServerSubLevel serverSubLevel)) {
+                continue;
+            }
+            RigidBodyHandle handle = RigidBodyHandle.of(serverSubLevel);
+            if (handle == null || !handle.isValid()) {
+                continue;
+            }
+
+            Pose3dc pose = serverSubLevel.logicalPose();
+            if (pose == null) {
+                continue;
+            }
+
+            Vector3d localPoint = pose.transformPositionInverse(
+                new Vector3d(worldContact.x, worldContact.y, worldContact.z));
+            Vector3d localForce = pose.transformNormalInverse(
+                new Vector3d(worldForce.x, worldForce.y, worldForce.z));
+            if (!isFinite(localPoint.x) || !isFinite(localForce.x)) {
+                continue;
+            }
+
+            serverSubLevel.getOrCreateQueuedForceGroup(group)
+                .applyAndRecordPointForce(localPoint, localForce);
+            return true;
+        }
+        return false;
     }
 }
