@@ -196,9 +196,10 @@ public final class SablePhysicsBridge {
         // a shot that the point-force path does not find (no force group, a structure whose bounds miss the contact
         // point) produced no reaction at all, which read as "bullets stopped pushing things".
         ScorchedGuns.LOGGER.debug("ShotImpulse: hit={} dir={} punchScale={}", hitPoint, direction, punchScale);
-        double newtons = punchScale * NEWTONS_PER_PUNCH;
         if (worldPoint != null) {
-            if (applyPointForce(level, worldPoint, unit.scale(newtons), SableForceGroups.IMPACT.get())) {
+            // The vector's length is read as "how many punches"; applyPointForce turns that into a force from the
+            // structure's mass, so the shot does not have to know how heavy the target is.
+            if (applyPointForce(level, worldPoint, unit.scale(punchScale), SableForceGroups.IMPACT.get())) {
                 return true;
             }
             return applyPunchAt(level, worldPoint,
@@ -456,7 +457,7 @@ public final class SablePhysicsBridge {
             double falloff = Math.max(0.0, 1.0 - contact.distanceTo(centre) / radius);
             double scaled = punchScale * (0.25 + 0.75 * falloff);
             boolean moved = applyPointForce(level, contact,
-               away.normalize().scale(scaled * NEWTONS_PER_PUNCH), SableForceGroups.EXPLOSION.get());
+               away.normalize().scale(scaled), SableForceGroups.EXPLOSION.get());
             if (!moved) {
                 // Same fallback as the shot path: a force the point-force route does not take must still push.
                 moved = applyPunchAt(level, contact, centre, away.normalize(), scaled);
@@ -470,13 +471,16 @@ public final class SablePhysicsBridge {
 
     /** Newtons of force one player punch is worth, so a shot's force reads as "how many punches". */
     /**
-    * Newtons one player punch is worth.
+    * Speed change, in blocks per second, that one player punch is meant to give a structure.
     *
-    * <p>Calibrated against Sable's own punch: a punch moves a small contraption by a fraction of a block, and a
-    * 10-damage round is meant to be worth one of those. At 400 N a turret shell (5-8 punches at once) threw light
-    * structures across the map, so this is a tenth of that.</p>
+    * <p>Force on its own is the wrong unit to tune: 62 N does nothing to a two-tonne contraption and throws a crate,
+    * which is exactly the "shells do nothing / shells launch it" pair of complaints. The force is therefore derived
+    * from the mass and this target speed instead, so the same shot nudges anything by the same amount.</p>
     */
-   private static final double NEWTONS_PER_PUNCH = 40.0;
+   private static final double DELTA_V_PER_PUNCH = 0.15;
+
+   /** The physics step the force is applied over; Sable applies queued forces once per step. */
+   private static final double PHYSICS_STEP_SECONDS = 0.05;
 
     /**
      * Records a point force on the physics structure containing {@code worldContact}, for Sable to apply during its
@@ -537,24 +541,28 @@ public final class SablePhysicsBridge {
                 continue;
             }
 
-            // Clamp the force to what the structure may gain in one physics step, so neither a shell nor a burst of
-            // automatic fire can launch it: cap = mass * (maxSpeed - currentSpeed) / stepSeconds.
-            double stepSeconds = 0.05;
             MassData massData = serverSubLevel.getMassTracker();
             double mass = massData == null ? 0.0 : massData.getMass();
+            if (!(mass > 0.0)) {
+                continue;
+            }
+
+            // The caller passed a force in newtons; reinterpret its length as "punches" and rebuild it from the target
+            // speed change, so the same shot moves a crate and a gunship by the same amount. The per-hit and total
+            // speed caps still apply, which is what keeps a burst from launching anything.
+            double punches = localForce.length() / 1.0;   // set by the caller in "punches" units below
             Vector3dc velocity = handle.getLinearVelocity();
             double speed = velocity == null ? 0.0 : velocity.length();
             double maxSpeed = (Double)Config.COMMON.gameplay.physicsStructureMaxSpeed.get();
             double budgetSpeed = Math.max(0.0, maxSpeed - speed);
-            if (mass > 0.0) {
-                double capNewtons = mass * budgetSpeed / stepSeconds;
-                double magnitude = localForce.length();
-                if (capNewtons > 0.0 && magnitude > capNewtons) {
-                    localForce.mul(capNewtons / magnitude);
-                } else if (capNewtons <= 0.0) {
-                    return false;
-                }
+            if (!(budgetSpeed > 0.0)) {
+                return false;
             }
+
+            double deltaV = Math.min(punches * DELTA_V_PER_PUNCH, budgetSpeed);
+            double magnitude = mass * deltaV / PHYSICS_STEP_SECONDS;
+            Vector3d unit = new Vector3d(localForce).normalize();
+            localForce = unit.mul(magnitude);
 
             serverSubLevel.getOrCreateQueuedForceGroup(group)
                 .applyAndRecordPointForce(localPoint, localForce);
