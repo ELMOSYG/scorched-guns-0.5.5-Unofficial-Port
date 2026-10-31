@@ -62,6 +62,15 @@ public final class SablePhysicsBridge {
      * close to this; it is here so that no combination of multipliers, pellets or bouncing rounds
      * can fling a contraption out of the world.
      */
+    /**
+     * The least speed change one hit is worth, in blocks per second.
+     *
+     * <p>Sable's punch scales its impulse with the structure's mass, so a single plank - which weighs almost nothing -
+     * got an impulse of almost nothing and appeared to ignore gunfire entirely. A floor on the speed change keeps the
+     * feel the same across weights: the caps above still apply, so a heavy structure is not launched.</p>
+     */
+    private static final double MIN_DELTA_V_PER_HIT = 0.12;
+
     private static final double MAX_SPEED_GAIN_PER_HIT = 2.0;
 
     /**
@@ -294,6 +303,7 @@ public final class SablePhysicsBridge {
             }
 
             double magnitude = Math.min(strength, mass * MAX_SPEED_GAIN_PER_HIT);
+            magnitude = Math.max(magnitude, mass * MIN_DELTA_V_PER_HIT);
 
             Vector3dc velocity = handle.getLinearVelocity();
             double currentSpeed = velocity == null ? 0.0 : velocity.length();
@@ -516,6 +526,7 @@ public final class SablePhysicsBridge {
         }
 
         double magnitude = Math.min(strength, mass * MAX_SPEED_GAIN_PER_HIT);
+        magnitude = Math.max(magnitude, mass * MIN_DELTA_V_PER_HIT);
         Vector3dc velocity = handle.getLinearVelocity();
         double currentSpeed = velocity == null ? 0.0 : velocity.length();
         double maxSpeed = (Double)Config.COMMON.gameplay.physicsStructureMaxSpeed.get();
