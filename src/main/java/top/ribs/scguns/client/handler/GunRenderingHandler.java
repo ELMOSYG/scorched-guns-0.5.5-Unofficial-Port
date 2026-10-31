@@ -464,9 +464,12 @@ public class GunRenderingHandler {
                   roll = -9.0F * (1.0F - back);
                   yaw = 9.0F * (1.0F - back);
                }
-               poseStack.translate(0.0, 0.0, (double)z);
+               // Rotate first, translate second: the pose stack multiplies in call order, so this makes the push run
+               // along the gun's own axis instead of along world Z. Thrusting along the weapon's direction is what
+               // makes the motion flow - the same reason the keyframes were authored that way.
                poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
                poseStack.mulPose(Axis.YP.rotationDegrees(yaw));
+               poseStack.translate(0.0, 0.0, (double)z);
                if ((Boolean)Config.CLIENT.display.cinematicGunEffects.get() && gun.getGeneral().hasCameraShake()) {
                   this.addCameraShake(gun, 0.42F * Math.max(0.0F, -z), 3);
                }
