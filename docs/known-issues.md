@@ -74,3 +74,44 @@ ItemEnchantments enchantments = stack.getOrDefault(DataComponents.ENCHANTMENTS, 
 
 `E:\mod\scguns-optimizer`，5 个 mixin 全部生效（实测约 10% 提升），
 但还留着反射打印日志，没有 README。
+
+
+## Bullet holes on a rotated physics structure face the wrong way
+
+A hole fired at a **Sable** sub-level that is tilted or rotated lands on the wrong plane. On an ordinary block it is
+correct, which is why this only shows up with physics mods installed.
+
+The decal's orientation is stored as a `Direction`, i.e. one of six axes:
+
+```java
+public class BulletHoleData implements ParticleOptions {
+   private final Direction direction;   // east / west / north / south / up / down, nothing else
+   private final BlockPos pos;
+}
+```
+
+A rotated structure's hit face is not axis-aligned, so the hole is snapped to the nearest axis and ends up on a
+different surface than the one that was shot. The impact **impulse** had the same kind of fault and is already fixed:
+the direction was being pushed through `normalToWorld` even though it was already in world space, so a rotated
+structure was pushed in the wrong direction (`6255e199`).
+
+### What it would take
+
+Five steps, in this order, building after each one:
+
+1. `BulletHoleData`: add `nx`/`ny`/`nz` next to the existing fields and keep the old two-argument constructor, so
+   nothing else has to change yet.
+2. `ModParticleTypes`: stop letting `BULLET_HOLE_CODEC` list its own fields. **There are two copies of this codec** -
+   one here and one in `BulletHoleData.CODEC` - and they drift apart the moment only one is updated. Reuse the one in
+   `BulletHoleData` instead of restating the fields.
+3. `S2CMessageProjectileHitBlock`: carry the flight direction as an optional `Vec3`, keep the five-argument
+   constructor so the seven existing call sites keep working, and pass the direction from
+   `ProjectileEntity` where it is available.
+4. `ClientPlayHandler`: build the normal as the inverted flight direction (falling back to the hit face), offset the
+   decal along that normal instead of along a face step, and hand it to the particle.
+5. `BulletHoleParticle#render`: replace `direction.getRotation()` with
+   `new Quaternionf().rotationTo(0, 0, 1 -> normal)`.
+
+The reason this was not done in the 1.0.8 cycle: the four edits touch a network message, a particle codec and a
+constructor ordering (`super()` must be the first statement, so the normal has to be assigned after it). Getting it
+wrong does not fail loudly at runtime - it silently draws holes on the wrong plane - so it needs a client to look at.
