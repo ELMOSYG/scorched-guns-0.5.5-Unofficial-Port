@@ -192,11 +192,17 @@ public final class SablePhysicsBridge {
             return false;
         }
 
-        // Same physical model either way: the impulse is a point force in newtons recorded under the impact group.
+        // Try Sable's own point-force path first, then fall back to its punch curve. The fallback matters: without it
+        // a shot that the point-force path does not find (no force group, a structure whose bounds miss the contact
+        // point) produced no reaction at all, which read as "bullets stopped pushing things".
         double newtons = punchScale * NEWTONS_PER_PUNCH;
-        if (worldPoint != null && applyPointForce(level, worldPoint, unit.scale(newtons),
-              SableForceGroups.IMPACT.get())) {
-            return true;
+        if (worldPoint != null) {
+            if (applyPointForce(level, worldPoint, unit.scale(newtons), SableForceGroups.IMPACT.get())) {
+                return true;
+            }
+            return applyPunchAt(level, worldPoint,
+                forcePoint == null || !isFinite(forcePoint) ? worldPoint : forcePoint,
+                unit, punchScale);
         }
 
         return applyPunchAt(level, hitPoint, forcePoint == null ? hitPoint : forcePoint, unit, punchScale);
@@ -447,9 +453,14 @@ public final class SablePhysicsBridge {
             }
 
             double falloff = Math.max(0.0, 1.0 - contact.distanceTo(centre) / radius);
-            double newtons = punchScale * NEWTONS_PER_PUNCH * (0.25 + 0.75 * falloff);
-            if (applyPointForce(level, contact, away.normalize().scale(newtons),
-                  SableForceGroups.EXPLOSION.get())) {
+            double scaled = punchScale * (0.25 + 0.75 * falloff);
+            boolean moved = applyPointForce(level, contact,
+               away.normalize().scale(scaled * NEWTONS_PER_PUNCH), SableForceGroups.EXPLOSION.get());
+            if (!moved) {
+                // Same fallback as the shot path: a force the point-force route does not take must still push.
+                moved = applyPunchAt(level, contact, centre, away.normalize(), scaled);
+            }
+            if (moved) {
                 pushed++;
             }
         }
