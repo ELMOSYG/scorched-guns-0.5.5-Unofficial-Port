@@ -374,6 +374,9 @@ public class GunEventBus {
       }
    }
 
+   /** The most upward speed, in blocks per tick, that firing may ever add. */
+   private static final double MAX_RECOIL_LIFT = 0.25;
+
    private static void applyGunKnockback(Player player, Gun gun) {
       Vec3 lookVec = player.getLookAngle();
       float baseStrength = gun.getProjectile().getPlayerKnockBackStrength();
@@ -398,12 +401,20 @@ public class GunEventBus {
          // case that boosts the player upwards by 1.25x - and launched them off the deck. A physics structure is a
          // floor, so it counts as one here.
          boolean onFloor = player.onGround() || isOnPhysicsStructure(player);
+
+         // The vertical part must not accumulate. It used to be added to the player's existing motion on every shot, so
+         // a high rate of fire lifted the player off the floor one shot at a time; once airborne, the "aiming down while
+         // in the air" branch below took over and gave 1.25x as well - which is why the first few shots of a fast,
+         // kick-heavy gun were normal and then the shooter took off.
+         double currentY = player.getDeltaMovement().y;
          double verticalBoost;
-         if (lookVec.y < -0.5 && !onFloor && player.getDeltaMovement().y > 0.0) {
-            verticalBoost = (double)effectiveStrength * 1.25;
+         if (lookVec.y < -0.5 && !onFloor && currentY > 0.0) {
+            verticalBoost = Math.min((double)effectiveStrength * 1.25, MAX_RECOIL_LIFT - currentY);
          } else {
-            verticalBoost = 0.1 * (double)effectiveStrength;
+            // Only fill up to the lift a single shot is worth, never add on top of it.
+            verticalBoost = Math.min(0.1 * (double)effectiveStrength, MAX_RECOIL_LIFT - currentY);
          }
+         verticalBoost = Math.max(0.0, verticalBoost);
 
          player.setDeltaMovement(
             player.getDeltaMovement().add(-lookVec.x * (double)effectiveStrength, verticalBoost, -lookVec.z * (double)effectiveStrength)
