@@ -179,19 +179,22 @@ public final class SablePhysicsBridge {
             return false;
         }
 
-        Vec3 unit = flightDirection(hitPoint, forcePoint, direction);
+        BlockPos framePos = BlockPos.containing(hitPoint);
+        Vec3 worldPoint = toWorld(level, framePos, hitPoint);
+
+        // Only the point is converted. The flight direction arrives in world space (it comes from the projectile's
+        // own velocity), so running it through normalToWorld turned it a second time and made shots push a rotated
+        // structure in the wrong direction.
+        Vec3 unit = flightDirection(worldPoint == null ? hitPoint : worldPoint, forcePoint, direction);
         if (unit == null) {
             ScorchedGuns.LOGGER.debug("Physics structure impulse: no usable flight direction");
             return false;
         }
-        BlockPos framePos = BlockPos.containing(hitPoint);
 
-        Vec3 worldPoint = toWorld(level, framePos, hitPoint);
-        Vec3 worldDirection = worldPoint == null ? null : normalToWorld(level, framePos, unit);
-        if (worldPoint != null && worldDirection != null) {
+        if (worldPoint != null) {
             return applyPunchAt(level, worldPoint,
                 forcePoint == null || !isFinite(forcePoint) ? worldPoint : forcePoint,
-                worldDirection, punchScale);
+                unit, punchScale);
         }
 
         return applyPunchAt(level, hitPoint, forcePoint == null ? hitPoint : forcePoint, unit, punchScale);
