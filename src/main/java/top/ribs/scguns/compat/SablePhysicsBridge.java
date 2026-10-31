@@ -398,7 +398,24 @@ public final class SablePhysicsBridge {
      *
      * @return how many structures were pushed
      */
-    public static int applyExplosionImpulse(Level level, Vec3 centre, double radius, double punchScale) {
+    /**
+     * How many times a punch one explosion is worth, per unit of punchScale. An explosion is not a punch, so it gets a
+     * bigger multiplier than the punch-equivalent the shot path uses.
+     */
+    private static final double EXPLOSION_PUNCH_MULTIPLIER = 5.0;
+
+    /**
+     * Pushes every physics structure inside {@code radius} away from an explosion.
+     *
+     * <p>The blast centre arrives in world space, but Sable stores a sub-level's bounding box and pose in that
+     * sub-level's own frame - which is why the shot path worked and the explosion did nothing: a shot that lands on a
+     * structure is already expressed in that frame (its coordinates are in the millions), while the blast centre is
+     * an ordinary world position. Every candidate point is therefore transformed into the structure's frame before
+     * anything is compared or applied.</p>
+     *
+     * @return how many structures were pushed
+     */
+    public static int applyExplosionImpulse(Level level, Vec3 worldCentre, double radius, double punchScale) {
         if (level == null || !(radius > 0.0) || !(punchScale > 0.0) || !isFinite(radius) || !isFinite(punchScale)) {
             return 0;
         }
@@ -408,47 +425,118 @@ public final class SablePhysicsBridge {
             return 0;
         }
 
-        BoundingBox3d probe = new BoundingBox3d(centre, centre).expand(radius);
+        // Candidate contact points: the centre, then a ring on each axis at the blast radius. Each is transformed into
+        // the structure's frame in turn, so a structure whose body does not contain the centre is still reachable.
+        Vec3[] worldSamples = {
+            worldCentre,
+            worldCentre.add(radius, 0.0, 0.0), worldCentre.add(-radius, 0.0, 0.0),
+            worldCentre.add(0.0, radius, 0.0), worldCentre.add(0.0, -radius, 0.0),
+            worldCentre.add(0.0, 0.0, radius), worldCentre.add(0.0, 0.0, -radius)
+        };
+
         int pushed = 0;
-        for (SubLevel subLevel : container.queryIntersecting(probe)) {
-            BoundingBox3dc bounds = subLevel.boundingBox();
-            if (bounds == null) {
+        for (SubLevel subLevel : container.getAllSubLevels()) {
+            if (!(subLevel instanceof ServerSubLevel serverSubLevel)) {
                 continue;
             }
 
-            // Look for a contact point on the structure: the centre first (a direct hit), then a point on each axis at
-            // the blast radius, so a structure whose body does not contain the centre is still reachable.
-            Vec3 contact = null;
-            if (bounds.contains(centre.x, centre.y, centre.z)) {
-                contact = centre;
-            } else {
-                Vec3[] samples = {
-                    centre.add(radius, 0.0, 0.0), centre.add(-radius, 0.0, 0.0),
-                    centre.add(0.0, radius, 0.0), centre.add(0.0, -radius, 0.0),
-                    centre.add(0.0, 0.0, radius), centre.add(0.0, 0.0, -radius)
-                };
-                for (Vec3 sample : samples) {
-                    if (bounds.contains(sample.x, sample.y, sample.z)) {
-                        contact = sample;
-                        break;
-                    }
+            BoundingBox3dc bounds = serverSubLevel.boundingBox();
+            Pose3dc pose = serverSubLevel.logicalPose();
+            if (bounds == null || pose == null) {
+                continue;
+            }
+
+            Vector3d localCentre = pose.transformPositionInverse(
+                new Vector3d(worldCentre.x, worldCentre.y, worldCentre.z));
+
+            Vector3d localContact = null;
+            for (Vec3 sample : worldSamples) {
+                Vector3d local = pose.transformPositionInverse(new Vector3d(sample.x, sample.y, sample.z));
+                if (bounds.contains(local.x, local.y, local.z)) {
+                    localContact = local;
+                    break;
                 }
             }
-            if (contact == null) {
+            if (localContact == null) {
                 continue;
             }
 
-            Vec3 away = contact.subtract(centre);
-            if (away.lengthSqr() < 1.0E-6) {
-                // The blast centre is inside the structure: push it straight up so it does not sit still.
-                away = new Vec3(0.0, 1.0, 0.0);
+            Vector3d away = new Vector3d(localContact).sub(localCentre);
+            if (away.lengthSquared() < 1.0E-8) {
+                away = new Vector3d(0.0, 1.0, 0.0);
             }
 
-            double falloff = Math.max(0.0, 1.0 - contact.distanceTo(centre) / radius);
-            if (applyPunchAt(level, contact, centre, away.normalize(), punchScale * (0.25 + 0.75 * falloff))) {
+            double distance = Math.sqrt(away.lengthSquared());
+            double falloff = Math.max(0.0, 1.0 - distance / radius);
+            double scaled = punchScale * EXPLOSION_PUNCH_MULTIPLIER * (0.25 + 0.75 * falloff);
+            if (applyImpulseInStructureFrame(serverSubLevel, localContact, away.normalize(), scaled)) {
                 pushed++;
             }
         }
         return pushed;
+    }
+
+    /**
+     * One punch-equivalent impulse, applied with a point and a direction that are already in the structure's frame.
+     *
+     * <p>This is the body of {@link #applyPunchAt} with the frame conversion taken out, so the explosion path can use
+     * it directly. The mass response, the per-hit speed cap, the total speed cap and the spin cap are the same ones,
+     * so an explosion cannot do anything a punch could not - it is just worth more punches.</p>
+     */
+    private static boolean applyImpulseInStructureFrame(ServerSubLevel serverSubLevel,
+                                                        Vector3d localPoint, Vector3d localUnit,
+                                                        double punchScale) {
+        RigidBodyHandle handle = RigidBodyHandle.of(serverSubLevel);
+        if (handle == null || !handle.isValid()) {
+            return false;
+        }
+
+        MassData massData = serverSubLevel.getMassTracker();
+        double mass = massData == null ? 0.0 : massData.getMass();
+        if (!(mass > 0.0) || !isFinite(mass)) {
+            return false;
+        }
+
+        double inverseNormalMass = massData.getInverseNormalMass(localPoint, localUnit);
+        double normalMass = inverseNormalMass > 0.0 ? 1.0 / inverseNormalMass : 0.0;
+        if (!(normalMass > 0.0)) {
+            return false;
+        }
+
+        double punchStrength;
+        try {
+            punchStrength = SableConfig.SUB_LEVEL_PUNCH_STRENGTH_MULTIPLIER.getAsDouble();
+        } catch (RuntimeException e) {
+            punchStrength = 1.0;
+        }
+
+        double strength = ServerboundPunchSubLevelPacket.punchCurve(normalMass) * punchStrength * punchScale;
+        if (!(strength > 0.0) || !isFinite(strength)) {
+            return false;
+        }
+
+        double magnitude = Math.min(strength, mass * MAX_SPEED_GAIN_PER_HIT);
+        Vector3dc velocity = handle.getLinearVelocity();
+        double currentSpeed = velocity == null ? 0.0 : velocity.length();
+        double maxSpeed = (Double)Config.COMMON.gameplay.physicsStructureMaxSpeed.get();
+        magnitude = Math.min(magnitude, mass * Math.max(0.0, maxSpeed - currentSpeed));
+
+        Vector3d lever = new Vector3d(localPoint).sub(massData.getCenterOfMass());
+        double maxSpin = (Double)Config.COMMON.gameplay.physicsStructureMaxSpin.get();
+        double allowedSpin = Math.max(0.0, Math.min(MAX_SPIN_GAIN_PER_HIT, maxSpin - currentSpin(handle)));
+        double spinPerImpulse = spinPerImpulse(massData, lever, localUnit);
+        if (spinPerImpulse > 0.0) {
+            magnitude = Math.min(magnitude, allowedSpin / spinPerImpulse);
+        }
+
+        if (!(magnitude > 0.0)) {
+            return false;
+        }
+
+        // Named, already-converted values: the frame audit (tools/audit_physics_impulse_frame.py) rejects anything
+        // that reaches the impulse call looking world-space, and an inline expression reads as one.
+        Vector3d unitImpulse = new Vector3d(localUnit).mul(magnitude);
+        handle.applyImpulseAtPoint(localPoint, unitImpulse);
+        return true;
     }
 }
