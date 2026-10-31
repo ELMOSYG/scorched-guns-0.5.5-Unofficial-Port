@@ -649,8 +649,6 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
    }
 
    public void onHit(HitResult result, Vec3 startVec, Vec3 endVec) {
-      ScorchedGuns.LOGGER.debug("Projectile {} onHit {} at {}", this.getUUID(), result.getClass().getSimpleName(),
-         result.getLocation());
       if (!NeoForge.EVENT_BUS.post(new GunProjectileHitEvent(result, this)).isCanceled()) {
          if (result instanceof BlockHitResult blockHitResult) {
             if (blockHitResult.getType() != Type.MISS) {
@@ -949,7 +947,6 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
    }
 
    protected void onHitBlock(BlockState state, BlockPos pos, Direction face, double x, double y, double z) {
-      ScorchedGuns.LOGGER.debug("Projectile {} onHitBlock pos={} face={}", this.getUUID(), pos, face);
       PacketHandler.getPlayChannel().sendToTrackingChunk(() -> this.level().getChunkAt(pos), new S2CMessageProjectileHitBlock(x, y, z, pos, face));
       net.minecraft.world.level.block.Block block = state.getBlock();
       if (!this.primeTNT(state, pos)) {

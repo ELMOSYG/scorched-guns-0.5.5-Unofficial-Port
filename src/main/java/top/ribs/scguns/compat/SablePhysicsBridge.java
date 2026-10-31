@@ -3,7 +3,6 @@ package top.ribs.scguns.compat;
 import dev.ryanhcode.sable.SableConfig;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.physics.mass.MassData;
-import dev.ryanhcode.sable.api.physics.force.ForceGroup;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3d;
 import dev.ryanhcode.sable.companion.math.BoundingBox3dc;
@@ -192,16 +191,7 @@ public final class SablePhysicsBridge {
             return false;
         }
 
-        // Try Sable's own point-force path first, then fall back to its punch curve. The fallback matters: without it
-        // a shot that the point-force path does not find (no force group, a structure whose bounds miss the contact
-        // point) produced no reaction at all, which read as "bullets stopped pushing things".
-        ScorchedGuns.LOGGER.debug("ShotImpulse: hit={} dir={} punchScale={}", hitPoint, direction, punchScale);
         if (worldPoint != null) {
-            // The vector's length is read as "how many punches"; applyPointForce turns that into a force from the
-            // structure's mass, so the shot does not have to know how heavy the target is.
-            if (applyPointForce(level, worldPoint, unit.scale(punchScale), SableForceGroups.IMPACT.get())) {
-                return true;
-            }
             return applyPunchAt(level, worldPoint,
                 forcePoint == null || !isFinite(forcePoint) ? worldPoint : forcePoint,
                 unit, punchScale);
@@ -397,180 +387,5 @@ public final class SablePhysicsBridge {
 
     private static boolean isFinite(double value) {
         return Double.isFinite(value);
-    }
-
-    /**
-     * Pushes every physics structure inside {@code radius} away from an explosion.
-     *
-     * <p>Only points that the structure actually contains are used as contact points, because the force point handed to
-     * Sable has to be in the structure's own frame. Directions are radial, so a structure caught at the edge of the
-     * blast is nudged rather than thrown.</p>
-     *
-     * @return how many structures were pushed
-     */
-    public static int applyExplosionImpulse(Level level, Vec3 centre, double radius, double punchScale) {
-        if (level == null || !(radius > 0.0) || !(punchScale > 0.0) || !isFinite(radius) || !isFinite(punchScale)) {
-            return 0;
-        }
-
-        SubLevelContainer container = SubLevelContainer.getContainer(level);
-        if (container == null) {
-            return 0;
-        }
-
-        BoundingBox3d probe = new BoundingBox3d(centre, centre).expand(radius);
-        int pushed = 0;
-        for (SubLevel subLevel : container.queryIntersecting(probe)) {
-            BoundingBox3dc bounds = subLevel.boundingBox();
-            if (bounds == null) {
-                continue;
-            }
-
-            // Look for a contact point on the structure: the centre first (a direct hit), then a point on each axis at
-            // the blast radius, so a structure whose body does not contain the centre is still reachable.
-            Vec3 contact = null;
-            if (bounds.contains(centre.x, centre.y, centre.z)) {
-                contact = centre;
-            } else {
-                Vec3[] samples = {
-                    centre.add(radius, 0.0, 0.0), centre.add(-radius, 0.0, 0.0),
-                    centre.add(0.0, radius, 0.0), centre.add(0.0, -radius, 0.0),
-                    centre.add(0.0, 0.0, radius), centre.add(0.0, 0.0, -radius)
-                };
-                for (Vec3 sample : samples) {
-                    if (bounds.contains(sample.x, sample.y, sample.z)) {
-                        contact = sample;
-                        break;
-                    }
-                }
-            }
-            if (contact == null) {
-                continue;
-            }
-
-            Vec3 away = contact.subtract(centre);
-            if (away.lengthSqr() < 1.0E-6) {
-                // The blast centre is inside the structure: push it straight up so it does not sit still.
-                away = new Vec3(0.0, 1.0, 0.0);
-            }
-
-            double falloff = Math.max(0.0, 1.0 - contact.distanceTo(centre) / radius);
-            double scaled = punchScale * (0.25 + 0.75 * falloff);
-            boolean moved = applyPointForce(level, contact,
-               away.normalize().scale(scaled), SableForceGroups.EXPLOSION.get());
-            if (!moved) {
-                // Same fallback as the shot path: a force the point-force route does not take must still push.
-                moved = applyPunchAt(level, contact, centre, away.normalize(), scaled);
-            }
-            if (moved) {
-                pushed++;
-            }
-        }
-        return pushed;
-    }
-
-    /** Newtons of force one player punch is worth, so a shot's force reads as "how many punches". */
-    /**
-    * Speed change, in blocks per second, that one player punch is meant to give a structure.
-    *
-    * <p>Force on its own is the wrong unit to tune: 62 N does nothing to a two-tonne contraption and throws a crate,
-    * which is exactly the "shells do nothing / shells launch it" pair of complaints. The force is therefore derived
-    * from the mass and this target speed instead, so the same shot nudges anything by the same amount.</p>
-    */
-   private static final double DELTA_V_PER_PUNCH = 0.15;
-
-   /** The physics step the force is applied over; Sable applies queued forces once per step. */
-   private static final double PHYSICS_STEP_SECONDS = 0.05;
-
-    /**
-     * Records a point force on the physics structure containing {@code worldContact}, for Sable to apply during its
-     * own physics step.
-     *
-     * <p>This is the interface Sable actually exposes - {@code getOrCreateQueuedForceGroup} plus
-     * {@code applyAndRecordPointForce} - and it takes both the point and the force in the structure's local frame.
-     * The mod used to go through Sable's player-punch curve instead, which is a different code path with its own
-     * mass-based strength: that is why an explosion could go off right next to a contraption and move nothing.</p>
-     *
-     * @param worldContact where the force lands, in world space
-     * @param worldForce   the force in world space; its length is in newtons
-     * @param group        which force group to record under
-     * @return true when a structure was found
-     */
-    public static boolean applyPointForce(Level level, Vec3 worldContact, Vec3 worldForce,
-                                          ForceGroup group) {
-        if (level == null || group == null || !isFinite(worldContact) || !isFinite(worldForce)
-            || worldForce.lengthSqr() < 1.0E-8) {
-            return false;
-        }
-
-        SubLevelContainer container = SubLevelContainer.getContainer(level);
-        if (container == null) {
-            ScorchedGuns.LOGGER.debug("PointForce: no SubLevelContainer for {}", level.dimension().location());
-            return false;
-        }
-
-        BoundingBox3d probe = new BoundingBox3d(worldContact, worldContact).expand(0.05);
-        int examined = 0;
-        for (SubLevel subLevel : container.queryIntersecting(probe)) {
-            examined++;
-            BoundingBox3dc bounds = subLevel.boundingBox();
-            if (bounds != null && !bounds.contains(worldContact.x, worldContact.y, worldContact.z)) {
-                continue;
-            }
-            if (!(subLevel instanceof ServerSubLevel serverSubLevel)) {
-                ScorchedGuns.LOGGER.debug("PointForce: sublevel is not a ServerSubLevel");
-                continue;
-            }
-            RigidBodyHandle handle = RigidBodyHandle.of(serverSubLevel);
-            if (handle == null || !handle.isValid()) {
-                ScorchedGuns.LOGGER.debug("PointForce: no valid rigid body handle");
-                continue;
-            }
-
-            Pose3dc pose = serverSubLevel.logicalPose();
-            if (pose == null) {
-                ScorchedGuns.LOGGER.debug("PointForce: no logical pose");
-                continue;
-            }
-
-            Vector3d localPoint = pose.transformPositionInverse(
-                new Vector3d(worldContact.x, worldContact.y, worldContact.z));
-            Vector3d localForce = pose.transformNormalInverse(
-                new Vector3d(worldForce.x, worldForce.y, worldForce.z));
-            if (!isFinite(localPoint.x) || !isFinite(localForce.x)) {
-                continue;
-            }
-
-            MassData massData = serverSubLevel.getMassTracker();
-            double mass = massData == null ? 0.0 : massData.getMass();
-            if (!(mass > 0.0)) {
-                continue;
-            }
-
-            // The caller passed a force in newtons; reinterpret its length as "punches" and rebuild it from the target
-            // speed change, so the same shot moves a crate and a gunship by the same amount. The per-hit and total
-            // speed caps still apply, which is what keeps a burst from launching anything.
-            double punches = localForce.length() / 1.0;   // set by the caller in "punches" units below
-            Vector3dc velocity = handle.getLinearVelocity();
-            double speed = velocity == null ? 0.0 : velocity.length();
-            double maxSpeed = (Double)Config.COMMON.gameplay.physicsStructureMaxSpeed.get();
-            double budgetSpeed = Math.max(0.0, maxSpeed - speed);
-            if (!(budgetSpeed > 0.0)) {
-                return false;
-            }
-
-            double deltaV = Math.min(punches * DELTA_V_PER_PUNCH, budgetSpeed);
-            double magnitude = mass * deltaV / PHYSICS_STEP_SECONDS;
-            Vector3d unit = new Vector3d(localForce).normalize();
-            localForce = unit.mul(magnitude);
-
-            serverSubLevel.getOrCreateQueuedForceGroup(group)
-                .applyAndRecordPointForce(localPoint, localForce);
-            ScorchedGuns.LOGGER.debug("PointForce: recorded {} N at world {} under {}",
-               String.format("%.1f", worldForce.length()), worldContact, group.name().getString());
-            return true;
-        }
-        ScorchedGuns.LOGGER.debug("PointForce: no structure at {} (examined {})", worldContact, examined);
-        return false;
     }
 }

@@ -179,9 +179,6 @@ public class ScorchedGuns {
       ModLootModifiers.LOOT_MODIFIERS.register(bus);
       ModPointOfInterestTypes.REGISTER.register(bus);
       ModPaintings.REGISTER.register(modEventBus);
-      // Force groups this mod's shots and explosions use on Sable physics structures. Harmless without Sable: the
-      // registry simply never gets queried.
-      top.ribs.scguns.compat.SableForceGroups.register(modEventBus);
       ModStructures.REGISTRY.register(bus);
       bus.addListener(this::onCommonSetup);
       // GunnerMobSpawner and ModCommandsRegister both carry
