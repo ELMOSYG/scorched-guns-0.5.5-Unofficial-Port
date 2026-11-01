@@ -213,6 +213,7 @@ public class ScorchedGuns {
       NeoForge.EVENT_BUS.register(EntityEquipmentConfig.class);
       NeoForge.EVENT_BUS.register(ProjectileAdvantageConfig.class);
       NeoForge.EVENT_BUS.register(TurretManager.class);
+      NeoForge.EVENT_BUS.register(top.ribs.scguns.event.AnvilEnchantmentHandler.class);
       NeoForge.EVENT_BUS.register(VentManager.class);
       NeoForge.EVENT_BUS.register(RaidConfig.class);
       NeoForge.EVENT_BUS.register(RaidFlareConfig.class);
