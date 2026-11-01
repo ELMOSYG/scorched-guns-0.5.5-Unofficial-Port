@@ -125,12 +125,4 @@ public final class PhysicsStructureHelper {
         private Sable() {
         }
     }
-
-    /** Pushes nearby physics structures away from an explosion; returns how many were pushed. */
-    public static int applyExplosionImpulse(Level level, Vec3 centre, double radius, double punchScale) {
-        if (!ScorchedGuns.physicsStructuresLoaded || level == null) {
-            return 0;
-        }
-        return Sable.BRIDGE.applyExplosionImpulse(level, centre, radius, punchScale);
-    }
 }
