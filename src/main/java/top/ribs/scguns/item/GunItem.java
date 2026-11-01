@@ -428,12 +428,13 @@ public class GunItem extends Item implements IColored, IMeta {
          return false;
       }
 
-      // The mod's own enchantments are the point of the gun enchantment system. Answering yes here is what lets the
-      // anvil and JEI's anvil page treat a gun plus one of these books as a valid combination; restricting a specific
-      // one is done in AnvilUpdateEvent instead, because narrowing this method made JEI's page come up empty for
-      // every gun and every book.
+      // The mod's own enchantments answer to their own supported_items tag, exactly like vanilla ones do. A gun that
+      // is deliberately left out of #scguns:enchantable/trigger_finger must not accept Trigger Finger from any route -
+      // enchanting table, anvil or book. Narrowing this used to empty JEI's anvil page because JEI asks this method
+      // for every gun and book; the anvil recipes are now registered explicitly in JEIScorchedPlugin instead, so the
+      // page no longer depends on this answering yes to everything.
       if (key.location().getNamespace().equals("scguns")) {
-         return true;
+         return enchantment.value().canEnchant(stack);
       }
 
       if (ALLOWED_GUN_BOOK_ENCHANTMENTS.contains(key)) {
