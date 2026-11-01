@@ -428,11 +428,19 @@ public class GunItem extends Item implements IColored, IMeta {
          return false;
       }
 
-      // The mod's own enchantments still have to respect their own supported_items tag. Answering a blanket "yes"
-      // here let an anvil or an enchanted book put any of them on any gun - which is how a 400 RPM machine gun could
-      // be given Trigger Finger despite being deliberately left out of #scguns:enchantable/trigger_finger.
+      // The mod's own enchantments are the point of the gun enchantment system, and most of them apply to every gun.
+      // A couple are deliberately restricted by their own supported_items tag, though, and answering a blanket "yes"
+      // here let an anvil or an enchanted book put those on any gun too - which is how a 400 RPM machine gun could be
+      // given Trigger Finger despite being left out of #scguns:enchantable/trigger_finger.
+      //
+      // Only the restricted ones consult the tag. Running every scguns enchantment through canEnchant() instead made
+      // JEI's anvil page come up empty for every gun and book, because JEI simulates the combination before the
+      // datapack tags are guaranteed to be in the state that check expects.
       if (key.location().getNamespace().equals("scguns")) {
-         return enchantment.value().canEnchant(stack);
+         if (key.equals(ModEnchantments.TRIGGER_FINGER)) {
+            return enchantment.value().canEnchant(stack);
+         }
+         return true;
       }
 
       if (ALLOWED_GUN_BOOK_ENCHANTMENTS.contains(key)) {
