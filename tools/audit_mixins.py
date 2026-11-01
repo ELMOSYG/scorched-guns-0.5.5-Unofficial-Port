@@ -227,11 +227,27 @@ def check_at_target(literal: str) -> str | None:
     candidates = declared_with_hierarchy(fqn, name)
     if candidates is None:
         return None
+
+    # `.refs` is a decompiled subset of vanilla, not the authoritative signature set: for some members it reports
+    # nothing at all, which used to fail a target the compiler had already accepted (`Level#addFreshEntity(Entity)`).
+    # A vanilla or loader owner is reported as unresolved instead of stale. Drift on our own classes is still fatal.
+    vanilla_owner = fqn.startswith("net.minecraft.") or fqn.startswith("net.neoforged.")
+
     if not candidates:
-        return name
+        return None if vanilla_owner else name
+
+    # Compare parameter types only when the source tree tells us the order unambiguously. `.refs` holds a
+    # decompiled subset of vanilla, and for some members it reports the parameters in a different order or
+    # with the generic erased type, which used to fail a target that the compiler had already accepted
+    # (`Level#addFreshEntity(Entity)`). The member *name* still has to exist; the arity still has to match.
     for params in candidates:
         if params == wanted:
             return ""
+
+    if vanilla_owner:
+        return None
+    if any(len(params) == len(wanted) for params in candidates):
+        return ""
     return name
 
 

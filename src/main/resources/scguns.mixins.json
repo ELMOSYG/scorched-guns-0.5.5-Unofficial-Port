@@ -13,7 +13,8 @@
     "common.compat.guardvillagers.GuardMeleeGoalMixin",
     "common.compat.guardvillagers.GuardRangedAttackMixin",
     "common.compat.guardvillagers.GuardKickGoalMixin",
-    "common.compat.guardvillagers.GuardEquipmentMixin"
+    "common.compat.guardvillagers.GuardEquipmentMixin",
+      "compat.Ww1TurretFrameMixin"
     ],
   "client": [
       "client.MobGunSwingMixin",
