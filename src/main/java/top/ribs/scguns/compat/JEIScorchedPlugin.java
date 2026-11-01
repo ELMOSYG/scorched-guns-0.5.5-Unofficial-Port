@@ -1,5 +1,12 @@
 package top.ribs.scguns.compat;
 
+import java.util.ArrayList;
+import mezz.jei.api.constants.RecipeTypes;
+import mezz.jei.api.recipe.vanilla.IJeiAnvilRecipe;
+import mezz.jei.api.recipe.vanilla.IVanillaRecipeFactory;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.world.item.Item;
+
 
 import net.minecraft.world.item.crafting.RecipeHolder;
 import java.util.List;
@@ -64,7 +71,54 @@ public class JEIScorchedPlugin implements IModPlugin {
       return Component.translatable("scguns." + key, args);
    }
 
+   /**
+    * Registers the anvil entries the guns need.
+    *
+    * <p>JEI no longer scans anvils on its own: every combination has to be handed to it through
+    * {@code IVanillaRecipeFactory}, which the game's own items get from JEI's internals. Nothing was registering ours,
+    * so the anvil page listed repairs for vanilla items and nothing at all for guns - the combination worked in game
+    * but was invisible in JEI.</p>
+    */
+   private static void registerAnvilRecipes(IRecipeRegistration registration) {
+      IVanillaRecipeFactory factory = registration.getVanillaRecipeFactory();
+      List<IJeiAnvilRecipe> recipes = new ArrayList<>();
+
+      for (Item item : BuiltInRegistries.ITEM) {
+         if (!(item instanceof top.ribs.scguns.item.GunItem)) {
+            continue;
+         }
+
+         ItemStack worn = new ItemStack(item);
+         if (!worn.isDamageableItem()) {
+            continue;
+         }
+         worn.setDamageValue(Math.max(1, worn.getMaxDamage() / 2));
+
+         String id = BuiltInRegistries.ITEM.getKey(item).getPath();
+
+         // Two of the same gun merge, the vanilla anvil repair the page did show.
+         recipes.add(factory.createAnvilRecipe(
+            worn,
+            List.of(new ItemStack(item)),
+            List.of(new ItemStack(item)),
+            ResourceLocation.fromNamespaceAndPath("scguns", "anvil_merge/" + id)));
+
+         // The repair kit repairs a damaged gun.
+         recipes.add(factory.createAnvilRecipe(
+            worn,
+            List.of(new ItemStack(top.ribs.scguns.init.ModItems.REPAIR_KIT.get())),
+            List.of(new ItemStack(item)),
+            ResourceLocation.fromNamespaceAndPath("scguns", "anvil_repair/" + id)));
+      }
+
+      if (!recipes.isEmpty()) {
+         registration.addRecipes(RecipeTypes.ANVIL, recipes);
+      }
+   }
+
    public void registerRecipes(IRecipeRegistration registration) {
+      registerAnvilRecipes(registration);
+
       assert Minecraft.getInstance().level != null;
 
       RecipeManager recipeManager = Minecraft.getInstance().level.getRecipeManager();
