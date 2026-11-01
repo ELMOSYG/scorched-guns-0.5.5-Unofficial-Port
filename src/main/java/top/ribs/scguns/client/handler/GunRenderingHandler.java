@@ -416,7 +416,7 @@ public class GunRenderingHandler {
    /** gun_body position Z per keyframe, in model pixels. */
    private static final float[] BAYONET_Z = {0.0F, 5.99619F, -6.53237F, 0.0F};
    /** gun_body rotation Z (roll) per keyframe, in degrees - the leftward tilt. */
-   private static final float[] BAYONET_ROLL = {0.0F, 17.5F, 17.5F, 0.0F};
+   private static final float[] BAYONET_ROLL = {0.0F, 10.5F, 10.5F, 0.0F};
    /** gun_body rotation Y (yaw) per keyframe, in degrees. */
    private static final float[] BAYONET_YAW = {0.0F, -5.0F, -5.0F, 0.0F};
 
@@ -1063,9 +1063,14 @@ public class GunRenderingHandler {
          float scaleModifier = (float)GunModifierHelper.getMuzzleFlashScale(weapon, 1.0);
          poseStack.scale(scaleModifier, scaleModifier, 1.0F);
          poseStack.translate(-0.5, -0.5, 0.0);
-         boolean shouldUseEnchanted = weapon.isEnchanted();
          // Client option: keep the plain muzzle flash even on an enchanted gun.
-         if (entity != null && !(Boolean)Config.CLIENT.particle.ignoreEnchantedMuzzleFlash.get()
+         //
+         // The option has to override the starting value, not just the packet's: `weapon.isEnchanted()` is true for an
+         // enchanted gun regardless, so guarding only the override left the flash enchanted and the setting looked
+         // broken.
+         boolean shouldUseEnchanted = !(Boolean)Config.CLIENT.particle.ignoreEnchantedMuzzleFlash.get()
+            && weapon.isEnchanted();
+         if (shouldUseEnchanted && entity != null
             && entityIdToUseEnchantedTexture.containsKey(entity.getId())) {
             shouldUseEnchanted = entityIdToUseEnchantedTexture.get(entity.getId());
          }
