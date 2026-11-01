@@ -189,12 +189,15 @@ public final class SablePhysicsBridge {
         }
         BlockPos framePos = BlockPos.containing(hitPoint);
 
+        // Only the point is converted. `unit` comes from the projectile's own velocity, which is already world space -
+        // running it through normalToWorld turned it a second time and pushed rotated structures the wrong way.
         Vec3 worldPoint = toWorld(level, framePos, hitPoint);
-        Vec3 worldDirection = worldPoint == null ? null : normalToWorld(level, framePos, unit);
-        if (worldPoint != null && worldDirection != null) {
-            return applyPunchAt(level, worldPoint,
-                forcePoint == null || !isFinite(forcePoint) ? worldPoint : forcePoint,
-                worldDirection, punchScale);
+
+        // The impulse is applied at the impact point, not where the shooter stands: a bullet's force lands where it
+        // hits. Using the shooter gave a lever arm as long as the distance between the two, so the structure was spun
+        // rather than pushed.
+        if (worldPoint != null) {
+            return applyPunchAt(level, worldPoint, worldPoint, unit, punchScale);
         }
 
         return applyPunchAt(level, hitPoint, forcePoint == null ? hitPoint : forcePoint, unit, punchScale);
