@@ -1,5 +1,9 @@
 package top.ribs.scguns.compat;
 
+import mezz.jei.api.ingredients.ITypedIngredient;
+import mezz.jei.api.recipe.advanced.ISimpleRecipeManagerPlugin;
+import mezz.jei.api.registration.IAdvancedRegistration;
+
 import java.util.ArrayList;
 import mezz.jei.api.constants.RecipeTypes;
 import mezz.jei.api.recipe.vanilla.IJeiAnvilRecipe;
@@ -116,6 +120,74 @@ public class JEIScorchedPlugin implements IModPlugin {
       if (!recipes.isEmpty()) {
          registration.addRecipes(RecipeTypes.ANVIL, recipes);
       }
+   }
+
+   /**
+    * Teaches JEI which gun bench recipes produce a given item.
+    *
+    * <p>A bookmark is reverse-looked-up through whatever recipe manager plugins a mod registers. Without this, a gun
+    * bookmarked from the gun bench page was just an item with no recipes behind it - no small workbench badge, and
+    * nothing at all on Shift or R - while the same gun bookmarked from a Create recipe worked, because Create does
+    * register a plugin of its own.</p>
+    *
+    * <p>The match is on item only, deliberately: gun stacks carry components that a stored bookmark may not, and
+    * comparing those made every lookup miss.</p>
+    */
+   @Override
+   public void registerAdvanced(IAdvancedRegistration registration) {
+      registration.addTypedRecipeManagerPlugin(GunBenchCategory.GUN_BENCH_TYPE,
+         new ISimpleRecipeManagerPlugin<GunBenchRecipe>() {
+            @Override
+            public boolean isHandledInput(ITypedIngredient<?> ingredient) {
+               return false;
+            }
+
+            @Override
+            public boolean isHandledOutput(ITypedIngredient<?> ingredient) {
+               return itemOf(ingredient) != null;
+            }
+
+            @Override
+            public List<GunBenchRecipe> getRecipesForInput(ITypedIngredient<?> ingredient) {
+               return List.of();
+            }
+
+            @Override
+            public List<GunBenchRecipe> getRecipesForOutput(ITypedIngredient<?> ingredient) {
+               Item target = itemOf(ingredient);
+               if (target == null) {
+                  return List.of();
+               }
+
+               return allGunBenchRecipes().stream()
+                  .filter(recipe -> recipe.getRawOutput().getItem() == target)
+                  .toList();
+            }
+
+            @Override
+            public List<GunBenchRecipe> getAllRecipes() {
+               return allGunBenchRecipes();
+            }
+         });
+   }
+
+   private static Item itemOf(ITypedIngredient<?> ingredient) {
+      return ingredient == null ? null : ingredient.getIngredient() instanceof ItemStack stack && !stack.isEmpty()
+         ? stack.getItem()
+         : null;
+   }
+
+   private static List<GunBenchRecipe> allGunBenchRecipes() {
+      var level = net.minecraft.client.Minecraft.getInstance().level;
+      if (level == null) {
+         return List.of();
+      }
+
+      return level.getRecipeManager()
+         .getAllRecipesFor(GunBenchRecipe.Type.INSTANCE)
+         .stream()
+         .map(net.minecraft.world.item.crafting.RecipeHolder::value)
+         .toList();
    }
 
    public void registerRecipes(IRecipeRegistration registration) {
