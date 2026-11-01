@@ -273,9 +273,7 @@ public class GunModifierHelper {
          }
       }
 
-      // 2 ticks is the hard floor for every gun: below it the rate is faster than a tick can resolve and the
-      // effective RPM stops meaning anything. 2 ticks = 600 RPM.
-      return Mth.clamp(rate, 2, Integer.MAX_VALUE);
+      return Mth.clamp(rate, 0, Integer.MAX_VALUE);
    }
 
    public static float getCriticalChance(ItemStack weapon) {

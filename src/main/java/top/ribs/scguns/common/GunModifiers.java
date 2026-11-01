@@ -282,9 +282,7 @@ public class GunModifiers {
       @Override
       public int modifyFireRate(int rate) {
          if (rate <= 3) {
-            // Floor of 2 ticks, i.e. 600 RPM. At 1 tick a 400 RPM gun reached 1200 RPM and nothing else in the
-            // machine-gun class could compete; the stock was multiplying a limit that had no lower bound.
-            return Math.max(rate - 1, 2);
+            return Math.max(rate - 1, 1);
          } else {
             return rate <= 10 ? Math.max((int)((float)rate * 0.75F), 1) : Math.max((int)((float)rate * 0.85F), 1);
          }
