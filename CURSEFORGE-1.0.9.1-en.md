@@ -2,13 +2,16 @@
 
 **Minecraft 1.21.1 · NeoForge 21.1.150+**
 
-A correction release. Two enchantment fixes, two recipe-viewer fixes, and one impulse formula reverted.
+A correction release: two enchantment fixes, one recipe-viewer fix, and one impulse formula reverted.
 
 ## Enchantments respect their tags again, anvil included
 
 `GunItem` used to answer "yes" to every one of the mod's own enchantments, which let anvils and books bypass each
-enchantment's `supported_items` tag. The Madsen and the MG 08/15 are deliberately left out of
-`#scguns:enchantable/trigger_finger`, yet could still be given Trigger Finger and double their fire rate.
+enchantment's `supported_items` tag.
+
+The clearest case is the WW1 addon (scgunsww1), whose two 400 RPM machine guns - the **Madsen** and the **MG 08/15** -
+are deliberately left out of `#scguns:enchantable/trigger_finger` so they cannot take Trigger Finger's fire-rate
+bonus. The anvil could still apply it, doubling their rate.
 
 They now go through the tag like vanilla enchantments do, with a second check on the anvil so a bad combination
 produces no output instead of silently succeeding. Enchantments already applied in old saves are not removed.
@@ -23,11 +26,6 @@ always showed the enchanted flash. The setting now decides the starting value.
 JEI 19 no longer scans anvils on its own; mods have to register the combinations. Each gun and each attachment is now
 registered for both "same item + same item" (merge repair) and "damaged + repair kit". The list comes from the item
 registry, so guns and attachments added by addons are included automatically.
-
-## `slug_splitter` has a model and a name
-
-The item was registered but its model, texture and translations were never ported. It now has a model (a barrel
-texture as a placeholder) and a name. A sweep of all 469 registered items found it was the only one missing a model.
 
 ## Physics structures: the impulse no longer scales with mass
 
