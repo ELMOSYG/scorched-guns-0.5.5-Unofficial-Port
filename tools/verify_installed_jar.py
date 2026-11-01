@@ -512,8 +512,8 @@ def main():
             zf, bridge, b"applyImpulseAtPoint",
             "impulse is applied with Sable's own applyImpulseAtPoint"))
         checks.append(_check_class_contains(
-            zf, bridge, b"DELTA_V_PER_PUNCH",
-            "impulse is mass times a target speed change, not a punch curve"))
+            zf, bridge, b"IMPULSE_PER_PUNCH",
+            "impulse is a fixed value per punch, not mass-scaled and not a punch curve"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/Config$Gameplay.class", b"physicsStructureMaxSpeed",
             "structure speed limit is configurable"))

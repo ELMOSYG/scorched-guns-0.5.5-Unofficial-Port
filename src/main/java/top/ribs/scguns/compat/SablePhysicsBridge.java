@@ -60,11 +60,13 @@ public final class SablePhysicsBridge {
      * close to this; it is here so that no combination of multipliers, pellets or bouncing rounds
      * can fling a contraption out of the world.
      */
-    /** Target speed change one "punch worth" of gunfire gives a structure, in blocks per second. */
-   private static final double DELTA_V_PER_PUNCH = 0.25;
-
-   /** Least impulse a hit gives, in newton-seconds, so a single-block structure visibly reacts. */
-   private static final double MIN_IMPULSE = 1.5;
+    /**
+    * Impulse one "punch worth" of gunfire carries, in newton-seconds.
+    *
+    * <p>Deliberately independent of the structure's mass, the same way an arrow's impact is: the shot carries a fixed
+    * amount of momentum, and how much the structure moves follows from its own mass.</p>
+    */
+   private static final double IMPULSE_PER_PUNCH = 3.0;
 
    private static final double MAX_SPEED_GAIN_PER_HIT = 2.0;
 
@@ -279,14 +281,16 @@ public final class SablePhysicsBridge {
             // applied at the converted point with the converted direction. The punch curve is deliberately not used -
             // it derives its magnitude from the structure's inverse normal mass, which is what turns a flipped or
             // upside-down structure into an unpredictable shove.
-            double speedBudget = Math.max(0.0, maxSpeed - currentSpeed);
-            double deltaV = Math.min(punchScale * DELTA_V_PER_PUNCH, speedBudget);
-            double magnitude = mass * deltaV;
+            // A fixed impulse per punch, exactly like Sable's own arrow impacts: the force a shot carries does not
+            // depend on what it hits. Scaling it by mass gave every structure the same speed change, which made large
+            // vehicles react as if they weighed nothing - the opposite of what mass should do.
+            double magnitude = punchScale * IMPULSE_PER_PUNCH;
 
-            // A single block weighs almost nothing, so mass x deltaV is almost nothing too and gunfire looks like it
-            // does not register. Give every hit a floor impulse, then let the speed budget cap it - the same shape as
-            // the speed floor that used to exist, expressed as an impulse so it does not depend on mass.
-            magnitude = Math.max(magnitude, MIN_IMPULSE);
+            // The speed budget still caps it, so sustained fire cannot accelerate anything without limit.
+            double speedBudget = Math.max(0.0, maxSpeed - currentSpeed);
+            if (!(speedBudget > 0.0)) {
+                return false;
+            }
             magnitude = Math.min(magnitude, mass * speedBudget);
             if (!(magnitude > 0.0)) {
                 return false;
