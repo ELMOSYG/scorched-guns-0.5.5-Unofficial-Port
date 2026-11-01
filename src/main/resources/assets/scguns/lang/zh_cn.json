@@ -1828,5 +1828,7 @@
   "upgrade.scguns.exosuit.power_core": "动力核心",
   "upgrade.scguns.exosuit.rebreather": "呼吸循环器",
   "upgrade.scguns.exosuit.target_tracker": "追踪仪",
-  "upgrade.scguns.exosuit.utility_module": "实用工具模块"
+  "upgrade.scguns.exosuit.utility_module": "实用工具模块",
+  "item.scguns.slug_splitter": "弹丸分裂器",
+  "item.scguns.slug_splitter.desc": "命中时把弹丸分裂成多枚弹片。"
 }
