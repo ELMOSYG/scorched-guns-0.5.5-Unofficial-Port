@@ -189,9 +189,10 @@ public class ReloadHandler {
    }
 
    // `InputEvent.MouseButton` is abstract in NeoForge (Pre/Post subclasses) and the bus
-   // refuses listeners for abstract events; Pre is the input-handling phase.
+   // refuses listeners for abstract events; Post is the phase the Epic Fight compatibility layer redirects
+   // KeyBinds#getAimMapping from, so this must stay Post or that addon fails to inject.
    @SubscribeEvent
-   public void onMouseInput(MouseButton.Pre event) {
+   public void onMouseInput(MouseButton.Post event) {
       Player player = Minecraft.getInstance().player;
       if (player != null) {
          ItemStack stack = player.getMainHandItem();
