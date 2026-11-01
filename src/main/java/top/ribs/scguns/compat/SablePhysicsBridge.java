@@ -1,13 +1,11 @@
 package top.ribs.scguns.compat;
 
-import dev.ryanhcode.sable.SableConfig;
 import dev.ryanhcode.sable.api.physics.handle.RigidBodyHandle;
 import dev.ryanhcode.sable.api.physics.mass.MassData;
 import dev.ryanhcode.sable.api.sublevel.SubLevelContainer;
 import dev.ryanhcode.sable.companion.math.BoundingBox3d;
 import dev.ryanhcode.sable.companion.math.BoundingBox3dc;
 import dev.ryanhcode.sable.companion.math.Pose3dc;
-import dev.ryanhcode.sable.network.packets.tcp.ServerboundPunchSubLevelPacket;
 import dev.ryanhcode.sable.sublevel.ServerSubLevel;
 import dev.ryanhcode.sable.sublevel.SubLevel;
 import dev.ryanhcode.sable.sublevel.plot.LevelPlot;
@@ -143,17 +141,18 @@ public final class SablePhysicsBridge {
      * punch.
      *
      * <p><b>Why the punch force.</b> Sable's punch impulse is
-     * {@code direction * punchCurve(normalMass) * multiplier} - a curve of the structure's mass
+     * {@code direction * (mass * deltaV)} - an impulse of the structure's mass
      * along the hit normal, which is what makes a punch feel right on a dinghy and on a galleon
      * alike. The first revision of this feature instead handed the raw damage-scaled momentum to
      * the body; on a real contraption that launched it hard enough to disappear. So the impulse
      * here is expressed in <b>punches</b>: {@code punchScale} is how many player punches the shot
-     * is worth, and Sable's own {@code punchCurve} supplies the mass response.</p>
+     * is worth, and the structure's own mass supplies the response - the same shape Sable's arrow impacts use,
+ * rather than the punch curve, which depends on the inverse normal mass and misbehaves on a flipped structure.</p>
      *
      * <p><b>Where the force is applied.</b> Sable's punch does not push the block it hit: it asks
      * for the mass at the <b>player's own position</b> and applies the impulse <b>there</b>
      * ({@code localPosition = pose.transformPositionInverse(player.position())}, verified with
-     * javap on {@code ServerboundPunchSubLevelPacket.handle}). This mod follows the same rule and
+     * javap on Sable's arrow impact handler). This mod follows the same rule and
      * uses the shooter's position, so a shot pushes the structure the way a punch from where the
      * player stands would - which is the behaviour that was asked for. The hit point is still used
      * to find the structure.</p>
@@ -271,14 +270,6 @@ public final class SablePhysicsBridge {
             Vector3d localNormal = pose.transformNormalInverse(
                 new Vector3d(worldDirection.x, worldDirection.y, worldDirection.z));
 
-            // Sable's own mass response for a punch (its public punchCurve), with the same
-            // punch-strength multiplier Sable applies, scaled to how many punches this shot is
-            // worth. With punchScale = 1.0 this is literally one player punch.
-            //
-            // The mass must be asked for in the structure's frame too: Sable's
-            // computeStrengthScalar is called with exactly these local values, and a world
-            // point makes getInverseNormalMass return nonsense (measured: 3.4e11 instead of
-            // 0.014) so the shot does nothing at all.
             Vector3dc velocity = handle.getLinearVelocity();
             double currentSpeed = velocity == null ? 0.0 : velocity.length();
             double maxSpeed = (Double)Config.COMMON.gameplay.physicsStructureMaxSpeed.get();
