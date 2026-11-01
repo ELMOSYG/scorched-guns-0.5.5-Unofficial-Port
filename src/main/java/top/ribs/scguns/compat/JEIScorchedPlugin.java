@@ -84,7 +84,9 @@ public class JEIScorchedPlugin implements IModPlugin {
       List<IJeiAnvilRecipe> recipes = new ArrayList<>();
 
       for (Item item : BuiltInRegistries.ITEM) {
-         if (!(item instanceof top.ribs.scguns.item.GunItem)) {
+         boolean gun = item instanceof top.ribs.scguns.item.GunItem;
+         boolean attachment = item instanceof top.ribs.scguns.item.AttachmentItem;
+         if (!gun && !attachment) {
             continue;
          }
 
@@ -96,7 +98,7 @@ public class JEIScorchedPlugin implements IModPlugin {
 
          String id = BuiltInRegistries.ITEM.getKey(item).getPath();
 
-         // Two of the same gun merge, the vanilla anvil repair the page did show.
+         // Two of the same thing merge, the vanilla anvil repair the page did show.
          recipes.add(factory.createAnvilRecipe(
             worn,
             List.of(new ItemStack(item)),
