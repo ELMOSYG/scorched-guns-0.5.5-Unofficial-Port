@@ -502,17 +502,18 @@ def main():
         # asks for the normal mass at a point in its own coordinates; feeding it world
         # coordinates made the shot do nothing at all (verified: 3.4e11 instead of 0.014,
         # i.e. an impulse of ~1e-11). So the bridge must invert both the point and the
-        # normal, and must use Sable's own punch curve and multiplier for the strength.
+        # normal, and uses a plain mass-times-deltaV impulse (the shape Sable's own arrow impacts use)
+    # rather than the punch curve, which depends on the inverse normal mass and misbehaves on flipped structures.
         bridge = "top/ribs/scguns/compat/SablePhysicsBridge.class"
         checks.append(_check_class_contains(
             zf, bridge, b"transformNormalInverse",
             "impulse normal is converted into the structure frame"))
         checks.append(_check_class_contains(
-            zf, bridge, b"punchCurve",
-            "impulse strength comes from Sable's own punch curve"))
+            zf, bridge, b"applyImpulseAtPoint",
+            "impulse is applied with Sable's own applyImpulseAtPoint"))
         checks.append(_check_class_contains(
-            zf, bridge, b"SUB_LEVEL_PUNCH_STRENGTH_MULTIPLIER",
-            "impulse uses Sable's punch strength multiplier"))
+            zf, bridge, b"DELTA_V_PER_PUNCH",
+            "impulse is mass times a target speed change, not a punch curve"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/Config$Gameplay.class", b"physicsStructureMaxSpeed",
             "structure speed limit is configurable"))

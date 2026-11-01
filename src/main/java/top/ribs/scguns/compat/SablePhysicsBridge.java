@@ -62,7 +62,10 @@ public final class SablePhysicsBridge {
      * close to this; it is here so that no combination of multipliers, pellets or bouncing rounds
      * can fling a contraption out of the world.
      */
-    private static final double MAX_SPEED_GAIN_PER_HIT = 2.0;
+    /** Target speed change one "punch worth" of gunfire gives a structure, in blocks per second. */
+   private static final double DELTA_V_PER_PUNCH = 0.25;
+
+   private static final double MAX_SPEED_GAIN_PER_HIT = 2.0;
 
     /**
      * Upper bound on how much spin one hit may add, in radians per second.
@@ -270,54 +273,34 @@ public final class SablePhysicsBridge {
             // computeStrengthScalar is called with exactly these local values, and a world
             // point makes getInverseNormalMass return nonsense (measured: 3.4e11 instead of
             // 0.014) so the shot does nothing at all.
-            double inverseNormalMass = massData.getInverseNormalMass(localPoint, localNormal);
-            double normalMass = inverseNormalMass > 0.0 ? 1.0 / inverseNormalMass : 0.0;
-
-            double punchStrength;
-            try {
-                punchStrength = SableConfig.SUB_LEVEL_PUNCH_STRENGTH_MULTIPLIER.getAsDouble();
-            } catch (RuntimeException e) {
-                // Sable's config can be read before it is loaded; fall back to its own default.
-                punchStrength = 1.0;
-            }
-
-            // The punch handler also multiplies by the player's PUNCH_STRENGTH attribute, whose
-            // registered default is 1.0, so one punch is exactly punchCurve(normalMass) here.
-            double strength = normalMass > 0.0
-                ? ServerboundPunchSubLevelPacket.punchCurve(normalMass) * punchStrength * punchScale
-                : 0.0;
-            if (!(strength > 0.0) || !isFinite(strength)) {
-                continue;
-            }
-
-            double magnitude = Math.min(strength, mass * MAX_SPEED_GAIN_PER_HIT);
-
             Vector3dc velocity = handle.getLinearVelocity();
             double currentSpeed = velocity == null ? 0.0 : velocity.length();
             double maxSpeed = (Double)Config.COMMON.gameplay.physicsStructureMaxSpeed.get();
-            magnitude = Math.min(magnitude, mass * Math.max(0.0, maxSpeed - currentSpeed));
-
-            // Spin limit. The force is applied where the shooter stands, so the lever arm can be
-            // far longer than a punch's reach; without this a long shot would spin a light
-            // structure violently even though its linear push is capped. The induced angular
-            // velocity is computed exactly, from Sable's inertia tensor, and the impulse is scaled
-            // down until it fits - so in normal (punch-range) cases this changes nothing at all.
-            Vector3d lever = new Vector3d(localPoint).sub(massData.getCenterOfMass());
-            Vector3d unitImpulse = new Vector3d(localNormal).normalize();
             double maxSpin = (Double)Config.COMMON.gameplay.physicsStructureMaxSpin.get();
-            double allowedSpin = Math.max(0.0, Math.min(MAX_SPIN_GAIN_PER_HIT, maxSpin - currentSpin(handle)));
-            double spinPerImpulse = spinPerImpulse(massData, lever, unitImpulse);
-            if (spinPerImpulse > 0.0) {
-                magnitude = Math.min(magnitude, allowedSpin / spinPerImpulse);
-            }
 
+            // A plain impulse, in the same way Sable's own arrow impacts do it: mass times a target speed change,
+            // applied at the converted point with the converted direction. The punch curve is deliberately not used -
+            // it derives its magnitude from the structure's inverse normal mass, which is what turns a flipped or
+            // upside-down structure into an unpredictable shove.
+            double speedBudget = Math.max(0.0, maxSpeed - currentSpeed);
+            double deltaV = Math.min(punchScale * DELTA_V_PER_PUNCH, speedBudget);
+            double magnitude = mass * deltaV;
             if (!(magnitude > 0.0)) {
                 return false;
             }
 
-            // The force is applied at the shooter's position, in the structure's own frame, with
-            // the direction converted the same way - exactly as Sable's punch handler does. The
-            // spin this can produce is bounded by the check above.
+            // Spin has its own absolute budget; the lever arm is not allowed to decide it.
+            Vector3d lever = new Vector3d(localPoint).sub(massData.getCenterOfMass());
+            Vector3d unitImpulse = new Vector3d(localNormal).normalize();
+            double spinPerImpulseValue = spinPerImpulse(massData, lever, unitImpulse);
+            if (spinPerImpulseValue > 0.0) {
+                double allowedSpin = Math.max(0.0, Math.min(MAX_SPIN_GAIN_PER_HIT, maxSpin - currentSpin(handle)));
+                magnitude = Math.min(magnitude, allowedSpin / spinPerImpulseValue);
+            }
+            if (!(magnitude > 0.0)) {
+                return false;
+            }
+
             handle.applyImpulseAtPoint(localPoint, unitImpulse.mul(magnitude));
             return true;
         }
