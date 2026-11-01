@@ -69,6 +69,13 @@ public class GunBenchCategory implements IRecipeCategory<GunBenchRecipe> {
          builder.addSlot(RecipeIngredientRole.INPUT, slotX[10] + -22, slotY[10] + -12).addIngredients(blueprint);
       }
 
-      builder.addSlot(RecipeIngredientRole.OUTPUT, 118, 32).addItemStack(recipe.getRawOutput());
+      // Resolve the result through a real registry access, the same way Create and the other 1.21.1 port do.
+         // getResultItem(null) left the stack without its data components, so a bookmark taken from this slot could
+         // never be matched back to the recipe: no workbench badge, and R or Shift found nothing.
+         var clientLevel = net.minecraft.client.Minecraft.getInstance().level;
+         ItemStack output = clientLevel != null
+            ? recipe.getResultItem(clientLevel.registryAccess())
+            : recipe.getRawOutput();
+         builder.addSlot(RecipeIngredientRole.OUTPUT, 118, 32).addItemStack(output);
    }
 }
