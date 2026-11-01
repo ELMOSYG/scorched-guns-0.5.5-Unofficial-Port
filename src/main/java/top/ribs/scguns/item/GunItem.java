@@ -428,9 +428,11 @@ public class GunItem extends Item implements IColored, IMeta {
          return false;
       }
 
-      // The mod's own enchantments are the point of the gun enchantment system.
+      // The mod's own enchantments still have to respect their own supported_items tag. Answering a blanket "yes"
+      // here let an anvil or an enchanted book put any of them on any gun - which is how a 400 RPM machine gun could
+      // be given Trigger Finger despite being deliberately left out of #scguns:enchantable/trigger_finger.
       if (key.location().getNamespace().equals("scguns")) {
-         return true;
+         return enchantment.value().canEnchant(stack);
       }
 
       if (ALLOWED_GUN_BOOK_ENCHANTMENTS.contains(key)) {
