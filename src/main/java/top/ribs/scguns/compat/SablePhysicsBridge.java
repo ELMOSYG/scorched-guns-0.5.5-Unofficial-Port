@@ -65,6 +65,9 @@ public final class SablePhysicsBridge {
     /** Target speed change one "punch worth" of gunfire gives a structure, in blocks per second. */
    private static final double DELTA_V_PER_PUNCH = 0.25;
 
+   /** Least impulse a hit gives, in newton-seconds, so a single-block structure visibly reacts. */
+   private static final double MIN_IMPULSE = 1.5;
+
    private static final double MAX_SPEED_GAIN_PER_HIT = 2.0;
 
     /**
@@ -288,6 +291,12 @@ public final class SablePhysicsBridge {
             double speedBudget = Math.max(0.0, maxSpeed - currentSpeed);
             double deltaV = Math.min(punchScale * DELTA_V_PER_PUNCH, speedBudget);
             double magnitude = mass * deltaV;
+
+            // A single block weighs almost nothing, so mass x deltaV is almost nothing too and gunfire looks like it
+            // does not register. Give every hit a floor impulse, then let the speed budget cap it - the same shape as
+            // the speed floor that used to exist, expressed as an impulse so it does not depend on mass.
+            magnitude = Math.max(magnitude, MIN_IMPULSE);
+            magnitude = Math.min(magnitude, mass * speedBudget);
             if (!(magnitude > 0.0)) {
                 return false;
             }
