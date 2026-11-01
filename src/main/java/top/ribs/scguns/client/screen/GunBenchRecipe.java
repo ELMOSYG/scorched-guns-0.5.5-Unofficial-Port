@@ -81,6 +81,17 @@ public class GunBenchRecipe implements Recipe<ContainerRecipeInput> {
       return this.output.copy();
    }
 
+   /**
+    * The recipe's own output stack, components intact.
+    *
+    * <p>{@link #getResultItem} needs a registry access to resolve data components, and JEI's category had nothing to
+    * pass, so it handed over {@code null}. The stack that came back looked like the right gun but had lost the data
+    * that makes it one, which is why bookmarking the result gave a plain item. The category uses this instead.</p>
+    */
+   public ItemStack getRawOutput() {
+      return this.output.copy();
+   }
+
    public ResourceLocation getId() {
       return this.id;
    }

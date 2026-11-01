@@ -69,6 +69,6 @@ public class GunBenchCategory implements IRecipeCategory<GunBenchRecipe> {
          builder.addSlot(RecipeIngredientRole.INPUT, slotX[10] + -22, slotY[10] + -12).addIngredients(blueprint);
       }
 
-      builder.addSlot(RecipeIngredientRole.OUTPUT, 118, 32).addItemStack(recipe.getResultItem(null));
+      builder.addSlot(RecipeIngredientRole.OUTPUT, 118, 32).addItemStack(recipe.getRawOutput());
    }
 }
