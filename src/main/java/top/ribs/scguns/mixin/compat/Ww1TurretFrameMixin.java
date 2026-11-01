@@ -35,8 +35,7 @@ public abstract class Ww1TurretFrameMixin {
          target = "Lnet/minecraft/world/level/Level;addFreshEntity(Lnet/minecraft/world/entity/Entity;)Z"),
       require = 0
    )
-   private boolean scguns$spawnBulletInWorldSpace(Level level, Object spawned) {
-      Entity bullet = spawned instanceof Entity entity ? entity : null;
+   private boolean scguns$spawnBulletInWorldSpace(Level level, Entity bullet) {
       BlockEntity self = (BlockEntity)(Object)this;
 
       if (bullet != null && ScorchedGuns.physicsStructuresLoaded) {
@@ -55,6 +54,6 @@ public abstract class Ww1TurretFrameMixin {
          }
       }
 
-      return bullet != null && level.addFreshEntity(bullet);
+      return level.addFreshEntity(bullet);
    }
 }

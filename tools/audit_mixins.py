@@ -380,6 +380,15 @@ def check_injector_staticness(rel: str, text: str, target_fqn: str) -> int:
     return broken
 
 
+# Types a handler into a foreign class may name.
+#
+# The danger is not "any entity type": it is naming a class the game has already mixed into before configs are
+# prepared, which is what `LivingEntity` and `Player` are. The base `Entity` is what @Redirect demands for the
+# `Level#addFreshEntity(Entity)` target and is safe to name; the subclasses are not, and `CallbackInfo` plus
+# reflection is still the rule for them.
+SAFE_HANDLER_TYPES = ("Entity",)
+
+
 def check_foreign_signatures(rel: str, text: str) -> int:
     """An injector signature in a mixin into a FOREIGN class must not name an entity type.
 
@@ -401,6 +410,8 @@ def check_foreign_signatures(rel: str, text: str) -> int:
         if not handler:
             continue
         for name in source_param_names_from_text(handler.group(2)):
+            if name in SAFE_HANDLER_TYPES:
+                continue
             if ENTITY_TYPE.search(name):
                 broken += 1
                 print("BROKEN %-57s @%s handler %s names the entity type %s in its signature; "
