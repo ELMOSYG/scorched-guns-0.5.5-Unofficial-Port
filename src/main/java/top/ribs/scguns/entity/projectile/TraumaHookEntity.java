@@ -16,7 +16,7 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult.Type;
 import org.jetbrains.annotations.Nullable;
 
-public class TraumaHookEntity extends FishingHook {
+public class TraumaHookEntity extends FishingHook implements net.neoforged.neoforge.entity.IEntityWithComplexSpawn {
    private boolean isRetracting = false;
 
    /** Tick the hook caught something on, so the pull can be released after a moment. */
@@ -63,6 +63,31 @@ public class TraumaHookEntity extends FishingHook {
     * A mob throws this one, so the packet is handled here instead: the position, velocity and owner are applied
     * without the player check.</p>
     */
+   /**
+    * Sends the thrower alongside the spawn packet.
+    *
+    * <p>Vanilla {@code FishingHook} only puts a <em>player</em> owner into that packet, and this hook's owner is a mob,
+    * so the client received id 0 and had no way to know who threw it - the line had nothing to attach to. The 1.20.1
+    * original solved this with {@code NetworkHooks.getEntitySpawningPacket(this)}; on NeoForge the equivalent is this
+    * interface, which appends the id to the spawn data.</p>
+    */
+   @Override
+   public void writeSpawnData(net.minecraft.network.RegistryFriendlyByteBuf buffer) {
+      Entity owner = this.hookOwner();
+      buffer.writeVarInt(owner == null ? 0 : owner.getId());
+   }
+
+   @Override
+   public void readSpawnData(net.minecraft.network.RegistryFriendlyByteBuf buffer) {
+      int ownerId = buffer.readVarInt();
+      if (ownerId > 0) {
+         Entity owner = this.level().getEntity(ownerId);
+         if (owner != null) {
+            this.setOwner(owner);
+         }
+      }
+   }
+
    @Override
    public void recreateFromPacket(net.minecraft.network.protocol.game.ClientboundAddEntityPacket packet) {
       this.setPosRaw(packet.getX(), packet.getY(), packet.getZ());
