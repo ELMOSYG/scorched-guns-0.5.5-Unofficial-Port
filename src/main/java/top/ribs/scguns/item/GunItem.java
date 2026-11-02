@@ -434,12 +434,6 @@ public class GunItem extends Item implements IColored, IMeta {
       // for every gun and book; the anvil recipes are now registered explicitly in JEIScorchedPlugin instead, so the
       // page no longer depends on this answering yes to everything.
       if (key.location().getNamespace().equals("scguns")) {
-         // An arrow-firing gun resolves its damage on a plain arrow, not through the gun projectile pipeline, so the
-         // gun-side damage enchantments would be accepted and then do nothing. They are refused outright instead.
-         if (this.firesArrows(stack) && ARROW_GUN_EXCLUDED_ENCHANTMENTS.contains(key)) {
-            return false;
-         }
-
          return enchantment.value().canEnchant(stack);
       }
 
@@ -447,36 +441,12 @@ public class GunItem extends Item implements IColored, IMeta {
          return true;
       }
 
-      // Bow enchantments belong only to a gun that actually fires arrows (scguns:niami). On anything else they would
-      // be accepted and then do nothing at all, which reads as a bug rather than a choice.
-      if (BOW_ENCHANTMENTS.contains(key)) {
-         return this.firesArrows(stack);
-      }
-
       // A mining gun is the one that legitimately behaves like a pickaxe.
       return stack.is(ModTags.Items.MINING_GUN) && ALLOWED_MINING_GUN_BOOK_ENCHANTMENTS.contains(key);
    }
 
-   /** Whether this gun's projectile is a plain arrow, in which case the bow enchantments apply to it. */
-   private boolean firesArrows(ItemStack stack) {
-      Gun definition = this.getModifiedGun(stack);
-      return definition != null
-         && definition.getProjectile() != null
-         && definition.getProjectile().getItem() == net.minecraft.world.item.Items.ARROW;
-   }
-
    /** Vanilla enchantments any gun may take from a book: durability support and nothing else. */
    private static final Set<ResourceKey<Enchantment>> ALLOWED_GUN_BOOK_ENCHANTMENTS = Set.of(Enchantments.UNBREAKING, Enchantments.MENDING);
-
-   /** Gun-side damage enchantments that do nothing on a gun whose damage comes from a plain arrow. */
-   private static final Set<ResourceKey<Enchantment>> ARROW_GUN_EXCLUDED_ENCHANTMENTS = Set.of(
-      ModEnchantments.PUNCTURING, ModEnchantments.HEAVY_SHOT, ModEnchantments.COLLATERAL
-   );
-
-   /** Enchantments that a bow would use; applied to the arrow by an arrow-firing gun. */
-   private static final Set<ResourceKey<Enchantment>> BOW_ENCHANTMENTS = Set.of(
-      Enchantments.POWER, Enchantments.PUNCH, Enchantments.FLAME
-   );
 
    /** Vanilla enchantments a mining gun may take from a book, on top of the ones above. */
    private static final Set<ResourceKey<Enchantment>> ALLOWED_MINING_GUN_BOOK_ENCHANTMENTS = Set.of(
