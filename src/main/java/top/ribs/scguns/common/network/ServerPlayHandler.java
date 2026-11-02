@@ -213,7 +213,12 @@ public class ServerPlayHandler {
       // The arrow carries this gun's damage enchantments, the same ones every other gun uses. An arrow-firing gun
       // resolves its damage on a plain arrow rather than through ProjectileEntity, so without this anything put on
       // it would be accepted and then ignored.
-      float baseDamage = (float)modifiedGun.getProjectile(heldItem).getDamage() * 0.15F;
+      //
+      // Vanilla arrow damage is ceil(speed * baseDamage), so the base damage is the gun's stated damage divided by
+      // the speed this arrow leaves at. The old flat 0.15 factor ignored the speed entirely, which is why a gun
+      // whose tooltip said 12 hit for 9.
+      double launchSpeed = Math.max(0.1, (double)speed);
+      float baseDamage = (float)((double)modifiedGun.getProjectile(heldItem).getDamage() / launchSpeed);
       baseDamage = top.ribs.scguns.util.GunEnchantmentHelper.getHeavyShotDamage(heldItem, baseDamage);
       baseDamage = top.ribs.scguns.util.GunEnchantmentHelper.getAcceleratorDamage(heldItem, baseDamage);
       arrow.setBaseDamage((double)baseDamage);
