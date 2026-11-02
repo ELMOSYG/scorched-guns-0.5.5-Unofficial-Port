@@ -441,15 +441,22 @@ public class GunItem extends Item implements IColored, IMeta {
          return true;
       }
 
-      // Bow enchantments are accepted by every gun but only do anything on one that fires arrows (scguns:niami):
-      // ServerPlayHandler applies Power, Punch and Flame when it builds that arrow. Accepting them here is what lets
-      // an anvil or a book put them on.
+      // Bow enchantments belong only to a gun that actually fires arrows (scguns:niami). On anything else they would
+      // be accepted and then do nothing at all, which reads as a bug rather than a choice.
       if (BOW_ENCHANTMENTS.contains(key)) {
-         return true;
+         return this.firesArrows(stack);
       }
 
       // A mining gun is the one that legitimately behaves like a pickaxe.
       return stack.is(ModTags.Items.MINING_GUN) && ALLOWED_MINING_GUN_BOOK_ENCHANTMENTS.contains(key);
+   }
+
+   /** Whether this gun's projectile is a plain arrow, in which case the bow enchantments apply to it. */
+   private boolean firesArrows(ItemStack stack) {
+      Gun definition = this.getModifiedGun(stack);
+      return definition != null
+         && definition.getProjectile() != null
+         && definition.getProjectile().getItem() == net.minecraft.world.item.Items.ARROW;
    }
 
    /** Vanilla enchantments any gun may take from a book: durability support and nothing else. */
