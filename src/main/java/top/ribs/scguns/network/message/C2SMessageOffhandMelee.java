@@ -81,11 +81,10 @@ public class C2SMessageOffhandMelee {
                      float attackStrength = player.getAttackStrengthScale(0.5F);
                      if (!(attackStrength < 0.95F)) {
                         player.swing(InteractionHand.OFF_HAND, true);
-                        // Vanilla melee has no item cooldown: the swing rate is the attack-strength charge, and the
-                        // damage scales with how full it is. Adding an item cooldown on top gated the same thing twice
-                        // and, worse, showed up in every other mod's cooldown readout - an ability that checks for a
-                        // cooldown would think the weapon was unusable.
+                        float attackSpeed = this.getWeaponAttackSpeed(offHand);
                         player.resetAttackStrengthTicker();
+                        float cooldownTicks = 20.0F / attackSpeed * 1.25F;
+                        player.getCooldowns().addCooldown(offHand.getItem(), (int)cooldownTicks);
                         if (message.targetId != -1) {
                            Entity target = player.level().getEntity(message.targetId);
                            if (target != null) {
@@ -276,6 +275,19 @@ public class C2SMessageOffhandMelee {
             }
          }
       }
+   }
+
+   private float getWeaponAttackSpeed(ItemStack weapon) {
+      ItemAttributeModifiers attributeModifiers = weapon.getAttributeModifiers();
+      float attackSpeed = 4.0F;
+
+      for (ItemAttributeModifiers.Entry entry : attributeModifiers.modifiers()) {
+         if (entry.attribute().is(Attributes.ATTACK_SPEED) && entry.slot().test(EquipmentSlot.MAINHAND)) {
+            attackSpeed += (float)entry.modifier().amount();
+         }
+      }
+
+      return Math.max(0.1F, attackSpeed);
    }
 
    private float getWeaponDamage(ItemStack weapon) {
