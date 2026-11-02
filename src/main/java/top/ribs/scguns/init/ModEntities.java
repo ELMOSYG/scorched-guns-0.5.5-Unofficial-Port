@@ -213,10 +213,10 @@ public class ModEntities {
       "viventrum", () -> Builder.<ViventrumEntity>of(ViventrumEntity::new, MobCategory.MONSTER).sized(0.6F, 1.8F).build("viventrum")
    );
    public static final DeferredHolder<EntityType<?>, EntityType<HornlinEntity>> HORNLIN = REGISTER.register(
-      "hornlin", () -> Builder.<HornlinEntity>of(HornlinEntity::new, MobCategory.MONSTER).sized(1.4F, 1.7F).build("hornlin")
+      "hornlin", () -> Builder.<HornlinEntity>of(HornlinEntity::new, MobCategory.MONSTER).sized(0.8F, 1.7F).build("hornlin")
    );
    public static final DeferredHolder<EntityType<?>, EntityType<ZombifiedHornlinEntity>> ZOMBIFIED_HORNLIN = REGISTER.register(
-      "zombified_hornlin", () -> Builder.<ZombifiedHornlinEntity>of(ZombifiedHornlinEntity::new, MobCategory.MONSTER).sized(1.4F, 1.7F).build("zombified_hornlin")
+      "zombified_hornlin", () -> Builder.<ZombifiedHornlinEntity>of(ZombifiedHornlinEntity::new, MobCategory.MONSTER).sized(0.8F, 1.7F).build("zombified_hornlin")
    );
    public static final DeferredHolder<EntityType<?>, EntityType<TheMerchantEntity>> THE_MERCHANT = REGISTER.register(
       "the_merchant",
