@@ -122,6 +122,14 @@ public class C2SMessageOffhandMelee {
 
       DamageSource damageSource = player.damageSources().playerAttack(player);
 
+      // Vanilla only posts this from Player#attack, so a hit driven from here reached nothing that listens for it -
+      // and that is where a good many modded weapons keep their on-hit behaviour. Posting it first also lets another
+      // mod cancel the hit outright, exactly as it could cancel a main-hand swing.
+      var attackEvent = new net.neoforged.neoforge.event.entity.player.AttackEntityEvent(player, target);
+      if (net.neoforged.neoforge.common.NeoForge.EVENT_BUS.post(attackEvent).isCanceled()) {
+         return;
+      }
+
       boolean damaged = target.hurt(damageSource, damage);
 
       if (damaged) {
