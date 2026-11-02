@@ -434,6 +434,12 @@ public class GunItem extends Item implements IColored, IMeta {
       // for every gun and book; the anvil recipes are now registered explicitly in JEIScorchedPlugin instead, so the
       // page no longer depends on this answering yes to everything.
       if (key.location().getNamespace().equals("scguns")) {
+         // An arrow-firing gun resolves its damage on a plain arrow instead of a ProjectileEntity, so the enchantments
+         // that act on that projectile never fire. Accepting them would let a player spend levels on nothing.
+         if (this.firesArrows(stack) && ARROW_GUN_EXCLUDED_ENCHANTMENTS.contains(key)) {
+            return false;
+         }
+
          return enchantment.value().canEnchant(stack);
       }
 
@@ -443,6 +449,27 @@ public class GunItem extends Item implements IColored, IMeta {
 
       // A mining gun is the one that legitimately behaves like a pickaxe.
       return stack.is(ModTags.Items.MINING_GUN) && ALLOWED_MINING_GUN_BOOK_ENCHANTMENTS.contains(key);
+   }
+
+   /**
+    * Enchantments that never fire on a gun whose projectile is a plain arrow.
+    *
+    * <p>These act on the gun's own projectile - extra targets, an elemental burst, armour bypass, fire on blocks, or
+    * ejected casings - and an arrow-firing gun has none of those, so every one of them would be a wasted slot.</p>
+    */
+   private static final Set<ResourceKey<Enchantment>> ARROW_GUN_EXCLUDED_ENCHANTMENTS = Set.of(
+      ModEnchantments.COLLATERAL,
+      ModEnchantments.ELEMENTAL_POP,
+      ModEnchantments.PUNCTURING,
+      ModEnchantments.SHELL_CATCHER
+   );
+
+   /** Whether this gun's projectile is a plain arrow, in which case the projectile enchantments never apply. */
+   private boolean firesArrows(ItemStack stack) {
+      Gun definition = this.getModifiedGun(stack);
+      return definition != null
+         && definition.getProjectile() != null
+         && definition.getProjectile().getItem() == net.minecraft.world.item.Items.ARROW;
    }
 
    /** Vanilla enchantments any gun may take from a book: durability support and nothing else. */
