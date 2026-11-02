@@ -121,7 +121,19 @@ public class C2SMessageOffhandMelee {
 
       DamageSource damageSource = player.damageSources().playerAttack(player);
       boolean damaged = target.hurt(damageSource, damage);
+
       if (damaged) {
+         // The vanilla post-hit hooks. Calling hurt() directly skipped all of them, so any item whose effect lives in
+         // Item#hurtEnemy - another mod's silver sword dealing magic damage, for instance - did nothing at all when
+         // swung from the off hand.
+         if (target instanceof LivingEntity hurtTarget) {
+            weapon.getItem().hurtEnemy(weapon, hurtTarget, player);
+            weapon.getItem().postHurtEnemy(weapon, hurtTarget, player);
+         }
+
+         player.setLastHurtMob(target);
+         player.awardStat(net.minecraft.stats.Stats.ITEM_USED.get(weapon.getItem()));
+
          if (target instanceof LivingEntity livingTargetx) {
             float knockback = 0.25F;
             int knockbackLevel = ScEnchants.getKnockbackBonus(player);
