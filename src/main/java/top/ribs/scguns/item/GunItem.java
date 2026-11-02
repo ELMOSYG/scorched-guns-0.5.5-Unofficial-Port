@@ -456,6 +456,35 @@ public class GunItem extends Item implements IColored, IMeta {
 
 
 
+   /**
+    * Fills the magazine of a gun taken out of the creative inventory.
+    *
+    * <p>Only this mod's own tab fills ammo, by writing an AmmoCount tag into each stack it adds. Guns that an addon
+    * puts into a creative tab itself - the WW1 rifles, for instance - arrive without that tag, so they read as an
+    * empty magazine: no ammo readout on the item and an immediate reload. Doing it here keeps that knowledge in one
+    * place and covers every gun, whoever added it, without touching survival-created guns.</p>
+    */
+   @Override
+   public void inventoryTick(ItemStack stack, net.minecraft.world.level.Level level,
+                             net.minecraft.world.entity.Entity entity, int slot, boolean selected) {
+      super.inventoryTick(stack, level, entity, slot, selected);
+
+      if (level.isClientSide() || !(entity instanceof net.minecraft.world.entity.player.Player player)
+         || !player.isCreative()) {
+         return;
+      }
+
+      CompoundTag tag = NbtHelper.getTag(stack);
+      if (tag != null && tag.contains("AmmoCount", 3)) {
+         return;
+      }
+
+      int maxAmmo = this.getModifiedGun(stack).getReloads().getMaxAmmo();
+      if (maxAmmo > 0) {
+         NbtHelper.getOrCreateTag(stack).putInt("AmmoCount", maxAmmo);
+      }
+   }
+
    public boolean isEnchantable(ItemStack stack) {
       return this.getMaxStackSize(stack) == 1;
    }
