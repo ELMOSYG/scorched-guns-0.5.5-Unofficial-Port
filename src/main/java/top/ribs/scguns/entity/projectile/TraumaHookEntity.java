@@ -160,6 +160,14 @@ public class TraumaHookEntity extends FishingHook implements net.neoforged.neofo
 
    public void tick() {
       this.baseTick();
+
+      // A hard lifetime on both sides. Everything else here is state machine work that can, in a bad case, leave a
+      // hook alive with no way for the retraction to finish - and a hook that never dies draws a permanent line back
+      // to the thrower. Five seconds is more than the flight and pull ever need, so this only ever catches strays.
+      if (this.tickCount > 100) {
+         this.discard();
+         return;
+      }
       if (this.level().isClientSide()) {
          // No local prediction on purpose. The server stops the hook on the creature it caught and later pulls it
          // home; a client that integrates its own gravity never sees either, so the drawn line slid straight through
