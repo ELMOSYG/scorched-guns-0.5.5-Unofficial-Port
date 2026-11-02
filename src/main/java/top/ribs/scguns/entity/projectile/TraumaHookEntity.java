@@ -18,6 +18,20 @@ import org.jetbrains.annotations.Nullable;
 
 public class TraumaHookEntity extends FishingHook {
    private boolean isRetracting = false;
+
+   /**
+    * The entity that threw this hook.
+    *
+    * <p>FishingHook resolves its owner through {@link #getPlayerOwner()}, and this hook has a mob owner rather than a
+    * player, so that override returns null - which made {@link #getOwner()} null too. Every check written as
+    * {@code entity != this.getOwner()} then let the thrower itself be hooked, and since the hook is launched half a
+    * block in front of the mob it usually was. The owner is therefore tracked here instead of being asked for.</p>
+    */
+   @Nullable
+   private Entity hookOwner;
+
+   @Nullable
+   private java.util.UUID hookOwnerId;
    private static final double GRAVITY = 0.03;
    private static final double AIR_RESISTANCE = 0.98;
    private static final double GROUND_FRICTION = 0.8;
@@ -32,20 +46,48 @@ public class TraumaHookEntity extends FishingHook {
    public TraumaHookEntity(EntityType<? extends TraumaHookEntity> entityType, LivingEntity owner, Level level) {
       super(entityType, level);
       this.setOwner(owner);
+      this.hookOwner = owner;
+      this.hookOwnerId = owner.getUUID();
       this.noCulling = true;
       this.moveTo(owner.getX(), owner.getEyeY() - 0.1, owner.getZ(), owner.getYRot(), owner.getXRot());
    }
 
+   public void setOwner(@Nullable Entity owner) {
+      super.setOwner(owner);
+      if (owner != null) {
+         this.hookOwner = owner;
+         this.hookOwnerId = owner.getUUID();
+      }
+   }
+
+   /** The thrower, preferring the tracked reference over {@code getOwner()}, which can be null here. */
+   @Nullable
+   private Entity hookOwner() {
+      if (this.hookOwner != null && !this.hookOwner.isRemoved()) {
+         return this.hookOwner;
+      }
+
+      return this.getOwner();
+   }
+
+   private boolean isThrower(Entity entity) {
+      if (this.hookOwnerId != null && entity.getUUID().equals(this.hookOwnerId)) {
+         return true;
+      }
+
+      return entity == this.hookOwner();
+   }
+
    protected void onHitEntity(EntityHitResult result) {
       Entity entity = result.getEntity();
-      if (entity instanceof LivingEntity && entity != this.getOwner() && !this.isRetracting) {
+      if (entity instanceof LivingEntity && !this.isThrower(entity) && !this.isRetracting) {
          super.onHitEntity(result);
          this.setDeltaMovement(Vec3.ZERO);
       }
    }
 
    protected boolean canHitEntity(Entity entity) {
-      return !this.isRetracting && entity instanceof LivingEntity && entity != this.getOwner();
+      return !this.isRetracting && entity instanceof LivingEntity && !this.isThrower(entity);
    }
 
    public void tick() {
@@ -59,7 +101,7 @@ public class TraumaHookEntity extends FishingHook {
             this.move(MoverType.SELF, motion);
          }
       } else {
-         Entity owner = this.getOwner();
+         Entity owner = this.hookOwner();
          if (owner != null && !owner.isRemoved()) {
             if (!this.isRetracting) {
                boolean shouldRetract = false;
@@ -116,7 +158,7 @@ public class TraumaHookEntity extends FishingHook {
    }
 
    private void handleRetraction() {
-      Entity owner = this.getOwner();
+      Entity owner = this.hookOwner();
       if (owner == null) {
          this.discard();
       } else {
