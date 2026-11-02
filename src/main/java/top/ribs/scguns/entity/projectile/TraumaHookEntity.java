@@ -19,6 +19,9 @@ import org.jetbrains.annotations.Nullable;
 public class TraumaHookEntity extends FishingHook {
    private boolean isRetracting = false;
 
+   /** Tick the hook caught something on, so the pull can be released after a moment. */
+   private int hookedAt = -1;
+
    /**
     * The entity that threw this hook.
     *
@@ -111,22 +114,13 @@ public class TraumaHookEntity extends FishingHook {
     */
    protected void onHitEntity(EntityHitResult result) {
       Entity entity = result.getEntity();
-      if (!(entity instanceof LivingEntity living) || this.isThrower(entity) || this.isRetracting) {
-         return;
+      if (entity instanceof LivingEntity && !this.isThrower(entity) && !this.isRetracting) {
+         // Vanilla's own handling: it stores the target and pulls it with the strength a fishing rod has. The
+         // release is handled in tick(), because this class replaces FishingHook.tick() entirely.
+         super.onHitEntity(result);
+         this.setDeltaMovement(Vec3.ZERO);
+         this.hookedAt = this.tickCount;
       }
-
-      Entity owner = this.hookOwner();
-      if (owner != null) {
-         Vec3 pull = owner.position().subtract(living.position());
-         if (pull.lengthSqr() > 1.0E-4) {
-            pull = pull.normalize().scale(0.4);
-            living.push(pull.x, 0.12, pull.z);
-            living.hurtMarked = true;
-         }
-      }
-
-      this.setDeltaMovement(Vec3.ZERO);
-      this.startRetraction();
    }
 
    protected boolean canHitEntity(Entity entity) {
@@ -163,9 +157,31 @@ public class TraumaHookEntity extends FishingHook {
                }
             }
 
+            Entity caught = this.getHookedIn();
+            if (caught != null && !this.isRetracting) {
+               // Pull the target toward the thrower, then let go: about a second of dragging is enough.
+               Vec3 anchor = owner.position().add(0.0, (double)owner.getEyeHeight() * 0.6, 0.0);
+               Vec3 toAnchor = anchor.subtract(caught.position());
+
+               if (toAnchor.lengthSqr() > 1.0E-4) {
+                  Vec3 pull = toAnchor.normalize().scale(0.35);
+                  Vec3 moved = caught.getDeltaMovement().add(pull.x, 0.06, pull.z);
+                  caught.setDeltaMovement(moved);
+                  caught.hurtMarked = true;
+               }
+
+               this.setPos(caught.getX(), caught.getY() + caught.getBbHeight() * 0.5, caught.getZ());
+
+               if (this.hookedAt < 0) {
+                  this.hookedAt = this.tickCount;
+               } else if (this.tickCount - this.hookedAt > 20) {
+                  this.startRetraction();
+               }
+            }
+
             if (this.isRetracting) {
                this.handleRetraction();
-            } else {
+            } else if (caught == null) {
                this.handleNormalFlight();
             }
 
