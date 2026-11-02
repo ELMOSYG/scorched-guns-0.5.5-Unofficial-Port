@@ -206,7 +206,9 @@ public class TraumaUnitEntity extends Monster {
 
    private TraumaHookEntity findActiveHook() {
       for (TraumaHookEntity hook : this.level().getEntitiesOfClass(TraumaHookEntity.class, this.getBoundingBox().inflate(20.0))) {
-         if (hook.getOwner() == this && !hook.isRemoved()) {
+         // getOwner() is null for this hook (the thrower is a mob, not a player), so asking it meant the
+         // unit never saw its own hook and threw another one every cooldown - two or more lines at once.
+         if (hook.getThrower() == this && !hook.isRemoved()) {
             return hook;
          }
       }

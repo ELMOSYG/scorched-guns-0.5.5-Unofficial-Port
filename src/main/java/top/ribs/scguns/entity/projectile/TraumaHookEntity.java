@@ -96,6 +96,12 @@ public class TraumaHookEntity extends FishingHook {
       return this.getOwner();
    }
 
+   /** The entity that threw this hook. Never null while the thrower is loaded, unlike {@code getOwner()}. */
+   @Nullable
+   public Entity getThrower() {
+      return this.hookOwner();
+   }
+
    private boolean isThrower(Entity entity) {
       if (this.hookOwnerId != null && entity.getUUID().equals(this.hookOwnerId)) {
          return true;
@@ -130,13 +136,12 @@ public class TraumaHookEntity extends FishingHook {
    public void tick() {
       this.baseTick();
       if (this.level().isClientSide()) {
-         if (!this.isRetracting && !this.onGround()) {
-            Vec3 motion = this.getDeltaMovement();
-            motion = motion.add(0.0, -0.03, 0.0);
-            motion = motion.scale(0.98);
-            this.setDeltaMovement(motion);
-            this.move(MoverType.SELF, motion);
-         }
+         // No local prediction on purpose. The server stops the hook on the creature it caught and later pulls it
+         // home; a client that integrates its own gravity never sees either, so the drawn line slid straight through
+         // the creature and the hook hung in the world until it was unloaded. The client now only follows the
+         // positions the server sends.
+         this.xRotO = this.getXRot();
+         this.yRotO = this.getYRot();
       } else {
          Entity owner = this.hookOwner();
          if (owner != null && !owner.isRemoved()) {
