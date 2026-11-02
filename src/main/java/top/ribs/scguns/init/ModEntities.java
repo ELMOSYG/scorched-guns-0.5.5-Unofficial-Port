@@ -207,7 +207,7 @@ public class ModEntities {
       "supply_scamp", () -> Builder.<SupplyScampEntity>of(SupplyScampEntity::new, MobCategory.CREATURE).sized(1.0F, 1.3F).build("supply_scamp")
    );
    public static final DeferredHolder<EntityType<?>, EntityType<DissidentEntity>> DISSIDENT = REGISTER.register(
-      "dissident", () -> Builder.<DissidentEntity>of(DissidentEntity::new, MobCategory.MONSTER).sized(1.4F, 1.7F).build("dissident")
+      "dissident", () -> Builder.<DissidentEntity>of(DissidentEntity::new, MobCategory.MONSTER).sized(1.4F, 2.0F).build("dissident")
    );
    public static final DeferredHolder<EntityType<?>, EntityType<ViventrumEntity>> VIVENTRUM = REGISTER.register(
       "viventrum", () -> Builder.<ViventrumEntity>of(ViventrumEntity::new, MobCategory.MONSTER).sized(0.6F, 1.8F).build("viventrum")
