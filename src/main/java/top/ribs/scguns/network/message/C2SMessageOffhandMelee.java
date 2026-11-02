@@ -114,15 +114,25 @@ public class C2SMessageOffhandMelee {
       }
 
       float damage = baseDamage * (0.2F + attackStrength * attackStrength * 0.8F);
-      boolean isCritical = player.fallDistance > 0.0F && !player.onGround() && !player.isInWater() && !player.hasEffect(MobEffects.BLINDNESS) && !player.isPassenger();
+      boolean isCritical = player.fallDistance > 0.0F && !player.onGround() && !player.isInWater()
+         && !player.hasEffect(MobEffects.BLINDNESS) && !player.isPassenger();
       if (isCritical) {
-         damage *= 1.3F;
+         damage *= 1.5F;
       }
 
       DamageSource damageSource = player.damageSources().playerAttack(player);
+
       boolean damaged = target.hurt(damageSource, damage);
 
       if (damaged) {
+         // Announce the crit the way vanilla does. In 1.21 there is no crit flag on the player - Player#crit(entity) is
+         // the call that spawns the crit particles, and it is what anything watching for a crit reacts to. Applying
+         // only our own damage multiplier meant a training dummy, or another mod's on-crit effect, never saw one.
+         if (isCritical) {
+            player.crit(target);
+            player.magicCrit(target);
+         }
+
          // The vanilla post-hit hooks. Calling hurt() directly skipped all of them, so any item whose effect lives in
          // Item#hurtEnemy - another mod's silver sword dealing magic damage, for instance - did nothing at all when
          // swung from the off hand.
