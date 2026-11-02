@@ -184,15 +184,28 @@ public class ServerPlayHandler {
 
    @NotNull
    private static Arrow getArrow(ServerPlayer player, Level world, ItemStack heldItem, Gun modifiedGun) {
+      // Bow enchantments carried by an arrow-firing gun. Vanilla applies Power and Flame when BowItem releases an
+      // arrow, and Punch inside the arrow's own doKnockback by reading the weapon it was fired from - none of which
+      // happens when this path builds the arrow itself, so a gun could hold them and nothing would change.
+      var enchantments = world.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.ENCHANTMENT);
+      int power = net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(
+         enchantments.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.POWER), heldItem);
+      int punch = net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(
+         enchantments.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.PUNCH), heldItem);
+      int flame = net.minecraft.world.item.enchantment.EnchantmentHelper.getItemEnchantmentLevel(
+         enchantments.getOrThrow(net.minecraft.world.item.enchantment.Enchantments.FLAME), heldItem);
+
       // 1.21's AbstractArrow rejects an *empty* weapon on the server side: its
       // (EntityType, owner, level, pickup, firedFromWeapon) constructor throws
       // IllegalArgumentException("Invalid weapon firing an arrow") when the weapon stack is empty.
       // 0.5.5 called Arrow(Level, LivingEntity), which passed no weapon at all - so this arrow-firing gun
       // (scguns:niami) fired nothing, the exception aborted the whole shot, and the player saw a gun that
-      // simply would not shoot. The parameter is @Nullable and null is what vanilla does when there is no
-      // weapon: passing the gun instead would work, but 1.21 persists the weapon inside the arrow, so
-      // every niami arrow would carry a copy of the gun (attachments and all).
-      Arrow arrow = new Arrow(world, player, new ItemStack(Items.ARROW), null);
+      // simply would not shoot. The parameter is @Nullable, and it is passed here only when Punch needs it,
+      // because 1.21 persists the weapon inside the arrow: with Punch that is the price of the enchantment
+      // working, and without it there is no reason to carry a copy of the gun (attachments and all).
+      ItemStack firedFrom = punch > 0 ? heldItem.copyWithCount(1) : null;
+      Arrow arrow = new Arrow(world, player, new ItemStack(Items.ARROW), firedFrom);
+
       float speed = (float)modifiedGun.getProjectile(heldItem).getSpeed() * 0.35F;
       float pitch = player.getXRot();
       float yaw = player.getYRot();
@@ -208,7 +221,18 @@ public class ServerPlayHandler {
       arrow.setXRot((float)(Mth.atan2(motion.y, (double)horizontalDistance) * (180.0 / Math.PI)));
       arrow.yRotO = arrow.getYRot();
       arrow.xRotO = arrow.getXRot();
-      arrow.setBaseDamage((double)modifiedGun.getProjectile(heldItem).getDamage() * 0.15);
+
+      double baseDamage = (double)modifiedGun.getProjectile(heldItem).getDamage() * 0.15;
+      if (power > 0) {
+         // Same shape as BowItem: half a point per level, plus a flat half point once Power is present.
+         baseDamage += (double)power * 0.5 + 0.5;
+      }
+      arrow.setBaseDamage(baseDamage);
+
+      if (flame > 0) {
+         arrow.igniteForSeconds(5.0F);
+      }
+
       return arrow;
    }
 

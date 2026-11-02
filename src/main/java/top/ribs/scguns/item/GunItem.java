@@ -441,12 +441,24 @@ public class GunItem extends Item implements IColored, IMeta {
          return true;
       }
 
+      // Bow enchantments are accepted by every gun but only do anything on one that fires arrows (scguns:niami):
+      // ServerPlayHandler applies Power, Punch and Flame when it builds that arrow. Accepting them here is what lets
+      // an anvil or a book put them on.
+      if (BOW_ENCHANTMENTS.contains(key)) {
+         return true;
+      }
+
       // A mining gun is the one that legitimately behaves like a pickaxe.
       return stack.is(ModTags.Items.MINING_GUN) && ALLOWED_MINING_GUN_BOOK_ENCHANTMENTS.contains(key);
    }
 
    /** Vanilla enchantments any gun may take from a book: durability support and nothing else. */
    private static final Set<ResourceKey<Enchantment>> ALLOWED_GUN_BOOK_ENCHANTMENTS = Set.of(Enchantments.UNBREAKING, Enchantments.MENDING);
+
+   /** Enchantments that a bow would use; applied to the arrow by an arrow-firing gun. */
+   private static final Set<ResourceKey<Enchantment>> BOW_ENCHANTMENTS = Set.of(
+      Enchantments.POWER, Enchantments.PUNCH, Enchantments.FLAME
+   );
 
    /** Vanilla enchantments a mining gun may take from a book, on top of the ones above. */
    private static final Set<ResourceKey<Enchantment>> ALLOWED_MINING_GUN_BOOK_ENCHANTMENTS = Set.of(
