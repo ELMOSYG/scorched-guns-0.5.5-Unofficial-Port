@@ -93,7 +93,10 @@ public class CogKnightEntity extends Monster {
          .add(Attributes.ARMOR, 3.0)
          .add(Attributes.KNOCKBACK_RESISTANCE, 0.5)
          .add(Attributes.ATTACK_KNOCKBACK, 0.8F)
-         .add(Attributes.ATTACK_DAMAGE, 5.0);
+         .add(Attributes.ATTACK_DAMAGE, 5.0)
+         // A charging knight steps over a one-block rise instead of being stopped by it. The vanilla default is 0.6,
+         // which clears a slab and nothing more.
+         .add(Attributes.STEP_HEIGHT, 1.1);
    }
 
    public void tick() {
