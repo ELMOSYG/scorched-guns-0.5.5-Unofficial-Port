@@ -417,8 +417,11 @@ public class GunEventBus {
             // Nothing pushes upwards once the player is off the floor. Any lift while airborne kept them airborne, so
             // sustained fire held them in the air - "it takes off even when I am not aiming at the floor". A real jump
             // plus a downward shot still gets the 1.25x below, which is the manoeuvre that branch is for.
+            // The airborne case keeps its full 1.25x. MAX_RECOIL_LIFT exists to stop the *floor* case from climbing
+            // on every shot; applying it here as well flattened the jump-and-shoot-downwards kick to 0.08, which read
+            // as "no recoil while airborne".
             verticalBoost = lookVec.y < -0.5 && currentY > 0.0
-               ? Math.min((double)effectiveStrength * 1.25, MAX_RECOIL_LIFT - currentY)
+               ? (double)effectiveStrength * 1.25
                : 0.0;
          } else {
             // On the floor: fill up to the lift a single shot is worth, never add on top of it.
