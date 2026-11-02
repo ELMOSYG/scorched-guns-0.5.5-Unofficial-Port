@@ -101,12 +101,32 @@ public class TraumaHookEntity extends FishingHook {
       return entity == this.hookOwner();
    }
 
+   /**
+    * A hit pulls the target towards the thrower and sends the hook home.
+    *
+    * <p>Vanilla {@code FishingHook.onHitEntity} stores the target in {@code hookedIn} and lets {@code FishingHook.tick}
+    * do the pulling - but this class replaces that tick, so nothing ever released the hook again and it sat on the
+    * creature until the lifetime ran out. The pull is done here instead and the hook starts retracting at once, so no
+    * hooked state is left behind.</p>
+    */
    protected void onHitEntity(EntityHitResult result) {
       Entity entity = result.getEntity();
-      if (entity instanceof LivingEntity && !this.isThrower(entity) && !this.isRetracting) {
-         super.onHitEntity(result);
-         this.setDeltaMovement(Vec3.ZERO);
+      if (!(entity instanceof LivingEntity living) || this.isThrower(entity) || this.isRetracting) {
+         return;
       }
+
+      Entity owner = this.hookOwner();
+      if (owner != null) {
+         Vec3 pull = owner.position().subtract(living.position());
+         if (pull.lengthSqr() > 1.0E-4) {
+            pull = pull.normalize().scale(0.4);
+            living.push(pull.x, 0.12, pull.z);
+            living.hurtMarked = true;
+         }
+      }
+
+      this.setDeltaMovement(Vec3.ZERO);
+      this.startRetraction();
    }
 
    protected boolean canHitEntity(Entity entity) {
@@ -195,8 +215,12 @@ public class TraumaHookEntity extends FishingHook {
             double retractSpeed = 0.4 + distanceToOwner * 0.05;
             retractSpeed = Math.min(retractSpeed, 1.5);
             Vec3 retractVelocity = direction.scale(retractSpeed);
+
+            // setPos rather than move(): the hook is often sitting inside the creature it just hit, and a collision
+            // resolved move is refused there, so the hook could never travel home and never despawned.
+            Vec3 next = hookPos.add(retractVelocity);
+            this.setPos(next.x, next.y, next.z);
             this.setDeltaMovement(retractVelocity);
-            this.move(MoverType.SELF, retractVelocity);
          }
       }
    }
