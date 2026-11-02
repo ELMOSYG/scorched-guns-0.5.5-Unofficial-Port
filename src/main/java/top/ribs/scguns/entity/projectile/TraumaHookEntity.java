@@ -52,6 +52,29 @@ public class TraumaHookEntity extends FishingHook {
       this.moveTo(owner.getX(), owner.getEyeY() - 0.1, owner.getZ(), owner.getYRot(), owner.getXRot());
    }
 
+   /**
+    * Builds this hook on the client from the spawn packet.
+    *
+    * <p>Vanilla {@code FishingHook} refuses any owner that is not a player, logs "is not a valid owner" and drops the
+    * entity - which left the client without a hook at all, so there was no bobber and nothing for the line to reach.
+    * A mob throws this one, so the packet is handled here instead: the position, velocity and owner are applied
+    * without the player check.</p>
+    */
+   @Override
+   public void recreateFromPacket(net.minecraft.network.protocol.game.ClientboundAddEntityPacket packet) {
+      this.setPosRaw(packet.getX(), packet.getY(), packet.getZ());
+      this.setDeltaMovement(packet.getXa(), packet.getYa(), packet.getZa());
+      this.setYRot((float)packet.getYRot());
+      this.setXRot((float)packet.getXRot());
+      this.yRotO = this.getYRot();
+      this.xRotO = this.getXRot();
+
+      Entity thrower = this.level().getEntity(packet.getData());
+      if (thrower != null) {
+         this.setOwner(thrower);
+      }
+   }
+
    public void setOwner(@Nullable Entity owner) {
       super.setOwner(owner);
       if (owner != null) {
