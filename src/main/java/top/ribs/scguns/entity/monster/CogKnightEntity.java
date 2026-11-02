@@ -84,6 +84,14 @@ public class CogKnightEntity extends Monster {
          : false;
    }
 
+   /**
+    * Step-height bonus applied only while the knight is charging, so it climbs a one-block rise as it bears down on
+    * the player but walks normally the rest of the time. Vanilla step height is 0.6, which clears a slab and nothing
+    * more.
+    */
+   private static final net.minecraft.resources.ResourceLocation CHARGE_STEP_MODIFIER =
+      net.minecraft.resources.ResourceLocation.fromNamespaceAndPath("scguns", "cog_knight_charge_step");
+
    public static Builder createAttributes() {
       return Animal.createLivingAttributes()
          .add(Attributes.MAX_HEALTH, 34.0)
@@ -93,10 +101,7 @@ public class CogKnightEntity extends Monster {
          .add(Attributes.ARMOR, 3.0)
          .add(Attributes.KNOCKBACK_RESISTANCE, 0.5)
          .add(Attributes.ATTACK_KNOCKBACK, 0.8F)
-         .add(Attributes.ATTACK_DAMAGE, 5.0)
-         // A charging knight steps over a one-block rise instead of being stopped by it. The vanilla default is 0.6,
-         // which clears a slab and nothing more.
-         .add(Attributes.STEP_HEIGHT, 1.1);
+         .add(Attributes.ATTACK_DAMAGE, 5.0);
    }
 
    public void tick() {
@@ -327,6 +332,7 @@ public class CogKnightEntity extends Monster {
 
       public void start() {
          this.isCharging = true;
+         this.applyChargeStepHeight(true);
          this.chargeTicks = 12;   // 6 tick wind-up + 6 tick dash
          this.windUpTicks = CHARGE_WIND_UP_TICKS;
 
@@ -387,9 +393,26 @@ public class CogKnightEntity extends Monster {
          this.mob.setCharging(false);
          this.cooldownTicks = this.chargeCooldown;
          this.target = null;
+         this.applyChargeStepHeight(false);
          this.chargeTicks = 0;
-      this.hasHitThisCharge = false;
+         this.hasHitThisCharge = false;
       }
+
+
+   /** Adds or removes the charge-only step-height bonus. */
+   private void applyChargeStepHeight(boolean charging) {
+      var attribute = this.mob.getAttribute(Attributes.STEP_HEIGHT);
+      if (attribute == null) {
+         return;
+      }
+
+      if (charging) {
+         attribute.addOrUpdateTransientModifier(new net.minecraft.world.entity.ai.attributes.AttributeModifier(
+            CHARGE_STEP_MODIFIER, 0.5, net.minecraft.world.entity.ai.attributes.AttributeModifier.Operation.ADD_VALUE));
+      } else {
+         attribute.removeModifier(CHARGE_STEP_MODIFIER);
+      }
+   }
 
       private void performChargeAttack() {
          if (this.target != null) {
