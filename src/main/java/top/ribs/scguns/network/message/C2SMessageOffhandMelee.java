@@ -120,7 +120,14 @@ public class C2SMessageOffhandMelee {
          damage *= 1.5F;
       }
 
+      // Vanilla routes the damage through EnchantmentHelper.modifyDamage, which is where Sharpness, Smite and
+      // Bane of Arthropods - and any other mod's damage modifiers - are applied. Skipping it made every hit weaker
+      // than the same weapon in the main hand.
       DamageSource damageSource = player.damageSources().playerAttack(player);
+      if (target instanceof LivingEntity modifiableTarget) {
+         damage = net.minecraft.world.item.enchantment.EnchantmentHelper.modifyDamage(
+            player.serverLevel(), weapon, modifiableTarget, damageSource, damage);
+      }
 
       // Vanilla only posts this from Player#attack, so a hit driven from here reached nothing that listens for it -
       // and that is where a good many modded weapons keep their on-hit behaviour. Posting it first also lets another
@@ -147,6 +154,11 @@ public class C2SMessageOffhandMelee {
          if (target instanceof LivingEntity hurtTarget) {
             weapon.getItem().hurtEnemy(weapon, hurtTarget, player);
             weapon.getItem().postHurtEnemy(weapon, hurtTarget, player);
+         }
+
+         // Durability, exactly as a main-hand swing spends it.
+         if (!player.isCreative()) {
+            weapon.hurtAndBreak(1, player, LivingEntity.getSlotForHand(InteractionHand.OFF_HAND));
          }
 
          player.setLastHurtMob(target);
