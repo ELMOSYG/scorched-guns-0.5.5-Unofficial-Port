@@ -1,7 +1,5 @@
 package top.ribs.scguns.event;
 
-import top.ribs.scguns.util.GunModifierHelper;
-
 
 
 
@@ -322,7 +320,7 @@ public class GunEventBus {
          Gun gunx = gunItem.getModifiedGun(heldItem);
          int hotBarrelLevel = ScEnchants.level(heldItem, ModEnchantments.HOT_BARREL);
          if (gunx.getProjectile().hasPlayerKnockBack()) {
-            applyGunKnockback(player, gunx, heldItem);
+            applyGunKnockback(player, gunx);
          }
 
          if (hotBarrelLevel > 0) {
@@ -379,7 +377,7 @@ public class GunEventBus {
    /** The most upward speed, in blocks per tick, that firing may ever add. */
    private static final double MAX_RECOIL_LIFT = 0.08;
 
-   private static void applyGunKnockback(Player player, Gun gun, ItemStack heldItem) {
+   private static void applyGunKnockback(Player player, Gun gun) {
       Vec3 lookVec = player.getLookAngle();
       float baseStrength = gun.getProjectile().getPlayerKnockBackStrength();
 
@@ -396,13 +394,7 @@ public class GunEventBus {
       }
 
       totalKnockbackResistance = Math.min(0.75F, totalKnockbackResistance);
-
-      // The gun's own recoil modifiers - a weighted stock reduces it to 0.75, for instance. They were only being fed to
-      // the camera recoil, so the stock changed how far the view kicked but not how far the player was pushed, which is
-      // what players noticed as the stock "not working".
-      float recoilMultiplier = 1.0F - GunModifierHelper.getRecoilModifier(heldItem);
-
-      float effectiveStrength = baseStrength * recoilMultiplier * (1.0F - totalKnockbackResistance);
+      float effectiveStrength = baseStrength * (1.0F - totalKnockbackResistance);
       if (effectiveStrength > 0.0F) {
          // Standing on a Sable sub-level reports onGround() == false, because the block under the player belongs to a
          // moving body rather than to the level. Firing downwards then took this branch - the "in the air, aiming down"
