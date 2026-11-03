@@ -50,6 +50,35 @@ shotgun fire is still limited by the speed budget.
 1.0.9 briefly clamped every gun's rate to at least 2 ticks (600 RPM). That is reverted - the enchantment tags already
 handle it, and the code does not need a second gate.
 
+## Jumping no longer cancels the recoil kick
+
+1.0.9 added a 0.08 lift cap so that firing while standing on a physics structure would not slowly push the player off
+the deck. That cap was meant for the grounded case, but it also got applied to the airborne one - so firing downwards
+mid-jump, which should give a 1.25x upward kick, was flattened to 0.08 and felt like no recoil at all.
+
+The two cases are now separate:
+
+| Situation | Vertical recoil |
+|---|---|
+| Standing on the ground | at most 0.08, so sustained fire cannot climb |
+| Airborne, aiming down | the full 1.25x |
+
+## A charging cog knight can step over a one block rise
+
+The knight used to be stopped by a single block step while charging, so it could not reach a target standing on one.
+While charging it now gets +0.5 step height (1.1 instead of the vanilla 0.6).
+
+It is applied as an attribute modifier and removed when the charge ends: normal walking keeps the vanilla step height,
+and modifiers added by other mods are left alone.
+
+## Collision boxes for a few mobs
+
+| Mob | Before | After | Why |
+|---|---|---|---|
+| Dissident | 1.4 x 1.7 | 1.4 x **2.0** | the model is taller than the box, so its head poked through |
+| Hornlin | **1.4** x 1.7 | **0.8** x 1.7 | too wide for a slender model |
+| Zombified hornlin | **1.4** x 1.7 | **0.8** x 1.7 | same |
+
 ## Known issues
 
 - **JEI bookmark recipe lookup**: a gun bookmarked from the gun bench page shows no recipe preview on hover, and `R`
