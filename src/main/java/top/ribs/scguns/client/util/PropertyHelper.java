@@ -59,18 +59,41 @@ public final class PropertyHelper {
     * Zero when the key is absent, so nothing changes for guns that never set it.</p>
     */
    public static Vec3 getIdleHold(ItemStack stack) {
-      DataObject customObject = getCustomData(stack);
-      if (customObject.has("scguns:weapon", DataType.OBJECT)) {
-         DataObject weaponObject = customObject.getDataObject("scguns:weapon");
-         if (weaponObject.has("idleHold", DataType.OBJECT)) {
-            DataObject holdObject = weaponObject.getDataObject("idleHold");
-            if (holdObject.has("offset", DataType.ARRAY)) {
-               return arrayToVec3(holdObject.getDataArray("offset"), Vec3.ZERO);
-            }
-         }
+      Vec3 override = readOverride(stack, "idleHold", "offset");
+      return override == null ? Vec3.ZERO : override;
+   }
+
+   /**
+    * Reads a {@code scguns:weapon -> <section> -> <field>} array written by {@code /scguns aimcamera ...}.
+    *
+    * <p>These live in the stack's plain custom data, which is deliberately separate from the Framework data the
+    * renderer normally reads: the command has to write somewhere a client-side lookup can see immediately, and
+    * Framework's model data is not writable from a command.</p>
+    */
+   private static Vec3 readOverride(ItemStack stack, String section, String field) {
+      net.minecraft.world.item.component.CustomData custom =
+         stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
+      if (custom == null) {
+         return null;
       }
 
-      return Vec3.ZERO;
+      net.minecraft.nbt.CompoundTag root = custom.copyTag();
+      if (!root.contains("scguns:weapon", net.minecraft.nbt.Tag.TAG_COMPOUND)) {
+         return null;
+      }
+
+      net.minecraft.nbt.CompoundTag weapon = root.getCompound("scguns:weapon");
+      if (!weapon.contains(section, net.minecraft.nbt.Tag.TAG_COMPOUND)) {
+         return null;
+      }
+
+      net.minecraft.nbt.CompoundTag node = weapon.getCompound(section);
+      if (!node.contains(field, net.minecraft.nbt.Tag.TAG_LIST)) {
+         return null;
+      }
+
+      net.minecraft.nbt.ListTag list = node.getList(field, net.minecraft.nbt.Tag.TAG_DOUBLE);
+      return list.size() < 3 ? null : new Vec3(list.getDouble(0), list.getDouble(1), list.getDouble(2));
    }
 
    public static Vec3 getScopeCamera(ItemStack stack) {
@@ -87,6 +110,13 @@ public final class PropertyHelper {
    }
 
    public static Vec3 getIronSightCamera(ItemStack stack, Gun modifiedGun, Vec3 gunOrigin) {
+      // A live override written by /scguns aimcamera wins over everything: it is the value being tuned right now.
+      Vec3 cameraOverride = readOverride(stack, "ironSight", "camera");
+      if (cameraOverride != null) {
+         return cameraOverride;
+      }
+
+
       DataObject ironSightObject = getObjectByPath(stack, "scguns:weapon", "ironSight");
       if (ironSightObject.has("camera", DataType.ARRAY)) {
          DataArray cameraArray = ironSightObject.getDataArray("camera");
@@ -132,6 +162,14 @@ public final class PropertyHelper {
    }
 
    public static Vec3 getAttachmentPosition(ItemStack stack, Gun modifiedGun, IAttachment.Type type) {
+      if (type == IAttachment.Type.SCOPE) {
+         Vec3 scopeOverride = readOverride(stack, "scope", "translation");
+         if (scopeOverride != null) {
+            return scopeOverride;
+         }
+      }
+
+
       DataObject scopeObject = getObjectByPath(stack, "scguns:weapon", "attachments", type.getSerializeKey());
       if (scopeObject.has("translation", DataType.ARRAY)) {
          DataArray translationArray = scopeObject.getDataArray("translation");
