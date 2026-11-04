@@ -190,6 +190,16 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          return;
       }
 
+      // Live hold offset from /scguns aimcamera idle ...  GeckoLib guns are drawn through this path, so the offset has
+      // to be applied here rather than in the plain item renderer. It is a bare translate: the item renderer already
+      // pushes a pose around this call, so nothing leaks into the next draw.
+      if (isFirstPersonHand(this.currentDisplayContext)) {
+         Vec3 idleHold = PropertyHelper.getIdleHold(stack);
+         if (idleHold.lengthSqr() > 0.0) {
+            poseStack.translate(idleHold.x * 0.0625, idleHold.y * 0.0625, idleHold.z * 0.0625);
+         }
+      }
+
       Player player = client.player;
       boolean actualFirstPersonHand = isFirstPersonHand(transformType);
       boolean right = isFirstPersonHand(this.currentDisplayContext)
