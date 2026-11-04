@@ -341,8 +341,12 @@ public final class PropertyHelper {
                               // position has to be expressed in that same space: add the origin's x/z back (its y
                               // is zero) and the subtraction leaves exactly the bone pivot.
                               Vec3 origin = GUN_DEFAULT_ORIGIN;
+                              // The Y axis runs the other way in a geo file: pivots there are written with the
+                              // model's own up as negative (an ordinary gun body sits at about -6.75), while this
+                              // offset is consumed in the same space as the zoom fallback, where a larger number
+                              // means higher. Using the pivot as-is dropped the aim camera towards the floor.
                               result = new Vec3(pivot.get(0).getAsDouble() + origin.x,
-                                                pivot.get(1).getAsDouble() + origin.y,
+                                                -pivot.get(1).getAsDouble() + origin.y,
                                                 pivot.get(2).getAsDouble() + origin.z);
                               top.ribs.scguns.ScorchedGuns.LOGGER.info(
                                     "CAMERA BONE HIT: {} -> bone '{}' pivot {}",
