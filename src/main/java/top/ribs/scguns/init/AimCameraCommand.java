@@ -61,6 +61,24 @@ public final class AimCameraCommand {
                .then(Commands.argument("dz", DoubleArgumentType.doubleArg())
                   .executes(AimCameraCommand::idleAdd))));
 
+      var scopeSet = Commands.literal("set")
+         .then(Commands.argument("x", DoubleArgumentType.doubleArg())
+            .then(Commands.argument("y", DoubleArgumentType.doubleArg())
+               .then(Commands.argument("z", DoubleArgumentType.doubleArg())
+                  .executes(AimCameraCommand::scopeSet))));
+
+      var scopeAdd = Commands.literal("add")
+         .then(Commands.argument("dx", DoubleArgumentType.doubleArg())
+            .then(Commands.argument("dy", DoubleArgumentType.doubleArg())
+               .then(Commands.argument("dz", DoubleArgumentType.doubleArg())
+                  .executes(AimCameraCommand::scopeAdd))));
+
+      var scope = Commands.literal("scope")
+         .then(Commands.literal("get").executes(AimCameraCommand::scopeGet))
+         .then(Commands.literal("clear").executes(AimCameraCommand::scopeClear))
+         .then(scopeSet)
+         .then(scopeAdd);
+
       var idle = Commands.literal("idle")
          .then(Commands.literal("get").executes(AimCameraCommand::idleGet))
          .then(Commands.literal("clear").executes(AimCameraCommand::idleClear))
@@ -73,6 +91,7 @@ public final class AimCameraCommand {
             .then(Commands.literal("clear").executes(AimCameraCommand::clear))
             .then(set)
             .then(add)
+            .then(scope)
             .then(idle)));
    }
 
@@ -253,6 +272,116 @@ public final class AimCameraCommand {
 
       CompoundTag hold = weapon.getCompound(IDLE_HOLD_TAG);
       return hold.contains(OFFSET_TAG, 9) ? hold.getList(OFFSET_TAG, 6) : null;
+   }
+
+
+   private static final String ATTACHMENTS_TAG = "attachments";
+   private static final String SCOPE_TAG = "scope";
+   private static final String TRANSLATION_TAG = "translation";
+
+   private static int scopeGet(CommandContext<CommandSourceStack> context) {
+      ItemStack held = heldGun(context);
+      if (held == null) {
+         return 0;
+      }
+
+      ListTag translation = readScopeTranslation(held);
+      if (translation == null) {
+         context.getSource().sendSuccess(() -> Component.literal(
+            "No scope translation on this gun - it is using the attachments.scope offsets plus (8, 0, 8)."), false);
+         return 1;
+      }
+
+      context.getSource().sendSuccess(() -> Component.literal(String.format(
+         "attachments.scope.translation = [%.3f, %.3f, %.3f]   (renderer adds y+0.54, z-0.16 after scaling)",
+         translation.getDouble(0), translation.getDouble(1), translation.getDouble(2))), false);
+      return 1;
+   }
+
+   private static int scopeClear(CommandContext<CommandSourceStack> context) {
+      ItemStack held = heldGun(context);
+      if (held == null) {
+         return 0;
+      }
+
+      CompoundTag root = copyData(held);
+      CompoundTag weapon = root.getCompound(WEAPON_TAG);
+      CompoundTag attachments = weapon.getCompound(ATTACHMENTS_TAG);
+      CompoundTag scopeTag = attachments.getCompound(SCOPE_TAG);
+      scopeTag.remove(TRANSLATION_TAG);
+      attachments.put(SCOPE_TAG, scopeTag);
+      weapon.put(ATTACHMENTS_TAG, attachments);
+      root.put(WEAPON_TAG, weapon);
+      held.set(DataComponents.CUSTOM_DATA, CustomData.of(root));
+
+      context.getSource().sendSuccess(() -> Component.literal("Cleared the scope translation."), false);
+      return 1;
+   }
+
+   private static int scopeSet(CommandContext<CommandSourceStack> context) {
+      return writeScope(context,
+         DoubleArgumentType.getDouble(context, "x"),
+         DoubleArgumentType.getDouble(context, "y"),
+         DoubleArgumentType.getDouble(context, "z"), false);
+   }
+
+   private static int scopeAdd(CommandContext<CommandSourceStack> context) {
+      return writeScope(context,
+         DoubleArgumentType.getDouble(context, "dx"),
+         DoubleArgumentType.getDouble(context, "dy"),
+         DoubleArgumentType.getDouble(context, "dz"), true);
+   }
+
+   private static int writeScope(CommandContext<CommandSourceStack> context, double x, double y, double z, boolean relative) {
+      ItemStack held = heldGun(context);
+      if (held == null) {
+         return 0;
+      }
+
+      ListTag existing = readScopeTranslation(held);
+      double nx = relative && existing != null ? existing.getDouble(0) + x : x;
+      double ny = relative && existing != null ? existing.getDouble(1) + y : y;
+      double nz = relative && existing != null ? existing.getDouble(2) + z : z;
+
+      CompoundTag root = copyData(held);
+      CompoundTag weapon = root.getCompound(WEAPON_TAG);
+      CompoundTag attachments = weapon.getCompound(ATTACHMENTS_TAG);
+      CompoundTag scopeTag = attachments.getCompound(SCOPE_TAG);
+
+      ListTag translation = new ListTag();
+      translation.add(DoubleTag.valueOf(nx));
+      translation.add(DoubleTag.valueOf(ny));
+      translation.add(DoubleTag.valueOf(nz));
+      scopeTag.put(TRANSLATION_TAG, translation);
+
+      attachments.put(SCOPE_TAG, scopeTag);
+      weapon.put(ATTACHMENTS_TAG, attachments);
+      root.put(WEAPON_TAG, weapon);
+      held.set(DataComponents.CUSTOM_DATA, CustomData.of(root));
+
+      context.getSource().sendSuccess(() -> Component.literal(String.format(
+         "attachments.scope.translation = [%.3f, %.3f, %.3f]", nx, ny, nz)), true);
+      return 1;
+   }
+
+   private static ListTag readScopeTranslation(ItemStack stack) {
+      CompoundTag root = copyData(stack);
+      if (!root.contains(WEAPON_TAG, 10)) {
+         return null;
+      }
+
+      CompoundTag weapon = root.getCompound(WEAPON_TAG);
+      if (!weapon.contains(ATTACHMENTS_TAG, 10)) {
+         return null;
+      }
+
+      CompoundTag attachments = weapon.getCompound(ATTACHMENTS_TAG);
+      if (!attachments.contains(SCOPE_TAG, 10)) {
+         return null;
+      }
+
+      CompoundTag scopeTag = attachments.getCompound(SCOPE_TAG);
+      return scopeTag.contains(TRANSLATION_TAG, 9) ? scopeTag.getList(TRANSLATION_TAG, 6) : null;
    }
 
    private static ItemStack heldGun(CommandContext<CommandSourceStack> context) {
