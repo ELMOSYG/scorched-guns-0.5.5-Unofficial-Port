@@ -37,20 +37,43 @@ public final class AimCameraCommand {
    }
 
    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
+      var set = Commands.literal("set")
+         .then(Commands.argument("x", DoubleArgumentType.doubleArg())
+            .then(Commands.argument("y", DoubleArgumentType.doubleArg())
+               .then(Commands.argument("z", DoubleArgumentType.doubleArg())
+                  .executes(AimCameraCommand::set))));
+
+      var add = Commands.literal("add")
+         .then(Commands.argument("dx", DoubleArgumentType.doubleArg())
+            .then(Commands.argument("dy", DoubleArgumentType.doubleArg())
+               .then(Commands.argument("dz", DoubleArgumentType.doubleArg())
+                  .executes(AimCameraCommand::add))));
+
+      var idleSet = Commands.literal("set")
+         .then(Commands.argument("x", DoubleArgumentType.doubleArg())
+            .then(Commands.argument("y", DoubleArgumentType.doubleArg())
+               .then(Commands.argument("z", DoubleArgumentType.doubleArg())
+                  .executes(AimCameraCommand::idleSet))));
+
+      var idleAdd = Commands.literal("add")
+         .then(Commands.argument("dx", DoubleArgumentType.doubleArg())
+            .then(Commands.argument("dy", DoubleArgumentType.doubleArg())
+               .then(Commands.argument("dz", DoubleArgumentType.doubleArg())
+                  .executes(AimCameraCommand::idleAdd))));
+
+      var idle = Commands.literal("idle")
+         .then(Commands.literal("get").executes(AimCameraCommand::idleGet))
+         .then(Commands.literal("clear").executes(AimCameraCommand::idleClear))
+         .then(idleSet)
+         .then(idleAdd);
+
       dispatcher.register(Commands.literal("scguns")
          .then(Commands.literal("aimcamera")
             .then(Commands.literal("get").executes(AimCameraCommand::get))
             .then(Commands.literal("clear").executes(AimCameraCommand::clear))
-            .then(Commands.literal("set")
-               .then(Commands.argument("x", DoubleArgumentType.doubleArg())
-                  .then(Commands.argument("y", DoubleArgumentType.doubleArg())
-                     .then(Commands.argument("z", DoubleArgumentType.doubleArg())
-                        .executes(AimCameraCommand::set)))))
-            .then(Commands.literal("add")
-               .then(Commands.argument("dx", DoubleArgumentType.doubleArg())
-                  .then(Commands.argument("dy", DoubleArgumentType.doubleArg())
-                     .then(Commands.argument("dz", DoubleArgumentType.doubleArg())
-                        .executes(AimCameraCommand::add)))))));
+            .then(set)
+            .then(add)
+            .then(idle)));
    }
 
    private static int get(CommandContext<CommandSourceStack> context) {
@@ -132,6 +155,104 @@ public final class AimCameraCommand {
       context.getSource().sendSuccess(() -> Component.literal(String.format(
          "ironSight.camera = [%.3f, %.3f, %.3f]", nx, ny, nz)), true);
       return 1;
+   }
+
+
+   private static final String IDLE_HOLD_TAG = "idleHold";
+   private static final String OFFSET_TAG = "offset";
+
+   private static int idleGet(CommandContext<CommandSourceStack> context) {
+      ItemStack held = heldGun(context);
+      if (held == null) {
+         return 0;
+      }
+
+      ListTag offset = readIdleHold(held);
+      if (offset == null) {
+         context.getSource().sendSuccess(() -> Component.literal(
+            "No idleHold.offset on this gun - the first-person hold is unmodified."), false);
+         return 1;
+      }
+
+      context.getSource().sendSuccess(() -> Component.literal(String.format(
+         "idleHold.offset = [%.3f, %.3f, %.3f]  (1/16 model units)",
+         offset.getDouble(0), offset.getDouble(1), offset.getDouble(2))), false);
+      return 1;
+   }
+
+   private static int idleClear(CommandContext<CommandSourceStack> context) {
+      ItemStack held = heldGun(context);
+      if (held == null) {
+         return 0;
+      }
+
+      CompoundTag root = copyData(held);
+      CompoundTag weapon = root.getCompound(WEAPON_TAG);
+      weapon.remove(IDLE_HOLD_TAG);
+      root.put(WEAPON_TAG, weapon);
+      held.set(DataComponents.CUSTOM_DATA, CustomData.of(root));
+
+      context.getSource().sendSuccess(() -> Component.literal("Cleared idleHold."), false);
+      return 1;
+   }
+
+   private static int idleSet(CommandContext<CommandSourceStack> context) {
+      return writeIdle(context,
+         DoubleArgumentType.getDouble(context, "x"),
+         DoubleArgumentType.getDouble(context, "y"),
+         DoubleArgumentType.getDouble(context, "z"), false);
+   }
+
+   private static int idleAdd(CommandContext<CommandSourceStack> context) {
+      return writeIdle(context,
+         DoubleArgumentType.getDouble(context, "dx"),
+         DoubleArgumentType.getDouble(context, "dy"),
+         DoubleArgumentType.getDouble(context, "dz"), true);
+   }
+
+   private static int writeIdle(CommandContext<CommandSourceStack> context, double x, double y, double z, boolean relative) {
+      ItemStack held = heldGun(context);
+      if (held == null) {
+         return 0;
+      }
+
+      ListTag existing = readIdleHold(held);
+      double nx = relative && existing != null ? existing.getDouble(0) + x : x;
+      double ny = relative && existing != null ? existing.getDouble(1) + y : y;
+      double nz = relative && existing != null ? existing.getDouble(2) + z : z;
+
+      CompoundTag root = copyData(held);
+      CompoundTag weapon = root.getCompound(WEAPON_TAG);
+      CompoundTag hold = weapon.getCompound(IDLE_HOLD_TAG);
+
+      ListTag offset = new ListTag();
+      offset.add(DoubleTag.valueOf(nx));
+      offset.add(DoubleTag.valueOf(ny));
+      offset.add(DoubleTag.valueOf(nz));
+      hold.put(OFFSET_TAG, offset);
+
+      weapon.put(IDLE_HOLD_TAG, hold);
+      root.put(WEAPON_TAG, weapon);
+      held.set(DataComponents.CUSTOM_DATA, CustomData.of(root));
+
+      context.getSource().sendSuccess(() -> Component.literal(String.format(
+         "idleHold.offset = [%.3f, %.3f, %.3f]", nx, ny, nz)), true);
+      return 1;
+   }
+
+   private static ListTag readIdleHold(ItemStack stack) {
+      CompoundTag root = copyData(stack);
+      if (!root.contains(WEAPON_TAG, 10)) {
+         return null;
+      }
+
+      CompoundTag weapon = root.getCompound(WEAPON_TAG);
+      if (!weapon.contains(IDLE_HOLD_TAG, 10)) {
+         return null;
+      }
+
+      CompoundTag hold = weapon.getCompound(IDLE_HOLD_TAG);
+      return hold.contains(OFFSET_TAG, 9) ? hold.getList(OFFSET_TAG, 6) : null;
    }
 
    private static ItemStack heldGun(CommandContext<CommandSourceStack> context) {

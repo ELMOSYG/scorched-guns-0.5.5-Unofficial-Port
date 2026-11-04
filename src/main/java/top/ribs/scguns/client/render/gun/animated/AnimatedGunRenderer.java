@@ -291,6 +291,14 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       double zOffset = (double)translateZ - 0.5 * (double)scaleZ;
       Vec3 gunOrigin = PropertyHelper.getModelOrigin(stack, PropertyHelper.GUN_DEFAULT_ORIGIN);
       xOffset += gunOrigin.x * 0.0625 * (double)scaleX;
+
+      // Live hold offset, written by /scguns aimcamera idle ... so the first-person placement of an addon gun can be
+      // dialled in without recompiling.
+      Vec3 idleHold = PropertyHelper.getIdleHold(stack);
+      xOffset += idleHold.x * 0.0625;
+      yOffset += idleHold.y * 0.0625;
+      zOffset += idleHold.z * 0.0625;
+
       yOffset += gunOrigin.y * 0.0625 * (double)scaleY;
       zOffset += gunOrigin.z * 0.0625 * (double)scaleZ;
       Scope scope = Gun.getScope(stack);

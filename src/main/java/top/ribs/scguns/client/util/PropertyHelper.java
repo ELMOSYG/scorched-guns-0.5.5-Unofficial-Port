@@ -52,6 +52,27 @@ public final class PropertyHelper {
       return stack.getItem() instanceof IMeta ? MetaLoader.getInstance().getData(stack.getItem()) : FrameworkClientAPI.getOpenModelData(stack, null, null, 0);
    }
 
+   /**
+    * The extra first-person hold offset written by {@code /scguns aimcamera idle ...}.
+    *
+    * <p>Read from {@code scguns:weapon -> idleHold -> offset}, in the same 1/16 model units as everything else here.
+    * Zero when the key is absent, so nothing changes for guns that never set it.</p>
+    */
+   public static Vec3 getIdleHold(ItemStack stack) {
+      DataObject customObject = getCustomData(stack);
+      if (customObject.has("scguns:weapon", DataType.OBJECT)) {
+         DataObject weaponObject = customObject.getDataObject("scguns:weapon");
+         if (weaponObject.has("idleHold", DataType.OBJECT)) {
+            DataObject holdObject = weaponObject.getDataObject("idleHold");
+            if (holdObject.has("offset", DataType.ARRAY)) {
+               return arrayToVec3(holdObject.getDataArray("offset"), Vec3.ZERO);
+            }
+         }
+      }
+
+      return Vec3.ZERO;
+   }
+
    public static Vec3 getScopeCamera(ItemStack stack) {
       DataObject customObject = getCustomData(stack);
       if (customObject.has("scguns:scope", DataType.OBJECT)) {
