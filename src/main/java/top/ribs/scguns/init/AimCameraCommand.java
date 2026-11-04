@@ -309,6 +309,7 @@ public final class AimCameraCommand {
       CompoundTag attachments = weapon.getCompound(ATTACHMENTS_TAG);
       CompoundTag scopeTag = attachments.getCompound(SCOPE_TAG);
       scopeTag.remove(TRANSLATION_TAG);
+      scopeTag.remove(CAMERA_TAG);
       attachments.put(SCOPE_TAG, scopeTag);
       weapon.put(ATTACHMENTS_TAG, attachments);
       root.put(WEAPON_TAG, weapon);
@@ -354,6 +355,14 @@ public final class AimCameraCommand {
       translation.add(DoubleTag.valueOf(nz));
       scopeTag.put(TRANSLATION_TAG, translation);
 
+      // The attachment sits where translation says, and the aim camera looks from camera - writing both keeps the
+      // scope and the view in step, which is what was missing when only the model moved.
+      ListTag camera = new ListTag();
+      camera.add(DoubleTag.valueOf(nx));
+      camera.add(DoubleTag.valueOf(ny));
+      camera.add(DoubleTag.valueOf(nz));
+      scopeTag.put(CAMERA_TAG, camera);
+
       attachments.put(SCOPE_TAG, scopeTag);
       weapon.put(ATTACHMENTS_TAG, attachments);
       root.put(WEAPON_TAG, weapon);
@@ -381,7 +390,11 @@ public final class AimCameraCommand {
       }
 
       CompoundTag scopeTag = attachments.getCompound(SCOPE_TAG);
-      return scopeTag.contains(TRANSLATION_TAG, 9) ? scopeTag.getList(TRANSLATION_TAG, 6) : null;
+      if (scopeTag.contains(TRANSLATION_TAG, 9)) {
+         return scopeTag.getList(TRANSLATION_TAG, 6);
+      }
+
+      return scopeTag.contains(CAMERA_TAG, 9) ? scopeTag.getList(CAMERA_TAG, 6) : null;
    }
 
    private static ItemStack heldGun(CommandContext<CommandSourceStack> context) {
