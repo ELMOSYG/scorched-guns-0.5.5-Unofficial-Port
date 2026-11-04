@@ -565,6 +565,13 @@ public class GunRenderingHandler {
          float translateY = model.getTransforms().firstPersonRightHand.translation.y();
          float translateZ = model.getTransforms().firstPersonRightHand.translation.z();
          poseStack.pushPose();
+          // Live hold offset from /scguns aimcamera idle ...  Applied to the pose so it covers every
+          // first-person state, not just the aiming branch.
+          Vec3 idleHold = PropertyHelper.getIdleHold(heldItem);
+          if (idleHold.lengthSqr() > 0.0) {
+             poseStack.translate(idleHold.x * 0.0625, idleHold.y * 0.0625, idleHold.z * 0.0625);
+          }
+
          Gun modifiedGun = gunItem.getModifiedGun(heldItem);
          if (AimingHandler.get().getNormalisedAdsProgress() > 0.0 && modifiedGun.canAimDownSight() && event.getHand() == InteractionHand.MAIN_HAND) {
             double xOffset = (double)translateX;
@@ -585,7 +592,9 @@ public class GunRenderingHandler {
                zOffset += scopePosition.z * 0.0625 * (double)scaleZ;
                ItemStack scopeStack = Gun.getScopeStack(heldItem);
                Vec3 scopeOrigin = PropertyHelper.getModelOrigin(scopeStack, PropertyHelper.ATTACHMENT_DEFAULT_ORIGIN);
-               Vec3 scopeCamera = PropertyHelper.getScopeCamera(scopeStack).subtract(scopeOrigin);
+               Vec3 scopeCameraOverride = PropertyHelper.readOverride(heldItem, "scope", "camera");
+               Vec3 scopeCamera = (scopeCameraOverride != null ? scopeCameraOverride
+                  : PropertyHelper.getScopeCamera(scopeStack)).subtract(scopeOrigin);
                Vec3 scopeScale = PropertyHelper.getAttachmentScale(heldItem, modifiedGun, IAttachment.Type.SCOPE);
                xOffset += scopeCamera.x * 0.0625 * (double)scaleX * scopeScale.x;
                yOffset += scopeCamera.y * 0.0625 * (double)scaleY * scopeScale.y;

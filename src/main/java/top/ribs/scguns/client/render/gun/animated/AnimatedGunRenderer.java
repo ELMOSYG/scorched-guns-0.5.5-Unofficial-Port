@@ -309,7 +309,9 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
          zOffset += ironSightCamera.z * 0.0625 * (double)scaleZ;
          ItemStack scopeStack = Gun.getScopeStack(stack);
          Vec3 scopeOrigin = PropertyHelper.getModelOrigin(scopeStack, PropertyHelper.ATTACHMENT_DEFAULT_ORIGIN);
-         Vec3 scopeCamera = PropertyHelper.getScopeCamera(scopeStack).subtract(scopeOrigin);
+         Vec3 scopeCameraOverride = PropertyHelper.readOverride(stack, "scope", "camera");
+      Vec3 scopeCamera = (scopeCameraOverride != null ? scopeCameraOverride
+         : PropertyHelper.getScopeCamera(scopeStack)).subtract(scopeOrigin);
          Vec3 scopeScale = PropertyHelper.getAttachmentScale(stack, modifiedGun, IAttachment.Type.SCOPE);
          xOffset += scopeCamera.x * 0.0625 * (double)scaleX * scopeScale.x;
          yOffset += (scopeCamera.y * 0.0625 * (double)scaleY + 0.54) * scopeScale.y;
