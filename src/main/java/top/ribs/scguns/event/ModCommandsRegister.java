@@ -22,5 +22,6 @@ public class ModCommandsRegister {
       // Second root literal: Brigadier merges the two "scguns" nodes, and this keeps the recipe book
       // diagnostic out of ModCommands' deeply nested builder chain.
       ModRecipeBookCommand.register(event.getDispatcher());
+      top.ribs.scguns.init.AimCameraCommand.register(event.getDispatcher());
    }
 }
