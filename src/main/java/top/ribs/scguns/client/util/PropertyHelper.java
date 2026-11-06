@@ -70,7 +70,7 @@ public final class PropertyHelper {
     * renderer normally reads: the command has to write somewhere a client-side lookup can see immediately, and
     * Framework's model data is not writable from a command.</p>
     */
-   private static Vec3 readOverride(ItemStack stack, String section, String field) {
+   public static Vec3 readOverride(ItemStack stack, String section, String field) {
       net.minecraft.world.item.component.CustomData custom =
          stack.get(net.minecraft.core.component.DataComponents.CUSTOM_DATA);
       if (custom == null) {
