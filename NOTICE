@@ -31,13 +31,18 @@ HANDOFF.md.
                                https://creativecommons.org/publicdomain/zero/1.0/
 
 3. Simplified Chinese translation
----------------------------------
+   ---------------------------------
 
-    assets/scguns/lang/zh_cn.json
+assets/scguns/lang/zh_cn.json
 
-The Chinese translation was supplied by a community translation resource pack (author of the pack:
-see the "Scorched Guns 汉化" pack the port's author uses). If you are the translator and want a
-different credit line, or want the file removed, open an issue and it will be changed or dropped.
+The Chinese translation started from the "Scorched Guns 汉化" resource pack published by the
+Mod Wiki (MCBBS / mcmod.cn) user **ZR4U**, and was then edited for this port: some meme-flavoured
+lines and the stronger profanity were removed or reworded, and missing keys were filled in.
+Credit for the original translation belongs to ZR4U.
+
+If you are the translator and want a different credit line, or want the file removed, open an
+issue and it will be changed or dropped.
+
 The port's English strings match the upstream en_us.json key set exactly, so nothing was reworded.
 
 4. Maid compatibility (nested mod)
