@@ -35,10 +35,11 @@ HANDOFF.md.
 
 assets/scguns/lang/zh_cn.json
 
-The Chinese translation started from the "Scorched Guns 汉化" resource pack published by the
-Mod Wiki (MCBBS / mcmod.cn) user **ZR4U**, and was then edited for this port: some meme-flavoured
-lines and the stronger profanity were removed or reworded, and missing keys were filled in.
-Credit for the original translation belongs to ZR4U.
+The Chinese translation originates from a pack by the Mod Wiki (mcmod.cn) user **ZR4U**, which that
+author submitted to Scorched Guns itself; upstream development has since slowed, so the translation was
+not kept current. This port continues from that work: some meme-flavoured lines and the stronger profanity
+were removed or reworded, and keys added since then were filled in. Credit for the original translation
+belongs to ZR4U.
 
 If you are the translator and want a different credit line, or want the file removed, open an
 issue and it will be changed or dropped.

@@ -56,8 +56,8 @@ cmd /c "gradlew.bat build --console=plain"    # -> build/libs/scguns-1.0.9.2.jar
 
 * **Scorched Guns** — by **ribs** (credits: MrCrayfish, Ribs), **GPL-3.0**. This port inherits that license (see [`LICENSE`](LICENSE)) and redistributes its assets and data.
 * **Sounds** — CC0, as stated in the original jar.
-* **Simplified Chinese translation** — based on the "Scorched Guns 汉化" resource pack by the Mod Wiki
-  (mcmod.cn) user **ZR4U**, edited for this port (meme lines and strong profanity removed, missing keys
+* **Simplified Chinese translation** — originally by the Mod Wiki (mcmod.cn) user **ZR4U**, who submitted
+  it upstream; continued and edited for this port (meme lines and strong profanity removed, newer keys
   filled in). See [`NOTICE`](NOTICE).
 * **Port author** — the 1.21.1 / NeoForge port, its fixes and new content were written by **ELMO_SYG**. AI tools were used for the porting work and for the code of new content; the original mod's assets and design are untouched.
 * Framework, GeckoLib, Curios and every optional integration belong to their own authors and are **not** redistributed here.
