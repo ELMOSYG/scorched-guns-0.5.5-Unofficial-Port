@@ -1,14 +1,25 @@
 # Scorched Guns 0.5.5 — 非官方 1.21.1 / NeoForge 移植
 
 这是 [Scorched Guns](https://www.curseforge.com/minecraft/mc-mods/scorched-guns)（原作者 ribs，1.20.1 / Forge）
-移植到 Minecraft 1.21.1 / NeoForge 的版本，内容取自 0.5.5 发布版，不添加改动平衡性的东西。
+移植到 Minecraft 1.21.1 / NeoForge 的版本，内容取自 0.5.5 发布版。
 
 原模组：https://www.curseforge.com/minecraft/mc-mods/scorched-guns
 
 ## 包含内容
 
 0.5.5 的枪械、配件、手雷、炮塔、外骨骼、袭击、蓝图、枪械工作台和机器都在，一共 141 把枪。
-如果你玩过 1.20.1 版本，数值和手感是同一个版本，没有重新做平衡。
+大部分数值沿用原版，但**有一批东西是改过的**，下面单独列出来。
+
+## 与原版的差异
+
+不是完全照搬，下面这些是明确改过的：
+
+* **刺刀近战**：动作重做过（原来是匀速前推再匀速回收，现在是三段节奏），冲锋与单目标突刺的行为、
+  命中判定与配置项都调整过，`bayonetCharge` 一整节配置可以单独关掉或改数值。
+* **近战伤害与附魔加成**：近战、光束、附魔加成在同一轮里一起调过，刺刀也能吃到武器附魔。
+* **部分生物行为**：持枪生物不再做原版的近战挥击动作；袭击小队的目标优先级调过，否则它们永远先去砍人。
+
+其余枪械伤害、射速、弹道等数值沿用 0.5.5。完整的改动记录在 `docs/changelogs/` 里，每一条都写了原因。
 
 ## 前置
 
@@ -60,14 +71,30 @@ Prometheus / Soul Fire'd、Cobweb、Farmer's Delight、东方小女仆（jar 里
 # Scorched Guns 0.5.5 — unofficial 1.21.1 / NeoForge port
 
 A port of [Scorched Guns](https://www.curseforge.com/minecraft/mc-mods/scorched-guns) by ribs (1.20.1 / Forge)
-to Minecraft 1.21.1 / NeoForge. The content is the 0.5.5 release; nothing was rebalanced for this port.
+to Minecraft 1.21.1 / NeoForge. The content is the 0.5.5 release.
 
 Original mod: https://www.curseforge.com/minecraft/mc-mods/scorched-guns
 
 ## What is included
 
 Everything from 0.5.5: the guns, attachments, grenades, turrets, exo-suits, raids, blueprints, the gun bench and the
-machines. 141 guns in total, with the numbers you remember from the 1.20.1 version.
+machines. 141 guns in total. Most of the numbers are the original ones, but a few things were changed on purpose -
+they are listed below.
+
+## What differs from the original
+
+This is not a straight copy, and these are the deliberate changes:
+
+* **Bayonet melee.** The stab animation was redone (it used to push out and pull back at a constant speed, it now has
+  a three-part rhythm), and the charge, the single-target thrust, the hit detection and their options were adjusted.
+  The whole `bayonetCharge` config section can be switched off or retuned.
+* **Melee damage and enchantment bonuses** were reworked in the same pass, and bayonets now benefit from weapon
+  enchantments.
+* **Some mob behaviour:** armed mobs no longer play the vanilla melee swing, and the raid squad's target priorities
+  were changed, otherwise they always went for a melee kill first.
+
+Gun damage, fire rate and ballistics otherwise keep their 0.5.5 values. The full record, with the reason for each
+change, is in `docs/changelogs/`.
 
 ## Requirements
 
