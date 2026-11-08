@@ -27,7 +27,6 @@
     "client.MixinVindicatorRenderer",
     "client.PlayerModelMixin",
     "client.compat.EMFModelPartRootMixin",
-    "client.compat.PlayerRendererMixin",
     "client.compat.ItemInHandRendererMixin",
     "client.VehiclePoseMixin"
   ],

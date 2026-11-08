@@ -14,13 +14,11 @@ import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.HumanoidArm;
-import top.ribs.scguns.client.compat.OptionalClientCompat;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.model.geom.ModelPart;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -667,12 +665,6 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       int packedLight,
       int packedOverlay
    ) {
-      if (Minecraft.getInstance().player instanceof LocalPlayer emfRight
-         && OptionalClientCompat.renderCleanAnimatedArm(
-            emfRight, HumanoidArm.RIGHT, poseStack, this.bufferSource, playerSkin, bone, packedLight, packedOverlay)) {
-         return;
-      }
-
       poseStack.scale(0.66F, 0.78F, 0.66F);
       poseStack.translate(0.25, -0.1, 0.1625);
       this.resetArmPose(playerEntityModel.rightArm, bone);
@@ -704,12 +696,6 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
       Player player,
       AnimatedGunItem animatable
    ) {
-      if (Minecraft.getInstance().player instanceof LocalPlayer emfLeft
-         && OptionalClientCompat.renderCleanAnimatedArm(
-            emfLeft, HumanoidArm.LEFT, poseStack, this.bufferSource, playerSkin, bone, packedLight, packedOverlay)) {
-         return;
-      }
-
       Gun modifiedGun = ((GunItem)this.currentItemStack.getItem()).getModifiedGun(this.currentItemStack);
       modifiedGun.determineGripType(this.currentItemStack);
       long id = GeoItem.getId(player.getMainHandItem());
