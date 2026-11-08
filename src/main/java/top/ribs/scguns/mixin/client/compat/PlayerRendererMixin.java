@@ -21,11 +21,28 @@ import top.ribs.scguns.client.compat.OptionalClientCompat;
 @Mixin(PlayerRenderer.class)
 public abstract class PlayerRendererMixin {
 
+   private static final class Probe {
+      private static boolean logged;
+
+      static void logIfFirst() {
+         if (!logged) {
+            logged = true;
+            top.ribs.scguns.ScorchedGuns.LOGGER.info("scguns: PlayerRenderer#renderHand reached (EMF hand path is live).");
+         }
+      }
+   }
+
+   private static final Probe PROBE = new Probe();
+
    @Inject(method = "renderHand", at = @At("HEAD"), cancellable = true, require = 0)
    private void scguns$hideHandWhenGunHeld(
       PoseStack poseStack, MultiBufferSource buffer, int light, AbstractClientPlayer player, ModelPart arm, ModelPart sleeve,
       CallbackInfo callbackInfo
    ) {
+      // One log line per session: it is the only way to tell "the mixin never applied" (wrong method signature for
+      // this Minecraft version) from "it applied and something redraws the hand afterwards".
+      PROBE.logIfFirst();
+
       OptionalClientCompat.cancelFallbackFirstPersonHandWhenGunHeld(player, callbackInfo);
    }
 }
