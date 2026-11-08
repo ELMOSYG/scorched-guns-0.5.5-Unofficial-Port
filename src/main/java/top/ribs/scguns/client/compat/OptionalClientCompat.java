@@ -208,6 +208,26 @@ public final class OptionalClientCompat {
       return arm == HumanoidArm.RIGHT ? regularRightSleeve : regularLeftSleeve;
    }
 
+   private static boolean handSuppressionLogged;
+
+   /**
+    * Whether the vanilla first-person hand pass should be skipped for this player.
+    *
+    * <p>Only when EMF is installed and a gun is actually held: without EMF the mod already suppresses its own hand
+    * differently, and other items must keep rendering normally.</p>
+    */
+   public static boolean shouldSuppressVanillaHands(Player player) {
+      return isEntityModelFeaturesLoaded() && isScorchedGunHeldByPlayer(player);
+   }
+
+   /** One line per session, so a report can tell whether the suppression is active. */
+   public static void logHandSuppressionOnce() {
+      if (!handSuppressionLogged) {
+         handSuppressionLogged = true;
+         ScorchedGuns.LOGGER.info("scguns: suppressing the vanilla first-person hands while a gun is held (EMF present).");
+      }
+   }
+
    /** Whether the player is holding a gun in either hand. */
    public static boolean isScorchedGunHeldByPlayer(Player player) {
       return player != null && (isScorchedGunStack(player.getMainHandItem()) || isScorchedGunStack(player.getOffhandItem()));
