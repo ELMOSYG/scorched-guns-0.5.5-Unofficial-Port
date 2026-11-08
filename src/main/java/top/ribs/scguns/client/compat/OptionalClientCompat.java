@@ -1,6 +1,7 @@
 package top.ribs.scguns.client.compat;
 
 import java.lang.reflect.Field;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.lang.reflect.Method;
 import java.util.function.BooleanSupplier;
 import net.minecraft.client.Minecraft;
@@ -84,6 +85,19 @@ public final class OptionalClientCompat {
       }
 
       return registerVariableMethod;
+   }
+
+   /**
+    * Cancels the renderer's own first-person hand while a gun is held.
+    *
+    * <p>Entity Model Features (through Fresh Animations' player add-on) draws the first-person arm itself. With a gun
+    * in hand that draws a second, animated arm on top of this mod's own arm, which is what players report as arms
+    * rotated into the gun. Only the hands are suppressed - everything else EMF animates keeps working.</p>
+    */
+   public static void cancelFallbackFirstPersonHandWhenGunHeld(Player player, CallbackInfo callbackInfo) {
+      if (isEntityModelFeaturesLoaded() && isScorchedGunHeldByPlayer(player)) {
+         callbackInfo.cancel();
+      }
    }
 
    /** Whether the player is holding a gun in either hand. */
