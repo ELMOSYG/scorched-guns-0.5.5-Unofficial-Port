@@ -26,6 +26,7 @@
     "client.MixinIllagerModel",
     "client.MixinVindicatorRenderer",
     "client.PlayerModelMixin",
+    "client.compat.EMFModelPartRootMixin",
     "client.VehiclePoseMixin"
   ],
   "injectors": {
