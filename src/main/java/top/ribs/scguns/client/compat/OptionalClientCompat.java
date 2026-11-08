@@ -1,9 +1,20 @@
 package top.ribs.scguns.client.compat;
 
+import com.mojang.blaze3d.vertex.PoseStack;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.function.BooleanSupplier;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.model.PlayerModel;
+import net.minecraft.client.model.geom.ModelPart;
+import net.minecraft.client.model.geom.builders.CubeDeformation;
+import net.minecraft.client.model.geom.builders.LayerDefinition;
+import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.entity.HumanoidArm;
+import software.bernie.geckolib.cache.object.GeoBone;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import top.ribs.scguns.ScorchedGuns;
@@ -96,6 +107,101 @@ public final class OptionalClientCompat {
          handSuppressionLogged = true;
          ScorchedGuns.LOGGER.info("scguns: suppressing the vanilla first-person hands while a gun is held (EMF present).");
       }
+   }
+
+   // Arms are baked once from a vanilla player mesh and drawn from that copy. With EMF installed the player model's
+   // own parts carry EMF's poses and an inflated outer sleeve, which is why the arm followed the gun while the sleeve
+   // stayed behind: two different models, only one of them posed from the gun's bone.
+   private static ModelPart regularRightArm;
+   private static ModelPart regularRightSleeve;
+   private static ModelPart regularLeftArm;
+   private static ModelPart regularLeftSleeve;
+   private static ModelPart slimRightArm;
+   private static ModelPart slimRightSleeve;
+   private static ModelPart slimLeftArm;
+   private static ModelPart slimLeftSleeve;
+
+   /**
+    * Draws one first-person arm and its sleeve from the baked copy, posed from the gun's own bone.
+    *
+    * @return true when it drew, so the caller skips the player model's parts
+    */
+   public static boolean renderCleanAnimatedArm(
+      LocalPlayer player, HumanoidArm arm, PoseStack poseStack, MultiBufferSource buffer, ResourceLocation skin,
+      GeoBone bone, int light, int overlay
+   ) {
+      if (!isEntityModelFeaturesLoaded() || !isScorchedGunHeldByPlayer(player)) {
+         return false;
+      }
+
+      boolean slim = "slim".equals(player.getSkin().model().id());
+      ensureArmParts(slim);
+      ModelPart armPart = armPart(slim, arm);
+      ModelPart sleevePart = sleevePart(slim, arm);
+      if (armPart == null || sleevePart == null) {
+         return false;
+      }
+
+      poseStack.scale(0.66F, arm == HumanoidArm.RIGHT ? 0.78F : 0.79F, 0.66F);
+      poseStack.translate(arm == HumanoidArm.RIGHT ? 0.25 : -0.25, -0.1, 0.1625);
+      poseFromBone(armPart, bone);
+      armPart.render(poseStack, buffer.getBuffer(RenderType.entitySolid(skin)), light, overlay);
+      poseFromBone(sleevePart, bone);
+      sleevePart.render(poseStack, buffer.getBuffer(RenderType.entityTranslucent(skin)), light, overlay);
+      return true;
+   }
+
+   private static void poseFromBone(ModelPart part, GeoBone bone) {
+      part.resetPose();
+      part.visible = true;
+      part.skipDraw = false;
+      part.xScale = 1.0F;
+      part.yScale = 1.0F;
+      part.zScale = 1.0F;
+      part.setPos(bone.getPivotX(), bone.getPivotY(), bone.getPivotZ());
+      part.setRotation(0.0F, 0.0F, 0.0F);
+   }
+
+   private static void ensureArmParts(boolean slim) {
+      if (slim) {
+         if (slimRightArm == null) {
+            bakeArmParts(true);
+         }
+      } else if (regularRightArm == null) {
+         bakeArmParts(false);
+      }
+   }
+
+   private static void bakeArmParts(boolean slim) {
+      LayerDefinition definition = LayerDefinition.create(PlayerModel.createMesh(CubeDeformation.NONE, slim), 64, 64);
+      ModelPart root = definition.bakeRoot();
+      if (slim) {
+         slimRightArm = root.getChild("right_arm");
+         slimRightSleeve = root.getChild("right_sleeve");
+         slimLeftArm = root.getChild("left_arm");
+         slimLeftSleeve = root.getChild("left_sleeve");
+      } else {
+         regularRightArm = root.getChild("right_arm");
+         regularRightSleeve = root.getChild("right_sleeve");
+         regularLeftArm = root.getChild("left_arm");
+         regularLeftSleeve = root.getChild("left_sleeve");
+      }
+   }
+
+   private static ModelPart armPart(boolean slim, HumanoidArm arm) {
+      if (slim) {
+         return arm == HumanoidArm.RIGHT ? slimRightArm : slimLeftArm;
+      }
+
+      return arm == HumanoidArm.RIGHT ? regularRightArm : regularLeftArm;
+   }
+
+   private static ModelPart sleevePart(boolean slim, HumanoidArm arm) {
+      if (slim) {
+         return arm == HumanoidArm.RIGHT ? slimRightSleeve : slimLeftSleeve;
+      }
+
+      return arm == HumanoidArm.RIGHT ? regularRightSleeve : regularLeftSleeve;
    }
 
    /** Whether the player is holding a gun in either hand. */
