@@ -1,3 +1,70 @@
+# Scorched Guns 0.5.5 — unofficial 1.21.1 / NeoForge port
+
+A port of [Scorched Guns](https://www.curseforge.com/minecraft/mc-mods/scorched-guns) by ribs (1.20.1 / Forge)
+to Minecraft 1.21.1 / NeoForge. The content is the 0.5.5 release.
+
+Original mod: https://www.curseforge.com/minecraft/mc-mods/scorched-guns
+
+## What is included
+
+Everything from 0.5.5: the guns, attachments, grenades, turrets, exo-suits, raids, blueprints, the gun bench and the
+machines. 141 guns in total. Most of the numbers are the original ones, but a few things were changed on purpose -
+they are listed below.
+
+## What differs from the original
+
+Some of the original mod's unreasonable content was changed, for example the numbers on the bayonet line. One mob was
+mechanically reworked: the COG knight's charge is now a straight-line dash that does not keep tracking the player, and
+it steps up while charging, so it runs up a block instead of stopping dead at every step.
+
+Gun damage, fire rate and ballistics otherwise keep their 0.5.5 values. What was changed and why is recorded in
+`docs/changelogs/`.
+
+## Requirements
+
+Minecraft 1.21.1, NeoForge 21.1.150+, Framework (MrCrayfish) 0.13.11+, GeckoLib 4.9.3+ and Curios API 9.5.1+.
+The last three are required; the game will not start without them.
+
+Optional and only active when installed: JEI, Create (and its addons), Immersive Engineering, Mekanism, Sable,
+Prometheus / Soul Fire'd, Cobweb, Farmer's Delight, Touhou Little Maid (compat is bundled in the jar).
+
+## Installing
+
+Install NeoForge 21.1.150+ for 1.21.1, then drop this mod together with Framework, GeckoLib and Curios into `mods`.
+
+## Known issues
+
+**Sights can show the world through them when shaders are on.** Shader packs draw translucent models in a separate
+pass that does not write depth, so the solid part of a scope stops occluding. Set `sightsUseCutout = true` in
+`config/scguns-client.toml` to force alpha-cutout rendering; the lens then reads as solid instead of translucent.
+Without shaders this does not happen.
+
+**EMF / Fresh Animations compatibility is partial and cannot be fully fixed.** EMF replaces the player model
+wholesale, and anything that poses the vanilla model stops working underneath it. This build does two things: the held
+pose is reapplied after EMF animates the player, and the vanilla first-person hand is suppressed while a gun is held.
+The two can still conflict, and when an extra arm or a wrong pose shows up the only fix is to drop EMF or the resource
+pack. Separately, an old model can stick around after swapping a model pack - press F3+T (or restart), that is EMF
+caching the models it loads.
+
+**If something looks broken right after changing resource packs or shaders, reload resources before blaming the mod.**
+
+## Notes
+
+The port was made from the 0.5.5 release jar (decompiled and remapped), not from a source tree. Every trap hit along
+the way, and why a given behaviour works the way it does, is written down in `docs/HANDOFF.md` in the repository.
+
+The Chinese translation was originally made by ZR4U on mcmod.cn and submitted upstream; upstream slowed down, so
+this port removes some unsuitable content from it and fills in the entries added since. English
+strings are unchanged from the original mod.
+
+## License
+
+GPL-3.0, inherited from the original mod, whose assets and data are redistributed here. Original mod by ribs; the
+port is by ELMO_SYG. Not affiliated with the original author.
+
+<details>
+<summary><b>中文说明（点开）</b></summary>
+
 # Scorched Guns 0.5.5 — 非官方 1.21.1 / NeoForge 移植
 
 这是 [Scorched Guns](https://www.curseforge.com/minecraft/mc-mods/scorched-guns)（原作者 ribs，1.20.1 / Forge）
@@ -63,68 +130,4 @@ Prometheus / Soul Fire'd、Cobweb、Farmer's Delight、东方小女仆（jar 里
 本模组沿用原模组的 GPL-3.0，资源与数据来自原模组。原作者 ribs，移植部分由 ELMO_SYG 完成。
 和原作者没有隶属关系。
 
----
-
-# Scorched Guns 0.5.5 — unofficial 1.21.1 / NeoForge port
-
-A port of [Scorched Guns](https://www.curseforge.com/minecraft/mc-mods/scorched-guns) by ribs (1.20.1 / Forge)
-to Minecraft 1.21.1 / NeoForge. The content is the 0.5.5 release.
-
-Original mod: https://www.curseforge.com/minecraft/mc-mods/scorched-guns
-
-## What is included
-
-Everything from 0.5.5: the guns, attachments, grenades, turrets, exo-suits, raids, blueprints, the gun bench and the
-machines. 141 guns in total. Most of the numbers are the original ones, but a few things were changed on purpose -
-they are listed below.
-
-## What differs from the original
-
-Some of the original mod's unreasonable content was changed, for example the numbers on the bayonet line. One mob was
-mechanically reworked: the COG knight's charge is now a straight-line dash that does not keep tracking the player, and
-it steps up while charging, so it runs up a block instead of stopping dead at every step.
-
-Gun damage, fire rate and ballistics otherwise keep their 0.5.5 values. What was changed and why is recorded in
-`docs/changelogs/`.
-
-## Requirements
-
-Minecraft 1.21.1, NeoForge 21.1.150+, Framework (MrCrayfish) 0.13.11+, GeckoLib 4.9.3+ and Curios API 9.5.1+.
-The last three are required; the game will not start without them.
-
-Optional and only active when installed: JEI, Create (and its addons), Immersive Engineering, Mekanism, Sable,
-Prometheus / Soul Fire'd, Cobweb, Farmer's Delight, Touhou Little Maid (compat is bundled in the jar).
-
-## Installing
-
-Install NeoForge 21.1.150+ for 1.21.1, then drop this mod together with Framework, GeckoLib and Curios into `mods`.
-
-## Known issues
-
-**Sights can show the world through them when shaders are on.** Shader packs draw translucent models in a separate
-pass that does not write depth, so the solid part of a scope stops occluding. Set `sightsUseCutout = true` in
-`config/scguns-client.toml` to force alpha-cutout rendering; the lens then reads as solid instead of translucent.
-Without shaders this does not happen.
-
-**EMF / Fresh Animations compatibility is partial and cannot be fully fixed.** EMF replaces the player model
-wholesale, and anything that poses the vanilla model stops working underneath it. This build does two things: the held
-pose is reapplied after EMF animates the player, and the vanilla first-person hand is suppressed while a gun is held.
-The two can still conflict, and when an extra arm or a wrong pose shows up the only fix is to drop EMF or the resource
-pack. Separately, an old model can stick around after swapping a model pack - press F3+T (or restart), that is EMF
-caching the models it loads.
-
-**If something looks broken right after changing resource packs or shaders, reload resources before blaming the mod.**
-
-## Notes
-
-The port was made from the 0.5.5 release jar (decompiled and remapped), not from a source tree. Every trap hit along
-the way, and why a given behaviour works the way it does, is written down in `docs/HANDOFF.md` in the repository.
-
-The Chinese translation was originally made by ZR4U on mcmod.cn and submitted upstream; upstream slowed down, so
-this port removes some unsuitable content from it and fills in the entries added since. English
-strings are unchanged from the original mod.
-
-## License
-
-GPL-3.0, inherited from the original mod, whose assets and data are redistributed here. Original mod by ribs; the
-port is by ELMO_SYG. Not affiliated with the original author.
+</details>
