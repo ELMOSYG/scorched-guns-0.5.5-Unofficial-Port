@@ -62,10 +62,11 @@ strings are unchanged from the original mod.
 GPL-3.0, inherited from the original mod, whose assets and data are redistributed here. Original mod by ribs; the
 port is by ELMO_SYG. Not affiliated with the original author.
 
-<details>
-<summary><b>中文说明（点开）</b></summary>
+---
 
-# Scorched Guns 0.5.5 — 非官方 1.21.1 / NeoForge 移植
+# 中文说明
+
+## Scorched Guns 0.5.5 — 非官方 1.21.1 / NeoForge 移植
 
 这是 [Scorched Guns](https://www.curseforge.com/minecraft/mc-mods/scorched-guns)（原作者 ribs，1.20.1 / Forge）
 移植到 Minecraft 1.21.1 / NeoForge 的版本，内容取自 0.5.5 发布版。
@@ -129,5 +130,3 @@ Prometheus / Soul Fire'd、Cobweb、Farmer's Delight、东方小女仆（jar 里
 
 本模组沿用原模组的 GPL-3.0，资源与数据来自原模组。原作者 ribs，移植部分由 ELMO_SYG 完成。
 和原作者没有隶属关系。
-
-</details>
