@@ -97,3 +97,12 @@ AI tools were used for the porting process and for the code of new content added
 (code migration, debugging and documentation). The original mod's assets and design are untouched,
 and the port author (ELMO_SYG) is responsible for everything committed here.
 
+5. Entity Model Features compatibility
+   -------------------------------------
+
+client/compat/OptionalClientCompat.java
+
+The optional Entity Model Features bridge (the is_scguns_gun_held animation variable, and the cached reflective
+lookups behind it) was adapted from the GPL-3.0 licensed 1.21.1 port ScorchedGunsNeoforge by sadeast69, and edited
+for this port: every class, method and field lookup is resolved once and cached, a failed context lookup disables
+that helper for the session instead of throwing per frame, and the variable is registered from client setup.

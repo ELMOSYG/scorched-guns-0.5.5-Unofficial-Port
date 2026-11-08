@@ -425,6 +425,7 @@ public class ClientHandler {
       CuriosRendererRegistry.register((Item)ModItems.CREATIVE_AIR_CANISTER.get(), AirCanisterRenderer::new);
       event.enqueueWork(ModMuzzleFlashes::init);
       event.enqueueWork(ClientHandler::setup);
+      event.enqueueWork(top.ribs.scguns.client.compat.OptionalClientCompat::registerEntityModelFeaturesVariables);
    }
 
    public static void setup() {
