@@ -56,8 +56,8 @@ Prometheus / Soul Fire'd、Cobweb、Farmer's Delight、东方小女仆（jar 里
 这个移植是从 0.5.5 的发布 jar 反编译做的，不是从源码编译，所以内容与原版一致，没有新增物品。
 移植过程中踩过的坑、为什么某些行为改成了现在这样，都记在仓库的 `docs/HANDOFF.md` 里，有兴趣可以翻。
 
-中文翻译最初由 mcmod.cn 的用户 ZR4U 制作并提交给了原作者，上游后来更新变慢，我在他的基础上删掉了一部分
-梗和脏话，补了新增的条目。英文文本沿用原模组。
+中文翻译最初由 mcmod.cn 的用户 ZR4U 制作并提交给了原作者，上游后来更新变慢，我在他的基础上删除了
+一些不适宜内容，补了新增的条目。英文文本沿用原模组。
 
 ## 授权
 
@@ -122,7 +122,7 @@ The port was made from the 0.5.5 release jar (decompiled and remapped), not from
 the way, and why a given behaviour works the way it does, is written down in `docs/HANDOFF.md` in the repository.
 
 The Chinese translation was originally made by ZR4U on mcmod.cn and submitted upstream; upstream slowed down, so
-this port removes some of the meme lines and strong language from it and fills in the entries added since. English
+this port removes some unsuitable content from it and fills in the entries added since. English
 strings are unchanged from the original mod.
 
 ## License

@@ -37,8 +37,8 @@ assets/scguns/lang/zh_cn.json
 
 The Chinese translation originates from a pack by the Mod Wiki (mcmod.cn) user **ZR4U**, which that
 author submitted to Scorched Guns itself; upstream development has since slowed, so the translation was
-not kept current. This port continues from that work: some meme-flavoured lines and the stronger profanity
-were removed or reworded, and keys added since then were filled in. Credit for the original translation
+not kept current. This port continues from that work: some unsuitable content was removed or reworded, and keys
+added since then were filled in. Credit for the original translation
 belongs to ZR4U.
 
 If you are the translator and want a different credit line, or want the file removed, open an
