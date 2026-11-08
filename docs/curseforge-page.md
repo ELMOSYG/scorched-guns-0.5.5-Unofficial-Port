@@ -12,14 +12,8 @@
 
 ## 与原版的差异
 
-不是完全照搬，下面这些是明确改过的：
-
-* **刺刀近战**：动作重做过（原来是匀速前推再匀速回收，现在是三段节奏），冲锋与单目标突刺的行为、
-  命中判定与配置项都调整过，`bayonetCharge` 一整节配置可以单独关掉或改数值。
-* **近战伤害与附魔加成**：近战、光束、附魔加成在同一轮里一起调过，刺刀也能吃到武器附魔。
-* **部分生物行为**：持枪生物不再做原版的近战挥击动作；袭击小队的目标优先级调过，否则它们永远先去砍人。
-
-其余枪械伤害、射速、弹道等数值沿用 0.5.5。完整的改动记录在 `docs/changelogs/` 里，每一条都写了原因。
+修改了原 mod 里一些不合理的内容，比如刺刀系列物品的数值。其余枪械的伤害、射速、弹道沿用 0.5.5。
+具体改了什么、为什么改，记在 `docs/changelogs/` 里。
 
 ## 前置
 
@@ -83,18 +77,9 @@ they are listed below.
 
 ## What differs from the original
 
-This is not a straight copy, and these are the deliberate changes:
-
-* **Bayonet melee.** The stab animation was redone (it used to push out and pull back at a constant speed, it now has
-  a three-part rhythm), and the charge, the single-target thrust, the hit detection and their options were adjusted.
-  The whole `bayonetCharge` config section can be switched off or retuned.
-* **Melee damage and enchantment bonuses** were reworked in the same pass, and bayonets now benefit from weapon
-  enchantments.
-* **Some mob behaviour:** armed mobs no longer play the vanilla melee swing, and the raid squad's target priorities
-  were changed, otherwise they always went for a melee kill first.
-
-Gun damage, fire rate and ballistics otherwise keep their 0.5.5 values. The full record, with the reason for each
-change, is in `docs/changelogs/`.
+Some of the original mod's unreasonable content was changed, for example the numbers on the bayonet line. Gun damage,
+fire rate and ballistics otherwise keep their 0.5.5 values. What was changed and why is recorded in
+`docs/changelogs/`.
 
 ## Requirements
 
