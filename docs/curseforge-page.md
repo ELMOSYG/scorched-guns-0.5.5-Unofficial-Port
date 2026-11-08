@@ -12,8 +12,10 @@
 
 ## 与原版的差异
 
-修改了原 mod 里一些不合理的内容，比如刺刀系列物品的数值。其余枪械的伤害、射速、弹道沿用 0.5.5。
-具体改了什么、为什么改，记在 `docs/changelogs/` 里。
+修改了原 mod 里一些不合理的内容，比如刺刀系列物品的数值。机制上大改的只有 COG 骑士：它冲刺时会
+获得额外的抬腿高度，能直接冲上台阶，原来的设定里它会卡在台阶前。
+
+其余枪械的伤害、射速、弹道沿用 0.5.5。具体改了什么、为什么改，记在 `docs/changelogs/` 里。
 
 ## 前置
 
@@ -41,9 +43,10 @@ Prometheus / Soul Fire'd、Cobweb、Farmer's Delight、东方小女仆（jar 里
 瞄准镜的实心部分也能看到后面的方块。可以在 `config/scguns-client.toml` 里把 `sightsUseCutout` 改成
 `true`，代价是镜片从半透明变成不透明。不装光影没有这个现象。
 
-**装了 EMF / Fresh Animations 时，第三人称持枪动作可能不对。** 从 1.0.9.2 hotfix 起已经做了适配：
-持枪姿势会在 EMF 动画之后重新套用，第一人称也会关掉原版那层手。如果换过模型类资源包之后出现旧模型残留，
-按 F3+T 重载资源（或者重启），EMF 会缓存资源包里的模型。
+**EMF / Fresh Animations 的兼容性只能做到一部分，没法真正修好。** EMF 会整体替换玩家模型，所有依赖原版模型
+姿态的做法在它面前都会失效。这个版本做了两件事：持枪姿势在 EMF 动画之后重新套用，第一人称关掉原版那层手。
+但两者仍然可能冲突，出现多余手臂或姿势不对时只能关掉 EMF 或换资源包。另外换过模型类资源包后会出现旧模型
+残留，按 F3+T 重载资源或重启，那是 EMF 自己的缓存。
 
 **换资源包、换光影之后出现异常，先重载资源再判断是不是模组的问题。**
 
@@ -77,8 +80,11 @@ they are listed below.
 
 ## What differs from the original
 
-Some of the original mod's unreasonable content was changed, for example the numbers on the bayonet line. Gun damage,
-fire rate and ballistics otherwise keep their 0.5.5 values. What was changed and why is recorded in
+Some of the original mod's unreasonable content was changed, for example the numbers on the bayonet line. One mob was
+mechanically reworked: the COG knight now steps up while charging, so it can run up a block instead of stopping dead
+at every step.
+
+Gun damage, fire rate and ballistics otherwise keep their 0.5.5 values. What was changed and why is recorded in
 `docs/changelogs/`.
 
 ## Requirements
@@ -100,10 +106,12 @@ pass that does not write depth, so the solid part of a scope stops occluding. Se
 `config/scguns-client.toml` to force alpha-cutout rendering; the lens then reads as solid instead of translucent.
 Without shaders this does not happen.
 
-**With EMF / Fresh Animations installed, the third-person gun pose can look wrong.** Since 1.0.9.2 hotfix the mod
-reapplies the held pose after EMF animates the player, and suppresses the vanilla first-person hand while a gun is
-held. If an old model sticks around after swapping a model pack, press F3+T (or restart): EMF caches the models it
-loads from resource packs.
+**EMF / Fresh Animations compatibility is partial and cannot be fully fixed.** EMF replaces the player model
+wholesale, and anything that poses the vanilla model stops working underneath it. This build does two things: the held
+pose is reapplied after EMF animates the player, and the vanilla first-person hand is suppressed while a gun is held.
+The two can still conflict, and when an extra arm or a wrong pose shows up the only fix is to drop EMF or the resource
+pack. Separately, an old model can stick around after swapping a model pack - press F3+T (or restart), that is EMF
+caching the models it loads.
 
 **If something looks broken right after changing resource packs or shaders, reload resources before blaming the mod.**
 
