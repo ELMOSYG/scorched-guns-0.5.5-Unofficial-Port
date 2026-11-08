@@ -13,8 +13,7 @@
 ## 与原版的差异
 
 修改了原 mod 里一些不合理的内容，比如刺刀系列物品的数值。机制上大改的只有 COG 骑士：它的冲锋改成了
-直线冲刺，不再一路贴着玩家转弯；冲刺时还会获得额外的抬腿高度，能直接冲上台阶，原来的设定里它会在台阶前
-停住。
+直线冲刺，期间不再持续追踪玩家；冲刺时还会获得额外的抬腿高度，能直接冲上台阶，原来的设定里它会在台阶前停住。
 
 其余枪械的伤害、射速、弹道沿用 0.5.5。具体改了什么、为什么改，记在 `docs/changelogs/` 里。
 
@@ -82,8 +81,8 @@ they are listed below.
 ## What differs from the original
 
 Some of the original mod's unreasonable content was changed, for example the numbers on the bayonet line. One mob was
-mechanically reworked: the COG knight's charge is now a straight-line dash instead of homing in on the player the whole
-way, and it steps up while charging, so it runs up a block instead of stopping dead at every step.
+mechanically reworked: the COG knight's charge is now a straight-line dash that does not keep tracking the player, and
+it steps up while charging, so it runs up a block instead of stopping dead at every step.
 
 Gun damage, fire rate and ballistics otherwise keep their 0.5.5 values. What was changed and why is recorded in
 `docs/changelogs/`.
