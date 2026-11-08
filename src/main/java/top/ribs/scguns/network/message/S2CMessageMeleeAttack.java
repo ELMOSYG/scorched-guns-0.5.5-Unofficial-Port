@@ -19,7 +19,11 @@ public class S2CMessageMeleeAttack {
 
    public S2CMessageMeleeAttack(ItemStack heldItem) {
       super();
-      this.heldItem = heldItem;
+      // Copy, never keep the caller's stack. The packet is encoded later on the network thread while the server
+      // is still ticking: attacking during a reload mutates the same stack's tag (IsReloading and friends), and
+      // encoding a stack whose NBT map is being written threw ConcurrentModificationException and dropped the
+      // player from the server with a protocol error.
+      this.heldItem = heldItem == null || heldItem.isEmpty() ? ItemStack.EMPTY : heldItem.copy();
    }
 
    public S2CMessageMeleeAttack(RegistryFriendlyByteBuf buf) {
@@ -28,7 +32,8 @@ public class S2CMessageMeleeAttack {
    }
 
    public void encode(S2CMessageMeleeAttack message, RegistryFriendlyByteBuf buf) {
-      ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, message.heldItem);
+      ItemStack stack = message.heldItem == null ? ItemStack.EMPTY : message.heldItem;
+      ItemStack.OPTIONAL_STREAM_CODEC.encode(buf, stack);
    }
 
    public S2CMessageMeleeAttack decode(RegistryFriendlyByteBuf buf) {
