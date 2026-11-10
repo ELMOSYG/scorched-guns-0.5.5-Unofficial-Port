@@ -823,6 +823,15 @@ public final class SC2GunCompat {
             IEnergyStorage energy = canister.getItem() instanceof top.ribs.scguns.item.AirCanisterItem
                 ? canister.getCapability(Capabilities.EnergyStorage.ITEM) : null;
             if (energy != null && energy.getEnergyStored() >= (int) cost) {
+                // Diagnostic for the "air is drained too fast" report: one line per charged shot shows the cost the
+                // gun data asks for and the canister's stored value before and after, so the numbers can be read
+                // instead of guessed at.
+                if (consume) {
+                    LOGGER.info("scguns-maid air: gun={} cost={} stored={} canister={}",
+                        gun.getItem(), cost, energy.getEnergyStored(),
+                        canister.getItem());
+                }
+
                 if (!consume) {
                     // Simulate, exactly as the real call will run. extractEnergy can hand back less than
                     // asked for, so a plain "is there enough stored" check said yes while the real
