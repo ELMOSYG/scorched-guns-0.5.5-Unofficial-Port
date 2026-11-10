@@ -181,7 +181,11 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       this.attributeAdditionalDamage = additionalDamageAttr != null ? (float)additionalDamageAttr.getValue() : 0.0F;
       AttributeInstance damageMultAttr = shooter.getAttribute(SCAttributes.BULLET_DAMAGE_MULTIPLIER);
       this.attributeDamageMultiplier = damageMultAttr != null ? damageMultAttr.getValue() : 1.0;
+      // Entity computes its bounding box in its own constructor from getDimensions(), which ran before this field
+      // existed, so the box would keep the default size until something else refreshed it. The gun JSON's
+      // projectile size therefore had no effect on the hitbox at all until this call was added.
       this.entitySize = EntityDimensions.scalable(this.projectile.getSize(), this.projectile.getSize());
+      this.refreshDimensions();
       this.modifiedGravity = modifiedGun.getProjectile().isGravity() ? GunModifierHelper.getModifiedProjectileGravity(weapon, -0.04) : 0.0;
       this.life = GunModifierHelper.getModifiedProjectileLife(weapon, this.projectile.getLife());
       Vec3 dir = this.getDirection(shooter, weapon, item, modifiedGun);
@@ -1033,6 +1037,8 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       this.modifiedGravity = buffer.readDouble();
       this.life = buffer.readVarInt();
       this.entitySize = EntityDimensions.scalable(this.projectile.getSize(), this.projectile.getSize());
+      // The client rebuilds the projectile from this packet, so its box has to be refreshed here too.
+      this.refreshDimensions();
    }
 
    public void updateHeading() {
