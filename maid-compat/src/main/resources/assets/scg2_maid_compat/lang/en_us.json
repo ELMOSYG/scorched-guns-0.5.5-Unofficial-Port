@@ -116,5 +116,6 @@
   "scg2_maid_compat.config.ai_type": "AI Type",
   "scg2_maid_compat.config.speed": "Speed",
   "scg2_maid_compat.config.gunattackgoal_sc": "Movement speed multiplier passed to GunAttackGoal (SC2's gunner mobs use 1.0).",
-  "scg2_maid_compat.config.difficulty": "Difficulty"
+  "scg2_maid_compat.config.difficulty": "Difficulty",
+  "task.scg2_maid_compat.gun_attack.condition.has_air": "Air canister has enough air (air guns only)"
 }

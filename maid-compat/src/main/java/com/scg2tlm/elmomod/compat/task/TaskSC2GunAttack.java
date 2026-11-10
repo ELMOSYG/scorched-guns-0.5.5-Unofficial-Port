@@ -245,7 +245,11 @@ public class TaskSC2GunAttack implements IRangedAttackTask {
                 Pair.of("has_bayonet", m -> SCG2TLMConfig.BAYONET_MELEE.get()
                         && SC2GunCompat.hasBayonet(m.getMainHandItem())),
                 // 弹药：hasAmmoInInventory 已经包含「开了 reload_free_ammo 就算有」这条
-                Pair.of("has_ammo", m -> SC2GunCompat.hasAmmoInInventory(m, m.getMainHandItem()))
+                Pair.of("has_ammo", m -> SC2GunCompat.hasAmmoInInventory(m, m.getMainHandItem())),
+                // Only an air gun can be "out of air": hasAirForGun answers true for every other gun, because
+                // "no air" would otherwise make a normal gun look unusable to the rest of the task.
+                Pair.of("has_air", m -> SC2GunCompat.isAirGun(m.getMainHandItem())
+                        && SC2GunCompat.hasAirForGun(m, m.getMainHandItem()))
         );
     }
 

@@ -116,5 +116,6 @@
   "scg2_maid_compat.config.ai_type": "性格",
   "scg2_maid_compat.config.speed": "移动速度",
   "scg2_maid_compat.config.gunattackgoal_sc": "传给 GunAttackGoal 的移动速度倍率（SC2 持枪怪用 1.0）。",
-  "scg2_maid_compat.config.difficulty": "难度系数"
+  "scg2_maid_compat.config.difficulty": "难度系数",
+  "task.scg2_maid_compat.gun_attack.condition.has_air": "气瓶里有足够的空气（仅气枪适用）"
 }

@@ -789,6 +789,22 @@ public final class SC2GunCompat {
      *
      * @param consume true to actually take the air, false to only ask whether it is there
      */
+    /** Whether this stack is one of SC2's air guns. {@code IAirGun} is the mod's own marker, not a name test. */
+    public static boolean isAirGun(ItemStack stack) {
+        return stack != null && !stack.isEmpty() && stack.getItem() instanceof top.ribs.scguns.interfaces.IAirGun;
+    }
+
+    /**
+     * Whether the maid has enough air for one shot.
+     *
+     * <p>Only ask this for an air gun: {@code maidAir} returns true for everything else, because "no air" would
+     * otherwise make a normal gun look unusable. Showing the condition line from this alone marked a plain gun as
+     * "has air" - which is not a statement about a gun that does not use air at all.</p>
+     */
+    public static boolean hasAirForGun(EntityMaid maid, ItemStack gun) {
+        return maidAir(maid, gun, false);
+    }
+
     public static boolean maidAir(EntityMaid maid, ItemStack gun, boolean consume) {
         // Only the free-ammo option skips the check entirely. Create being absent must NOT: scguns'
         // own canisters have nothing to do with Create, and returning true here meant a maid with an
