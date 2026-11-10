@@ -1,6 +1,6 @@
 # Scorched Guns 0.5.5 — Unofficial 1.21.1 / NeoForge port
 
-**Port version: 1.0.9.2 hotfix** — the content is the upstream 0.5.5 release; the number is this port's own release, and it is what the mod list shows and what the jar is named.
+**Port version: 1.1.0** — the content is the upstream 0.5.5 release; the number is this port's own release, and it is what the mod list shows and what the jar is named.
 
 **Download:** [CurseForge](https://www.curseforge.com/minecraft/mc-mods/scorched-guns-2-0-5-5-unofficial-port) · [Modrinth](https://modrinth.com/mod/scorched-guns-neoforged) · [GitHub releases](https://github.com/ELMOSYG/scorched-guns-0.5.5-Unofficial-Port/releases)
 
@@ -25,7 +25,7 @@ Optional integrations activate only when the other mod is present: JEI, Create (
 ## Installing
 
 1. Install NeoForge 21.1.150+ for Minecraft 1.21.1.
-2. Put `scguns-1.0.9.2hotfix.jar`, Framework, GeckoLib and Curios into `mods/`.
+2. Put `scguns-1.1.0.jar`, Framework, GeckoLib and Curios into `mods/`.
 
 The jar also ships **Scorched Guns: Maid Compat** as a nested mod; it is inert unless Touhou Little Maid is installed.
 
@@ -35,7 +35,7 @@ The dependency jars belong to their own authors and are not distributed here —
 
 ```powershell
 $env:JAVA_HOME='<JDK 21>'                     # a Java 8 on PATH will not work
-cmd /c "gradlew.bat build --console=plain"    # -> build/libs/scguns-1.0.9.2hotfix.jar
+cmd /c "gradlew.bat build --console=plain"    # -> build/libs/scguns-1.1.0.jar
 ```
 
 ## Documentation
