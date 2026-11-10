@@ -24,6 +24,13 @@ public abstract class MaidAttackStrafingTaskMixin {
 
     @Inject(method = "tick", at = @At("HEAD"), cancellable = true, remap = false)
     private void scg2tlm$onTick(ServerLevel level, EntityMaid maid, long gameTime, CallbackInfo ci) {
+        // A bow or a crossbow must keep Touhou Little Maid's own strafing. This task is shared by every ranged
+        // attack, so cancelling it unconditionally replaced the bow/crossbow behaviour with the gun one: archers
+        // stopped keeping their distance and walked into melee range instead.
+        if (!SC2GunCompat.isSC2Gun(maid.getMainHandItem())) {
+            return;
+        }
+
         // An air gun with no air must stop the whole attack behaviour, not just the bullet. The projectile
         // is already cancelled in MaidProjectileHandler, but the AI kept strafing, spending ammo and
         // reloading - the log showed a blocked shot every 200 ms. This task drives that behaviour, so
