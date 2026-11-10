@@ -8,9 +8,7 @@
 
 枪数据里 `projectile.size` 是存在的，代码也读了它、也拿去算了 `EntityDimensions` —— 但**碰撞箱没跟着变**。
 
-原因是执行顺序：`Entity` 在自己的构造函数里就会用 `getDimensions()` 算一遍包围盒，而我们的
-`entitySize` 是在那之后才赋值的，全类又没有一处 `refreshDimensions()`。所以无论 JSON 写 0.5 还是 100，
-子弹的碰撞箱始终是默认大小。
+原因是执行顺序：`Entity` 在自己的构造函数里就会用 `getDimensions()` 算一遍包围盒，而我们的 `entitySize` 是在那之后才赋值的，全类又没有一处 `refreshDimensions()`。所以无论 JSON 写 0.5 还是 100， 子弹的碰撞箱始终是默认大小。
 
 现在在两处都补了 `refreshDimensions()`：构造时，以及客户端从生成包重建子弹时。
 
@@ -25,14 +23,13 @@
 
 1. **注册 `is_scguns_gun_held` 动画变量** —— 资源包可以按「是否持枪」切换动画。
 2. **第三人称持枪姿势重放** —— 在 EMF 的 `EMFModelPartRoot#animate` 末尾，把持枪 / 瞄准姿势重新套用到
-   `right_arm`、`left_arm`、`head`，并同步袖子与帽子。
+`right_arm`、`left_arm`、`head`，并同步袖子与帽子。
 3. **关掉原版那层手** —— EMF 通过 `ItemInHandRenderer#renderHandsWithItems` 画第一人称手臂，持枪时这一段
-   被取消，避免和枪模型上的手臂重叠。
+被取消，避免和枪模型上的手臂重叠。
 4. **手臂与袖子改用同一份烘焙模型** —— 之前内层手臂跟着枪、外层袖子留在原位，是因为两层来自两个模型。
-   （顺带纠正一处判断：真正无效的是 `PlayerRenderer#renderHand` 那条注入，它在这条路径上从不触发。）
+（顺带纠正一处判断：真正无效的是 `PlayerRenderer#renderHand` 那条注入，它在这条路径上从不触发。）
 
-所有 EMF 访问都是反射 + 缓存：类、方法、字段各解析一次，探测失败只留一行 debug 日志，不会每帧抛异常。
-两个 mixin 都是 `@Pseudo` + `require = 0` + `Throwable` 兜底，没装 EMF 时完全不干预。
+所有 EMF 访问都是反射 + 缓存：类、方法、字段各解析一次，探测失败只留一行 debug 日志，不会每帧抛异常。 两个 mixin 都是 `@Pseudo` + `require = 0` + `Throwable` 兜底，没装 EMF 时完全不干预。
 
 **换过模型类资源包之后如果出现旧模型残留**，按 `F3+T` 重载资源或重启 —— 那是 EMF 自己的缓存。
 
@@ -40,21 +37,17 @@
 
 ### 3.1 弓 / 弩女仆被枪械走位逻辑接管
 
-`MaidAttackStrafingTaskMixin` 在 `tick` 的 HEAD 处无条件 `cancel()`，用自己的枪械走位替代。但
-`MaidAttackStrafingTask` 是 TLM 弓、弩、枪械**共用**的行为，于是弓兵、弩兵不再保持距离，会一路冲到脸上再
-拉弓。
+`MaidAttackStrafingTaskMixin` 在 `tick` 的 HEAD 处无条件 `cancel()`，用自己的枪械走位替代。但 `MaidAttackStrafingTask` 是 TLM 弓、弩、枪械**共用**的行为，于是弓兵、弩兵不再保持距离，会一路冲到脸上再 拉弓。
 
 现在先判断主手是不是本模组的枪：不是就 `return`，不取消，交回 TLM 自己的走位。
 
 ### 3.2 气枪的条件行
 
-新增「气瓶里有足够的空气（仅气枪适用）」这一条。之前如果直接用「有没有气」来判断，普通枪也会显示为真 ——
-因为「没有空气」对普通枪来说本来就不成立。所以条件行先判断「是不是气枪」，再判断「有没有气」。
+新增「气瓶里有足够的空气（仅气枪适用）」这一条。之前如果直接用「有没有气」来判断，普通枪也会显示为真 —— 因为「没有空气」对普通枪来说本来就不成立。所以条件行先判断「是不是气枪」，再判断「有没有气」。
 
 ### 3.3 气枪扣费口径
 
-核对结果：1.21.1 这边**已经**是按「每发」扣，不是按弹丸扣（`performGunAttack` 里扣一次，弹丸生成时只询问
-不扣）。为了确认实际数字，加了一行诊断日志：
+核对结果：1.21.1 这边**已经**是按「每发」扣，不是按弹丸扣（`performGunAttack` 里扣一次，弹丸生成时只询问 不扣）。为了确认实际数字，加了一行诊断日志：
 
 ```
 scguns-maid air: gun=<物品> cost=<本发消耗> stored=<扣前存量> canister=<气瓶>
