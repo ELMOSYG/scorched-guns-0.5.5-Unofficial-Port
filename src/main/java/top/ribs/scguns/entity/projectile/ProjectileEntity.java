@@ -1226,8 +1226,21 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
             }
          };
          if (!EventHooks.onExplosionStart(world, explosion)) {
+            // Timing: a rocket that breaks blocks was reported to stall the server for about two seconds before the
+            // blocks finally went. This says which half is slow and how many blocks are involved.
+            long startedAt = System.nanoTime();
             explosion.explode();
+            long explodedAt = System.nanoTime();
             explosion.finalizeExplosion(true);
+            long finishedAt = System.nanoTime();
+            long explodeMs = (explodedAt - startedAt) / 1_000_000L;
+            long finalizeMs = (finishedAt - explodedAt) / 1_000_000L;
+            if (explodeMs + finalizeMs > 20L) {
+               ScorchedGuns.LOGGER.warn(
+                  "scguns-griefing: slow explosion explode={}ms finalize={}ms blocks={} radius={} mode={}",
+                  explodeMs, finalizeMs, explosion.getToBlow().size(), radius, mode);
+            }
+
             explosion.getToBlow().forEach(pos -> {
                if (world.getBlockState(pos).getBlock() instanceof IExplosionDamageable) {
                   ((IExplosionDamageable)world.getBlockState(pos).getBlock()).onProjectileExploded(world, world.getBlockState(pos), pos, entity);
