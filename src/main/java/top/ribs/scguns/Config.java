@@ -164,8 +164,7 @@ public class Config {
       public final Config.BayonetCharge bayonetCharge;
       public final Config.AggroMobs aggroMobs;
       public final Config.FleeingMobs fleeingMobs;
-      public final Config.Grenades grenades;
-      public final Config.StunGrenades stunGrenades;
+         public final Config.StunGrenades stunGrenades;
       public final Config.ProjectileSpread projectileSpread;
       public final Config.Gunsmith Gunsmith;
       public final Config.ExoSuitCores exoSuitCores;
@@ -181,8 +180,7 @@ public class Config {
          this.bayonetCharge = new Config.BayonetCharge(builder);
          this.aggroMobs = new Config.AggroMobs(builder);
          this.fleeingMobs = new Config.FleeingMobs(builder);
-         this.grenades = new Config.Grenades(builder);
-         this.stunGrenades = new Config.StunGrenades(builder);
+            this.stunGrenades = new Config.StunGrenades(builder);
          this.projectileSpread = new Config.ProjectileSpread(builder);
          this.Gunsmith = new Config.Gunsmith(builder);
          this.exoSuitCores = new Config.ExoSuitCores(builder);
@@ -732,18 +730,6 @@ public class Config {
                "Chance (0.0 to 1.0) that Cog enemies will spawn a Signal Beacon on death. Set to 0.0 to disable beacon spawning from Cog deaths."
             )
             .defineInRange("cogBeaconSpawnChance", 0.15, 0.0, 1.0);
-         builder.pop();
-      }
-   }
-
-   public static class Grenades {
-      public final DoubleValue explosionRadius;
-
-      public Grenades(Builder builder) {
-         super();
-         builder.comment("Properties relating to grenades").push("grenades");
-         this.explosionRadius = builder.comment("The max distance which the explosion is effective to")
-            .defineInRange("explosionRadius", 5.0, 0.0, Double.MAX_VALUE);
          builder.pop();
       }
    }
