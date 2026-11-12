@@ -105,6 +105,10 @@ public class RocketExplosion extends ProjectileExplosion {
                         set.add(pos);
                      }
 
+      // The collected blocks have to reach the base class: finalizeExplosion() destroys exactly this set, and
+      // without it a rocket, HE round or grenade could never break a block no matter what the config said.
+      this.getToBlow().addAll(set);
+
                      blockX += d0 * 0.3F;
                      blockY += d1 * 0.3F;
                      blockZ += d2 * 0.3F;
