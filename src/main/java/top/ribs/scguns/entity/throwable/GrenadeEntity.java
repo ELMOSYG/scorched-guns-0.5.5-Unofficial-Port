@@ -1,5 +1,9 @@
 package top.ribs.scguns.entity.throwable;
 
+// The third argument of createExplosion is forceNone: passing true skipped the griefing config entirely, so
+// enableBlockRemovalOnExplosions never had any effect on gun-fired grenades. The config now decides, as it already
+// did for thrown grenades.
+
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.entity.Entity;
@@ -24,16 +28,16 @@ public class GrenadeEntity extends ProjectileEntity {
 
    @Override
    protected void onHitEntity(Entity entity, Vec3 hitVec, Vec3 startVec, Vec3 endVec, boolean headshot) {
-      createExplosion(this, this.getDamage() / 5.0F, true);
+      createExplosion(this, this.getDamage() / 5.0F, false);
    }
 
    @Override
    protected void onHitBlock(BlockState state, BlockPos pos, Direction face, double x, double y, double z) {
-      createExplosion(this, this.getDamage() / 5.0F, true);
+      createExplosion(this, this.getDamage() / 5.0F, false);
    }
 
    @Override
    public void onExpired() {
-      createExplosion(this, this.getDamage() / 5.0F, true);
+      createExplosion(this, this.getDamage() / 5.0F, false);
    }
 }
