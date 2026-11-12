@@ -22,8 +22,20 @@ import top.ribs.scguns.client.compat.OptionalClientCompat;
 @Pseudo
 public abstract class EMFModelPartRootMixin {
 
+   // EMF 3 has two entry points: animate() and animateNoPause(), and the render path uses the second one. Cancelling
+   // only animate() looked like it worked while the other patch of this class was installed, and did nothing on its
+   // own - the animation simply ran through the other method.
+   @Inject(method = "animateNoPause", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
+   private void scguns$skipEmfAnimationNoPauseForGun(CallbackInfo callbackInfo) {
+      scguns$cancelIfGunHeld(callbackInfo);
+   }
+
    @Inject(method = "animate", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
    private void scguns$skipEmfAnimationForGun(CallbackInfo callbackInfo) {
+      scguns$cancelIfGunHeld(callbackInfo);
+   }
+
+   private static void scguns$cancelIfGunHeld(CallbackInfo callbackInfo) {
       try {
          if (OptionalClientCompat.shouldSkipEmfPlayerAnimation()) {
             callbackInfo.cancel();
