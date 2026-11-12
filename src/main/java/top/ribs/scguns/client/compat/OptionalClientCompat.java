@@ -98,14 +98,17 @@ public final class OptionalClientCompat {
     * <p>Only with EMF installed and a gun actually held; every other item keeps rendering exactly as before.</p>
     */
    public static boolean shouldSuppressVanillaHands(Player player) {
-      return isEntityModelFeaturesLoaded() && isScorchedGunHeldByPlayer(player);
+      // Deliberately not gated on EMF any more. The check started as "only when EMF redraws the hand", but other
+      // model packs (Fresh Extensions on top of Fresh Animations, for one) reach the same method and add their own
+      // arm, which showed up as a third arm next to the two the gun model already draws.
+      return isScorchedGunHeldByPlayer(player);
    }
 
    /** One line per session, so a report can tell whether the suppression is active. */
    public static void logHandSuppressionOnce() {
       if (!handSuppressionLogged) {
          handSuppressionLogged = true;
-         ScorchedGuns.LOGGER.info("scguns: suppressing the vanilla first-person hands while a gun is held (EMF present).");
+         ScorchedGuns.LOGGER.info("scguns: suppressing the vanilla first-person hands while a gun is held.");
       }
    }
 
