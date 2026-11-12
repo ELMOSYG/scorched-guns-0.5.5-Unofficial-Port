@@ -36,6 +36,17 @@ public abstract class EMFModelPartRootMixin {
    @Final
    private Map<String, ModelPart> allVanillaParts;
 
+   @Inject(method = "animate", at = @At("HEAD"), cancellable = true, require = 0, remap = false)
+   private void scguns$skipEmfAnimationForGun(CallbackInfo callbackInfo) {
+      try {
+         if (OptionalClientCompat.shouldSkipEmfPlayerAnimation()) {
+            callbackInfo.cancel();
+         }
+      } catch (Throwable ignored) {
+         // A failure here must not break the entity render.
+      }
+   }
+
    @Inject(method = "animate", at = @At("TAIL"), require = 0, remap = false)
    private void scguns$reapplyHeldPose(CallbackInfo callbackInfo) {
       try {

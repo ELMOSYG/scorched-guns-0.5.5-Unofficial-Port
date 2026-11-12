@@ -211,6 +211,29 @@ public final class OptionalClientCompat {
       return arm == HumanoidArm.RIGHT ? regularRightSleeve : regularLeftSleeve;
    }
 
+   /**
+    * Whether EMF should leave the player model alone this frame.
+    *
+    * <p>EMF replaces and animates every player model part. Skipping its animation while a gun is held is far more
+    * reliable than reapplying the held pose afterwards: the vanilla chain then runs untouched and the gun's pose
+    * lands where it always did.</p>
+    */
+   public static boolean shouldSkipEmfPlayerAnimation() {
+      if (!top.ribs.scguns.Config.CLIENT.display.emfSkipPlayerAnimationWithGun.get()) {
+         return false;
+      }
+
+      if (!isEntityModelFeaturesLoaded()) {
+         return false;
+      }
+
+      if (getEntityModelFeaturesContextEntity() instanceof Player contextPlayer) {
+         return isScorchedGunHeldByPlayer(contextPlayer);
+      }
+
+      return isScorchedGunHeldByLocalPlayer();
+   }
+
    /** Whether the player is holding a gun in either hand. */
    public static boolean isScorchedGunHeldByPlayer(Player player) {
       return player != null && (isScorchedGunStack(player.getMainHandItem()) || isScorchedGunStack(player.getOffhandItem()));

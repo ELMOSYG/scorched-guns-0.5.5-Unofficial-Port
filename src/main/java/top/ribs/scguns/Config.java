@@ -386,6 +386,7 @@ public class Config {
       public final DoubleValue dynamicCrosshairMaxScale;
       public final BooleanValue renderArms;
    public final BooleanValue suppressVanillaArmWithGun;
+   public final BooleanValue emfSkipPlayerAnimationWithGun;
       public final BooleanValue sightsUseCutout;
       public final BooleanValue enablePerformanceSulfurCloud;
       public final BooleanValue showProgressionMessages;
@@ -482,6 +483,14 @@ public class Config {
          this.renderArms = builder.comment("If true, renders the player's arms when holding a gun").define("renderArms", true);
          // Off gives the arm back to the renderer. Needed when another mod (an animation compat, for instance) draws
          // the first-person arm itself: cancelling renderPlayerArm would hide theirs as well as ours.
+         // The blunt approach that actually holds: while a gun is held, EMF does not animate the player at all, so the
+         // vanilla pose chain runs untouched and the gun's own pose simply works. Switching this off falls back to
+         // reapplying the pose after EMF has animated.
+         this.emfSkipPlayerAnimationWithGun = builder.comment(
+               "If true, Entity Model Features skips player animation while a gun is held, so the gun pose is never"
+                  + " overridden. Turn off to keep the model pack animating and only reapply the pose afterwards."
+            )
+            .define("emfSkipPlayerAnimationWithGun", true);
          this.suppressVanillaArmWithGun = builder.comment(
                "If true, the gun model draws the first-person arm and the renderer's own arm is suppressed."
                   + " Turn this off when another mod draws the first-person arm for Scorched Guns."
