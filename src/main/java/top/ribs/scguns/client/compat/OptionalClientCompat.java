@@ -36,6 +36,11 @@ public final class OptionalClientCompat {
 
    private static final String EMF_ANIMATION_API = "traben.entity_model_features.EMFAnimationApi";
    private static final String EMF_ANIMATION_CONTEXT = "traben.entity_model_features.models.animation.EMFAnimationEntityContext";
+   // EMF 3 renamed the animation context: the old name no longer exists, so detection keyed only on it reported "EMF
+   // absent" and every EMF path silently switched itself off. The API class and the render-state class are what 3.x
+   // actually ships.
+   private static final String EMF_ANIMATION_API_ANY = "traben.entity_model_features.EMFAnimationApi";
+   private static final String EMF3_RENDER_STATE = "traben.entity_model_features.models.animation.state.EMFEntityRenderState";
 
    private static Boolean emfLoaded;
    private static boolean variableRegistered;
@@ -52,7 +57,8 @@ public final class OptionalClientCompat {
    /** Whether EMF is present. Resolved once; an absent mod is remembered, not retested every frame. */
    public static boolean isEntityModelFeaturesLoaded() {
       if (emfLoaded == null) {
-         emfLoaded = isClassPresent(EMF_ANIMATION_API) && isClassPresent(EMF_ANIMATION_CONTEXT);
+         emfLoaded = isClassPresent(EMF_ANIMATION_API_ANY)
+            && (isClassPresent(EMF_ANIMATION_CONTEXT) || isClassPresent(EMF3_RENDER_STATE));
          if (!emfLoaded) {
             ScorchedGuns.LOGGER.debug("Entity Model Features is not installed; its animation variable is skipped.");
          }
@@ -227,10 +233,9 @@ public final class OptionalClientCompat {
          return false;
       }
 
-      if (getEntityModelFeaturesContextEntity() instanceof Player contextPlayer) {
-         return isScorchedGunHeldByPlayer(contextPlayer);
-      }
-
+      // The local player decides: first-person rendering is always theirs, and this avoids depending on EMF's context
+      // lookup, which another patch of this class can break. A model pack only animates the player that is looked at,
+      // so asking the local player is enough for the "holding a gun" case.
       return isScorchedGunHeldByLocalPlayer();
    }
 
