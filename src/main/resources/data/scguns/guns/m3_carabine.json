@@ -16,7 +16,6 @@
     "meleeDamage": 2.5,
     "meleeCooldownTicks": 20,
     "hotBarrelRate": 14
-
   },
   "modules": {
     "attachments": {
@@ -35,7 +34,8 @@
       "underBarrel": {
         "yOffset": 5.5,
         "zOffset": -2.5
-      },"magazine": {
+      },
+      "magazine": {
         "scale": 0.0
       }
     },
@@ -46,7 +46,7 @@
     }
   },
   "projectile": {
-    "recoilAngle":2.0,
+    "recoilAngle": 2.0,
     "recoilKick": 1.1,
     "spread": 1.5,
     "criticalChance": 0.1,
@@ -62,7 +62,7 @@
     "casingType": "scguns:medium_brass_casing",
     "casingParticle": "scguns:brass_casing",
     "life": 45,
-    "size": 0.05,
+    "size": 0.25,
     "speed": 9.5,
     "trailLengthMultiplier": 2.0
   },
@@ -75,7 +75,6 @@
   },
   "sounds": {
     "cock": "scguns:item.pistol.cock",
-
     "enchantedFire": "scguns:item.makeshift_rifle.fire",
     "fire": "scguns:item.makeshift_rifle.fire",
     "reload": "scguns:item.gauss.reload",

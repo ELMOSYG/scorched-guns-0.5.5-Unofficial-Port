@@ -57,18 +57,18 @@
     "damageFalloffMinMultiplier": 0.85,
     "armorPen": 4.5,
     "ejectsCasing": true,
-    "gravity": false  ,
+    "gravity": false,
     "item": "scguns:gibbs_round",
     "casingType": "scguns:medium_diamond_steel_casing",
     "casingParticle": "scguns:diamond_steel_casing",
     "life": 90,
-    "size": 0.1,
+    "size": 0.25,
     "speed": 10.0,
     "trailLengthMultiplier": 2.0
   },
   "reloads": {
     "emptyMagTimer": 10,
-    "maxAmmo": 8  ,
+    "maxAmmo": 8,
     "reloadItem": "scguns:gibbs_round",
     "reloadTimer": 30,
     "reloadType": "scguns:mag_fed"

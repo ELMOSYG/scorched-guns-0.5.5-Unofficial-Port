@@ -25,8 +25,7 @@
     "usesCustomMeleeAnimation": true
   },
   "modules": {
-    "attachments": {
-    }
+    "attachments": {}
   },
   "projectile": {
     "alwaysSpread": true,
@@ -43,19 +42,19 @@
     "damageFalloffEnd": 28.0,
     "damageFalloffMinMultiplier": 0.45,
     "ejectsCasing": true,
-    "gravity": false  ,
+    "gravity": false,
     "item": "scguns:osborne_slug",
     "casingType": "scguns:large_iron_casing",
     "casingParticle": "scguns:iron_casing",
     "ejectDuringReload": true,
     "life": 100,
-    "size": 1.0,
+    "size": 0.25,
     "speed": 14.0,
     "trailLengthMultiplier": 2.0
   },
   "reloads": {
     "emptyMagTimer": 10,
-    "maxAmmo": 1  ,
+    "maxAmmo": 1,
     "reloadItem": "scguns:osborne_slug",
     "reloadTimer": 70,
     "reloadType": "scguns:mag_fed"

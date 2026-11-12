@@ -56,7 +56,7 @@
     "casingParticle": "scguns:copper_casing",
     "ejectDuringReload": true,
     "life": 35,
-    "size": 1.0,
+    "size": 0.25,
     "speed": 4.5,
     "trailLengthMultiplier": 2.0
   },

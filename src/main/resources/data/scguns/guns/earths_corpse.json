@@ -22,7 +22,6 @@
     "meleeCooldownTicks": 15,
     "meleeReach": 3.5,
     "hotBarrelRate": 5
-
   },
   "modules": {
     "attachments": {
@@ -34,15 +33,14 @@
       "stock": {
         "scale": 0.0
       },
-        "barrel": {
-            "scale": 0.0,
-          "yOffset": 5.7,
-          "zOffset": -24.0
-        },
+      "barrel": {
+        "scale": 0.0,
+        "yOffset": 5.7,
+        "zOffset": -24.0
+      },
       "magazine": {
         "scale": 0.0
       }
-
     },
     "zoom": {
       "fovModifier": 0.8,
@@ -69,7 +67,7 @@
     "casingType": "scguns:medium_brass_casing",
     "casingParticle": "scguns:brass_casing",
     "life": 55,
-    "size": 0.1,
+    "size": 0.25,
     "speed": 5.0,
     "trailLengthMultiplier": 2.0
   },

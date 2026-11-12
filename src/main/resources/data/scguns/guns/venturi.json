@@ -1,6 +1,5 @@
 {
-  "display": {
-  },
+  "display": {},
   "general": {
     "weaponType": "shotgun",
     "fireMode": "scguns:pulse",
@@ -8,7 +7,6 @@
     "gripType": "scguns:two_handed_shotgun",
     "baseGripType": "scguns:two_handed_shotgun",
     "rate": 12,
-
     "meleeDamage": 3.5,
     "meleeCooldownTicks": 20,
     "hotBarrelRate": 40,
@@ -49,7 +47,7 @@
     "gravity": false,
     "item": "scguns:buckshot",
     "life": 50,
-    "size": 1.0,
+    "size": 0.25,
     "speed": 4.0,
     "trailLengthMultiplier": 0.2,
     "trailThickness": 0.5

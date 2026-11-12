@@ -1,6 +1,5 @@
 {
-  "display": {
-  },
+  "display": {},
   "general": {
     "weaponType": "heavy",
     "fireMode": "scguns:semi_automatic",
@@ -48,7 +47,7 @@
     "casingType": "scguns:large_brass_casing",
     "casingParticle": "scguns:brass_casing",
     "life": 55,
-    "size": 0.05,
+    "size": 0.25,
     "speed": 4.5,
     "trailLengthMultiplier": 2.0
   },
@@ -93,25 +92,25 @@
     "trailLengthMultiplier": 2.0
   },
   "projectile_3": {
-  "recoilAngle": 6.7,
-  "recoilKick": 2.22,
-  "spread": 2.5,
-  "criticalChance": 0.05,
-  "playerKnockBack": true,
-  "playerKnockBackStrength": 0.2,
-  "visible": true,
-  "advantage": "scguns:none",
-  "damage": 24.5,
-  "ejectsCasing": true,
-  "gravity": true,
-  "item": "scguns:bouncy_grenade_round",
+    "recoilAngle": 6.7,
+    "recoilKick": 2.22,
+    "spread": 2.5,
+    "criticalChance": 0.05,
+    "playerKnockBack": true,
+    "playerKnockBackStrength": 0.2,
+    "visible": true,
+    "advantage": "scguns:none",
+    "damage": 24.5,
+    "ejectsCasing": true,
+    "gravity": true,
+    "item": "scguns:bouncy_grenade_round",
     "casingType": "scguns:large_brass_casing",
     "casingParticle": "scguns:brass_casing",
-  "life": 55,
-  "size": 0.05,
-  "speed": 4.5,
-  "trailLengthMultiplier": 2.0
-},
+    "life": 55,
+    "size": 0.05,
+    "speed": 4.5,
+    "trailLengthMultiplier": 2.0
+  },
   "reloads": {
     "emptyMagTimer": 30,
     "maxAmmo": 4,

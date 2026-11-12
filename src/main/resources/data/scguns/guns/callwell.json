@@ -60,7 +60,7 @@
     "casingParticle": "scguns:shell",
     "ejectDuringReload": true,
     "life": 45,
-    "size": 0.05,
+    "size": 0.25,
     "speed": 5.0,
     "trailLengthMultiplier": 2.0,
     "trailThickness": 0.5

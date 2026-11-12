@@ -1,6 +1,5 @@
 {
-  "display": {
-  },
+  "display": {},
   "general": {
     "weaponType": "special",
     "fireMode": "scguns:semi_automatic",
@@ -41,11 +40,11 @@
     "advantage": "scguns:none",
     "damage": 12.0,
     "ejectsCasing": false,
-    "gravity": true  ,
+    "gravity": true,
     "item": "minecraft:arrow",
     "firesArrows": true,
     "life": 20,
-    "size": 0.1,
+    "size": 0.25,
     "speed": 13.0,
     "trailLengthMultiplier": 2.0
   },

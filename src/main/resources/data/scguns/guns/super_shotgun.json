@@ -9,7 +9,6 @@
   },
   "general": {
     "weaponType": "shotgun",
-
     "fireMode": "scguns:burst",
     "burstAmount": 2,
     "burstCooldown": 6,
@@ -23,9 +22,7 @@
     "usesCustomMeleeAnimation": true
   },
   "modules": {
-    "attachments": {
-
-    },
+    "attachments": {},
     "zoom": {
       "fovModifier": 0.7,
       "yOffset": 5.25,
@@ -51,7 +48,7 @@
     "casingType": "scguns:small_copper_casing",
     "casingParticle": "scguns:shell",
     "life": 40,
-    "size": 0.05,
+    "size": 0.25,
     "speed": 4.0,
     "trailLengthMultiplier": 2.0,
     "trailThickness": 0.5

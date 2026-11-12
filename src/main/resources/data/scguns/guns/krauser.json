@@ -58,10 +58,9 @@
     "casingType": "scguns:small_brass_casing",
     "casingParticle": "scguns:brass_casing",
     "life": 40,
-    "size": 0.05,
+    "size": 0.25,
     "speed": 7.0,
     "trailLengthMultiplier": 2.0
-
   },
   "reloads": {
     "emptyMagTimer": 10,

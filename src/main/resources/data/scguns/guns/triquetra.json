@@ -1,7 +1,5 @@
 {
-  "display": {
-
-  },
+  "display": {},
   "general": {
     "weaponType": "heavy",
     "fireMode": "scguns:semi_automatic",
@@ -21,7 +19,8 @@
       "underBarrel": {
         "yOffset": 5.5,
         "zOffset": -2.5
-      }, "scope": {
+      },
+      "scope": {
         "yOffset": 6.3,
         "zOffset": 3.0
       }
@@ -48,7 +47,7 @@
     "casingType": "scguns:large_brass_casing",
     "casingParticle": "scguns:brass_casing",
     "life": 55,
-    "size": 0.05,
+    "size": 0.25,
     "speed": 3.5,
     "trailLengthMultiplier": 2.0
   },

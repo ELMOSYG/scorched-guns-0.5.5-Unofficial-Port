@@ -53,7 +53,7 @@
     "casingType": "scguns:empty_cell",
     "casingParticle": "scguns:iron_casing",
     "life": 65,
-    "size": 2.0,
+    "size": 0.25,
     "speed": 9.0,
     "trailLengthMultiplier": 0.5,
     "impactEffect": "minecraft:darkness",

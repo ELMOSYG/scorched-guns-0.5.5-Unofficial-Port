@@ -24,7 +24,6 @@
   },
   "modules": {
     "attachments": {
-
       "stock": {
         "scale": 0.0
       },
@@ -58,7 +57,7 @@
     "gravity": false,
     "item": "scguns:grapeshot",
     "life": 35,
-    "size": 1.0,
+    "size": 0.25,
     "speed": 5.0,
     "trailLengthMultiplier": 2.0,
     "trailThickness": 0.5

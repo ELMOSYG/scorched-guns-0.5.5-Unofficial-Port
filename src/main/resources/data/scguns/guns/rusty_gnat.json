@@ -58,7 +58,7 @@
     "casingType": "scguns:small_copper_casing",
     "casingParticle": "scguns:copper_casing",
     "life": 35,
-    "size": 0.05,
+    "size": 0.25,
     "speed": 5.0,
     "trailLengthMultiplier": 2.0
   },

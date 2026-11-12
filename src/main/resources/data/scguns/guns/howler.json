@@ -62,18 +62,18 @@
     "damageFalloffMinMultiplier": 0.9,
     "armorPen": 5.0,
     "ejectsCasing": true,
-    "gravity": false  ,
+    "gravity": false,
     "item": "scguns:krahg_round",
     "casingType": "scguns:large_brass_casing",
     "casingParticle": "scguns:brass_casing",
     "life": 70,
-    "size": 0.1,
+    "size": 0.25,
     "speed": 13.0,
     "trailLengthMultiplier": 2.0
   },
   "reloads": {
     "emptyMagTimer": 10,
-    "maxAmmo": 6  ,
+    "maxAmmo": 6,
     "reloadItem": "scguns:krahg_round",
     "reloadTimer": 30,
     "reloadType": "scguns:mag_fed"

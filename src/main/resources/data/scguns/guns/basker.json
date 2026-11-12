@@ -26,7 +26,7 @@
     },
     "zoom": {
       "fovModifier": 0.7,
-      "yOffset":6.5,
+      "yOffset": 6.5,
       "zOffset": 1.1,
       "xOffset": 1.1
     }
@@ -48,7 +48,7 @@
     "ejectsCasing": false,
     "item": "scguns:blaze_fuel",
     "life": 20,
-    "size": 0.1,
+    "size": 0.25,
     "speed": 2.25,
     "trailLengthMultiplier": 2.0
   },

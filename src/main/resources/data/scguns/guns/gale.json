@@ -1,9 +1,7 @@
 {
-  "display": {
-  },
+  "display": {},
   "general": {
     "weaponType": "rifle",
-
     "fireMode": "scguns:pulse",
     "fireTimer": 23,
     "gripType": "scguns:two_handed",
@@ -53,7 +51,7 @@
     "gravity": false,
     "item": "scguns:hardened_bullet",
     "life": 100,
-    "size": 1.0,
+    "size": 0.25,
     "speed": 9.0,
     "trailLengthMultiplier": 0.2,
     "trailThickness": 0.5

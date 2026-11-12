@@ -1,6 +1,5 @@
 {
-  "display": {
-  },
+  "display": {},
   "general": {
     "weaponType": "special",
     "fireMode": "scguns:semi_automatic",
@@ -10,7 +9,6 @@
     "meleeDamage": 3.0,
     "meleeCooldownTicks": 20,
     "hotBarrelRate": 37,
-
     "isSilenced": true,
     "enableGunLight": false
   },
@@ -36,10 +34,10 @@
     "advantage": "scguns:none",
     "damage": 0.0,
     "ejectsCasing": false,
-    "gravity": true  ,
+    "gravity": true,
     "item": "scguns:syringe",
     "life": 20,
-    "size": 2.0,
+    "size": 0.25,
     "speed": 4.0,
     "trailLengthMultiplier": 2.0,
     "impactEffect": "minecraft:instant_health",

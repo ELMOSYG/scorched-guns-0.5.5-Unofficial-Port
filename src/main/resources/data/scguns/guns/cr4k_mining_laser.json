@@ -33,8 +33,7 @@
     "miningSpeed": 14.0,
     "beamMaxDistance": 40.0
   },
-  "modules": {
-  },
+  "modules": {},
   "projectile": {
     "advantage": "scguns:none",
     "recoilAngle": 0.0,
@@ -46,7 +45,7 @@
     "ejectsCasing": false,
     "item": "scguns:energy_core",
     "life": 50,
-    "size": 1.0,
+    "size": 0.25,
     "speed": 1.5,
     "trailLengthMultiplier": 2.0
   },

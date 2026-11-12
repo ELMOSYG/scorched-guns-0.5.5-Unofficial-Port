@@ -19,8 +19,7 @@
     "isSilenced": true
   },
   "modules": {
-    "attachments": {
-    },
+    "attachments": {},
     "zoom": {
       "xOffset": 1.15,
       "fovModifier": 0.6,
@@ -29,7 +28,7 @@
     }
   },
   "projectile": {
-    "recoilAngle":2.0,
+    "recoilAngle": 2.0,
     "recoilKick": 1.1,
     "spread": 0.5,
     "criticalChance": 0.1,
@@ -45,7 +44,7 @@
     "casingType": "scguns:small_iron_casing",
     "casingParticle": "scguns:iron_casing",
     "life": 45,
-    "size": 0.05,
+    "size": 0.25,
     "speed": 4.0,
     "trailThickness": 0.5,
     "trailLengthMultiplier": 2.0,
