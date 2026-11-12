@@ -97,11 +97,11 @@ public final class OptionalClientCompat {
     *
     * <p>Only with EMF installed and a gun actually held; every other item keeps rendering exactly as before.</p>
     */
-   public static boolean shouldSuppressVanillaHands(Player player) {
-      // Deliberately not gated on EMF any more. The check started as "only when EMF redraws the hand", but other
-      // model packs (Fresh Extensions on top of Fresh Animations, for one) reach the same method and add their own
-      // arm, which showed up as a third arm next to the two the gun model already draws.
-      return isScorchedGunHeldByPlayer(player);
+   public static boolean shouldSuppressVanillaHands(Player ignoredPlayer) {
+      // Not gated on EMF any more: Fresh Extensions and other model packs reach the same render path and add their
+      // own arm, which showed up as a third arm next to the two the gun model draws. The local player is used because
+      // the injection point does not carry an entity, and first-person rendering is always the local player's.
+      return isScorchedGunHeldByPlayer(Minecraft.getInstance().player);
    }
 
    /** One line per session, so a report can tell whether the suppression is active. */
