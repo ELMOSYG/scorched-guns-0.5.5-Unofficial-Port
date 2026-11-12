@@ -70,7 +70,7 @@ public class RecoilHandler {
                float exoSuitModifiedRecoil = ExoSuitRecoilHelper.getModifiedRecoilAngle(Minecraft.getInstance().player, baseRecoilAngle);
                float recoilModifier = 1.0F - GunModifierHelper.getRecoilModifier(heldItem);
                if (Minecraft.getInstance().player != null) {
-                  float enchantmentMultiplier = GunEnchantmentHelper.getRecoilModifier(Minecraft.getInstance().player, heldItem);
+                  float enchantmentMultiplier = GunEnchantmentHelper.sanitiseRecoilMultiplier(GunEnchantmentHelper.getRecoilModifier(Minecraft.getInstance().player, heldItem));
                   recoilModifier *= enchantmentMultiplier;
                }
 
@@ -153,7 +153,7 @@ public class RecoilHandler {
             if (Minecraft.getInstance().player != null) {
                float exoSuitModifiedRecoil = ExoSuitRecoilHelper.getModifiedRecoilAngle(Minecraft.getInstance().player, baseRecoilAngle);
                float recoilModifier = 1.0F - GunModifierHelper.getRecoilModifier(heldItem);
-               float enchantmentMultiplier = GunEnchantmentHelper.getRecoilModifier(Minecraft.getInstance().player, heldItem);
+               float enchantmentMultiplier = GunEnchantmentHelper.sanitiseRecoilMultiplier(GunEnchantmentHelper.getRecoilModifier(Minecraft.getInstance().player, heldItem));
                recoilModifier *= enchantmentMultiplier;
                this.gunRecoilAngle = (double)(exoSuitModifiedRecoil * recoilModifier);
             } else {

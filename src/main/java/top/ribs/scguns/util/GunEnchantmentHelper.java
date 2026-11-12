@@ -132,6 +132,18 @@ public class GunEnchantmentHelper {
       return modifier + 0.1F * (float)puncturingLevel;
    }
 
+   /**
+    * Keeps the recoil multiplier usable when something else has replaced it.
+    *
+    * <p>A multiplier of zero (or a NaN) is not a meaningful recoil setting - it removes recoil entirely. That is what
+    * happened with a third-party addon that wraps this method and multiplies the result by its own attribute, whose
+    * default value is 0. Treat a non-positive or non-finite value as "no change" instead of silently deleting the
+    * recoil.</p>
+    */
+   public static float sanitiseRecoilMultiplier(float multiplier) {
+      return Float.isFinite(multiplier) && multiplier > 0.0F ? multiplier : 1.0F;
+   }
+
    public static float getRecoilModifier(Player player, ItemStack weapon) {
       float baseModifier = getRecoilModifier(weapon);
       if (player != null) {

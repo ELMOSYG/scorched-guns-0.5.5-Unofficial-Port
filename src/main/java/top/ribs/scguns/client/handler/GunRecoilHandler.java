@@ -58,7 +58,7 @@ public class GunRecoilHandler {
 
          float recoilModifier = 1.0F - GunModifierHelper.getRecoilModifier(heldItem);
          if (mc.player != null) {
-            float enchantmentEffect = GunEnchantmentHelper.getRecoilModifier(mc.player, heldItem);
+            float enchantmentEffect = GunEnchantmentHelper.sanitiseRecoilMultiplier(GunEnchantmentHelper.getRecoilModifier(mc.player, heldItem));
             recoilModifier *= enchantmentEffect;
          }
 
@@ -135,7 +135,7 @@ public class GunRecoilHandler {
             Minecraft mc = Minecraft.getInstance();
             if (mc.player != null) {
                float recoilModifier = 1.0F - GunModifierHelper.getRecoilModifier(heldItem);
-               float enchantmentMultiplier = GunEnchantmentHelper.getRecoilModifier(mc.player, heldItem);
+               float enchantmentMultiplier = GunEnchantmentHelper.sanitiseRecoilMultiplier(GunEnchantmentHelper.getRecoilModifier(mc.player, heldItem));
                recoilModifier *= enchantmentMultiplier;
                this.gunRecoilAngle = (double)(baseRecoilAngle * recoilModifier);
             } else {
