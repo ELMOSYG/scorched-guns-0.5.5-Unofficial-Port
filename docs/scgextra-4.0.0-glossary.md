@@ -10,10 +10,10 @@
 
 | 规则 | 示例 |
 |---|---|
-| 派系前缀保留缩写，不翻译 | `COG` / `FAC` / `RRC` / `Asghar` 原样保留 |
+| 派系前缀保留缩写，不翻译 | `COG` 原样保留；`RRC` → 锈岭、`FAC` → 联邦、`Asghar` → 阿斯加里安 |
 | 刷怪蛋统一 `…刷怪蛋` | `Ammo Goblin Spawn Egg` → 弹药小鬼刷怪蛋 |
 | 盔甲四件套统一 `头盔 / 胸甲 / 护腿 / 靴子` | `Wrecker Chestplate` → 破坏者胸甲 |
-| `Super Flare` 统一 `超级照明弹` | `Iron Super Flare` → 铁质超级照明弹 |
+| `Super Flare` 统一 `超级信号弹` | `Iron Super Flare` → 铁质超级信号弹 |
 | `Medal of …` 统一 `…勋章` | `Medal of Cruelty` → 残虐勋章 |
 | `… Boots/Chestplate/Helmet/Leggings` 归入对应套装名 | 见第三节套装表 |
 | `Halves / Full set bonus` 统一 `散件效果 / 全套效果` | 原文用 `Half Set Bonus` / `Full Set Bonus` |
@@ -57,45 +57,45 @@
 | End Stone Crab | 末地石蟹 | |
 | End Scorpion | 末地蝎 | |
 | Turret Seat | 炮塔座位 | 载具实体 |
-| COG Vulture | 齿轮 秃鹫 | |
-| COG Devastator | 齿轮 毁灭者 | |
-| COG Bombardier | 齿轮 轰炸机 | |
-| COG Gigantes | 齿轮 巨像 | |
-| COG Venator | 齿轮 猎手 | |
-| COG Centipede | 齿轮 蜈蚣 | |
-| COG Juggernaut | 齿轮 重装兵 | |
-| COG Trenchbleeder | 齿轮 战壕屠夫 | |
-| FAC Trencher | FAC 战壕兵 | |
-| FAC Bluecoat | FAC 蓝衣军 | |
-| FAC Trench Goblin | FAC 战壕哥布林 | |
-| FAC Trench Sniper | FAC 战壕狙击手 | |
-| FAC Shovel Knight | FAC 铲骑士 | |
-| FAC Tank Buster | FAC 反坦克手 | |
-| FAC Lion | FAC 狮 | |
-| FAC Commissar | FAC 政委 | |
-| FAC Walker | FAC 步行机 | |
-| FAC Tank | FAC 坦克 | |
-| RRC Drone | RRC 无人机 | |
-| RRC Scout | RRC 侦察兵 | |
-| RRC Spring Junkie | RRC 弹簧疯子 | |
-| RRC Arc Psycho | RRC 电弧疯子 | |
-| RRC Tallman | RRC 高个子 | |
-| RRC Oppressor | RRC 压迫者 | |
-| RRC Flaming Head | RRC 燃烧头颅 | |
-| RRC Copper Knight | RRC 铜骑士 | |
-| RRC Scrap Guard | RRC 废料卫士 | |
-| RRC Gargoyle | RRC 石像鬼 | |
-| Asghar Worker Unit | 阿斯加工兵 | |
-| Asghar Flamer | 阿斯加喷火兵 | |
-| Asghar Elite Surgeon | 阿斯加精英外科医生 | |
-| Wrecker Red | 破坏者·红 | |
-| Wrecker Blue | 破坏者·蓝 | |
-| Wrecker Green | 破坏者·绿 | |
-| Wrecker Jumbo | 破坏者·巨型 | |
-| Wrecker Helicube | 破坏者·直升方块 | |
-| Wrecker Dozer | 破坏者·推土机 | |
-| Wrecker Biker | 破坏者·摩托手 | |
-| Wrecker Turret | 破坏者炮塔 | |
+| COG Vulture | COG 秃鹫 | |
+| COG Devastator | COG 毁灭者 | |
+| COG Bombardier | COG 轰炸机 | |
+| COG Gigantes | COG 巨像 | |
+| COG Venator | COG 猎手 | |
+| COG Centipede | COG 蜈蚣 | |
+| COG Juggernaut | COG 重装兵 | |
+| COG Trenchbleeder | COG 战壕屠夫 | |
+| FAC Trencher | 联邦 战壕兵 | |
+| FAC Bluecoat | 联邦 蓝衣军 | |
+| FAC Trench Goblin | 联邦 战壕哥布林 | |
+| FAC Trench Sniper | 联邦 战壕狙击手 | |
+| FAC Shovel Knight | 联邦 铲骑士 | |
+| FAC Tank Buster | 联邦 反坦克手 | |
+| FAC Lion | 联邦 狮 | |
+| FAC Commissar | 联邦 政委 | |
+| FAC Walker | 联邦 步行机 | |
+| FAC Tank | 联邦 坦克 | |
+| RRC Drone | 锈岭 无人机 | |
+| RRC Scout | 锈岭 侦察兵 | |
+| RRC Spring Junkie | 锈岭 弹簧疯子 | |
+| RRC Arc Psycho | 锈岭 电弧疯子 | |
+| RRC Tallman | 锈岭 高个子 | |
+| RRC Oppressor | 锈岭 压迫者 | |
+| RRC Flaming Head | 锈岭 燃烧头颅 | |
+| RRC Copper Knight | 锈岭 铜骑士 | |
+| RRC Scrap Guard | 锈岭 废料卫士 | |
+| RRC Gargoyle | 锈岭 石像鬼 | |
+| Asghar Worker Unit | 阿斯加里安工兵 | |
+| Asghar Flamer | 阿斯加里安喷火兵 | |
+| Asghar Elite Surgeon | 阿斯加里安精英外科医生 | |
+| Wrecker Red | 扫荡者·红 | |
+| Wrecker Blue | 扫荡者·蓝 | |
+| Wrecker Green | 扫荡者·绿 | |
+| Wrecker Jumbo | 扫荡者·巨型 | |
+| Wrecker Helicube | 扫荡者·直升方块 | |
+| Wrecker Dozer | 扫荡者·推土机 | |
+| Wrecker Biker | 扫荡者·摩托手 | |
+| Wrecker Turret | 扫荡者炮台（Stationary Turret） | |
 
 ## 三、盔甲套装（20 条效果 + 40 件装备）
 
@@ -106,7 +106,7 @@
 | Juggernaut | 重装兵 | 免疫撕裂 | 后坐力 -10%，移速 -10% |
 | Commissar | 政委 | 弹丸伤害减免 10% | 换弹速度 +20% |
 | Enlightened | 开悟者 | 获得生命恢复，且不被监守者侦测 | 受击时获得 3 秒冷却的治疗 I |
-| Golden Idol | 黄金神像 | 为 5 格内友方与中立生物回血 | 使 10 格内敌对生物虚弱 |
+| Golden Idol | 黄金偶像 | 为 5 格内友方与中立生物回血 | 使 10 格内敌对生物虚弱 |
 | Leviathan | 利维坦 | 每 10 秒净化一次减益 | 水下呼吸 + 海豚的恩惠 |
 | Pioneer | 先驱 | 免疫漂浮，并授予鞘翅飞行 | 暴击率 +10%，弹丸暴击伤害 +10% |
 | Ritual | 仪式 | 受击时获得 4 秒冷却的生命恢复 I | 死亡时复活（冷却 20 分钟） |
@@ -137,7 +137,7 @@
 | Medal of Obedience | 服从勋章（护甲韧性 +3，后坐力 -30%） |
 | Medal of Survivor | 幸存者勋章（护甲 +5） |
 | Medal of Wonder | 奇迹勋章（抗性 I，免疫中毒与硫磺中毒） |
-| `<材质> Super Flare` | `<材质>超级照明弹`：Antique 古董 / Copper 铜 / Diamond Steel 钻石钢 / Frontier 拓荒 / Gold 金 / Iron 铁 / Ocean 海洋 / Sculk 幽匿 / Treated Brass 处理黄铜 / Wrecker 破坏者 |
+| `<材质> Super Flare` | `<材质>超级信号弹`：Antique 古董 / Copper 铜 / Diamond Steel 钻石钢 / Frontier 拓荒 / Gold 金 / Iron 铁 / Ocean 海洋 / Sculk 幽匿 / Treated Brass 处理黄铜 / Wrecker 破坏者 |
 | `Single Use Only` | 一次性物品 |
 | `SCG Extra`（物品栏） | SCG 扩展 |
 
@@ -169,7 +169,7 @@
 | Recoil Multiplier | 后坐力倍率 |
 | Undead Damage Multiplier | 对亡灵伤害倍率 |
 | Debuff Zone | 减益领域 |
-| Commissar / Enlightened / Golden Idol / Juggernaut / Leviathan / Oppressor / Pioneer / Ritual / Wrecker | 同套装名（政委 / 开悟者 / 黄金神像 / 重装兵 / 利维坦 / 压迫者 / 先驱 / 仪式 / 破坏者） |
+| Commissar / Enlightened / Golden Idol / Juggernaut / Leviathan / Oppressor / Pioneer / Ritual / Wrecker | 同套装名（政委 / 开悟者 / 黄金偶像 / 重装兵 / 利维坦 / 压迫者 / 先驱 / 仪式 / 破坏者） |
 
 ## 七、效果与其它（7 条）
 
