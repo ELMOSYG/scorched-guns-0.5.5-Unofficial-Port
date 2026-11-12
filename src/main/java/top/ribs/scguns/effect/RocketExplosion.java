@@ -105,10 +105,6 @@ public class RocketExplosion extends ProjectileExplosion {
                         set.add(pos);
                      }
 
-      // The collected blocks have to reach the base class: finalizeExplosion() destroys exactly this set, and
-      // without it a rocket, HE round or grenade could never break a block no matter what the config said.
-      this.getToBlow().addAll(set);
-
                      blockX += d0 * 0.3F;
                      blockY += d1 * 0.3F;
                      blockZ += d2 * 0.3F;
@@ -117,6 +113,11 @@ public class RocketExplosion extends ProjectileExplosion {
             }
          }
       }
+
+      // Once, after all 4096 rays have contributed. Adding it inside the ray loop (where it started) appended the whole
+      // set again on every step, so toBlow held tens of thousands of duplicates and vanilla's shuffle over that list
+      // became the top cost of the explosion - a rocket froze the server for about two seconds.
+      this.getToBlow().addAll(set);
 
       float damageRadius = this.explosionRadius * 2.0F;
       AABB searchBox = new AABB(
