@@ -21,6 +21,12 @@ import top.ribs.scguns.init.ModParticleTypes;
 import top.ribs.scguns.item.GunItem;
 
 public class RocketEntity extends ProjectileEntity {
+   /**
+    * Blast radius in blocks. 4.0 is vanilla TNT: the port used to pass 7.0, which is (7/4)^3 - about five times the
+    * blocks destroyed per rocket - and turned a single rocket into a crater.
+    */
+   private static final float ROCKET_EXPLOSION_RADIUS = 4.0F;
+
    private static final float EXPLOSION_RADIUS = 7.0F;
    private static final float SHIELD_DISABLE_CHANCE = 1.0F;
 
@@ -85,19 +91,19 @@ public class RocketEntity extends ProjectileEntity {
       }
 
       float exactDamage = this.getDamage();
-      createRocketExplosion(this, 7.0F, exactDamage, false);
+      createRocketExplosion(this, ROCKET_EXPLOSION_RADIUS, exactDamage, false);
    }
 
    @Override
    protected void onHitBlock(BlockState state, BlockPos pos, Direction face, double x, double y, double z) {
       float exactDamage = this.getDamage();
-      createRocketExplosion(this, 7.0F, exactDamage, false);
+      createRocketExplosion(this, ROCKET_EXPLOSION_RADIUS, exactDamage, false);
    }
 
    @Override
    public void onExpired() {
       float exactDamage = this.getDamage();
-      createRocketExplosion(this, 7.0F, exactDamage, false);
+      createRocketExplosion(this, ROCKET_EXPLOSION_RADIUS, exactDamage, false);
    }
 
    @Override
