@@ -19,3 +19,20 @@ Laser weapons (Laser Musket, the mining laser) are beam weapons: firing them mea
 With the hitbox refresh fixed, the `size` values in the gun data started taking effect for the first time - and they were all over the place (56 guns at 0.05, 40 at 1.0, a few at 2.0 and 6.0). Fixing the refresh alone would have changed the hitbox of more than a hundred guns at once.
 
 All 141 guns now say **0.25**, which is exactly what every projectile actually used before the fix. So the fix corrects the mechanism without changing how any gun feels, and a value like 100 can no longer do damage. The 0.05 - 4.0 clamp stays in the code as a second guard.
+
+## EMF compatibility now simply disables EMF's animation
+
+It used to work the other way round: let EMF animate the player, then reapply the held pose afterwards. That was never clean - EMF overwrites the player model every frame, so the pose was replaced again, and first person ended up with an extra arm.
+
+Now, while a gun is held, EMF does not animate the player at all. The vanilla pose chain runs untouched, the gun pose is simply correct, and there are no two systems fighting over the same parts - which is what kept producing new bugs.
+
+One thing turned up on the way: EMF 3.x renamed its animation context class, so the check for "is EMF installed" had been answering "no" and every EMF-related path was silently off. Both class names are recognised now.
+
+Config (`config/scguns-client.toml`):
+
+```toml
+emfSkipPlayerAnimationWithGun = true    # let EMF skip the player while a gun is held
+suppressVanillaArmWithGun     = true    # cancel the renderer's own arm, so there is no extra one
+```
+
+If another animation compat mod is installed (Scorched Guns X EMF: Lag Fix, for instance), set `suppressVanillaArmWithGun` to `false` so that mod draws the arm.

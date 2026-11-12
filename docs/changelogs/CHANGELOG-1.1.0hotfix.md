@@ -22,3 +22,20 @@
 所以把全部 141 把枪的 `projectile.size` 统一写成 **0.25** —— 也就是修复前所有子弹实际使用的那个值。
 这样修好刷新逻辑之后，手感与之前完全一致，而 100 那种错误数据也不会再造成灾难。代码里的 0.05～4.0 夹紧仍然保留，
 作为额外的保险。
+
+## EMF 兼容改为直接禁用 EMF 的动画
+
+之前是「先让 EMF 动画，再把持枪姿势补回去」，这条路一直不干净：EMF 每帧都会覆盖玩家模型的部件，补回去的姿势又被改掉，第一人称还会多出一条手臂。
+
+现在改成持枪时直接让 EMF 不参与玩家动画。原版姿势链路完整可用，持枪姿势自然就是对的，也就没有可以互相打架的两套逻辑，防止出现更多 bug。
+
+一个顺带发现的问题：EMF 3.x 把动画上下文的类名换掉了，我们原来按旧类名判断「有没有装 EMF」，结果一直是「没装」，所有 EMF 相关逻辑全部没生效。现在两种类名都认。
+
+相关配置（`config/scguns-client.toml`）：
+
+```toml
+emfSkipPlayerAnimationWithGun = true    # 持枪时让 EMF 停手
+suppressVanillaArmWithGun     = true    # 持枪时取消原版手臂，避免多余手臂
+```
+
+如果同时装了别的动画兼容 mod（例如 Scorched Guns X EMF: Lag Fix），把 `suppressVanillaArmWithGun` 设为 `false`，让那个 mod 画手。

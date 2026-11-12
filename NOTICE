@@ -106,3 +106,10 @@ The optional Entity Model Features bridge (the is_scguns_gun_held animation vari
 lookups behind it) was adapted from the GPL-3.0 licensed 1.21.1 port ScorchedGunsNeoforge by sadeast69, and edited
 for this port: every class, method and field lookup is resolved once and cached, a failed context lookup disables
 that helper for the session instead of throwing per frame, and the variable is registered from client setup.
+
+6. Entity Model Features 3.x detection
+   --------------------------------------
+
+The class names EMF 3.x uses for its animation API and render state were confirmed against the MIT licensed
+scguns-emf-fix by Malik-Aljazzar (https://github.com/Malik-Aljazzar/scguns-emf-fix). No code was copied from it; the
+detection in this port checks for the 3.x classes directly.
