@@ -95,6 +95,27 @@ public class HeGrenadeRoundEntity extends ProjectileEntity {
          this.playExplosionSound(world, explosionPos, radius);
          this.spawnExplosionParticles(world, explosionPos, radius);
          this.applyExplosionDamage(world, explosionPos, radius, damage, entity);
+
+         // An HE round used to deal damage and particles and nothing else, so it could never remove a block no matter
+         // what the griefing config said. The block part is a separate, block-only explosion that follows the same
+         // config as the other explosive rounds.
+         if ((Boolean)top.ribs.scguns.Config.COMMON.gameplay.griefing.enableBlockRemovalOnExplosions.get()) {
+            boolean mobShot = entity instanceof top.ribs.scguns.entity.projectile.ProjectileEntity projectile
+               && projectile.getShooter() != null
+               && !(projectile.getShooter() instanceof net.minecraft.world.entity.player.Player);
+            boolean allowed = !mobShot
+               || (Boolean)top.ribs.scguns.Config.COMMON.gameplay.griefing.enableMobExplosionBlockRemoval.get();
+            if (allowed) {
+               top.ribs.scguns.effect.CustomExplosion blockExplosion = new top.ribs.scguns.effect.CustomExplosion(
+                  world, entity, explosionPos.x, explosionPos.y, explosionPos.z, radius, false,
+                  top.ribs.scguns.effect.CustomExplosion.CustomBlockInteraction.DESTROY) {
+               };
+               if (!net.neoforged.neoforge.event.EventHooks.onExplosionStart(world, blockExplosion)) {
+                  blockExplosion.explode();
+                  blockExplosion.finalizeExplosion(true);
+               }
+            }
+         }
       }
    }
 
