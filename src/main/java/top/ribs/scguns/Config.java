@@ -385,6 +385,7 @@ public class Config {
       public final DoubleValue dynamicCrosshairDotThreshold;
       public final DoubleValue dynamicCrosshairMaxScale;
       public final BooleanValue renderArms;
+   public final BooleanValue suppressVanillaArmWithGun;
       public final BooleanValue sightsUseCutout;
       public final BooleanValue enablePerformanceSulfurCloud;
       public final BooleanValue showProgressionMessages;
@@ -479,6 +480,13 @@ public class Config {
          this.dynamicCrosshairMaxScale = builder.comment("The maximum scale factor for the dynamic crosshair when spread is high")
             .defineInRange("dynamicCrosshairMaxScale", 8.0, 1.0, 20.0);
          this.renderArms = builder.comment("If true, renders the player's arms when holding a gun").define("renderArms", true);
+         // Off gives the arm back to the renderer. Needed when another mod (an animation compat, for instance) draws
+         // the first-person arm itself: cancelling renderPlayerArm would hide theirs as well as ours.
+         this.suppressVanillaArmWithGun = builder.comment(
+               "If true, the gun model draws the first-person arm and the renderer's own arm is suppressed."
+                  + " Turn this off when another mod draws the first-person arm for Scorched Guns."
+            )
+            .define("suppressVanillaArmWithGun", true);
          this.sightsUseCutout = builder.comment(
                "Draw the 3D sight and attachment models with alpha-cutout rendering instead of translucent"
                   + " blending. Shader packs draw translucent models in a separate pass that does not"

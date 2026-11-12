@@ -101,6 +101,10 @@ public final class OptionalClientCompat {
       // Not gated on EMF any more: Fresh Extensions and other model packs reach the same render path and add their
       // own arm, which showed up as a third arm next to the two the gun model draws. The local player is used because
       // the injection point does not carry an entity, and first-person rendering is always the local player's.
+      if (!top.ribs.scguns.Config.CLIENT.display.suppressVanillaArmWithGun.get()) {
+         return false;
+      }
+
       return isScorchedGunHeldByPlayer(Minecraft.getInstance().player);
    }
 
