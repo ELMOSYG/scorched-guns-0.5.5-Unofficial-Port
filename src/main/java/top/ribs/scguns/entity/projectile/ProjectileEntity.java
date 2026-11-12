@@ -184,7 +184,10 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       // Entity computes its bounding box in its own constructor from getDimensions(), which ran before this field
       // existed, so the box would keep the default size until something else refreshed it. The gun JSON's
       // projectile size therefore had no effect on the hitbox at all until this call was added.
-      this.entitySize = EntityDimensions.scalable(this.projectile.getSize(), this.projectile.getSize());
+      // Clamped because the value is authored in gun JSON: a stray 100 turned every shot into a 100-block hitbox
+      // that made collision checks crawl (the raygun had exactly that value). 4 blocks is already generous.
+      float hitboxSize = net.minecraft.util.Mth.clamp(this.projectile.getSize(), 0.05F, 4.0F);
+      this.entitySize = EntityDimensions.scalable(hitboxSize, hitboxSize);
       this.refreshDimensions();
       this.modifiedGravity = modifiedGun.getProjectile().isGravity() ? GunModifierHelper.getModifiedProjectileGravity(weapon, -0.04) : 0.0;
       this.life = GunModifierHelper.getModifiedProjectileLife(weapon, this.projectile.getLife());
@@ -1036,7 +1039,8 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       this.item = BufferUtil.readItemStackFromBufIgnoreTag(buffer);
       this.modifiedGravity = buffer.readDouble();
       this.life = buffer.readVarInt();
-      this.entitySize = EntityDimensions.scalable(this.projectile.getSize(), this.projectile.getSize());
+      float hitboxSize = net.minecraft.util.Mth.clamp(this.projectile.getSize(), 0.05F, 4.0F);
+      this.entitySize = EntityDimensions.scalable(hitboxSize, hitboxSize);
       // The client rebuilds the projectile from this packet, so its box has to be refreshed here too.
       this.refreshDimensions();
    }
