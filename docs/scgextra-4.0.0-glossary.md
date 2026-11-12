@@ -18,6 +18,21 @@
 | `… Boots/Chestplate/Helmet/Leggings` 归入对应套装名 | 见第三节套装表 |
 | `Halves / Full set bonus` 统一 `散件效果 / 全套效果` | 原文用 `Half Set Bonus` / `Full Set Bonus` |
 
+## 一之二、猪灵派系按战锤兽人军阶
+
+猪灵这一支明显借了战锤兽人的编制，译名跟着军阶走，别硬译成“贵族/酋长”：
+
+| 英文 | 战锤兽人对应 | 中文 |
+|---|---|---|
+| `Warboss` | Warboss | 战争头目 |
+| `Nob` | Nob | 小头目 |
+| `Warlords`（突袭文案） | Warlord | 军阀 |
+| `Hog Rider` | Boar Boy | 疣猪骑士 |
+| `Strider Rider` | — | 炽足兽骑士 |
+| `Kiln Hog` | Squig 一类坐骑/兽 | 熔炉疣猪 |
+| `Blaze Kopter` | Deffkopta | 烈焰旋翼机 |
+| `Pigdread` / `Pigkan` | — | 惧猪 / 猪坎（音译，无官方名） |
+
 ## 二、实体（73 条）
 
 | 英文 | 中文建议 | 备注 |
