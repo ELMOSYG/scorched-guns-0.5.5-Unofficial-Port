@@ -751,6 +751,7 @@ public class Config {
    public static class Griefing {
       public final BooleanValue enableBlockRemovalOnExplosions;
       public final BooleanValue enableMobExplosionBlockRemoval;
+   public final IntValue maxBlocksPerExplosion;
       public final BooleanValue enableGlassBreaking;
       public final BooleanValue fragileBlockDrops;
       public final DoubleValue fragileBaseBreakChance;
@@ -767,6 +768,14 @@ public class Config {
                "If enabled, allows block removal on explosions from mob weapons. Only applies if enableBlockRemovalOnExplosions is also true"
             )
             .define("enableMobExplosionBlockRemoval", false);
+         // Every destroyed block costs a block update, a light update and a chunk resend. A radius-7 rocket can take
+         // out well over a thousand blocks, which in a heavy pack reads as a two-second freeze. The cap keeps the
+         // visible result but bounds the work; 0 means no cap.
+         this.maxBlocksPerExplosion = builder.comment(
+               "Upper limit on how many blocks one explosion may destroy. Lower it if big rockets freeze the server;"
+                  + " 0 removes the limit."
+            )
+            .defineInRange("maxBlocksPerExplosion", 0, 0, 8192);
          this.enableGlassBreaking = builder.comment("If enabled, allows guns to shoot out glass and other fragile objects").define("enableGlassBreaking", true);
          this.fragileBlockDrops = builder.comment("If enabled, fragile blocks will drop their loot when broken").define("fragileBlockDrops", true);
          this.fragileBaseBreakChance = builder.comment(
