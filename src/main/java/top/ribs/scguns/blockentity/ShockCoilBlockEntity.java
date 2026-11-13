@@ -100,6 +100,20 @@ public class ShockCoilBlockEntity extends BlockEntity {
             if (blockEntity.energyStorage.getEnergyStored() < energyPerZap) {
                blockEntity.updateBlockState();
             } else {
+               // A coil standing on a Sable structure keeps ticking even when that structure is nowhere near a
+               // player, and every getEntitiesOfClass over its area makes Sable pull the plot's chunks back in. The
+               // server then spends its tick budget loading chunks for a structure nobody can see ("Can't keep up!
+               // Running ... ticks behind"). Nothing can be zapped out there either, so skip the whole search.
+               Vec3 coilWorld = top.ribs.scguns.compat.SablePhysicsBridge.toWorld(
+                  level, pos, Vec3.atCenterOf(pos));
+               double gateX = coilWorld != null ? coilWorld.x : pos.getX();
+               double gateZ = coilWorld != null ? coilWorld.z : pos.getZ();
+               boolean playerNearby = !level.players().isEmpty()
+                  && level.players().stream().anyMatch(player -> player.distanceToSqr(gateX, player.getY(), gateZ) < 65536.0);
+               if (!playerNearby) {
+                  return;
+               }
+
                Predicate<LivingEntity> targetPredicate = blockEntity.getTargetPredicate();
                // The coil's own coordinates must be searched in its own level. When the block sits on a Sable
                // physics structure that level is the plot's, so the position is plot-local - using it against the
