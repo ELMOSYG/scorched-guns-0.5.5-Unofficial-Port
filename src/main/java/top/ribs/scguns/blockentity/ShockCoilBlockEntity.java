@@ -193,7 +193,12 @@ public class ShockCoilBlockEntity extends BlockEntity {
          String soundId = ShockCoilConfig.getZapSound();
          SoundEvent soundEvent = (SoundEvent)BuiltInRegistries.SOUND_EVENT.get(ResourceLocation.parse(soundId));
          if (soundEvent != null) {
-            serverLevel.playSound(null, this.worldPosition, soundEvent, SoundSource.BLOCKS, 0.8F, 1.0F);
+            Vec3 soundPos = top.ribs.scguns.compat.SablePhysicsBridge.toWorld(
+               this.level, this.worldPosition, Vec3.atCenterOf(this.worldPosition));
+            net.minecraft.core.BlockPos at = soundPos == null
+               ? this.worldPosition
+               : net.minecraft.core.BlockPos.containing(soundPos);
+            serverLevel.playSound(null, at, soundEvent, SoundSource.BLOCKS, 0.8F, 1.0F);
          }
 
          target.hurt(this.level.damageSources().lightningBolt(), ShockCoilConfig.getBaseDamage());
@@ -207,6 +212,19 @@ public class ShockCoilBlockEntity extends BlockEntity {
    }
 
    private void spawnLightningArc(ServerLevel serverLevel, Vec3 start, Vec3 end) {
+      // These coordinates are plot-local when the coil stands on a Sable physics structure. Sending particles with
+      // them made the client load the chunk that happens to sit at those raw numbers - often millions of blocks away -
+      // and that is what stalled the server. Convert to world space first; outside a plot the conversion returns null
+      // and the original coordinates are already world coordinates.
+      Vec3 worldStart = top.ribs.scguns.compat.SablePhysicsBridge.toWorld(this.level, this.worldPosition, start);
+      Vec3 worldEnd = top.ribs.scguns.compat.SablePhysicsBridge.toWorld(this.level, this.worldPosition, end);
+      if (worldStart != null) {
+         start = worldStart;
+      }
+      if (worldEnd != null) {
+         end = worldEnd;
+      }
+
       Vec3 direction = end.subtract(start);
       double distance = direction.length();
       direction = direction.normalize();
