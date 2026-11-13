@@ -241,12 +241,21 @@ public class ShockCoilBlockEntity extends BlockEntity {
 
       Vec3 direction = end.subtract(start);
       double distance = direction.length();
-      direction = direction.normalize();
-      double stepSize = 0.15;
+      if (distance <= 0.0) {
+         return;
+      }
 
-      for (double d = 0.0; d < distance; d += stepSize) {
-         Vec3 particlePos = start.add(direction.scale(d));
-         serverLevel.sendParticles(ParticleTypes.ELECTRIC_SPARK, particlePos.x, particlePos.y, particlePos.z, 1, 0.05, 0.05, 0.05, 0.0);
+      direction = direction.normalize();
+
+      // One packet per 0.15 blocks was the top cost of the whole server tick: a 16 block arc meant a hundred
+      // sendParticles calls per target per zap, and each call walks the player list. 0.6 blocks looks the same at
+      // particle scale and cuts the packets by four; the cap keeps a long range coil from producing a burst.
+      double stepSize = 0.6;
+      int points = Math.min((int) Math.ceil(distance / stepSize), 48);
+      for (int i = 0; i <= points; i++) {
+         Vec3 particlePos = start.add(direction.scale(distance * (double) i / (double) points));
+         serverLevel.sendParticles(ParticleTypes.ELECTRIC_SPARK, particlePos.x, particlePos.y, particlePos.z,
+            1, 0.05, 0.05, 0.05, 0.0);
       }
    }
 
