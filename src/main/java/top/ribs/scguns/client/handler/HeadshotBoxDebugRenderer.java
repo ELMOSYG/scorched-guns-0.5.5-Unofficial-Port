@@ -89,6 +89,15 @@ public final class HeadshotBoxDebugRenderer {
          return;
       }
 
+      // A Sable physics structure reports an enormous bounding box, and BoundingBoxManager falls back to a
+      // DynamicHeadshotBox for every MONSTER/CREATURE/AMBIENT type. The head box is derived from the entity size, so
+      // the debug view ended up drawing a wireframe dozens of blocks across for those entities, every frame - which
+      // cost a visible amount of FPS. A real head box is never bigger than a couple of blocks; anything past 16 is
+      // not a head and is skipped.
+      if (relative.getXsize() > 16.0 || relative.getYsize() > 16.0 || relative.getZsize() > 16.0) {
+         return;
+      }
+
       LevelRenderer.renderLineBox(stack, consumer, relative, COLOUR_R, COLOUR_G, COLOUR_B, ALPHA);
    }
 }
