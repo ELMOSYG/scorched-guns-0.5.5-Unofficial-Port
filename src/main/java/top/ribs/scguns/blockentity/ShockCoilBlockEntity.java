@@ -38,6 +38,7 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import top.ribs.scguns.block.HostileTurretTargetingBlock;
 import top.ribs.scguns.block.PlayerTurretTargetingBlock;
+import top.ribs.scguns.ScorchedGuns;
 import top.ribs.scguns.block.ShockCoilBlock;
 import top.ribs.scguns.block.TurretTargetingBlock;
 import top.ribs.scguns.config.ShockCoilConfig;
@@ -100,9 +101,22 @@ public class ShockCoilBlockEntity extends BlockEntity {
                blockEntity.updateBlockState();
             } else {
                Predicate<LivingEntity> targetPredicate = blockEntity.getTargetPredicate();
+               // The coil's own coordinates must be searched in its own level. When the block sits on a Sable
+               // physics structure that level is the plot's, so the position is plot-local - using it against the
+               // world level is what pulled chunks in from absurd coordinates and stalled the server. Clamping the
+               // search box is the cheap guard: no sane zap reaches further than 64 blocks.
+               double range = Math.min(ShockCoilConfig.getZapRange(), 64.0);
+               AABB searchBox = new AABB(pos).inflate(range);
+               if (Math.abs(searchBox.minX) > 3.0E7 || Math.abs(searchBox.minZ) > 3.0E7
+                  || Math.abs(searchBox.maxX) > 3.0E7 || Math.abs(searchBox.maxZ) > 3.0E7) {
+                  ScorchedGuns.LOGGER.warn("scguns: shock coil at {} in {} has an out-of-world search box; skipping",
+                     pos, level.dimension().location());
+                  return;
+               }
+
                List<LivingEntity> nearbyTargets = level.getEntitiesOfClass(
                   LivingEntity.class,
-                  new AABB(pos).inflate(ShockCoilConfig.getZapRange()),
+                  searchBox,
                   entity -> entity.isAlive() && !entity.isRemoved() && targetPredicate.test(entity)
                );
                if (!nearbyTargets.isEmpty()) {
