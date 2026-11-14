@@ -299,6 +299,14 @@ public class ReloadTracker {
          return;
       }
 
+      // A slot vacated by the eject key already produced a casing at eject time. Rolling again here would make
+      // "eject, load, eject, load" farm casings, so the flag written by the eject packet is consumed instead.
+      net.minecraft.nbt.CompoundTag loadTag = top.ribs.scguns.util.NbtHelper.getOrCreateTag(this.stack);
+      if (loadTag.getBoolean("ScgunsEjectedRound")) {
+         loadTag.putBoolean("ScgunsEjectedRound", false);
+         return;
+      }
+
       double baseChance = 0.4;
       int enchantmentLevel = top.ribs.scguns.util.ScEnchants.level(this.stack, top.ribs.scguns.init.ModEnchantments.SHELL_CATCHER);
       if (Math.random() >= baseChance + (double)enchantmentLevel * 0.15) {

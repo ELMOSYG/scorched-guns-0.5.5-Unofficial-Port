@@ -6,6 +6,7 @@ import top.ribs.scguns.util.ScEnchants;
 import net.minecraft.core.registries.BuiltInRegistries;
 import com.mrcrayfish.framework.api.network.MessageContext;
 import java.util.Objects;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
@@ -70,7 +71,11 @@ public class C2SMessageEjectCasing {
                   }
 
                   // Gun has no setter; the count lives in the "AmmoCount" tag (see BeamWeaponHandler for the same pattern).
-                  top.ribs.scguns.util.NbtHelper.getOrCreateTag(heldItem).putInt("AmmoCount", chambered - 1);
+                  CompoundTag ejectTag = top.ribs.scguns.util.NbtHelper.getOrCreateTag(heldItem);
+                  ejectTag.putInt("AmmoCount", chambered - 1);
+                  // The round that just left the gun handed out a casing, so the slot it vacated must not hand out a
+                  // second one when it is filled again. Load code consumes this flag.
+                  ejectTag.putBoolean("ScgunsEjectedRound", true);
                }
 
                if (gun.getProjectile().casingType != null && !player.getAbilities().instabuild) {
