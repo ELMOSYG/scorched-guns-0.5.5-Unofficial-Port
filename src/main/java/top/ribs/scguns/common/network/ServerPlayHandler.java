@@ -364,6 +364,14 @@ public class ServerPlayHandler {
             return;
          }
 
+         // The synced flag is not the only sign of a reload in flight: single-item reloads keep a per-stack
+         // IsReloading tag, and with only the synced check an unload during that phase still ran. Zeroing the
+         // magazine mid-load made the loader pull a round from the inventory every tick (eating the whole stack)
+         // while the magazine never stayed full - the "infinite reload that also consumes ammo" report.
+         if (tag != null && tag.contains("IsReloading")) {
+            return;
+         }
+
          if (gun.getReloads().getReloadType() != ReloadType.SINGLE_ITEM && tag != null && tag.contains("AmmoCount", 3)) {
             int count = tag.getInt("AmmoCount");
             if (count <= 0) {
