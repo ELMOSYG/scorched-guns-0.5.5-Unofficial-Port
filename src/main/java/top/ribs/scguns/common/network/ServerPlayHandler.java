@@ -357,8 +357,19 @@ public class ServerPlayHandler {
             return;
          }
 
+         // Unloading while a reload is running was the actual duplication: the rounds went back to the player, and
+         // the reload then refilled the magazine for free. Draining a magazine mid-load makes no sense either, so the
+         // request is ignored until the reload finishes.
+         if (Boolean.TRUE.equals(top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.getValue(player))) {
+            return;
+         }
+
          if (gun.getReloads().getReloadType() != ReloadType.SINGLE_ITEM && tag != null && tag.contains("AmmoCount", 3)) {
             int count = tag.getInt("AmmoCount");
+            if (count <= 0) {
+               return;
+            }
+
             tag.putInt("AmmoCount", 0);
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(gun.getCurrentAmmoItem(stack));
             Item item = (Item)BuiltInRegistries.ITEM.get(id);
