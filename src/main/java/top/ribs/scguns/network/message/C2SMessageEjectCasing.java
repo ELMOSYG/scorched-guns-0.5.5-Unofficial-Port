@@ -70,6 +70,11 @@ public class C2SMessageEjectCasing {
                   // finishes, so a normal (fired-empty) reload keeps its casing.
                   CompoundTag reloadTag = top.ribs.scguns.util.NbtHelper.getOrCreateTag(heldItem);
                   if (reloadTag.getBoolean("ScgunsUnloadedMag")) {
+                     // Consumed on read. Relying on the reload-completion hook to clear it left the flag on the gun
+                     // forever (it showed up in a tooltip as ScgunsUnloadedMag:1b and silenced every later reload),
+                     // because the completion path does not always run through the branch that clears it. Using it
+                     // once here is enough: this reload is the one the unload belonged to.
+                     reloadTag.putBoolean("ScgunsUnloadedMag", false);
                      context.setHandled(true);
                      return;
                   }

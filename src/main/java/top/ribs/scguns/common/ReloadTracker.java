@@ -320,6 +320,7 @@ public class ReloadTracker {
       }
 
       this.playReloadSound(player);
+      this.scguns$clearStaleUnloadFlag(player);
    }
 
    public void reloadItem(Player player) {
@@ -361,6 +362,17 @@ public class ReloadTracker {
       this.playReloadSound(player);
    }
 
+
+   /** A full magazine cannot owe the player a casing for an unloaded one; drop the marker. */
+   private void scguns$clearStaleUnloadFlag(Player player) {
+      CompoundTag tag = NbtHelper.getTagForWrite(this.stack);
+      if (tag != null && tag.getBoolean("ScgunsUnloadedMag")) {
+         int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(this.stack, this.gun);
+         if (tag.getInt("AmmoCount") >= maxAmmo) {
+            tag.putBoolean("ScgunsUnloadedMag", false);
+         }
+      }
+   }
 
    private void playReloadSound(Player player) {
       if (!(this.stack.getItem() instanceof AnimatedGunItem)) {
