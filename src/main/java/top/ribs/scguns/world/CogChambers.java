@@ -58,7 +58,7 @@ public class CogChambers extends Structure {
          128,
          PoolAliasLookup.EMPTY,
          DimensionPadding.ZERO,
-         LiquidSettings.APPLY_WATERLOGGING
+         LiquidSettings.IGNORE_WATERLOGGING   // 1.21 defaults to applying waterlogging, which floods these interiors
       );
    }
 
