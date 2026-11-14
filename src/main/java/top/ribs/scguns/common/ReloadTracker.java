@@ -587,6 +587,12 @@ public class ReloadTracker {
             RELOAD_TRACKER_MAP.remove(player);
             if (tag != null) {
                tag.remove("IsReloading");
+               // A reload really did finish here (the normal path - endReload only runs when the gun leaves the
+               // hand), so the unload marker has to go now. Leaving it behind suppressed the casings of the *next*
+               // reload as well, which is exactly what happened when only endReload cleared it.
+               if (tag.getBoolean("ScgunsUnloadedMag")) {
+                  tag.putBoolean("ScgunsUnloadedMag", false);
+               }
             }
          } else {
             if (!RELOAD_TRACKER_MAP.containsKey(player)) {
