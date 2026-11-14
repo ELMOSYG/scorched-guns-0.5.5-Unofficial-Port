@@ -286,8 +286,6 @@ public class ReloadTracker {
       NbtHelper.getOrCreateTag(ammoPouch).put("Items", listTag);
    }
 
-
-
    public void increaseMagAmmo(Player player) {
       ItemStack[] ammoStack = Gun.findAmmoStack(player, this.gun.getProjectile().getItem());
       if (ammoStack.length > 0) {
@@ -315,12 +313,10 @@ public class ReloadTracker {
                tag.putInt("AmmoCount", maxAmmo);
                this.shrinkFromAmmoPool(ammoStack, player, amount);
             }
-
          }
       }
 
       this.playReloadSound(player);
-      this.scguns$clearStaleUnloadFlag(player);
    }
 
    public void reloadItem(Player player) {
@@ -360,18 +356,6 @@ public class ReloadTracker {
       }
 
       this.playReloadSound(player);
-   }
-
-
-   /** A full magazine cannot owe the player a casing for an unloaded one; drop the marker. */
-   private void scguns$clearStaleUnloadFlag(Player player) {
-      CompoundTag tag = NbtHelper.getTagForWrite(this.stack);
-      if (tag != null && tag.getBoolean("ScgunsUnloadedMag")) {
-         int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(this.stack, this.gun);
-         if (tag.getInt("AmmoCount") >= maxAmmo) {
-            tag.putBoolean("ScgunsUnloadedMag", false);
-         }
-      }
    }
 
    private void playReloadSound(Player player) {
@@ -592,12 +576,6 @@ public class ReloadTracker {
             RELOAD_TRACKER_MAP.remove(player);
             if (tag != null) {
                tag.remove("IsReloading");
-               // A reload really did finish here (the normal path - endReload only runs when the gun leaves the
-               // hand), so the unload marker has to go now. Leaving it behind suppressed the casings of the *next*
-               // reload as well, which is exactly what happened when only endReload cleared it.
-               if (tag.getBoolean("ScgunsUnloadedMag")) {
-                  tag.putBoolean("ScgunsUnloadedMag", false);
-               }
             }
          } else {
             if (!RELOAD_TRACKER_MAP.containsKey(player)) {

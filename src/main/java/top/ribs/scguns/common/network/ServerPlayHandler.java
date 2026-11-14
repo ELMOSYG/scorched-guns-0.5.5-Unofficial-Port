@@ -357,31 +357,8 @@ public class ServerPlayHandler {
             return;
          }
 
-         // Unloading while a reload is running was the actual duplication: the rounds went back to the player, and
-         // the reload then refilled the magazine for free. Draining a magazine mid-load makes no sense either, so the
-         // request is ignored until the reload finishes.
-         if (Boolean.TRUE.equals(top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.getValue(player))) {
-            return;
-         }
-
-         // The synced flag is not the only sign of a reload in flight: single-item reloads keep a per-stack
-         // IsReloading tag, and with only the synced check an unload during that phase still ran. Zeroing the
-         // magazine mid-load made the loader pull a round from the inventory every tick (eating the whole stack)
-         // while the magazine never stayed full - the "infinite reload that also consumes ammo" report.
-         if (tag != null && tag.contains("IsReloading")) {
-            return;
-         }
-
          if (gun.getReloads().getReloadType() != ReloadType.SINGLE_ITEM && tag != null && tag.contains("AmmoCount", 3)) {
             int count = tag.getInt("AmmoCount");
-            if (count <= 0) {
-               return;
-            }
-
-            // Remember that this magazine was emptied by hand. The reload that follows must not hand out casings:
-            // those rounds were never fired, so no spent cases exist for them.
-            tag.putBoolean("ScgunsUnloadedMag", true);
-
             tag.putInt("AmmoCount", 0);
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(gun.getCurrentAmmoItem(stack));
             Item item = (Item)BuiltInRegistries.ITEM.get(id);
