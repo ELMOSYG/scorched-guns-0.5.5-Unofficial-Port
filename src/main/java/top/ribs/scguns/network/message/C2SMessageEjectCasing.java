@@ -40,6 +40,19 @@ public class C2SMessageEjectCasing {
                }
 
                Gun gun = ((GunItem)heldItem.getItem()).getModifiedGun(heldItem);
+
+               // This packet used to hand out a casing without checking that there was anything to eject, so
+               // "eject, then start loading" produced free casings, and spamming eject produced them without limit.
+               // Ejecting a round has to remove that round from the gun: no round, no casing.
+               int chambered = Gun.getAmmoCount(heldItem);
+               if (chambered <= 0) {
+                  context.setHandled(true);
+                  return;
+               }
+
+               // Gun has no setter; the count lives in the "AmmoCount" tag (see BeamWeaponHandler for the same pattern).
+               top.ribs.scguns.util.NbtHelper.getOrCreateTag(heldItem).putInt("AmmoCount", chambered - 1);
+
                if (gun.getProjectile().casingType != null && !player.getAbilities().instabuild) {
                   ItemStack casingStack = new ItemStack(Objects.requireNonNull((Item)BuiltInRegistries.ITEM.get(gun.getProjectile().casingType)));
                   double baseChance = 0.4;
