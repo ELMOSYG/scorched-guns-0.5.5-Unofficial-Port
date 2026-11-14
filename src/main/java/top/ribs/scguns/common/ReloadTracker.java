@@ -361,12 +361,6 @@ public class ReloadTracker {
       this.playReloadSound(player);
    }
 
-   private void scguns$clearUnloadFlag() {
-      CompoundTag tag = NbtHelper.getTagForWrite(this.stack);
-      if (tag != null && tag.getBoolean("ScgunsUnloadedMag")) {
-         tag.putBoolean("ScgunsUnloadedMag", false);
-      }
-   }
 
    private void playReloadSound(Player player) {
       if (!(this.stack.getItem() instanceof AnimatedGunItem)) {
@@ -555,7 +549,6 @@ public class ReloadTracker {
     * animated as if it were reloading (HANDOFF section 66).
     */
    private static void endReload(Player player, ReloadTracker tracker) {
-      tracker.scguns$clearUnloadFlag();
       ModSyncedDataKeys.RELOADING.setValue(player, false);
       CompoundTag tag = NbtHelper.getTagForWrite(tracker.stack);
       if (tag != null) {
