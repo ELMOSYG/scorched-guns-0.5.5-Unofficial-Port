@@ -44,22 +44,34 @@ public class C2SMessageEjectCasing {
                // This packet used to hand out a casing without checking that there was anything to eject, so
                // "eject, then start loading" produced free casings, and spamming eject produced them without limit.
                // Ejecting a round has to remove that round from the gun: no round, no casing.
-               // Ejecting while a reload is in progress is what turned single-round reloads into an endless loop: the
-               // client kept ejecting, the reload kept putting rounds back, and the two never agreed on a state. A real
-               // gun cannot eject the chamber while it is being loaded either, so ignore the request outright.
-               if (Boolean.TRUE.equals(top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.getValue(player))) {
-                  context.setHandled(true);
-                  return;
-               }
-
+               // Two different requests arrive through this packet, and they need different rules:
+               //
+               //  * pressing eject with rounds in the gun: a round physically leaves the chamber, so it must be spent;
+               //  * the automatic eject during a reload: the gun is already empty (that is why it is being reloaded), so
+               //    there is nothing to spend and the casing is just the spent case of the last shot. Ignoring this one
+               //    made an emptied gun stop dropping its last casing.
+               //
+               // What must never happen is a casing without a matching round. Only guns that ask for it (ejectDuringReload)
+               // get the automatic one, and it only fires on an empty chamber, so the loop that single-round reloads used
+               // to fall into is still closed.
+               boolean reloading = Boolean.TRUE.equals(
+                  top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.getValue(player));
                int chambered = Gun.getAmmoCount(heldItem);
-               if (chambered <= 0) {
-                  context.setHandled(true);
-                  return;
-               }
 
-               // Gun has no setter; the count lives in the "AmmoCount" tag (see BeamWeaponHandler for the same pattern).
-               top.ribs.scguns.util.NbtHelper.getOrCreateTag(heldItem).putInt("AmmoCount", chambered - 1);
+               if (reloading) {
+                  if (!gun.getProjectile().ejectDuringReload() || chambered > 0) {
+                     context.setHandled(true);
+                     return;
+                  }
+               } else {
+                  if (chambered <= 0) {
+                     context.setHandled(true);
+                     return;
+                  }
+
+                  // Gun has no setter; the count lives in the "AmmoCount" tag (see BeamWeaponHandler for the same pattern).
+                  top.ribs.scguns.util.NbtHelper.getOrCreateTag(heldItem).putInt("AmmoCount", chambered - 1);
+               }
 
                if (gun.getProjectile().casingType != null && !player.getAbilities().instabuild) {
                   ItemStack casingStack = new ItemStack(Objects.requireNonNull((Item)BuiltInRegistries.ITEM.get(gun.getProjectile().casingType)));

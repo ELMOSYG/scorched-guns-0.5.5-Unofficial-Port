@@ -286,6 +286,36 @@ public class ReloadTracker {
       NbtHelper.getOrCreateTag(ammoPouch).put("Items", listTag);
    }
 
+
+   /**
+    * Rolls the spent-case drop for a round that has just been loaded.
+    *
+    * <p>Tying the casing to loading rather than to the eject key keeps the drop rate honest - a round was fired to
+    * make room for this one - and removes the room the eject key used to leave for minting casings out of nothing.
+    * Same chance as before: 40% base plus 15% per Shell Catcher level.</p>
+    */
+   private void scguns$rollCasingOnLoad(Player player) {
+      if (this.gun.getProjectile().casingType == null || player.getAbilities().instabuild) {
+         return;
+      }
+
+      double baseChance = 0.4;
+      int enchantmentLevel = top.ribs.scguns.util.ScEnchants.level(this.stack, top.ribs.scguns.init.ModEnchantments.SHELL_CATCHER);
+      if (Math.random() >= baseChance + (double)enchantmentLevel * 0.15) {
+         return;
+      }
+
+      net.minecraft.world.item.ItemStack casingStack = new net.minecraft.world.item.ItemStack(
+         net.minecraft.core.registries.BuiltInRegistries.ITEM.get(this.gun.getProjectile().casingType));
+      if (enchantmentLevel > 0) {
+         if (!top.ribs.scguns.event.GunEventBus.addCasingDirectly((net.minecraft.server.level.ServerPlayer) player, casingStack)) {
+            top.ribs.scguns.event.GunEventBus.spawnCasingInWorld(player.level(), player, casingStack);
+         }
+      } else if (!top.ribs.scguns.event.GunEventBus.addCasingToPouch((net.minecraft.server.level.ServerPlayer) player, casingStack)) {
+         top.ribs.scguns.event.GunEventBus.spawnCasingInWorld(player.level(), player, casingStack);
+      }
+   }
+
    public void increaseMagAmmo(Player player) {
       ItemStack[] ammoStack = Gun.findAmmoStack(player, this.gun.getProjectile().getItem());
       if (ammoStack.length > 0) {
@@ -313,6 +343,8 @@ public class ReloadTracker {
                tag.putInt("AmmoCount", maxAmmo);
                this.shrinkFromAmmoPool(ammoStack, player, amount);
             }
+
+            this.scguns$rollCasingOnLoad(player);
          }
       }
 
@@ -331,6 +363,7 @@ public class ReloadTracker {
                tag.putInt("AmmoCount", maxAmmo);
                this.shrinkFromAmmoPool(ammoStacks, player, 1);
                this.handleReloadByproduct(player);
+               this.scguns$rollCasingOnLoad(player);
             }
          }
 
@@ -353,6 +386,7 @@ public class ReloadTracker {
          }
 
          this.shrinkFromAmmoPool(Gun.findAmmoStack(player, this.gun.getProjectile().getItem()), player, amount);
+         this.scguns$rollCasingOnLoad(player);
       }
 
       this.playReloadSound(player);
