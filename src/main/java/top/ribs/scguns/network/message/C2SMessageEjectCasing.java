@@ -44,6 +44,14 @@ public class C2SMessageEjectCasing {
                // This packet used to hand out a casing without checking that there was anything to eject, so
                // "eject, then start loading" produced free casings, and spamming eject produced them without limit.
                // Ejecting a round has to remove that round from the gun: no round, no casing.
+               // Ejecting while a reload is in progress is what turned single-round reloads into an endless loop: the
+               // client kept ejecting, the reload kept putting rounds back, and the two never agreed on a state. A real
+               // gun cannot eject the chamber while it is being loaded either, so ignore the request outright.
+               if (Boolean.TRUE.equals(top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.getValue(player))) {
+                  context.setHandled(true);
+                  return;
+               }
+
                int chambered = Gun.getAmmoCount(heldItem);
                if (chambered <= 0) {
                   context.setHandled(true);
