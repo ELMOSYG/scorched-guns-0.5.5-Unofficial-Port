@@ -64,6 +64,15 @@ public class C2SMessageEjectCasing {
                      context.setHandled(true);
                      return;
                   }
+
+                  // The magazine was drained by the unload key, so every round in it was pulled out unfired - there is
+                  // no spent case to drop for any of them. The flag is consumed here and also cleared when the reload
+                  // finishes, so a normal (fired-empty) reload keeps its casing.
+                  CompoundTag reloadTag = top.ribs.scguns.util.NbtHelper.getOrCreateTag(heldItem);
+                  if (reloadTag.getBoolean("ScgunsUnloadedMag")) {
+                     context.setHandled(true);
+                     return;
+                  }
                } else {
                   if (chambered <= 0) {
                      context.setHandled(true);

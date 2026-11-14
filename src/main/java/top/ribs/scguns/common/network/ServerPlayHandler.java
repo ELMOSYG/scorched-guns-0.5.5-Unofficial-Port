@@ -370,6 +370,10 @@ public class ServerPlayHandler {
                return;
             }
 
+            // Remember that this magazine was emptied by hand. The reload that follows must not hand out casings:
+            // those rounds were never fired, so no spent cases exist for them.
+            tag.putBoolean("ScgunsUnloadedMag", true);
+
             tag.putInt("AmmoCount", 0);
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(gun.getCurrentAmmoItem(stack));
             Item item = (Item)BuiltInRegistries.ITEM.get(id);
