@@ -2421,3 +2421,55 @@ custom-data 组件**发给客户端；而服务端正常换弹期间**从不写*
 **门禁**：`javac` 0（1038）、61 审计（2 个既有无关失败）、`verify_installed_jar` **305/305**、
 已安装（备份 `.bak-153552`）。`[SCGUNS-RS]` 追踪仍在，下一次日志用于确认
 `STARTING -> LOADING` 出现、以及那 10 tick idle 落在收尾片段之前还是之后。
+
+---
+
+## 83.21 决定：换弹系统回到未改动版本（玩家裁决，已完成）
+
+> 玩家："再改这个就是纯负收益了，建议备份后撤回至未改动版本"，并给出未改动的 jar。
+
+### 83.21.1 已执行
+
+| 步骤 | 结果 |
+|---|---|
+| 保留实验线 | git tag **`reload-experiments-20261115`**（= `02ec77e5`，含状态机修复、活 tag 修复、全部追踪） |
+| 保留实验版 jar | `mods/备份文件/scguns-experimental-reload-20261115.jar`（19,582,676 B，与实验线最后一次构建一致） |
+| 安装未改动版本 | 用玩家提供的 `桌面\scguns-1.1.0hotfix.jar`（19,576,122 B，SHA `E04C2E7F…42EA`）覆盖实例 jar，哈希已核对一致 |
+| 旧实例 jar | 覆盖前的内容已另存为 `scguns-experimental-reload-20261115.jar`；更早的各版仍在 `备份文件/*.bak-*` |
+
+**确认它是未改动版本**：jar 内 **没有** `GunAmmo`/`SpentRounds`（本轮之前的基线）、没有
+`[SCGUNS-RS]`/`[SCGUNS-ANIM]` 追踪字符串、`ClientHandler` 里没有 Framework 预解析；`mods.toml`
+版本仍是 `1.5.0+1.1.0hotfix`。
+
+### 83.21.2 反悔路径（要回到实验版）
+
+```powershell
+# jar
+Copy-Item 'D:\MCJAVA\.minecraft\versions\1.21.1-NeoForge_21.1.250\mods\备份文件\scguns-experimental-reload-20261115.jar' `
+          'D:\MCJAVA\.minecraft\versions\1.21.1-NeoForge_21.1.250\mods\scguns-1.1.0hotfix.jar' -Force
+# 源码
+git checkout reload-experiments-20261115
+```
+
+### 83.21.3 已知后果（写清楚，避免以后误判）
+
+未改动版本里**没有**本轮的这些修复：
+
+- `90eed5ef` 的**活 tag 修复**（`handleReloadingState` 不再二次 `getOrCreateTag`）—— 这是唯一一个
+  有"日志级证据"的真 bug：手动枪的状态机每 tick 重开 `reload_start`（15:25 日志 `NONE -> STARTING`
+  连刷 65 次）。回到基线后**这个问题会回来**。
+- 83.11–83.14 的反刷守卫（`C2SMessageGunLoaded` 的 `RELOADING` 检查、`SpentRounds` 弹壳记账）——
+  基线里没有，创造/异常场景下"卸载后继续压弹"的行为回到旧逻辑。
+- Framework 客户端服务预解析（`c1f6d19e`）—— 基线里没有，启动偶发卡在 `Failed to load service` 的
+  概率回到原样。
+- 换弹收尾的原作对齐（`5dba87cd`）与全部追踪/状态镜像。
+
+如果以后只想拿回**那一个**有证据的修复，最小改动是 `90eed5ef` 这一行：
+`int currentAmmo = GunAmmo.get(nbt);`（删掉二次 `NbtHelper.getOrCreateTag(stack)`），
+其余全部不动。
+
+### 83.21.4 门禁说明
+
+`verify_installed_jar.py` 现在对实例 jar 报 **291/305**，这是**预期**的：那 14 项断言的是本轮
+（未改动版本之后）才存在的约束（`GunAmmo`、`SpentRounds`、追踪、Framework 预解析等），
+不是基线 jar 的缺陷。要跑绿需要装回实验版。
