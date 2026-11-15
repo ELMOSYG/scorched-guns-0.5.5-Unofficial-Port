@@ -9088,3 +9088,23 @@ private static void pinFrameworkClientService() {
 - 这次还看到 `Access transformer file accesstransformer.cfg provided by mod irisflw does not exist!`、
   `Invalid path in pack: farmers_spell:.../blood _chuanchuan.png`、`Brightness 16.0 outside of range`
   —— 都是别人的 mod/资源包问题，与本 mod 无关。
+
+### 83.15.6 补：这是**我们自己的前置**，所以由我们兜（并留下可验证的痕迹）
+
+Framework 不是"别人的 mod"：本 mod 的网络、同步数据键（`ModSyncedDataKeys`）、注册都走它，它起不来我们
+也起不来 ⇒ 这个启动失败等于我们的 mod 坏掉，不能只写一句"不是我们的问题"。
+
+- 已把主线程预解析放在 `onClientSetup` 的**最前面**，并加了一行 INFO 面包屑：
+
+  ```
+  [scguns] Framework client service resolved on the main thread (NeoForgeClientHelper);
+  a later lookup by a resource-reload worker would have come back empty on Framework 0.13.11
+  ```
+
+  这样下次若还卡住，**从玩家自己的日志就能判断**这层有没有跑起来：
+  - 有这行 + 仍有 `Failed to load service` ⇒ 说明"TCCL 竞态"的判断是错的，需要换方案
+    （下一步是把 `Services.load` 用 mixin 改成"用服务接口自己的类加载器再查一次"，这样可以彻底
+    不依赖线程顺序，但要给别人的前置加 mixin，风险更高，所以在拿到证据前不动）；
+  - 没有这行 ⇒ 客户端 setup 之前就出事了，问题在别处。
+- 真修复仍然在 Framework 侧（0.13.11 的懒加载实现）。本机网络拿不到新版本，无法确认 0.13.12+
+  是否已改；如果玩家能更新 Framework，那是首选，我们这层只是桥。

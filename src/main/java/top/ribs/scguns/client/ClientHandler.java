@@ -340,13 +340,22 @@ public class ClientHandler {
          Object clientService = com.mrcrayfish.framework.platform.ClientServices.CLIENT;
          if (clientService == null) {
             ScorchedGuns.LOGGER.warn("Framework's client service resolved to null; resource reload workers may fail to find it");
+            return;
          }
+
+         // One line per launch on purpose: Framework is a required dependency of this mod, so when a
+         // launch still hangs on model loading this tells us from the player's own log whether the
+         // early resolution ran at all.
+         ScorchedGuns.LOGGER.info("[scguns] Framework client service resolved on the main thread ({}); a later lookup by a resource-reload worker would have come back empty on Framework 0.13.11",
+            clientService.getClass().getSimpleName());
       } catch (Throwable failure) {
          ScorchedGuns.LOGGER.warn("Could not resolve Framework's client service early; resource reload workers may fail to find it", failure);
       }
    }
 
    private static void onClientSetup(FMLClientSetupEvent event) {
+      // Must run before the first resource reload: that is where a worker thread would otherwise be the
+      // first to resolve Framework's client service (HANDOFF 83.15).
       pinFrameworkClientService();
       // Punchy animates whatever is held and only knows the gun mods it ships support for, so its
       // blacklist gets this mod's guns added here (client side, once per launch).
