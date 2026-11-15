@@ -40,20 +40,6 @@ public class C2SMessageEjectCasing {
                }
 
                Gun gun = ((GunItem)heldItem.getItem()).getModifiedGun(heldItem);
-
-               // This packet is the reload animation's "eject_casing" keyframe, and it used to hand out a
-               // case unconditionally: no reload running, no round fired, nothing checked. Unloading
-               // mid-reload therefore farmed casings - the rounds came back to the inventory and the
-               // client's still-running keyframes kept producing cases (reproduced on 21.1.264: ten
-               // loops after an unload gave three cases out of a magazine that was never refilled).
-               // Two rules close it: there has to be a reload running, and there has to be a fired round
-               // whose case has not come out yet.
-               if (!gun.getProjectile().ejectDuringReload()
-                  || !Boolean.TRUE.equals(top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.getValue(player))
-                  || !top.ribs.scguns.util.SpentRounds.take(heldItem)) {
-                  context.setHandled(true);
-                  return;
-               }
                if (gun.getProjectile().casingType != null && !player.getAbilities().instabuild) {
                   ItemStack casingStack = new ItemStack(Objects.requireNonNull((Item)BuiltInRegistries.ITEM.get(gun.getProjectile().casingType)));
                   double baseChance = 0.4;

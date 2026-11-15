@@ -35,7 +35,6 @@ import top.ribs.scguns.network.message.C2SMessageLeftOverAmmo;
 import top.ribs.scguns.network.message.C2SMessageReload;
 import top.ribs.scguns.network.message.C2SMessageUnload;
 import top.ribs.scguns.util.GunModifierHelper;
-import top.ribs.scguns.util.GunAmmo;
 
 public class ReloadHandler {
    private static ReloadHandler instance;
@@ -257,7 +256,7 @@ public class ReloadHandler {
                   }
 
                   Gun gun = gunItem.getModifiedGun(stack);
-                  if (GunAmmo.get(tag) >= GunModifierHelper.getModifiedAmmoCapacity(stack, gun)) {
+                  if (tag.getInt("AmmoCount") >= GunModifierHelper.getModifiedAmmoCapacity(stack, gun)) {
                      return;
                   }
 

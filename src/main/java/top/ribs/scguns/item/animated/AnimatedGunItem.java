@@ -53,7 +53,6 @@ import top.ribs.scguns.network.message.C2SMessageGunLoaded;
 import top.ribs.scguns.network.message.C2SMessageReload;
 import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
-import top.ribs.scguns.util.GunAmmo;
 
 public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    private final AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
@@ -66,10 +65,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    private int drawTick = 0;
    private static final String RELOAD_START_TIME = "reloadStartTime";
    public static final String RELOAD_STATE = "scguns:ReloadState";
-   /** Temporary: last reload state written to the log, so each transition is logged once (HANDOFF 83.18). */
-   private static String lastTracedReloadState = "";
-   /** Temporary: last clip/state pair logged (HANDOFF 83.20). */
-   private static String lastTracedAnimKey = "";
    private final GunRotationHandler rotationHandler = new GunRotationHandler();
 
    /** The model name this gun was registered with (its path, e.g. {@code laser_rifle}). */
@@ -211,29 +206,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
          }
 
          return;
-      }
-
-      if (entity instanceof Player animPlayer) {
-         AnimationController<GeoAnimatable> animController = (AnimationController<GeoAnimatable>)this.getAnimatableInstanceCache()
-            .getManagerForId(GeoItem.getId(stack)).getAnimationControllers().get("controller");
-         if (animController != null) {
-            String clip = this.isAnimationPlaying(animController, "reload_stop") ? "reload_stop"
-               : this.isAnimationPlaying(animController, "carbine_reload_stop") ? "carbine_reload_stop"
-               : this.isAnimationPlaying(animController, "reload_loop") ? "reload_loop"
-               : this.isAnimationPlaying(animController, "carbine_reload_loop") ? "carbine_reload_loop"
-               : this.isAnimationPlaying(animController, "reload_start") ? "reload_start"
-               : this.isAnimationPlaying(animController, "reload") ? "reload"
-               : this.isAnimationPlaying(animController, "idle") ? "idle"
-               : "-";
-            String key = clip + "/" + nbtCompound.getString("scguns:ReloadState");
-            if (!key.equals(lastTracedAnimKey)) {
-               lastTracedAnimKey = key;
-               top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-ANIM] clip={} state={} reloading={} stopOwed={}",
-                  clip, nbtCompound.getString("scguns:ReloadState"),
-                  ModSyncedDataKeys.RELOADING.getValue(animPlayer),
-                  nbtCompound.getBoolean("scguns:IsPlayingReloadStop"));
-            }
-         }
       }
 
       boolean currentReloading = nbtCompound.getBoolean("scguns:IsReloading");
@@ -574,8 +546,7 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
             }
          }
 
-         if ((hasNoAnimation || isStopped) && !nbtCompound.getBoolean("scguns:IsReloading")
-            && nbtCompound.getInt("DrawnTick") >= 15) {
+         if ((hasNoAnimation || isStopped) && !nbtCompound.getBoolean("scguns:IsReloading") && nbtCompound.getInt("DrawnTick") >= 15) {
             animationController.setAnimationSpeed(1.0);
             this.updateCarbineState(stack, animationController);
             if (this.isInCarbineMode(stack)) {
@@ -621,16 +592,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                   } else {
                      animationController.tryTriggerAnimation("idle");
                   }
-               } else {
-                  // Nothing is reloading, yet a reload animation is still playing: unloading mid-reload
-                  // leaves the loop running (the server's answer to the unload clears the state instead
-                  // of moving it to STOPPING), and every cycle refired its eject/loaded keyframes (the
-                  // free-casing report). Hand the controller back to idle and drop the stale tags; a
-                  // real reload never reaches this branch because it returns above with isReloading true.
-                  this.cleanupAllReloadTags(nbtCompound);
-                  animationController.stop();
-                  animationController.setAnimationSpeed(1.0);
-                  animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_idle" : "idle");
                }
             }
          }
@@ -814,10 +775,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    private void handleReloadingState(CompoundTag nbt, AnimationController<GeoAnimatable> animationController, ItemStack stack) {
       Gun modifiedGun = ((GunItem)stack.getItem()).getModifiedGun(stack);
       String currentState = nbt.getString("scguns:ReloadState");
-      if (!currentState.equals(lastTracedReloadState)) {
-         lastTracedReloadState = currentState;
-         top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-RS] state={}", currentState);
-      }
       Player player = Minecraft.getInstance().player;
       if (player != null) {
          if ((Boolean)ModSyncedDataKeys.AIMING.getValue(player)) {
@@ -850,15 +807,8 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
 
                int actualReloadTime = (int)Math.ceil((double)GunEnchantmentHelper.getRealReloadSpeed(stack) / reloadSpeedMultiplier);
                float speedMultiplier = (float)modifiedGun.getReloads().getReloadTimer() / (float)actualReloadTime;
-               // Read the caller's tag, do not fetch another one. A second
-               // NbtHelper.getOrCreateTag(stack) re-installs the component and detaches the nbt this
-               // method was handed, so every putString below (STARTING / LOADING / STOPPING) went into an
-               // orphaned compound: the machine re-read NONE on the next tick and re-triggered
-               // reload_start once per tick. The 2026-11-15 15:25 client log shows exactly that -
-               // "NONE -> STARTING" dozens of times per reload with the same ammo value, and never a
-               // STARTING -> LOADING - on every MANUAL gun. 0.5.5 read the live tag here and the
-               // transitions worked, so this is the port drifting from it (HANDOFF 83.18).
-               int currentAmmo = GunAmmo.get(nbt);
+               CompoundTag tag = NbtHelper.getOrCreateTag(stack);
+               int currentAmmo = tag.getInt("AmmoCount");
                int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(stack, modifiedGun);
                boolean ammoFull = currentAmmo >= maxAmmo;
                boolean hasNoAmmo = Gun.findAmmo(player, modifiedGun.getProjectile().getItem()).stack().isEmpty();
@@ -877,7 +827,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
 
                switch (state) {
                   case NONE:
-                     top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-RS] {} -> STARTING (reload_start), ammo={}", currentState, currentAmmo);
                      nbt.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.STARTING.name());
                      nbt.putLong("LastReloadStateChange", currentTime);
                      nbt.putBoolean("ManualReloadInitialized", true);
@@ -891,7 +840,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                         || this.isAnimationPlaying(animationController, "carbine_reload_start");
                      if (!isStartAnimPlaying && animationController.getAnimationState() == State.STOPPED) {
                         if (!ammoFull && !hasNoAmmo && (Boolean)ModSyncedDataKeys.RELOADING.getValue(player)) {
-                           top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-RS] STARTING -> LOADING (reload_loop), ammo={}", currentAmmo);
                            nbt.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.LOADING.name());
                            nbt.putLong("LastReloadStateChange", currentTime);
                            nbt.putBoolean("InReloadLoop", true);
@@ -952,23 +900,22 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                         }
                      }
                      break;
-                   case STOPPING:
-                      if (!this.isAnimationPlaying(animationController, "reload_stop")
-                         && !this.isAnimationPlaying(animationController, "carbine_reload_stop")
-                         && animationController.getAnimationState() == State.STOPPED) {
-                         animationController.setAnimationSpeed(1.0);
-                         this.cleanupReloadState(nbt);
-                         nbt.remove("LastReloadStateChange");
-                         nbt.remove("ManualReloadInitialized");
-                         nbt.remove("InReloadLoop");
-                         nbt.remove("PendingStopTransition");
-                         if (this.isInCarbineMode(stack)) {
-                            animationController.tryTriggerAnimation("carbine_idle");
-                         } else {
-                            animationController.tryTriggerAnimation("idle");
-                         }
-                      }
-
+                  case STOPPING:
+                     if (!this.isAnimationPlaying(animationController, "reload_stop")
+                        && !this.isAnimationPlaying(animationController, "carbine_reload_stop")
+                        && animationController.getAnimationState() == State.STOPPED) {
+                        animationController.setAnimationSpeed(1.0);
+                        this.cleanupReloadState(nbt);
+                        nbt.remove("LastReloadStateChange");
+                        nbt.remove("ManualReloadInitialized");
+                        nbt.remove("InReloadLoop");
+                        nbt.remove("PendingStopTransition");
+                        if (this.isInCarbineMode(stack)) {
+                           animationController.tryTriggerAnimation("carbine_idle");
+                        } else {
+                           animationController.tryTriggerAnimation("idle");
+                        }
+                     }
                }
             }
          }
@@ -1033,13 +980,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
       nbt.remove("ReloadCompleted");
    }
 
-   /**
-    * Switches the controller from a reload animation to the gun's stop clip.
-    *
-    * <p>Called at a cycle boundary (the loop's "loaded" keyframe) or when no reload cycle is playing.
-    * Cutting a looping clip anywhere else is what made the transition into reload_stop look abrupt.</p>
-    */
-   /** Asks for the stop clip at the end of the current reload cycle (client only). */
    @OnlyIn(Dist.CLIENT)
    private void handleAimingState(CompoundTag nbt, AnimationController<GeoAnimatable> animationController) {
       if (!nbt.getBoolean("IsDrawing") || nbt.getInt("DrawnTick") >= 15) {

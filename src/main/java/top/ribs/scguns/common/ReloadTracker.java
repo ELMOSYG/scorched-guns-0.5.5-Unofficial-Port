@@ -44,7 +44,6 @@ import top.ribs.scguns.network.message.S2CMessageGunSound;
 import top.ribs.scguns.network.message.S2CMessageStopReload;
 import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
-import top.ribs.scguns.util.GunAmmo;
 import top.theillusivec4.curios.api.CuriosApi;
 
 @EventBusSubscriber(
@@ -104,15 +103,15 @@ public class ReloadTracker {
 
    public boolean isWeaponFull(Player player) {
       ItemStack currentStack = player.getMainHandItem();
-      // Read-only: this runs every tick, and getOrCreateTag used to copy the tag and re-install the
-      // component on each call - which also orphaned the tag onPlayerTick had fetched above it.
-      int currentAmmo = GunAmmo.get(currentStack);
+      CompoundTag tag = NbtHelper.getOrCreateTag(currentStack);
+      int currentAmmo = tag.getInt("AmmoCount");
       int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(currentStack, this.gun);
       return currentAmmo >= maxAmmo;
    }
 
    private boolean isWeaponEmpty() {
-      return GunAmmo.get(this.stack) == 0;
+      CompoundTag tag = NbtHelper.getOrCreateTag(this.stack);
+      return tag.getInt("AmmoCount") == 0;
    }
 
    public boolean hasNoAmmo(Player player) {
@@ -289,28 +288,31 @@ public class ReloadTracker {
 
    public void increaseMagAmmo(Player player) {
       ItemStack[] ammoStack = Gun.findAmmoStack(player, this.gun.getProjectile().getItem());
-      if (ammoStack.length > 0 && GunAmmo.hasCustomData(this.stack)) {
-         int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(this.stack, this.gun);
-         boolean hasCreativeBox = player.getInventory().items.stream().anyMatch(i -> i.getItem() instanceof CreativeAmmoBoxItem)
-            || ServerPlayHandler.hasCreativeAmmoBoxInCurios((ServerPlayer)player);
-         if (hasCreativeBox) {
-            GunAmmo.set(this.stack, maxAmmo);
-            return;
-         }
+      if (ammoStack.length > 0) {
+         CompoundTag tag = NbtHelper.getTagForWrite(this.stack);
+         if (tag != null) {
+            int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(this.stack, this.gun);
+            boolean hasCreativeBox = player.getInventory().items.stream().anyMatch(i -> i.getItem() instanceof CreativeAmmoBoxItem)
+               || ServerPlayHandler.hasCreativeAmmoBoxInCurios((ServerPlayer)player);
+            if (hasCreativeBox) {
+               tag.putInt("AmmoCount", maxAmmo);
+               return;
+            }
 
-         int currentAmmo = GunAmmo.get(this.stack);
-         if (currentAmmo < 0 || currentAmmo > maxAmmo) {
-            currentAmmo = 0;
-         }
+            int currentAmmo = tag.getInt("AmmoCount");
+            if (currentAmmo < 0 || currentAmmo > maxAmmo) {
+               currentAmmo = 0;
+            }
 
-         int ammoAmount = Math.min(ammoInInventory(ammoStack), maxAmmo);
-         int amount = maxAmmo - currentAmmo;
-         if (ammoAmount < amount) {
-            GunAmmo.set(this.stack, currentAmmo + ammoAmount);
-            this.shrinkFromAmmoPool(ammoStack, player, ammoAmount);
-         } else {
-            GunAmmo.set(this.stack, maxAmmo);
-            this.shrinkFromAmmoPool(ammoStack, player, amount);
+            int ammoAmount = Math.min(ammoInInventory(ammoStack), maxAmmo);
+            int amount = maxAmmo - currentAmmo;
+            if (ammoAmount < amount) {
+               tag.putInt("AmmoCount", currentAmmo + ammoAmount);
+               this.shrinkFromAmmoPool(ammoStack, player, ammoAmount);
+            } else {
+               tag.putInt("AmmoCount", maxAmmo);
+               this.shrinkFromAmmoPool(ammoStack, player, amount);
+            }
          }
       }
 
@@ -321,11 +323,12 @@ public class ReloadTracker {
       Item reloadItem = this.gun.getReloads().getReloadItem();
       ItemStack[] ammoStacks = Gun.findAmmoStack(player, reloadItem);
       if (ammoStacks.length > 0) {
-         if (GunAmmo.hasCustomData(this.stack)) {
+         CompoundTag tag = NbtHelper.getTagForWrite(this.stack);
+         if (tag != null) {
             int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(this.stack, this.gun);
-            int currentAmmo = GunAmmo.get(this.stack);
+            int currentAmmo = tag.getInt("AmmoCount");
             if (currentAmmo < maxAmmo) {
-               GunAmmo.set(this.stack, maxAmmo);
+               tag.putInt("AmmoCount", maxAmmo);
                this.shrinkFromAmmoPool(ammoStacks, player, 1);
                this.handleReloadByproduct(player);
             }
@@ -341,11 +344,12 @@ public class ReloadTracker {
       if (!ammo.isEmpty()) {
          int amount = Math.min(ammo.getCount(), this.gun.getReloads().getReloadAmount());
          ItemStack currentStack = player.getMainHandItem();
-         if (GunAmmo.hasCustomData(currentStack)) {
+         CompoundTag tag = NbtHelper.getTagForWrite(currentStack);
+         if (tag != null) {
             int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(currentStack, this.gun);
-            int currentAmmo = GunAmmo.get(currentStack);
+            int currentAmmo = tag.getInt("AmmoCount");
             amount = Math.min(amount, maxAmmo - currentAmmo);
-            GunAmmo.set(currentStack, currentAmmo + amount);
+            tag.putInt("AmmoCount", currentAmmo + amount);
          }
 
          this.shrinkFromAmmoPool(Gun.findAmmoStack(player, this.gun.getProjectile().getItem()), player, amount);
@@ -564,28 +568,15 @@ public class ReloadTracker {
       tracker.pendingManualStopSince = 0L;
    }
 
-   /**
-    * Clears {@code IsReloading} on a gun that just finished reloading.
-    *
-    * <p>Fetches the tag itself instead of taking one the caller fetched earlier: the reload path writes
-    * the magazine through {@link GunAmmo}, which re-installs the component, so any tag bound before
-    * that write is an orphan and the removal never reached the item (docs/reload-system.md, defect 3
-    * - the same shape as the write-back bug fixed in HANDOFF section 67).</p>
-    */
-   private static void clearIsReloading(ItemStack stack) {
-      CompoundTag tag = NbtHelper.getTagForWrite(stack);
-      if (tag != null) {
-         tag.remove("IsReloading");
-         NbtHelper.setTag(stack, tag);
-      }
-   }
-
    public static void loaded(Player player) {
       ItemStack heldItem = player.getMainHandItem();
       if (heldItem.getItem().getClass().getPackageName().startsWith("top.ribs.scguns")) {
+         CompoundTag tag = NbtHelper.getTagForWrite(player.getMainHandItem());
          if (!(Boolean)ModSyncedDataKeys.RELOADING.getValue(player)) {
             RELOAD_TRACKER_MAP.remove(player);
-            clearIsReloading(player.getMainHandItem());
+            if (tag != null) {
+               tag.remove("IsReloading");
+            }
          } else {
             if (!RELOAD_TRACKER_MAP.containsKey(player)) {
                if (!(player.getInventory().getSelected().getItem() instanceof GunItem)) {
@@ -622,7 +613,9 @@ public class ReloadTracker {
 
                      RELOAD_TRACKER_MAP.remove(player);
                      ModSyncedDataKeys.RELOADING.setValue(player, false);
-                     clearIsReloading(player.getMainHandItem());
+                     if (tag != null) {
+                        tag.remove("IsReloading");
+                     }
 
                      return;
                   }
@@ -653,14 +646,18 @@ public class ReloadTracker {
                         tracker.handleReloadByproduct(player);
                         RELOAD_TRACKER_MAP.remove(player);
                         ModSyncedDataKeys.RELOADING.setValue(player, false);
-                        clearIsReloading(player.getMainHandItem());
+                        if (tag != null) {
+                           tag.remove("IsReloading");
+                        }
                      }
                   }
                }
             } else {
                RELOAD_TRACKER_MAP.remove(player);
                ModSyncedDataKeys.RELOADING.setValue(player, false);
-               clearIsReloading(player.getMainHandItem());
+               if (tag != null) {
+                  tag.remove("IsReloading");
+               }
             }
          }
       }
