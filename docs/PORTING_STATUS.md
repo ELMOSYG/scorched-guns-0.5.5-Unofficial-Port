@@ -2063,3 +2063,35 @@ event.setMouseSensitivity(Math.max(0.0, (scaled - 0.2) / 0.6));
 其余干净项仍为 0。`verify_installed_jar` 新增 1 项（该文件必须含 `neoforge:mod_loaded`）：
 上一版 jar **296/297**（该项 FAIL），新 jar **297/297**。
 **未验**：装了 GV 时该表仍正常加载（本机没有 GV）。
+
+## §83.13 卸载打断换弹 → 免费上膛 + 无限弹壳（玩家报告，已修）
+
+**玩家**："callwell 在装填时按卸载弹药键清空弹药后继续装填，装满子弹后仍然继续装填，然后因为
+枪械是换弹时弹出弹壳的，导致可以无限刷弹壳。"（完整分析：`docs/reload-system.md` §9）
+
+**复现**（真协议 + FakePlayer，21.1.264 专用服务端）：探针按客户端实际顺序调四个 `C2SMessage*`
+并驱动真的 `ReloadTracker.onPlayerTick`。修复前：卸载后 `reloading=false`，但每个 `loaded` 关键帧
+仍上膛（ammo 0→1→2、shells 8→6），满弹后每轮仍产出弹壳（10 轮 → 3 个）。
+
+**三个信任漏洞**：
+1. `C2SMessageGunLoaded`（动画关键帧"loaded"）**不看有没有换弹在跑**就上膛 —— 卸载后客户端循环
+   继续发它 ⇒ 免费上膛。**旧版就有**。
+2. `C2SMessageEjectCasing`（关键帧"eject_casing"）**不看换弹、也不看是否开过枪**就发弹壳 ⇒ 无限；
+3. `AnimatedGunItem.handleMainAnimationLogic`：服务端对卸载的回应是**清掉**状态（不是 STOPPING），
+   客户端所有分支都不命中 ⇒ `reload_loop` 永远播，每轮重新触发 1、2。
+
+**修法**：① 上膛前 `if (!RELOADING) return`；② 新增 `util/SpentRounds`（`ScgunsSpentRounds`）：
+开火 +1、换弹弹出 −1（且要求正在换弹 + `ejectDuringReload`）⇒ 弹壳数 ≤ 实际开火数，
+装填/卸载同一批子弹不再产壳。**不用持久标记**（上一轮 `ScgunsUnloadedMag` 的教训：清不掉会永久
+静音正常换弹），计数器自限；③ 客户端加"没有换弹但换弹动画还在播"的 else：清标记 + `stop()` + 回 idle。
+
+**修复后同一套探针**：卸载后 10 个陈旧循环 ⇒ `ammo=0 casings=0`（修前 1→2 / 3 个）；
+开两枪再换弹 ⇒ `ammo=2 spent=0 casings=1`（合法路径正常）；再玩一次"卸载+装填" ⇒ **0 个新壳**。
+
+**门禁**：新审计 `tools/audit_reload_trust.py`（`--selftest` 在 `backup-reloadstate-20261115`
+上报 5 条，含"上膛不看换弹"——第一版规则太弱漏了它）；`verify_installed_jar` 新增 5 项
+（`SpentRounds.class` 在产物、`C2SMessageGunLoaded` 读同步标志、弹壳包引用两者、`ServerPlayHandler`
+引用 `SpentRounds`）⇒ 上一版 jar **296/302**（5 项 FAIL），新 jar **302/302**；
+`javac` 0（1038 文件）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-132638`）。
+
+**未验**：客户端那一半（卸载后动画应立刻回 idle、不再循环）需要玩家实测；服务端两条已用探针验证。

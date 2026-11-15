@@ -593,6 +593,18 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                   } else {
                      animationController.tryTriggerAnimation("idle");
                   }
+               } else {
+                  // Nothing is reloading, yet a reload animation is still playing. Unloading mid-reload
+                  // leaves it there: the server's answer to the unload clears the reload state instead of
+                  // moving it to STOPPING, so the stop animation is never triggered and the loop keeps
+                  // running - refiring its eject/loaded keyframes every cycle, which the player saw as
+                  // "still reloading with a full magazine" (and as free casings). Hand the controller
+                  // back to idle and drop the stale tags; a real reload never reaches this branch
+                  // because it returns above with isReloading true.
+                  this.cleanupAllReloadTags(nbtCompound);
+                  animationController.stop();
+                  animationController.setAnimationSpeed(1.0);
+                  animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_idle" : "idle");
                }
             }
          }

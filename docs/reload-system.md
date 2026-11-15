@@ -173,3 +173,90 @@
 再 `spawnAmmo`，旧代码那种"写进孤儿 ⇒ 弹匣没扣、物品已发"已经不可能。
 剩下的是阶段 3：**谁有权清状态**（`C2SMessageReload` 的死分支、客户端 MANUAL 状态机、
 两个 NBT 键的写入者收敛），风险中，别在没读 8.3 的情况下动手。
+
+---
+
+## 9. 阶段 3 之一：卸载打断换弹 → 无限弹壳（2026-11-15，玩家实测报告）
+
+> "callwell 在装填时按卸载弹药键清空弹药后继续装填，装满子弹后仍然继续装填，然后因为枪械是
+> 换弹时弹出弹壳的，导致可以无限刷弹壳。"
+
+### 9.1 服务端复现（真协议、真处理器、FakePlayer，21.1.264）
+
+探针按客户端实际发送顺序调用 `C2SMessageReload` / `C2SMessageUnload` / `C2SMessageGunLoaded` /
+`C2SMessageEjectCasing`，并驱动真的 `ReloadTracker.onPlayerTick`。**修复前**：
+
+```
+after unload:        ammo=0 reloading=false isReloading=false shells=8 casings=0
+loop 1:              ammo=1 ... shells=7        ← 已经没有换弹了，还在上膛
+loop 2:              ammo=2 ... shells=6
+loop 10:             ammo=2（满）... casings=3  ← 满弹后仍每轮产弹壳
+```
+
+### 9.2 三个独立的信任漏洞（都在服务端）
+
+| # | 位置 | 漏洞 |
+|---|---|---|
+| 1 | `C2SMessageGunLoaded` | 这是**动画关键帧**"loaded"，却**不看有没有换弹在跑**就上膛。卸载后换弹已结束，客户端循环继续发它 ⇒ **免费上膛**（弹匣从 0 被填到 2） |
+| 2 | `C2SMessageEjectCasing` | 同样是关键帧"eject_casing"，**不看换弹、也不看是否真开过枪**就发弹壳（40% + 弹壳收集器）。装满后不再上膛，但这条**永远有效** ⇒ 无限弹壳 |
+| 3 | `AnimatedGunItem.handleMainAnimationLogic` | 卸载后服务端把换弹状态**清掉**（而不是置 STOPPING），客户端没有任何路径去停那段 `reload_loop`：`isReloading` 已假，`ReloadState` 不是 STOPPING，`isPlayingInspectOrReloadAnimations()` 又因为"正在播 reload_loop"返回假 ⇒ **所有分支都不命中，循环动画永远播下去**，每轮重新触发那两个关键帧 |
+
+⚠️ 注意第 1 条是**旧版就有的漏洞**，第 2 条是它的放大器：客户端只要还在循环，服务端就一直配合。
+
+### 9.3 修法
+
+**（a）上膛必须有一次运行中的换弹**（`C2SMessageGunLoaded`）：
+
+```java
+if (!Boolean.TRUE.equals(ModSyncedDataKeys.RELOADING.getValue(player))) {
+   return;
+}
+```
+
+**（b）弹壳必须有"欠账"**：新增 `util/SpentRounds`（键 `ScgunsSpentRounds`）——
+开枪时 **+1**（`ServerPlayHandler.consumeAmmo`），换弹弹出时 **−1**（`C2SMessageEjectCasing`），
+且必须同时满足"正在换弹 + 该枪 `ejectDuringReload`"。40% 的掷骰只决定**捡不捡得到**，
+所以是每次**尝试**都扣 1，而不是成功才扣。
+⇒ 弹壳数永远 ≤ 实际开火数，**装填/卸载同一批子弹不再产生任何弹壳**。
+
+> 为什么不用持久标记（上一轮 `ScgunsUnloadedMag` 失败的原因）：标记要"记得清"，清不掉就会永久
+> 静音之后的正常换弹（玩家看到 NBT 里留着 `ScgunsUnloadedMag:1b`）。**计数器自限**：即使残留，
+> 也只能换出"开过的那些枪"对应的壳，不可能无限。
+
+**（c）客户端释放过期动画**（`handleMainAnimationLogic` 的最后一个 `else`）：没有换弹在跑、
+但某段换弹动画还在播 ⇒ `cleanupAllReloadTags` + `animationController.stop()` + 回 `idle`。
+正常换弹走不到这里（`isReloading` 为真时前面就 return 了），`reload_stop` 阶段也被
+`isPlayingCriticalAnimations` 排除在外。
+
+### 9.4 修复后同一套探针
+
+```
+1 unload mid-reload:    ammo=0 spent=0 reloading=false
+1 after 10 stale loops: ammo=0 spent=0 casings=0     ← 修前 ammo 1→2、casings 3
+2 after 2 shots:        ammo=0 spent=2               ← 开两枪，欠两个壳
+2 after reload loops:   ammo=2 spent=0 casings=1     ← 合法换弹：上满、掉 1 个壳（40%×2）
+3 repeat after unload:  ammo=2 spent=0 casings=1     ← 再玩一次"卸载+装填"：**0 个新壳**
+```
+
+### 9.5 门禁
+
+| 工具 | 查什么 |
+|---|---|
+| `tools/audit_reload_trust.py`（`--selftest`） | ① 上膛前必须有"只否换弹标志"的早退（**不是**旧版那种 `current >= maxAmmo && !RELOADING`）；② 弹壳包必须查换弹 + `SpentRounds.take`；③ 开火必须 `SpentRounds.add`；④ 客户端必须释放过期换弹动画 |
+| `verify_installed_jar` 5 项 | `SpentRounds.class` 在产物里；`C2SMessageGunLoaded` 读同步标志（旧版只写）；`C2SMessageEjectCasing` 引用 `SpentRounds` + `ModSyncedDataKeys`；`ServerPlayHandler` 引用 `SpentRounds` |
+
+反向验证：上一版 jar **296/302**（5 项新检查 + GV 表全 FAIL），新 jar **302/302**；
+`audit_reload_trust.py --selftest` 在 `backup-reloadstate-20261115` 上报出 **5 条**（含上面第 1 条）。
+`javac` 0（1038 文件）、61 个审计（2 个既有无关失败）、已装入实例（备份 `.bak-132638`）。
+
+### 9.6 未验 / 边界
+
+- **客户端 (c) 没跑过**（无显示环境）：需要玩家实测"卸载后动画立刻回到 idle、不再循环"。
+  服务端的 (a)(b) 已在真服上用探针验证。
+- 弹壳仍会在**开火数**范围内产生（这正是设计意图：每发一颗壳），所以"开 N 枪、换弹"仍能得到
+  ≤N 颗壳 —— 不再是无限，但如果你想要"换弹完全不产壳"，那是内容改动，说一声。
+- `MobGunFire.consumeAmmo`（生物开火）**没有**加计数：生物的枪不会走客户端的换弹关键帧，
+  没有可消费的地方，加了只是空涨。
+- 卸载仍然**不会**服务端强制结束换弹：客户端按 G 时会先发 `C2SMessageReload(false)`（探针里
+  `reloading=false` 就是这么来的）。若哪天有路径漏发那条包，换弹会继续跑，但因为 (b)，
+  它**拿不到任何弹壳**，也不再是漏洞。

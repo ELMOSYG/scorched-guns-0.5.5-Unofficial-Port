@@ -42,6 +42,14 @@ public class C2SMessageGunLoaded {
                   }
 
                   Gun gun = ((GunItem)heldItem.getItem()).getModifiedGun(heldItem);
+                  // The packet is the reload animation's "loaded" keyframe, so it may only seat a round
+                  // while a reload is actually running. It used to seat one unconditionally: after an
+                  // unload mid-reload the client's loop kept sending it and the magazine refilled for
+                  // free (reproduced on 21.1.264 - ammo 0 -> 1 -> 2 with reloading already false).
+                  if (!Boolean.TRUE.equals(ModSyncedDataKeys.RELOADING.getValue(player))) {
+                     return;
+                  }
+
                   // A freshly built gun may have no custom data at all, and the tracker only writes a
                   // magazine into a tag that already exists (GunAmmo.set keeps 0.5.5's guard).
                   NbtHelper.ensureTag(heldItem);

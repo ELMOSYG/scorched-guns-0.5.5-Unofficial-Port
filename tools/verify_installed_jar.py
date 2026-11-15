@@ -1609,6 +1609,26 @@ def main():
             zf, "data/guardvillagers/loot_table/entities/guard_armor.json", b"neoforge:mod_loaded",
             "the guard loot table is gated on Guard Villagers being installed"))
 
+        # 83.13. The two reload keyframes used to be trusted blindly (tools/audit_reload_trust.py is the
+        # source-level half of this). The shipped classes have to carry the guards: a "loaded" packet
+        # only seats a round during a reload, and an "eject_casing" packet needs a fired round whose case
+        # is still owed - otherwise unloading mid-reload refills the magazine and farms casings.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/util/SpentRounds.class", b"ScgunsSpentRounds",
+            "the spent-case counter ships"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/network/message/C2SMessageGunLoaded.class", b"getValue",
+            "the loaded packet reads the reload flag (only writes it before the fix)"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/network/message/C2SMessageEjectCasing.class", b"SpentRounds",
+            "the eject keyframe claims a fired round before dropping a casing"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/network/message/C2SMessageEjectCasing.class", b"ModSyncedDataKeys",
+            "the eject keyframe checks for a running reload"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/common/network/ServerPlayHandler.class", b"SpentRounds",
+            "firing records the spent case it owes"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

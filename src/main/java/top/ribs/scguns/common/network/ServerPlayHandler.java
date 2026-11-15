@@ -68,6 +68,7 @@ import top.ribs.scguns.network.message.S2CMessageGunSound;
 import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
 import top.ribs.scguns.util.GunAmmo;
+import top.ribs.scguns.util.SpentRounds;
 import top.theillusivec4.curios.api.CuriosApi;
 
 public class ServerPlayHandler {
@@ -144,6 +145,9 @@ public class ServerPlayHandler {
             int level = ScEnchants.level(heldItem, ModEnchantments.RECLAIMED);
             if (level == 0 || player.level().random.nextInt(4 - Mth.clamp(level, 1, 2)) != 0) {
                GunAmmo.setOrCreate(heldItem, Math.max(0, GunAmmo.get(heldItem) - 1));
+               // A round left the gun, so one case is now owed. Guns with ejectDuringReload drop it
+               // during the reload animation instead of at fire time (SpentRounds).
+               SpentRounds.add(heldItem);
             }
          }
       }
