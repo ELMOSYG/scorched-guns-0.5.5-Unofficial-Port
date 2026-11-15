@@ -825,14 +825,15 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
 
                int actualReloadTime = (int)Math.ceil((double)GunEnchantmentHelper.getRealReloadSpeed(stack) / reloadSpeedMultiplier);
                float speedMultiplier = (float)modifiedGun.getReloads().getReloadTimer() / (float)actualReloadTime;
-               // The fetch stays write-shaped on purpose: re-installing the component here detaches the
-               // tag the caller fetched, and that is currently what keeps this client-side MANUAL state
-               // machine from writing the same reload keys the server writes. Making it read-only would
-               // revive a second writer of scguns:ReloadState / IsPlayingReloadStop - exactly the
-               // "three state machines with no authority" problem in docs/reload-system.md, which is
-               // phase 3's decision to make, not a mechanical clean-up.
-               CompoundTag tag = NbtHelper.getOrCreateTag(stack);
-               int currentAmmo = GunAmmo.get(tag);
+               // Read the caller's tag, do not fetch another one. A second
+               // NbtHelper.getOrCreateTag(stack) re-installs the component and detaches the nbt this
+               // method was handed, so every putString below (STARTING / LOADING / STOPPING) went into an
+               // orphaned compound: the machine re-read NONE on the next tick and re-triggered
+               // reload_start once per tick. The 2026-11-15 15:25 client log shows exactly that -
+               // "NONE -> STARTING" dozens of times per reload with the same ammo value, and never a
+               // STARTING -> LOADING - on every MANUAL gun. 0.5.5 read the live tag here and the
+               // transitions worked, so this is the port drifting from it (HANDOFF 83.18).
+               int currentAmmo = GunAmmo.get(nbt);
                int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(stack, modifiedGun);
                boolean ammoFull = currentAmmo >= maxAmmo;
                boolean hasNoAmmo = Gun.findAmmo(player, modifiedGun.getProjectile().getItem()).stack().isEmpty();

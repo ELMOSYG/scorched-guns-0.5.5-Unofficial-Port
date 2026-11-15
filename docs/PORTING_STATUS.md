@@ -2324,3 +2324,70 @@ controller.tryTriggerAnimation(isInCarbineMode ? "carbine_reload_stop" : "reload
 
 下一步若还要更平滑，只能改**表现层**（例如保留 `stop()` 但在触发前把速度归零一帧），
 但那已经偏离原作，属于设计选择，不再是移植正确性问题。
+
+---
+
+## 83.18 手动装填的"每 tick 重开"根因：状态机的写入全部写进了被丢弃的 tag
+
+> 玩家："这个问题出在所有手动装填的枪械上"；并附客户端日志。
+> 这一轮只加了 `[SCGUNS-RS]` 观测，日志直接给出了答案。
+
+### 83.18.1 日志形态（决定性）
+
+```
+[15:25:06.923] [SCGUNS-RS] NONE -> STARTING (reload_start), ammo=0
+[15:25:06.967] [SCGUNS-RS] NONE -> STARTING (reload_start), ammo=0
+[15:25:07.018] [SCGUNS-RS] NONE -> STARTING (reload_start), ammo=0    ← 同一秒内 ~65 次
+...
+[15:25:07.865] [SCGUNS-RS] NONE -> STARTING (reload_start), ammo=1
+```
+
+- **同一状态每 tick 迁移一次**（间隔 ≈50 ms），`ammo` 不变；
+- **一次 `STARTING -> LOADING` 都没有**；
+- 每次 `state=` 读回来的还是 `NONE`/空。
+
+⇒ 状态机把 `STARTING` 写进 tag 之后，**下一 tick 读回来的仍是 NONE**，于是永远重开 `reload_start`，
+进不了 `reload_loop`。表现就是"所有手动枪装填动画一直重来/卡一下"。
+
+### 83.18.2 根因：tick 内的第二次 `getOrCreateTag` 把参数 tag 变成孤儿
+
+`AnimatedGunItem.handleReloadingState(CompoundTag nbt, ...)` 里原本有这么一段：
+
+```java
+// 旧注释：故意用"写形状"的取法，让这个客户端状态机写不进服务端那批键
+CompoundTag tag = NbtHelper.getOrCreateTag(stack);
+int currentAmmo = GunAmmo.get(tag);
+```
+
+1.21 的 `PatchedDataComponentMap.set` **每次都会装一个新的实例**；这里再取一次 tag，就把方法参数
+`nbt`（调用方 `clientInventoryTick` 持有的那一个）**顶掉、变成孤儿**。
+而下面 `switch` 里所有写入都是 `nbt.putString(...)` ⇒ **全部写进被丢弃的 compound**，
+读 `nbt.getString("scguns:ReloadState")` 自然还是空的。
+
+这条"故意"的写法是早前为了压住"客户端状态机与服务端争写 `ReloadState`"而加的（`docs/reload-system.md`
+§8.3 的取舍）。现在有证据说明：**它压住的不只是争写，还压死了整个状态机**。
+
+### 83.18.3 修法
+
+`handleReloadingState` 改为直接用调用方传进来的活 tag：
+
+```java
+int currentAmmo = GunAmmo.get(nbt);   // 不再 getOrCreateTag(stack)
+```
+
+这也是 **0.5.5 的写法**（原作此处就是 `stack.getOrCreateTag()` 一个句柄用到底），所以属于"回到原作"，
+而不是新设计。
+
+### 83.18.4 新增审计规则（防复发）
+
+`audit_nbt_write_alias.py` 增加一条：**方法参数里已经有 `CompoundTag nbt/nbtCompound/tag` 时，
+方法体内不得再 `NbtHelper.getOrCreateTag/getTagForWrite/getTag(...)`** —— 因为那次取法会把参数顶掉。
+
+- 反向验证：`backup-reloadstate-20261115` 的旧文件上该规则**命中 10+ 处**；
+- 当前工作区：**0 命中**（0.5.5 语义 + 我们的 NbtHelper 封装都满足）。
+
+### 83.18.5 门禁
+
+`javac` 0（1038 文件）、61 审计（2 个既有无关失败）、`verify_installed_jar` **305/305**、
+已安装（备份 `.bak-152826`）。`[SCGUNS-RS]` 追踪暂时保留，用于确认下一次日志里
+`STARTING -> LOADING` 出现一次、且不再有重复的 `NONE -> STARTING`。

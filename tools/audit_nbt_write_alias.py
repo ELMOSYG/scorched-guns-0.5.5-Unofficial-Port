@@ -27,7 +27,8 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, 'src', 'main', 'java', 'top', 'ribs', 'scguns')
+# SCGUNS_AUDIT_SRC lets a pre-fix revision be audited (the reverse check for new rules).
+SRC = os.environ.get('SCGUNS_AUDIT_SRC') or os.path.join(ROOT, 'src', 'main', 'java', 'top', 'ribs', 'scguns')
 
 MUTATOR = r'(put|remove|merge)'
 DIRECT_WRITE = re.compile(r'NbtHelper\.getTag\(([^()]*)\)\s*\.\s*' + MUTATOR)
@@ -36,6 +37,8 @@ ANY_NBT_CALL = re.compile(r'NbtHelper\.(getTag|getOrCreateTag|getTagForWrite|set
 # Helpers that read the same stack's custom-data tag and therefore re-detach it.
 # ScEnchants.level() is deliberately absent: it reads the ENCHANTMENTS component.
 TAG_READING_HELPER = re.compile(r'\bGun\.getAmmoCount\s*\(')
+# Parameter names that mean "the caller holds this tag and keeps writing through it".
+COMMON_TAG_PARAM = re.compile(r'CompoundTag\s+(nbt|nbtCompound|tag)\b')
 
 
 def depths(lines):
@@ -70,7 +73,7 @@ def main():
             if not name.endswith('.java'):
                 continue
             path = os.path.join(base, name)
-            rel = os.path.relpath(path, ROOT).replace('\\', '/')
+            rel = os.path.relpath(path, SRC).replace('\\', '/')
             with open(path, 'r', encoding='utf-8', errors='replace') as fh:
                 lines = fh.read().splitlines()
             dep = depths(lines)
@@ -117,6 +120,33 @@ def main():
                                         'still used at line %d -- split the write instead'
                                         % (rel, i + 1, var, kind, arg, j + 1, text.strip(), last + 1))
                         break
+
+        # A method that is HANDED a CompoundTag must write through it, not fetch another one: the
+        # fetch re-installs the component and detaches the tag the caller is still mutating. This is
+        # how the client MANUAL reload state machine silently lost every state it wrote - it re-entered
+        # "NONE" once per tick and restarted reload_start forever (2026-11-15 client log, HANDOFF 83.18).
+        signature = re.compile(r'^\s*(?:public|private|protected)[^;{]*\((?P<params>[^)]*)\)\s*\{')
+        for i, line in enumerate(lines):
+            match = signature.match(line)
+            if not match:
+                continue
+            params = match.group('params')
+            handed = COMMON_TAG_PARAM.search(params)
+            if not handed:
+                continue
+            d = dep[i]
+            body_end = i + 1
+            while body_end < len(lines):
+                if dep[body_end] <= d and lines[body_end].strip() in ('}', '};'):
+                    break
+                body_end += 1
+            for j in range(i + 1, body_end):
+                if re.search(r'NbtHelper\.(getOrCreateTag|getTagForWrite|getTag)\(', lines[j]):
+                    problems.append('%s:%d method parameter %s is replaced by a fresh tag at line %d (%s) -- '
+                                    'the fetch detaches the caller\'s tag, so writes through %s go nowhere; '
+                                    'read through the parameter instead'
+                                    % (rel, i + 1, handed.group(1), j + 1, lines[j].strip(), handed.group(1)))
+                    break
 
     print('NBT write-aliasing findings: %d' % len(problems))
     for p in problems:
