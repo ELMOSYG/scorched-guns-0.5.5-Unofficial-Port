@@ -9006,3 +9006,85 @@ v4 = 把开火那条路径抄进 `handleStopReload`（设 `ReloadComplete`、`tr
 - **视觉只能玩家看**：确认"逐发压满 → 直接接 `reload_stop` → 回 idle，全程无 idle 插播"。
 - **客户端 MANUAL 状态机仍然是死的**（83.14.2 第 2 条）。要修 `reload_start → reload_loop` 的过渡，
   需把那个 `getOrCreateTag` 改只读并处理"两个写入者"，属高风险项，**没人报之前不要动**。
+
+---
+
+## 83.15 客户端卡在启动界面：Framework 的客户端服务在资源重载线程里解析不到（玩家报告，已绕开）
+
+> 玩家："卡在启动阶段"，附 `logs/latest.log`。日志里**没有** scguns 的报错。
+
+### 83.15.1 日志里的真实死因
+
+```
+[14:41:17.275] [Render thread/INFO] [Minecraft]: Caught error loading resourcepacks, removing all selected resourcepacks
+java.util.concurrent.CompletionException: java.lang.ExceptionInInitializerError
+  at framework/openmodel...OpenModelDeserializer.readBlockElement(OpenModelDeserializer.java:71)
+Caused by: java.lang.NullPointerException: Failed to load service for
+           com.mrcrayfish.framework.platform.services.IClientHelper
+  at framework/platform/Services.lambda$load$0(Services.java:22)      ← Optional.orElseThrow
+[14:41:19.028] [Render thread/ERROR] [fml.ModLoader]: Cowardly refusing to send event
+           dev.engine_room.flywheel.api.event.EndClientResourceReloadEvent to a broken mod state
+```
+
+链路：模型反序列化（**ForkJoinPool worker**）→ Framework 懒加载 `IClientHelper` → 找不到 provider →
+`ExceptionInInitializerError` → 整个模型加载失败 → 客户端**丢掉所有资源包并重载第二遍** →
+NeoForge 把状态标记为 broken、拒绝发送"资源重载结束"事件 ⇒ **加载界面永远不结束**。
+
+### 83.15.2 机制与"为什么是偶发"
+
+`Services.load` 的实现（`javap -c` 核对）就是：
+
+```java
+ServiceLoader.load(serviceClass).findFirst()
+   .orElseThrow(() -> new NullPointerException("Failed to load service for " + ...));
+```
+
+`ServiceLoader.load` 用**当前线程的 context class loader**。主线程的 TCCL 是能看见 mod jar 的转换加载器；
+**ForkJoinPool worker 的 TCCL 不是**，于是查出来是空的。Framework 的 jar 和 service 文件都完好
+（只有一份 framework、`META-INF/services/...IClientHelper → NeoForgeClientHelper` 存在），所以这不是坏 jar。
+
+**偶发证明**：对比同一实例最近 5 次启动 ——
+
+| 启动 | 重复注册错误 | broken mod state | `Failed to load service` |
+|---|---|---|---|
+| 14:07 / 14:16 / 14:29 / 14:40（前四次） | 各 17 条 | 0 | 0 |
+| **本次（14:40→14:42）** | 17 条 | **1** | **1** |
+
+同一批 mod、同样的 17 条重复注册（那是 blueprint / createbigcannons / create_dragons_plus 的既有噪音，
+每次都有，**不是**本次的触发点），唯一新出现的就是 Framework 的服务解析失败 ⇒ 谁先在 worker 线程上
+触发 `ClientServices.<clinit>`，谁就中招。
+
+### 83.15.3 绕开方式（在我们的 mod 里做，因为 Framework 是必需依赖）
+
+`ClientHandler.onClientSetup`（客户端、主线程、**第一次资源重载之前**）里摸一下
+`com.mrcrayfish.framework.platform.ClientServices.CLIENT`，把 `IClientHelper` 的解析固定在主线程：
+
+```java
+private static void pinFrameworkClientService() {
+   try {
+      Object clientService = com.mrcrayfish.framework.platform.ClientServices.CLIENT;
+      if (clientService == null) { LOGGER.warn(...); }
+   } catch (Throwable failure) {
+      LOGGER.warn("Could not resolve Framework's client service early; ...", failure);
+   }
+}
+```
+
+之后无论哪个线程访问，都是读这个已初始化的静态字段，不再各自去 `ServiceLoader`。
+`NeoForgeClientHelper` 的静态初始化只是建一个 `BlockElement.Deserializer`，在 client setup 阶段加载无副作用。
+整段包在 `try/catch` 里：以后 Framework 改了字段名，最坏也只是**回到偶发**，不会把客户端弄崩。
+
+### 83.15.4 门禁
+
+`verify_installed_jar` 新增 1 项：`ClientHandler.class` 必须引用
+`com/mrcrayfish/framework/platform/ClientServices`。**反向验证**：上一版 jar **303/305**（该项 FAIL），
+新 jar **305/305**；`javac` 0（1038 文件）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-144614`）。
+
+### 83.15.5 顺带记录（不是我们修的）
+
+- 那些 17 条重复注册（`blueprint:slabfish_head`、`createbigcannons` 的 loader contraption、
+  `create_dragons_plus` 的 `create:potion` 流体）在**每一次**启动里都有，属于这几个 mod 的版本冲突噪音；
+  它们不是本次卡住的原因，但真要追查其它问题，先把这几对版本对齐会更干净。
+- 这次还看到 `Access transformer file accesstransformer.cfg provided by mod irisflw does not exist!`、
+  `Invalid path in pack: farmers_spell:.../blood _chuanchuan.png`、`Brightness 16.0 outside of range`
+  —— 都是别人的 mod/资源包问题，与本 mod 无关。

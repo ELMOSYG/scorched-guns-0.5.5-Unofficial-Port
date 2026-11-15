@@ -1640,6 +1640,15 @@ def main():
             zf, "top/ribs/scguns/item/animated/AnimatedGunItem.class", b"pendingReloadStop",
             "the abandoned client-side stop deferral is not back (it idled while it waited)"))
 
+        # 83.15. Framework 0.13.11 resolves IClientHelper lazily on whatever thread first touches
+        # ClientServices; on a resource-reload worker that lookup cannot see mod jars, and the resulting
+        # failure makes the client drop every resource pack and reload - which hangs the loading screen.
+        # Pin it from the client setup on the main thread.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/ClientHandler.class",
+            b"com/mrcrayfish/framework/platform/ClientServices",
+            "Framework's client service is resolved on the main thread at client setup"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

@@ -2136,3 +2136,33 @@ selftest 在 `backup-reloadstate-20261115` 上报 6 条；`verify_installed_jar`
 **未验**：视觉只能玩家看（逐发压满 → 当前这发压完接着播 `reload_stop` → 回 idle）。
 **客户端 MANUAL 状态机仍然是死的**；要修 `reload_start → reload_loop` 过渡需处理"两个写入者"，高风险，
 没人报之前不要动。
+
+## §83.15 客户端卡在启动界面：Framework 客户端服务解析失败（玩家报告，已绕开）
+
+**玩家**："卡在启动阶段" + `logs/latest.log`。日志里没有 scguns 报错，真正的死因是：
+
+```
+Caught error loading resourcepacks, removing all selected resourcepacks
+Caused by: java.lang.NullPointerException: Failed to load service for
+           com.mrcrayfish.framework.platform.services.IClientHelper
+Cowardly refusing to send event EndClientResourceReloadEvent to a broken mod state
+```
+
+模型反序列化在 **ForkJoinPool worker** 上懒加载 Framework 的 `IClientHelper`，worker 的 TCCL 看不见
+mod jar ⇒ `ServiceLoader` 查空 ⇒ `ExceptionInInitializerError` ⇒ 模型加载失败 ⇒ 丢掉全部资源包重载
+一遍 ⇒ NeoForge 标记 broken、拒发"重载结束"事件 ⇒ 加载界面不结束。
+
+**为什么偶发**：同一实例前 4 次启动（14:07 / 14:16 / 14:29 / 14:40）都有那 17 条重复注册噪音，但
+`broken state` 与 `Failed to load service` 均为 **0**；本次唯一新增的就是它 ⇒ 谁先在 worker 线程碰
+`ClientServices.<clinit>`，谁就中招。framework jar 与 service 文件本身完好（已核对，实例里只有一份）。
+
+**绕开**：`ClientHandler.onClientSetup`（客户端、主线程、首次资源重载之前）摸一下
+`ClientServices.CLIENT`，把解析固定在主线程，并用 `try/catch` 包住（Framework 以后改字段名，
+最坏只是回到偶发）。
+
+**门禁**：`verify_installed_jar` 新增 1 项（`ClientHandler.class` 必须引用 `.../ClientServices`）⇒
+上一版 jar **303/305**（该项 FAIL），新 jar **305/305**；`javac` 0（1038）、61 审计（2 个既有无关失败）、
+已安装（备份 `.bak-144614`）。
+
+**顺带**：那 17 条重复注册（blueprint / createbigcannons / create_dragons_plus）每次启动都有，
+不是本次原因，但值得把这几对 mod 版本对齐。

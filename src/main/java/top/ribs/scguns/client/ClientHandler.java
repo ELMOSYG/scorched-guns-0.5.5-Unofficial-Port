@@ -315,7 +315,39 @@ public class ClientHandler {
       }
    }
 
+   /**
+    * Resolves Framework's client service on the main thread before a resource-reload worker can.
+    *
+    * <p>Framework 0.13.11 resolves {@code IClientHelper} lazily, through {@code ServiceLoader.load}, on
+    * whichever thread first touches {@code ClientServices}. Model deserialisation runs on a
+    * {@code ForkJoinPool} worker, and a worker's context class loader cannot see mod jars, so the lookup
+    * comes back empty and Framework throws {@code NullPointerException: Failed to load service for
+    * com.mrcrayfish.framework.platform.services.IClientHelper}. The model load then fails, the client
+    * throws away every selected resource pack and reloads a second time, and NeoForge refuses the
+    * reload-finished event "to a broken mod state" - which the player sees as the client hanging on the
+    * loading screen. It is a race: in the 2026-11-15 client log four consecutive launches with the same
+    * mods had no such failure and the fifth did.</p>
+    *
+    * <p>Touching the field here initialises {@code ClientServices} while the main thread's context class
+    * loader is the transforming loader that can see the Framework jar, so every later call - from any
+    * thread - is served from that cached static instead of doing its own lookup.</p>
+    *
+    * <p>Deliberately wrapped: if a future Framework renames the field, this should stop helping rather
+    * than break the client.</p>
+    */
+   private static void pinFrameworkClientService() {
+      try {
+         Object clientService = com.mrcrayfish.framework.platform.ClientServices.CLIENT;
+         if (clientService == null) {
+            ScorchedGuns.LOGGER.warn("Framework's client service resolved to null; resource reload workers may fail to find it");
+         }
+      } catch (Throwable failure) {
+         ScorchedGuns.LOGGER.warn("Could not resolve Framework's client service early; resource reload workers may fail to find it", failure);
+      }
+   }
+
    private static void onClientSetup(FMLClientSetupEvent event) {
+      pinFrameworkClientService();
       // Punchy animates whatever is held and only knows the gun mods it ships support for, so its
       // blacklist gets this mod's guns added here (client side, once per launch).
       top.ribs.scguns.compat.PunchyBlacklistCompat.onClientSetup();
