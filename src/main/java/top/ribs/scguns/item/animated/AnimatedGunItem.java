@@ -68,6 +68,8 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    public static final String RELOAD_STATE = "scguns:ReloadState";
    /** Temporary: last reload state written to the log, so each transition is logged once (HANDOFF 83.18). */
    private static String lastTracedReloadState = "";
+   /** Temporary: last clip/state pair logged (HANDOFF 83.20). */
+   private static String lastTracedAnimKey = "";
    private final GunRotationHandler rotationHandler = new GunRotationHandler();
 
    /** The model name this gun was registered with (its path, e.g. {@code laser_rifle}). */
@@ -209,6 +211,29 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
          }
 
          return;
+      }
+
+      if (entity instanceof Player animPlayer) {
+         AnimationController<GeoAnimatable> animController = (AnimationController<GeoAnimatable>)this.getAnimatableInstanceCache()
+            .getManagerForId(GeoItem.getId(stack)).getAnimationControllers().get("controller");
+         if (animController != null) {
+            String clip = this.isAnimationPlaying(animController, "reload_stop") ? "reload_stop"
+               : this.isAnimationPlaying(animController, "carbine_reload_stop") ? "carbine_reload_stop"
+               : this.isAnimationPlaying(animController, "reload_loop") ? "reload_loop"
+               : this.isAnimationPlaying(animController, "carbine_reload_loop") ? "carbine_reload_loop"
+               : this.isAnimationPlaying(animController, "reload_start") ? "reload_start"
+               : this.isAnimationPlaying(animController, "reload") ? "reload"
+               : this.isAnimationPlaying(animController, "idle") ? "idle"
+               : "-";
+            String key = clip + "/" + nbtCompound.getString("scguns:ReloadState");
+            if (!key.equals(lastTracedAnimKey)) {
+               lastTracedAnimKey = key;
+               top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-ANIM] clip={} state={} reloading={} stopOwed={}",
+                  clip, nbtCompound.getString("scguns:ReloadState"),
+                  ModSyncedDataKeys.RELOADING.getValue(animPlayer),
+                  nbtCompound.getBoolean("scguns:IsPlayingReloadStop"));
+            }
+         }
       }
 
       boolean currentReloading = nbtCompound.getBoolean("scguns:IsReloading");
