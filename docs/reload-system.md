@@ -303,28 +303,38 @@ after full tick 2:   ammo=2 reloading=false state=STOPPING playingStop=true  sho
 ### 10.3 修法：把切换点挪到循环周期的边界
 
 不去复活那张状态机（它一旦有写权限就会与服务端争同一批键，见 §8.3 的取舍），而是在**已有的、
-每循环触发一次的关键帧**上做交接：
+每循环触发一次的关键帧**上做交接。
+
+> **第一版错了，这是玩家实测的第二版**：`reload_stop` 的待处理标记一开始写在**物品 NBT**
+> （`scguns:ReloadStopAtCycleEnd`）里，玩家实测的结果是"直接衔接到 idle"。原因很清楚：**服务端才是
+> 物品 tag 的权威方**，它随后任何一次槽位同步都会把客户端写进去的键整段覆盖掉；标记一丢，
+> §10.2 的兜底分支就把循环收成 idle。
+> **教训：客户端的临时状态不要写进服务端拥有的物品 tag。**
+
+第二版把待处理标记放在**客户端静态内存**里（`pendingReloadStopStack` / `pendingReloadStopAt`），
+并用一个 `ready` 标志把"关键帧"和"切动画"拆成两步：
 
 | 位置 | 改动 |
 |---|---|
-| `ClientPlayHandler.handleStopReload` | 若 `reload_loop`/`carbine_reload_loop` 正在播 ⇒ **不切**，只写 `scguns:ReloadStopAtCycleEnd` + 时间戳，并清掉刚同步来的 STOPPING（否则 MANUAL 同步逻辑会在 50 ms 后提前收尾）；没有循环在播时维持原行为 |
-| `AnimatedGunItem.particleListener` 的 `"loaded"` 关键帧 | 若上面那个标记在 ⇒ 消费它并调用新的 `beginReloadStop(...)`：写 STOPPING / IsPlayingReloadStop 并 `tryTriggerAnimation("reload_stop")` |
-| `AnimatedGunItem.handleMainAnimationLogic` 的兜底分支 | 有标记时**等**（不再直接回 idle）；超过 **1.5 s** 仍没等到关键帧（循环里没有 `loaded`）就强制切。没有标记时保持原行为（卸载那种"无主循环"直接释放） |
-| `handleReloadStateSynchronization` | 有标记时**暂不收尾**，让过渡状态活到循环边界 |
-| `cleanupReloadState` | 顺手清掉这两个键（`ReloadStopAtCycleEnd` / `RequestedAt`），换枪/收枪不会把标记留给下一次换弹 |
+| `ClientPlayHandler.handleStopReload` | 若 `reload_loop`/`carbine_reload_loop` 正在播 ⇒ **不切**，调 `AnimatedGunItem.requestReloadStopAtCycleEnd(heldItem)`（**纯客户端内存**）并清掉刚同步来的 STOPPING；没有循环在播时维持原行为 |
+| `particleListener` 的 `"loaded"` 关键帧 | 只置 `pendingReloadStopReady = true`。**不在关键帧回调里切动画**：那是动画控制器的 tick 内部，`stop()`/`tryTriggerAnimation` 会造成重入 |
+| `handleMainAnimationLogic` 的兜底分支 | 下一个 inventory tick 看到 `ready`（或 1.5 s 超时）才调 `beginReloadStop(...)`；没有待处理请求时保持原行为（卸载那种"无主循环"直接释放） |
+| `handleItemNotHeld` | 枪离手时丢掉待处理请求 |
+| `beginReloadStop(...)` | 写 STOPPING / IsPlayingReloadStop 并 `tryTriggerAnimation("reload_stop")` |
 
-**为什么这样是"平滑"的**：`loaded` 关键帧就落在每个压弹循环的末尾，所以切换发生在**动作完成的那一刻**，
-而不是服务端说停就停的那一刻（最多晚一个循环 ≈ 0.667 s，而这 0.667 s 本来就该把手里那发压完）。
+**为什么这样是"平滑"的**：`loaded` 关键帧就落在每个压弹循环的末尾，所以切换发生在**动作完成的那一刻**
+（最多晚一个 inventory tick，≈ 50 ms），而不是服务端说停就停的那一刻。
 
 ### 10.4 未验 / 边界
 
 - **视觉效果只能玩家看**：本轮没有显示环境，客户端动画时序无法无头验证。请确认：
-  逐发压弹到满 → 当前这一发压完后**接着**播 `reload_stop`（不再半途跳过去）→ 回到 idle。
+  逐发压弹到满 → 当前这一发压完后**接着**播 `reload_stop`（不再半途跳过去、也不再直接回 idle）
+  → 回到 idle。
 - 1.5 s 兜底只在"循环动画里没有 `loaded` 关键帧"时触发；40 把 MANUAL 枪的 `reload_loop` 都有
   `loaded`（压弹靠它发包），所以正常不会用到。
 - **客户端 MANUAL 状态机仍然是死的**（10.2 第 2 条）。本轮只是绕开它实现平滑收尾；若要修
   它的 `reload_start → reload_loop` 过渡，就得把 `getOrCreateTag` 换成只读并处理"两个写入者"，
   那是 §8.3 说的高风险项，**没有玩家报这个问题之前不要动**。
-- 门禁：`verify_installed_jar` 新增 2 项（两个类都必须带 `ReloadStopAtCycleEnd`）⇒ 上一版 jar
-  **297/304**（2 项 FAIL），新 jar **304/304**；`javac` 0（1038 文件）、61 审计（2 个既有无关失败）、
-  已安装（备份 `.bak-140323`）。
+- 门禁：`verify_installed_jar` 新增 2 项（`pendingReloadStopStack` 在客户端类里、`ClientPlayHandler`
+  调用 `requestReloadStopAtCycleEnd`）⇒ 上一版（tag 标记那版）**302/304**（2 项 FAIL），新 jar
+  **304/304**；`javac` 0（1038 文件）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-141526`）。

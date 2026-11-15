@@ -2114,14 +2114,16 @@ after full tick 2: ammo=2 reloading=false state=STOPPING playingStop=true
 各 `getOrCreateTag` 一次，探针实测 `first == second: false`、写入不落地 ⇒ 它自带的
 "等循环播完再转 STOPPING"（`PendingStopTransition`）**从来没生效**。
 
-**修法**：把切换点挪到循环周期的 `loaded` 关键帧。`handleStopReload` 在 `reload_loop` 播放时只写
-`scguns:ReloadStopAtCycleEnd` + 时间戳（并清掉刚同步来的 STOPPING，否则同步逻辑 50 ms 后提前收尾），
-关键帧里消费它并调新的 `beginReloadStop(...)`；`handleMainAnimationLogic` 兜底分支有标记时等待、
-1.5 s 超时才强制切；同步逻辑在标记存在时暂不收尾；`cleanupReloadState` 清标记。
+**修法（第二版；第一版被玩家实测否掉）**：第一版把待处理标记写进**物品 NBT**，玩家实测变成"直接回
+idle" —— **服务端才是物品 tag 的权威方**，它随后的槽位同步会把客户端写的键整段覆盖。第二版把标记放在
+**客户端静态内存**（`pendingReloadStopStack`/`pendingReloadStopAt`）：`handleStopReload` 在
+`reload_loop` 播放时只登记请求（并清掉刚同步来的 STOPPING）；`loaded` 关键帧只置 `ready`
+（不在动画回调里切，避免重入）；下一个 inventory tick（或 1.5 s 超时）才调 `beginReloadStop(...)`
+播 `reload_stop`。`handleItemNotHeld` 丢掉请求。
 
-**门禁**：`verify_installed_jar` 新增 2 项（两个类都要带 `ReloadStopAtCycleEnd`）⇒ 上一版 jar
-**297/304**（2 项 FAIL），新 jar **304/304**；`javac` 0（1038）、61 审计（2 个既有无关失败）、
-已安装（备份 `.bak-140323`）。
+**门禁**：`verify_installed_jar` 2 项（`pendingReloadStopStack` 在客户端类里、`ClientPlayHandler` 调
+`requestReloadStopAtCycleEnd`）⇒ 上一版 **302/304**（2 项 FAIL），新 jar **304/304**；
+`javac` 0（1038）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-141526`）。
 
 **未验**：视觉只能玩家看（逐发压满 → 当前这发压完接着播 `reload_stop` → 回 idle）。
 **客户端 MANUAL 状态机仍然是死的**；要修 `reload_start → reload_loop` 过渡需处理"两个写入者"，高风险，

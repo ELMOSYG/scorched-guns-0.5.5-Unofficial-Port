@@ -532,14 +532,14 @@ public class ClientPlayHandler {
                   // reload_loop is authored as a looping clip, so it never reports the end of a cycle:
                   // cutting it here switches animations in the middle of the motion, which is what the
                   // player described as "no smooth transition into reload_stop". Ask for the stop at the
-                  // next "loaded" keyframe (the cycle boundary) instead; the state machine also has a
-                  // timeout in case the clip has no such keyframe.
+                  // next "loaded" keyframe (the cycle boundary) instead.
                   //
-                  // The state the server just wrote is dropped for the same reason: the MANUAL sync would
-                  // treat a STOPPING state as "already transitioning" and finish the transition in 50 ms,
-                  // long before the cycle ends.
-                  tag.putBoolean("scguns:ReloadStopAtCycleEnd", true);
-                  tag.putLong("scguns:ReloadStopRequestedAt", System.currentTimeMillis());
+                  // The pending stop lives in the client, NOT in the item tag: the server owns that tag,
+                  // and its next slot sync replaces it wholesale - which is exactly how the first version
+                  // of this fix lost the request and fell through to idle. The state the server just
+                  // wrote is dropped for the same reason: the MANUAL sync would treat a STOPPING state as
+                  // "already transitioning" and finish the transition in 50 ms, long before the cycle ends.
+                  AnimatedGunItem.requestReloadStopAtCycleEnd(heldItem);
                   tag.remove("scguns:ReloadState");
                   tag.remove("scguns:IsPlayingReloadStop");
                } else {
