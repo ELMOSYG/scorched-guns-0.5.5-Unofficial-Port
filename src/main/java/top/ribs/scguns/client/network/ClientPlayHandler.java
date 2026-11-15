@@ -518,13 +518,16 @@ public class ClientPlayHandler {
          ItemStack heldItem = player.getMainHandItem();
          if (heldItem.getItem() instanceof AnimatedGunItem gunItem) {
             CompoundTag tag = NbtHelper.getOrCreateTag(heldItem);
-            // Same sequence the firing path uses to interrupt a reload (GunEventBus#preShoot), because
-            // that one is smooth and this one was not. The difference is what it does NOT do: it never
-            // calls controller.stop() first. "reload_stop" is registered as a chain that plays the clip
-            // and then loops idle (GunAnimations.RELOAD_STOP), so triggering it is already the whole
-            // transition - stopping the controller beforehand threw away the pose it blends from, which
-            // is what made the switch look like a jump (HANDOFF 83.14).
-            tag.putBoolean("scguns:ReloadComplete", true);
+            // Verbatim 0.5.5 (decompiled from ScorchedGuns-0.5.5-1.20.1.jar):
+            // ClientPlayHandler.handleStopReload wrote the state itself, stopped the controller and
+            // triggered the clip. isPlayingCriticalAnimations excludes reload_stop /
+            // carbine_reload_stop, so nothing takes the controller away while the clip plays and its
+            // own chain ends on idle. Earlier rounds here tried to be "smoother" by dropping the stop()
+            // and by leaving the state machine to start the clip; the original mechanism is this one,
+            // and the port is faithful to it again (HANDOFF 83.17).
+            tag.putString("scguns:ReloadState", "STOPPING");
+            tag.putBoolean("scguns:IsPlayingReloadStop", true);
+            tag.remove("InReloadLoop");
             tag.remove("scguns:IsReloading");
             ModSyncedDataKeys.RELOADING.setValue(player, false);
             long id = GeoItem.getId(heldItem);
@@ -533,6 +536,8 @@ public class ClientPlayHandler {
                .getAnimationControllers()
                .get("controller");
             if (animationController != null) {
+               animationController.stop();
+               animationController.setAnimationSpeed(1.0);
                animationController.tryTriggerAnimation(gunItem.isInCarbineMode(heldItem) ? "carbine_reload_stop" : "reload_stop");
             }
          }

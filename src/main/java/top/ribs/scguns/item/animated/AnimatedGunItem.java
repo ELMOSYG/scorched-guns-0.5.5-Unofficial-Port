@@ -267,9 +267,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
          }
       } else {
          boolean isInTransitionState = currentReloadState.equals("STOPPING") || nbtCompound.getBoolean("scguns:IsPlayingReloadStop");
-         // STARTING/LOADING means the client state machine believes a reload is in progress - for a
-         // MANUAL gun that is the loop that waits for the server to finish (see the branch below).
-         boolean midReload = currentReloadState.equals("STARTING") || currentReloadState.equals("LOADING");
          boolean playerTryingToAim = false;
          if (entity instanceof Player) {
             playerTryingToAim = KeyBinds.getAimMapping().isDown();
@@ -281,14 +278,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                nbtCompound.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.NONE.name());
             }
          } else if (!serverReloading && currentReloading && !isInTransitionState) {
-            nbtCompound.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.STOPPING.name());
-            nbtCompound.putBoolean("scguns:IsPlayingReloadStop", true);
-         } else if (!serverReloading && midReload && !isInTransitionState) {
-            // The server ended the reload while the client state machine was still in STARTING/LOADING
-            // - the MANUAL waiting phase, where the reload clip keeps looping until the server says it
-            // is done. Without this the state stayed LOADING, no branch claimed the stop, and the
-            // release branch below cut the loop straight to idle: what the player described as
-            // "finishing the reload plays idle directly, with no transition animation".
             nbtCompound.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.STOPPING.name());
             nbtCompound.putBoolean("scguns:IsPlayingReloadStop", true);
          } else if (!serverReloading && isInTransitionState && !playerTryingToAim) {
@@ -594,12 +583,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                if (nbtCompound.contains("scguns:ReloadState")
                   && nbtCompound.getString("scguns:ReloadState").equals(AnimatedGunItem.ReloadState.STOPPING.name())) {
                   this.handleReloadingState(nbtCompound, animationController, stack);
-               } else if (this.isPlayingStopAnimation(animationController)) {
-                  // The stop clip carries its own transition into idle (GunAnimations.RELOAD_STOP is
-                  // the clip followed by thenLoop("idle")), so it must be left alone until it ends.
-                  // Letting either branch below run takes the controller away a tick or two in, which
-                  // is what the player saw as "no transition animation at all" (HANDOFF 83.16).
-                  animationController.setAnimationSpeed(1.0);
                } else if (nbtCompound.getBoolean("IsAiming")) {
                   this.handleAimingState(nbtCompound, animationController);
                } else if (nbtCompound.getBoolean("IsRunning") && this.isPlayingInspectOrReloadAnimations(animationController)) {
@@ -617,7 +600,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                   // of moving it to STOPPING), and every cycle refired its eject/loaded keyframes (the
                   // free-casing report). Hand the controller back to idle and drop the stale tags; a
                   // real reload never reaches this branch because it returns above with isReloading true.
-                  top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-STOP] releasing a reload animation that outlived its reload (cut to idle)");
                   this.cleanupAllReloadTags(nbtCompound);
                   animationController.stop();
                   animationController.setAnimationSpeed(1.0);
@@ -647,12 +629,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
          && !this.isAnimationPlaying(animationController, "carbine_inspect")
          && !this.isAnimationPlaying(animationController, "reload_stop")
          && !this.isAnimationPlaying(animationController, "carbine_reload_stop");
-   }
-
-   @OnlyIn(Dist.CLIENT)
-   private boolean isPlayingStopAnimation(AnimationController<GeoAnimatable> animationController) {
-      return this.isAnimationPlaying(animationController, "reload_stop")
-         || this.isAnimationPlaying(animationController, "carbine_reload_stop");
    }
 
    @OnlyIn(Dist.CLIENT)
@@ -943,22 +919,9 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                      }
                      break;
                    case STOPPING:
-                      boolean stopClipPlaying = this.isAnimationPlaying(animationController, "reload_stop")
-                         || this.isAnimationPlaying(animationController, "carbine_reload_stop");
-                      if (!stopClipPlaying && nbt.getBoolean("scguns:IsPlayingReloadStop")) {
-                         top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-STOP] starting the stop clip from STOPPING (the reload ended and nothing had played it)");
-                         // The server marks the stop as owed (IsPlayingReloadStop) when it ends a reload, but
-                         // handleReloadStateSynchronization wipes that marker again 50 ms later
-                         // (finishReloadTransition). Nothing else ever started the clip, and the branch below only
-                         // acts once a stop clip has *finished* - so a finished reload landed straight on idle with
-                         // no transition at all. Start it here, replacing the loop exactly the way the firing path
-                         // does: no controller.stop(), because that throws away the pose the clip blends from
-                         // (HANDOFF 83.14 / 83.16).
-                         animationController.setAnimationSpeed(1.0);
-                         animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_reload_stop" : "reload_stop");
-                         break;
-                      }
-                      if (!stopClipPlaying && animationController.getAnimationState() == State.STOPPED) {
+                      if (!this.isAnimationPlaying(animationController, "reload_stop")
+                         && !this.isAnimationPlaying(animationController, "carbine_reload_stop")
+                         && animationController.getAnimationState() == State.STOPPED) {
                          animationController.setAnimationSpeed(1.0);
                          this.cleanupReloadState(nbt);
                          nbt.remove("LastReloadStateChange");
@@ -971,7 +934,7 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                             animationController.tryTriggerAnimation("idle");
                          }
                       }
-                      break;
+
                }
             }
          }

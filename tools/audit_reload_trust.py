@@ -148,20 +148,24 @@ def problems_for(sources: dict[str, str]) -> list[str]:
         problems.append("a reload animation that outlived its reload is never released: the loop keeps "
                         "playing (and keeps firing its keyframes) until the player switches items")
 
-    # The firing path interrupts a reload smoothly, and the whole difference is that it does NOT stop
-    # the controller first: "reload_stop" is registered as a chain that plays the clip and then loops
-    # idle, so triggering it is already the transition. The stop packet used to stop() first, which
-    # threw away the pose it blends from - the player described that as "no smooth transition".
+    # 0.5.5's own mechanism (verified against the decompiled jar): handleStopReload writes the STOPPING
+    # state and the IsPlayingReloadStop marker itself and triggers the stop clip. That matters because
+    # the transition cleanup clears those markers 50 ms later, so whoever starts the clip has to be the
+    # packet handler - nothing else reliably runs before the state is gone. An earlier round of this
+    # audit banned stop() here on the theory that it broke the blend; the original calls it, and the
+    # port is faithful again (HANDOFF 83.17).
     client_play = strip_comments(sources.get(CLIENT_PLAY, ""))
     stop_reload = method_body(client_play, "public static void handleStopReload(")
     if stop_reload is None:
         problems.append("ClientPlayHandler.handleStopReload is gone")
     else:
+        if '"scguns:ReloadState"' not in stop_reload or "STOPPING" not in stop_reload:
+            problems.append("the stop packet does not write the STOPPING state itself, so the transition "
+                            "cleanup can clear the marker before anything starts the clip")
+        if '"scguns:IsPlayingReloadStop"' not in stop_reload:
+            problems.append("the stop packet does not mark the stop as playing")
         if "tryTriggerAnimation" not in stop_reload:
             problems.append("the stop packet does not trigger the stop clip")
-        if ".stop()" in stop_reload:
-            problems.append("the stop packet stops the controller before triggering reload_stop: that "
-                            "throws away the pose the clip blends from and is what looked abrupt")
 
     return problems
 

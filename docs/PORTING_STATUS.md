@@ -2242,3 +2242,85 @@ Framework 不是"别人的 mod"：本 mod 的网络、同步数据键（`ModSync
 `ReloadTracker.updateAmmoPouchContents` 每次换弹都会把这些虚拟物品重新编码一遍（40 种弹药 × 每次）。
 同一机制还会在创造弹药箱被销毁时把 `MAX_VALUE` 的物品实体丢进世界。修法：虚拟内容不参与序列化
 （跳过创造箱），并让 `getContents` 给创造箱返回 count=1（它表达的是"有哪些弹药"，不是"有多少"）。
+
+---
+
+## 83.17 对照原作（反编译 0.5.5）：换弹收尾的真实机制，并把移植版改回去
+
+> 玩家："还是会卡一下，看看原作是什么机制。"
+> 方法：`需要移植的mod/ScorchedGuns-0.5.5-1.20.1.jar` 用 Vineflower 1.10.1 反编译
+> （脚本 `build/extract_orig055.py`、`build/extract_orig055b.py`，产物在 `build/orig055/src*`），
+> 逐方法与移植版对照。
+
+### 83.17.1 原作的三段机制（服务端 → 包 → 客户端）
+
+**服务端 `ReloadTracker`**（与原作一致，移植版没跑偏）：
+
+```java
+if (weaponFull || hasNoAmmo) {
+   if (animated && reloadType == MANUAL) {
+      if (!tag.getBoolean("scguns:ShouldStopAfterLoop")) { tag.putBoolean(..., true); return; }
+      long stopTime = tag.getLong("scguns:StopAfterLoopTime");
+      if (stopTime == 0L) { tag.putLong(..., now); return; }
+      if (now - stopTime < 100L) return;         // ← 100 ms 宽限：玩家记住的"等待阶段"
+   }
+   RELOADING = false; remove IsReloading; remove scguns:IsReloading;
+   tag.putString("scguns:ReloadState", "STOPPING");
+   tag.putBoolean("scguns:IsPlayingReloadStop", true);
+   sendToPlayer(new S2CMessageStopReload());
+}
+```
+
+**客户端 `ClientPlayHandler.handleStopReload`** —— 原作是**自己写状态、自己 `stop()`、自己触发**：
+
+```java
+tag.putString("scguns:ReloadState", "STOPPING");
+tag.putBoolean("scguns:IsPlayingReloadStop", true);
+tag.remove("InReloadLoop");
+tag.remove("scguns:IsReloading");
+ModSyncedDataKeys.RELOADING.setValue(player, false);
+controller.stop();
+controller.setAnimationSpeed(1.0);
+controller.tryTriggerAnimation(isInCarbineMode ? "carbine_reload_stop" : "reload_stop");
+```
+
+**为什么原作不会被切掉**：`isPlayingCriticalAnimations` 里有两行把停止片段排除在外
+（`!isPlaying("reload_stop") && !isPlaying("carbine_reload_stop")`）⇒ 停止片段播放期间
+`handleMainAnimationLogic` 整个 idle 分支都不执行；片段自己的注册链
+（`RELOAD_STOP = reload_stop(PLAY_ONCE) thenLoop idle`）负责接回 idle。
+
+**"等待阶段还在播装填动画"就是**：服务端 100 ms 宽限期间 `RELOADING` 仍为真、tag 里 `IsReloading` 还在
+⇒ 客户端的 `isReloading` 为真 ⇒ 一直走 `handleReloadingState` 的循环；宽限结束、包到达后才 `stop()` +
+`reload_stop`。
+
+### 83.17.2 移植版这几轮错在哪
+
+| 轮次 | 做了什么 | 与原作的关系 |
+|---|---|---|
+| v1–v3 | 自创"延后到循环边界"的机制（NBT 标记 / 客户端内存 / tick 开头判定） | **原作没有这套东西**，全是绕路 |
+| v4 | 去掉 `stop()` 与状态写入，照抄开火打断路径 | 开火路径本来就不写状态，但**收尾路径要写** |
+| v5 | 让状态机在 `STOPPING` 时"启动"片段、加 `isPlayingStopAnimation` 分支 | 原作在包里启动；`isPlayingCriticalAnimations` 已含排除项 |
+| **v6（本版）** | **`handleStopReload` 逐字还原原作；删掉 v5 的 `midReload` 分支、`case STOPPING` 启动块、`isPlayingStopAnimation` 分支与两条诊断** | 与原作一一对应 |
+
+### 83.17.3 顺带修正了一条**错误的审计规则**
+
+`audit_reload_trust.py` 在 v4 里加过一条"`handleStopReload` 里**不许**出现 `.stop()`"的规则 —— 那是我
+基于错误结论写的，原作用的就是 `stop()`。已改成对照原作的三条：必须写 `STOPPING`、必须写
+`IsPlayingReloadStop`、必须触发停止片段。selftest 在 `backup-reloadstate-20261115` 上从 6 条变为 5 条
+（那条规则在旧标签上也成立，所以不再算问题）。
+
+### 83.17.4 门禁
+
+`javac` 0（1038 文件）、61 审计（2 个既有无关失败，`audit_reload_trust` 已恢复通过）、
+`verify_installed_jar` **305/305**、已安装（备份 `.bak-151539`）。
+
+### 83.17.5 若仍有"卡一下"
+
+现在已经和原作逐行对齐，剩下的差异只可能在引擎层：
+
+- 原作 GeckoLib 4.4.x（1.20.1）vs 移植版 **4.9.3**（1.21.1）：`stop()` + `tryTriggerAnimation` 的过渡
+  插值行为可能不同；
+- 服务端 100 ms 宽限 + `Thread.sleep` 级别的 tick 对齐差异（原作 20 TPS 同样存在）。
+
+下一步若还要更平滑，只能改**表现层**（例如保留 `stop()` 但在触发前把速度归零一帧），
+但那已经偏离原作，属于设计选择，不再是移植正确性问题。
