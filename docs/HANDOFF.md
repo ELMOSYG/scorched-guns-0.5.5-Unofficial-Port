@@ -9108,3 +9108,59 @@ Framework 不是"别人的 mod"：本 mod 的网络、同步数据键（`ModSync
   - 没有这行 ⇒ 客户端 setup 之前就出事了，问题在别处。
 - 真修复仍然在 Framework 侧（0.13.11 的懒加载实现）。本机网络拿不到新版本，无法确认 0.13.12+
   是否已改；如果玩家能更新 Framework，那是首选，我们这层只是桥。
+
+---
+
+## 83.16 换弹收尾（第五版）：等待阶段要继续播装填动画，停止片段必须有人**启动**且不许被切
+
+> 玩家："装填完成后直接进入 idle 动画，没有任何衔接动画"；随后补充："**原作是完成换弹后的等待阶段
+> 还在播装填动画**，现在完成装填后直接播 idle，所以会卡。"
+
+### 83.16.1 三处断点（读代码定位，不是猜）
+
+1. **`handleReloadStateSynchronization` 只在 tag 里还留着 `scguns:IsReloading` 时才把状态推成
+   `STOPPING`**（`!serverReloading && currentReloading`）。但服务端结束换弹时**是同一次写入**把
+   `IsReloading` 删掉、才写 `STOPPING` 的 —— 客户端看到的是"已经没了"，那条分支永不成立。
+   于是状态停在 `LOADING`（就是玩家说的"等待阶段"），没有任何人接手。
+2. **`case STOPPING` 只会"收拾"**：它的判断是"停止片段已经在播、且控制器已停 ⇒ 清理并回 idle"。
+   它**从来不去启动**那段停止动画。而 `handleReloadStateSynchronization` 会在 50 ms 后把
+   `STOPPING`/`IsPlayingReloadStop` 清掉（`finishReloadTransition`），窗口一过就再没有机会。
+3. **`handleMainAnimationLogic` 会把放出来的停止片段切掉**：`isPlayingInspectOrReloadAnimations`
+   这个名字是反的（内部全是 `!isPlaying(...)`，意思是"这些都没在播"），而且**不包含** `reload_stop`。
+   于是停止片段一开播，那个 `else if` 立刻 `tryTriggerAnimation("idle")`；又因为它是
+   `thenLoop("idle")` 的链，等于刚起头就被掐断 —— 玩家看到的"没有衔接动画"。
+
+### 83.16.2 第五版的改动
+
+| 位置 | 改动 |
+|---|---|
+| `handleReloadStateSynchronization` | 新增 `midReload = state ∈ {STARTING, LOADING}`；服务端结束换弹时，即使 `IsReloading` 已被删，也把状态推成 `STOPPING` + `IsPlayingReloadStop`（等待阶段由客户端状态机持有，必须由它交接） |
+| `case STOPPING` | 若 `IsPlayingReloadStop` 为真而停止片段还没在播 ⇒ **启动它**（`tryTriggerAnimation`，**不** `stop()`），然后 `break`；"片段已播完 ⇒ 清理 + idle"的原逻辑保留在后面 |
+| `handleMainAnimationLogic` | 新增分支：`isPlayingStopAnimation(...)` 为真时**什么都不做**，只把速度归 1，让片段自己走完（它的链会接 idle） |
+| 辅助 | 新增 `isPlayingStopAnimation(controller)`，判 `reload_stop` / `carbine_reload_stop` |
+
+这样时间线回到原作：最后一发压完 → **循环继续播**（等待阶段）→ 服务端结束 → `reload_stop` 完整播完
+→ idle。
+
+### 83.16.3 诊断（临时，确认后删）
+
+两条 `[SCGUNS-STOP]` INFO，用来看下一次走的是哪条路：
+
+- `starting the stop clip from STOPPING (the reload ended and nothing had played it)` —— 说明是 83.16.1
+  第 2 条那条路接管的收尾；
+- `releasing a reload animation that outlived its reload (cut to idle)` —— 说明又掉进了"无主循环"的
+  释放分支（卸载那条路，或状态没接上）。
+
+### 83.16.4 门禁
+
+`javac` 0（1038 文件）、61 审计（2 个既有无关失败）、`verify_installed_jar` **305/305**、
+已安装（备份 `.bak-150549`）。**视觉仍需玩家确认**。
+
+### 83.16.5 仍未做（下一轮）
+
+`../MCJAVA` 客户端日志（2026-11-15 14:58）里还有 1080 条我们自己的编码错误：
+`scguns-nbt: Could not encode 2147483647 <ammo>`。根因是创造模式弹药箱用 `Integer.MAX_VALUE`
+当"无限"哨兵（`AmmoBoxItem.getContents`），而 1.21 的 `ItemStack.CODEC` 只接受 1..99；
+`ReloadTracker.updateAmmoPouchContents` 每次换弹都会把这些虚拟物品重新编码一遍（40 种弹药 × 每次）。
+同一机制还会在创造弹药箱被销毁时把 `MAX_VALUE` 的物品实体丢进世界。修法：虚拟内容不参与序列化
+（跳过创造箱），并让 `getContents` 给创造箱返回 count=1（它表达的是"有哪些弹药"，不是"有多少"）。
