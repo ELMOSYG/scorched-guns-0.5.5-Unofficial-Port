@@ -42,7 +42,22 @@ public class C2SMessageGunLoaded {
 
                   Gun gun = ((GunItem)heldItem.getItem()).getModifiedGun(heldItem);
                   CompoundTag tag = NbtHelper.getOrCreateTag(heldItem);
-                  ReloadTracker tracker = new ReloadTracker(player);
+                  // A loaded packet can arrive twice inside one reload window (the client retries while its start tick has not
+         // elapsed). Each arrival used to build a fresh tracker, so a magazine gun filled twice and played the reload
+         // animation twice - the "reload happens twice on multiplayer" report. When the magazine is already full and
+         // nothing is in flight, this arrival is a duplicate: drop it. Nothing about animation timing changes here.
+         ItemStack hand = player.getMainHandItem();
+         if (hand.getItem() instanceof top.ribs.scguns.item.GunItem handGun
+            && !Boolean.TRUE.equals(top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.getValue(player))) {
+            int current = top.ribs.scguns.common.Gun.getAmmoCount(hand);
+            int capacity = top.ribs.scguns.util.GunModifierHelper.getModifiedAmmoCapacity(
+               hand, handGun.getModifiedGun(hand));
+            if (current >= capacity) {
+               return;
+            }
+         }
+
+         ReloadTracker tracker = new ReloadTracker(player);
                   if (gun.getReloads().getReloadType() == ReloadType.MAG_FED) {
                      tracker.increaseMagAmmo(player);
                      ModSyncedDataKeys.RELOADING.setValue(player, false);
