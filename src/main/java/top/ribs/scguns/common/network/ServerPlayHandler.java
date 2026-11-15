@@ -364,11 +364,17 @@ public class ServerPlayHandler {
             top.ribs.scguns.common.ReloadState.cancel(player, stack);
             top.ribs.scguns.network.PacketHandler.getPlayChannel().sendToPlayer(
                () -> player, new top.ribs.scguns.network.message.S2CMessageReload(false));
+
+            // Cancelling rewrote the stack's custom data, so the tag captured above is a detached copy now. Writing
+            // AmmoCount into it changed nothing - the magazine stayed full while the rounds were also handed back,
+            // which is exactly the "unload makes ammo" report. Re-read it after the cancel.
+            tag = NbtHelper.getTagForWrite(stack);
          }
 
          if (gun.getReloads().getReloadType() != ReloadType.SINGLE_ITEM && tag != null && tag.contains("AmmoCount", 3)) {
             int count = tag.getInt("AmmoCount");
             tag.putInt("AmmoCount", 0);
+            NbtHelper.setTag(stack, tag);
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(gun.getCurrentAmmoItem(stack));
             Item item = (Item)BuiltInRegistries.ITEM.get(id);
             if (item == null) {
