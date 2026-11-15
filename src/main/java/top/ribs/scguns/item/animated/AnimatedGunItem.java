@@ -68,6 +68,15 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    public static final String RELOAD_STATE = "scguns:ReloadState";
    /** Temporary: last reload state written to the log, so each transition is logged once (HANDOFF 83.18). */
    private static String lastTracedReloadState = "";
+   /**
+    * The client MANUAL reload state as the machine last wrote it, kept outside the item tag.
+    *
+    * <p>A server slot sync rewrites the whole custom-data component (it carries AmmoCount for the round
+    * that was just seated, but no ReloadState), so the tag copy of the state disappears once per round
+    * and the machine restarted at NONE - reload_start replayed for every shell and reload_loop was
+    * never reached (HANDOFF 83.19). Client memory survives those syncs.</p>
+    */
+   private static final java.util.Map<Long, String> CLIENT_RELOAD_STATE = new java.util.concurrent.ConcurrentHashMap<>();
    private final GunRotationHandler rotationHandler = new GunRotationHandler();
 
    /** The model name this gun was registered with (its path, e.g. {@code laser_rifle}). */
@@ -214,6 +223,16 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
       boolean currentReloading = nbtCompound.getBoolean("scguns:IsReloading");
       boolean serverReloading = entity instanceof Player ? (Boolean)ModSyncedDataKeys.RELOADING.getValue((Player)entity) : false;
       String currentReloadState = nbtCompound.getString("scguns:ReloadState");
+      // Mirror the machine's mid-reload progress in client memory: the server's per-round slot sync
+      // rewrites the whole custom-data tag and never carries this key (HANDOFF 83.19). Only STARTING/
+      // LOADING are worth restoring; STOPPING/NONE mean the machine is done, so the memory is dropped.
+      long reloadStateId = GeoItem.getId(stack);
+      if (currentReloadState.equals(AnimatedGunItem.ReloadState.STARTING.name())
+         || currentReloadState.equals(AnimatedGunItem.ReloadState.LOADING.name())) {
+         CLIENT_RELOAD_STATE.put(reloadStateId, currentReloadState);
+      } else if (!currentReloadState.isEmpty()) {
+         CLIENT_RELOAD_STATE.remove(reloadStateId);
+      }
       boolean inCriticalPhase = nbtCompound.getBoolean("InCriticalReloadPhase");
       Gun modifiedGun = ((GunItem)stack.getItem()).getModifiedGun(stack);
       boolean isManualReload = modifiedGun.getReloads().getReloadType() == ReloadType.MANUAL;
@@ -277,7 +296,16 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
          if (serverReloading && !currentReloading && !isInTransitionState) {
             nbtCompound.putBoolean("scguns:IsReloading", true);
             if (!nbtCompound.contains("scguns:ReloadState")) {
-               nbtCompound.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.NONE.name());
+               // The server re-sends the whole custom-data tag every time it seats a round, and that
+               // packet never carries scguns:ReloadState (the server only writes it when the reload
+               // ends). Restoring the machine's own progress from client memory is what keeps it from
+               // restarting at NONE once per round - the 15:32 client log shows reload_start replaying
+               // for every round and STARTING -> LOADING never happening (HANDOFF 83.19).
+               String remembered = CLIENT_RELOAD_STATE.get(GeoItem.getId(stack));
+               nbtCompound.putString("scguns:ReloadState",
+                  remembered == null || remembered.isEmpty()
+                     ? AnimatedGunItem.ReloadState.NONE.name()
+                     : remembered);
             }
          } else if (!serverReloading && currentReloading && !isInTransitionState) {
             nbtCompound.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.STOPPING.name());

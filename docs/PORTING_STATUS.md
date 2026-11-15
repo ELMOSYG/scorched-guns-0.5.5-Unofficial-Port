@@ -2391,3 +2391,33 @@ int currentAmmo = GunAmmo.get(nbt);   // 不再 getOrCreateTag(stack)
 `javac` 0（1038 文件）、61 审计（2 个既有无关失败）、`verify_installed_jar` **305/305**、
 已安装（备份 `.bak-152826`）。`[SCGUNS-RS]` 追踪暂时保留，用于确认下一次日志里
 `STARTING -> LOADING` 出现一次、且不再有重复的 `NONE -> STARTING`。
+
+### 83.19 状态机每装一发就被槽位同步清空（10 tick idle 的可能来源）
+
+83.18 修好"写入被丢弃"之后，客户端追踪暴露了第二个问题：
+
+```
+[15:32:52.461] state=STARTING                       ← 最后一段 reload_start 开播
+[15:32:53.010] state=STOPPING                       ← 0.55 s 后才到收尾
+```
+
+而且整轮换弹里 **一次 `STARTING -> LOADING` 都没有**，每装一发都是
+`state=`(空) → `NONE -> STARTING`：状态机每发都从零重来，`reload_loop` 永远进不去。
+
+**原因**：服务端每压一发就往物品自定义数据里写 `AmmoCount`，1.21 的槽位同步会把**整个
+custom-data 组件**发给客户端；而服务端正常换弹期间**从不写** `scguns:ReloadState`（只在结束时写
+`STOPPING`）。于是客户端每发的写入都会被下一次同步**整段覆盖**，`ReloadState` 键消失，
+`handleReloadStateSynchronization` 里 `if (!contains(...)) putString(NONE)` 又把它设回 `NONE`
+⇒ 机器重头开始。
+
+**修法（客户端内存镜像）**：新增 `CLIENT_RELOAD_STATE`（按 `GeoItem.getId(stack)` 索引）：
+
+- 每次同步处理器读到 `STARTING`/`LOADING` 就记到镜像里；读到 `STOPPING`/`NONE` 就删掉（表示这一轮结束）；
+- 需要补 `NONE` 的地方改为**优先用镜像里的进度**，只有镜像里没有（或空）才退回 `NONE`。
+
+这样同步冲掉 tag 里的状态后，下一 tick 会从镜像恢复，机器得以继续 `STARTING -> LOADING`。
+镜像只覆盖客户端状态机自己的键，不碰 `AmmoCount` / `RELOADING`，所以不影响 83.11–83.14 的反刷逻辑。
+
+**门禁**：`javac` 0（1038）、61 审计（2 个既有无关失败）、`verify_installed_jar` **305/305**、
+已安装（备份 `.bak-153552`）。`[SCGUNS-RS]` 追踪仍在，下一次日志用于确认
+`STARTING -> LOADING` 出现、以及那 10 tick idle 落在收尾片段之前还是之后。
