@@ -414,7 +414,7 @@ public class ReloadTracker {
 
                   if (needsNewTracker) {
                      if (!(player.getInventory().getSelected().getItem() instanceof GunItem)) {
-                        top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
+                        ModSyncedDataKeys.RELOADING.setValue(player, false);
                         return;
                      }
 
@@ -450,7 +450,7 @@ public class ReloadTracker {
                      }
 
                      RELOAD_TRACKER_MAP.remove(player);
-                     top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
+                     ModSyncedDataKeys.RELOADING.setValue(player, false);
                      tag.remove("IsReloading");
                      tag.remove("scguns:IsReloading");
                      // A reload that ends here (weapon full, or out of ammo) must not leave the
@@ -477,7 +477,7 @@ public class ReloadTracker {
                   if (staleReload != null) {
                      endReload(player, staleReload);
                   } else {
-                     top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
+                     ModSyncedDataKeys.RELOADING.setValue(player, false);
                   }
                }
             } else {
@@ -545,7 +545,7 @@ public class ReloadTracker {
     * animated as if it were reloading (HANDOFF section 66).
     */
    private static void endReload(Player player, ReloadTracker tracker) {
-      top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
+      ModSyncedDataKeys.RELOADING.setValue(player, false);
       CompoundTag tag = NbtHelper.getTagForWrite(tracker.stack);
       if (tag != null) {
          // Clear, rather than setting STOPPING: this gun is no longer in hand, so its stop animation
@@ -580,7 +580,7 @@ public class ReloadTracker {
          } else {
             if (!RELOAD_TRACKER_MAP.containsKey(player)) {
                if (!(player.getInventory().getSelected().getItem() instanceof GunItem)) {
-                  top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
+                  ModSyncedDataKeys.RELOADING.setValue(player, false);
                   return;
                }
 
@@ -612,7 +612,7 @@ public class ReloadTracker {
                      }
 
                      RELOAD_TRACKER_MAP.remove(player);
-                     top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
+                     ModSyncedDataKeys.RELOADING.setValue(player, false);
                      if (tag != null) {
                         tag.remove("IsReloading");
                      }
@@ -645,7 +645,7 @@ public class ReloadTracker {
 
                         tracker.handleReloadByproduct(player);
                         RELOAD_TRACKER_MAP.remove(player);
-                        top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
+                        ModSyncedDataKeys.RELOADING.setValue(player, false);
                         if (tag != null) {
                            tag.remove("IsReloading");
                         }
@@ -654,7 +654,7 @@ public class ReloadTracker {
                }
             } else {
                RELOAD_TRACKER_MAP.remove(player);
-               top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
+               ModSyncedDataKeys.RELOADING.setValue(player, false);
                if (tag != null) {
                   tag.remove("IsReloading");
                }
