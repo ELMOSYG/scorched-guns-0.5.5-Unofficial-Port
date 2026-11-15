@@ -518,6 +518,13 @@ public class ClientPlayHandler {
          ItemStack heldItem = player.getMainHandItem();
          if (heldItem.getItem() instanceof AnimatedGunItem gunItem) {
             CompoundTag tag = NbtHelper.getOrCreateTag(heldItem);
+            // Same sequence the firing path uses to interrupt a reload (GunEventBus#preShoot), because
+            // that one is smooth and this one was not. The difference is what it does NOT do: it never
+            // calls controller.stop() first. "reload_stop" is registered as a chain that plays the clip
+            // and then loops idle (GunAnimations.RELOAD_STOP), so triggering it is already the whole
+            // transition - stopping the controller beforehand threw away the pose it blends from, which
+            // is what made the switch look like a jump (HANDOFF 83.14).
+            tag.putBoolean("scguns:ReloadComplete", true);
             tag.remove("scguns:IsReloading");
             ModSyncedDataKeys.RELOADING.setValue(player, false);
             long id = GeoItem.getId(heldItem);
@@ -526,25 +533,7 @@ public class ClientPlayHandler {
                .getAnimationControllers()
                .get("controller");
             if (animationController != null) {
-               boolean cyclePlaying = gunItem.isAnimationPlaying(animationController, "reload_loop")
-                  || gunItem.isAnimationPlaying(animationController, "carbine_reload_loop");
-               if (cyclePlaying) {
-                  // reload_loop is authored as a looping clip, so it never reports the end of a cycle:
-                  // cutting it here switches animations in the middle of the motion, which is what the
-                  // player described as "no smooth transition into reload_stop". Ask for the stop at the
-                  // next "loaded" keyframe (the cycle boundary) instead.
-                  //
-                  // The pending stop lives in the client, NOT in the item tag: the server owns that tag,
-                  // and its next slot sync replaces it wholesale - which is exactly how the first version
-                  // of this fix lost the request and fell through to idle. The state the server just
-                  // wrote is dropped for the same reason: the MANUAL sync would treat a STOPPING state as
-                  // "already transitioning" and finish the transition in 50 ms, long before the cycle ends.
-                  AnimatedGunItem.requestReloadStopAtCycleEnd();
-                  tag.remove("scguns:ReloadState");
-                  tag.remove("scguns:IsPlayingReloadStop");
-               } else {
-                  gunItem.beginReloadStop(tag, animationController, heldItem);
-               }
+               animationController.tryTriggerAnimation(gunItem.isInCarbineMode(heldItem) ? "carbine_reload_stop" : "reload_stop");
             }
          }
       }

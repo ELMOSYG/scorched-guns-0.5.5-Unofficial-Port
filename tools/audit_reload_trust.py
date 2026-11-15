@@ -35,6 +35,7 @@ GUN_LOADED = "network/message/C2SMessageGunLoaded.java"
 EJECT = "network/message/C2SMessageEjectCasing.java"
 SERVER_PLAY = "common/network/ServerPlayHandler.java"
 ANIMATED = "item/animated/AnimatedGunItem.java"
+CLIENT_PLAY = "client/network/ClientPlayHandler.java"
 
 # The tag before this round: both packets trusted the client and nothing counted spent rounds.
 PRE_FIX_REVISION = "backup-reloadstate-20261115"
@@ -147,6 +148,21 @@ def problems_for(sources: dict[str, str]) -> list[str]:
         problems.append("a reload animation that outlived its reload is never released: the loop keeps "
                         "playing (and keeps firing its keyframes) until the player switches items")
 
+    # The firing path interrupts a reload smoothly, and the whole difference is that it does NOT stop
+    # the controller first: "reload_stop" is registered as a chain that plays the clip and then loops
+    # idle, so triggering it is already the transition. The stop packet used to stop() first, which
+    # threw away the pose it blends from - the player described that as "no smooth transition".
+    client_play = strip_comments(sources.get(CLIENT_PLAY, ""))
+    stop_reload = method_body(client_play, "public static void handleStopReload(")
+    if stop_reload is None:
+        problems.append("ClientPlayHandler.handleStopReload is gone")
+    else:
+        if "tryTriggerAnimation" not in stop_reload:
+            problems.append("the stop packet does not trigger the stop clip")
+        if ".stop()" in stop_reload:
+            problems.append("the stop packet stops the controller before triggering reload_stop: that "
+                            "throws away the pose the clip blends from and is what looked abrupt")
+
     return problems
 
 
@@ -155,7 +171,7 @@ def scan(sources: dict[str, str]) -> list[str]:
 
 
 def read_tree() -> dict[str, str]:
-    files = [GUN_LOADED, EJECT, SERVER_PLAY, ANIMATED]
+    files = [GUN_LOADED, EJECT, SERVER_PLAY, ANIMATED, CLIENT_PLAY]
     return {
         relative: open(os.path.join(SRC, relative), encoding="utf-8", errors="replace").read()
         for relative in files
@@ -163,7 +179,7 @@ def read_tree() -> dict[str, str]:
 
 
 def selftest() -> int:
-    files = [GUN_LOADED, EJECT, SERVER_PLAY, ANIMATED]
+    files = [GUN_LOADED, EJECT, SERVER_PLAY, ANIMATED, CLIENT_PLAY]
     sources = {}
     for relative in files:
         path = "src/main/java/top/ribs/scguns/" + relative

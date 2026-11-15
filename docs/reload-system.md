@@ -300,51 +300,50 @@ after full tick 2:   ammo=2 reloading=false state=STOPPING playingStop=true  sho
    **全部写进了孤儿**。它自带的"等当前循环播完再转 STOPPING"的平滑逻辑（`PendingStopTransition`）
    因此从来不会生效 —— 这就是"没有平滑衔接"的根因。
 
-### 10.3 修法：把切换点挪到循环周期的边界
+### 10.3 修法：抄开火打断那条路径（**这条线索是玩家给的**）
 
-不去复活那张状态机（它一旦有写权限就会与服务端争同一批键，见 §8.3 的取舍），而是在**已有的、
-每循环触发一次的关键帧**上做交接。
+> 玩家第三次反馈："**开火键打断换弹动画倒是可以流畅衔接到 reload_stop**，但装填完毕衔接的仍然是 idle。"
+> 这一句直接定位了问题 —— 把两条路径并排看，差别只有一个。
 
-> **第一版错了，这是玩家实测的第三版**：
->
-> * **v1（玩家实测：直接回 idle）**：待处理标记写在**物品 NBT**（`scguns:ReloadStopAtCycleEnd`）里。
->   **服务端才是物品 tag 的权威方**，它随后任何一次槽位同步都会把客户端写进去的键整段覆盖；标记一丢，
->   兜底分支就把循环收成 idle。**教训：客户端的临时状态不要写进服务端拥有的物品 tag。**
-> * **v2（玩家实测：先卡 ~10 tick 的 idle，才接 `reload_stop`）**：标记改到客户端内存了，但
->   "切动画"这一步挂在 `handleMainAnimationLogic` 的兜底分支里，而**排在它之前**的
->   `handleAnimationStateFixes` 只要"控制器没有动画/已停止 + 不在换弹"就播 idle —— 等待窗口里正好
->   满足条件，于是先看到 idle；切动画又要等分支轮到自己。
-> * **v3（本版）**：① `handleAnimationStateFixes` 在有待处理停止时**不播 idle**；② 切换动作提到
->   `clientInventoryTick` **最前面**（`finishDeferredReloadStop`）：`ready`（关键帧到了）、
->   **或换弹动画已经不在播**、或 1.5 s 超时，任一成立就立刻切，并且在切换的那个 tick 直接 `return`，
->   不给后面的逻辑改回去的机会；③ 换弹动画还在播时，兜底分支只"等"，绝不回 idle。
+开火打断走的是 `GunEventBus#preShoot`（客户端）：
 
-第二版把待处理标记放在**客户端静态内存**里，第三版又把它提成"tick 开头就判定"：
+```java
+tag.putBoolean("scguns:ReloadComplete", true);
+animationController.tryTriggerAnimation("reload_stop");   // ← 没有 stop()
+tag.remove("scguns:IsReloading");
+ModSyncedDataKeys.RELOADING.setValue(player, false);
+PacketHandler.getPlayChannel().sendToServer(new C2SMessageReload(false));
+```
 
-| 位置 | 改动 |
-|---|---|
-| `ClientPlayHandler.handleStopReload` | 若 `reload_loop`/`carbine_reload_loop` 正在播 ⇒ **不切**，调 `AnimatedGunItem.requestReloadStopAtCycleEnd()`（**纯客户端内存**）并清掉刚同步来的 STOPPING；没有循环在播时维持原行为 |
-| `particleListener` 的 `"loaded"` 关键帧 | 只置 `pendingReloadStopReady = true`。**不在关键帧回调里切动画**：那是动画控制器的 tick 内部，`stop()`/`tryTriggerAnimation` 会造成重入 |
-| `clientInventoryTick` 开头 | `finishDeferredReloadStop(...)`：`ready` / 换弹动画已不在播 / 超时 1.5 s 任一成立 ⇒ `beginReloadStop(...)` 并 `return`（这一个 tick 不再跑后面的逻辑） |
-| `handleAnimationStateFixes` | 有待处理停止时**不播 idle**（v2 的"卡 10 tick idle"就是它） |
-| `handleMainAnimationLogic` 兜底分支 | 有待处理停止 ⇒ 只等；没有 ⇒ 保持原行为（卸载那种"无主循环"直接释放） |
-| `handleItemNotHeld` | 枪离手时丢掉待处理请求 |
-| `beginReloadStop(...)` | 写 STOPPING / IsPlayingReloadStop 并 `tryTriggerAnimation("reload_stop")` |
+而 `handleStopReload` 原来写的是 `controller.stop()` **然后** `tryTriggerAnimation("reload_stop")`。
+`GunAnimations.RELOAD_STOP` 本身是 **`reload_stop`（PLAY_ONCE）`.thenLoop("idle")`** 的链 ——
+**触发它就是完整的过渡**；先 `stop()` 会把"从哪个姿势过渡过去"抹掉，于是看起来是硬跳。
 
-**为什么这样是"平滑"的**：`loaded` 关键帧就落在每个压弹循环的末尾，所以切换发生在**动作完成的那一刻**
-（最多晚到该循环的下一个 `loaded`，callwell 是 ~0.5 s），而不是服务端说停就停的那一刻；
-等待期间不会再有 idle 插进来。
+所以 v4 直接把开火那条路径抄进 `handleStopReload`：设 `ReloadComplete`、`tryTriggerAnimation`，
+**不调用 `stop()`**。v1–v3 那套"延后到循环边界"的机器**整体删除** —— 它只是在绕路：
+
+| 版本 | 玩家实测 | 根因 |
+|---|---|---|
+| v1 | 直接回 idle | 待处理标记写在**物品 NBT**，被服务端槽位同步整段覆盖 |
+| v2 | ~10 tick idle 后接 stop | 标记在客户端内存，但切动画挂在分支链末尾，前面的 `handleAnimationStateFixes` 先播了 idle |
+| v3 | 仍然接 idle | 同上，只是把判定提前；**没意识到根因是 `stop()`** |
+| **v4（本版）** | 待验 | `stop()` 抹掉了过渡起点；抄开火路径即解决 |
+
+**教训**：同一个功能存在两条路径时（这里是"开火打断"与"服务端通知收尾"），先对比两条路径的差异，
+而不是自己另造一套状态机。玩家那句"开火打断是好的"比任何静态分析都值钱。
 
 ### 10.4 未验 / 边界
 
-- **视觉效果只能玩家看**：本轮没有显示环境，客户端动画时序无法无头验证。请确认：
-  逐发压弹到满 → 当前这一发压完后**接着**播 `reload_stop`（不再半途跳过去、也不再直接回 idle）
-  → 回到 idle。
-- 1.5 s 兜底只在"循环动画里没有 `loaded` 关键帧"时触发；40 把 MANUAL 枪的 `reload_loop` 都有
-  `loaded`（压弹靠它发包），所以正常不会用到。
-- **客户端 MANUAL 状态机仍然是死的**（10.2 第 2 条）。本轮只是绕开它实现平滑收尾；若要修
-  它的 `reload_start → reload_loop` 过渡，就得把 `getOrCreateTag` 换成只读并处理"两个写入者"，
-  那是 §8.3 说的高风险项，**没有玩家报这个问题之前不要动**。
-- 门禁：`verify_installed_jar` 新增 2 项（`finishDeferredReloadStop` 在 `AnimatedGunItem`、`ClientPlayHandler`
-  调用 `requestReloadStopAtCycleEnd`）⇒ 上一版（v2）**302/304**（2 项 FAIL），新 jar
-  **304/304**；`javac` 0（1038 文件）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-142803`）。
+- **视觉效果只能玩家看**：本轮没有显示环境。请确认：逐发压弹到满 → 直接接 `reload_stop`
+  → 回 idle，全程没有 idle 插播。
+- 现在**不再等待循环边界**：服务端说停就立刻触发 `reload_stop`（和开火打断完全一致）。
+  如果这次仍然觉得衔接突兀，问题就在"从 `reload_loop` 中途切入"本身，需要在循环末尾切（v2/v3 的思路）；
+  但那条路已被实测证明会被 idle 抢跑，要重做必须先解决 `handleAnimationStateFixes` 的 idle 抢跑。
+- **客户端 MANUAL 状态机仍然是死的**（10.2 第 2 条）。要修它的 `reload_start → reload_loop` 过渡，
+  就得把那个 `getOrCreateTag` 换只读并处理"两个写入者"，属 §8.3 的高风险项，
+  **没有玩家报这个问题之前不要动**。
+- 门禁：`audit_reload_trust.py` 新增一条规则（`handleStopReload` 里**不许**出现 `.stop()`，
+  必须直接触发停止片段），selftest 在 `backup-reloadstate-20261115` 上报出 6 条；
+  `verify_installed_jar` 新增 2 项（`ClientPlayHandler` 含 `ReloadComplete`、`AnimatedGunItem`
+  **不含** `pendingReloadStop` —— 防止退回被否掉的延后机制）⇒ 上一版（v3）**303/304**（1 项 FAIL），
+  新 jar **304/304**；`javac` 0（1038 文件）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-143831`）。
