@@ -68,12 +68,9 @@ public final class ReloadState {
       if (tag != null) {
          tag.remove(MIRROR_KEY);
          tag.remove(LEGACY_KEY);
-         tag.remove("InReloadLoop");
-         tag.remove("InCriticalReloadPhase");
-         tag.remove("scguns:ReloadState");
-         tag.remove("scguns:ShouldStopAfterLoop");
-         tag.remove("scguns:StopAfterLoopTime");
-         tag.remove("scguns:IsPlayingReloadStop");
+         // Deliberately does not touch the loop bookkeeping (InReloadLoop, ReloadState, ShouldStopAfterLoop, ...).
+         // Those belong to the running tracker; deleting them here meant the tracker could never reach its own end
+         // condition, so a reload cancelled by unloading restarted and a full magazine never finished (Cowell).
       }
    }
 
