@@ -17,6 +17,7 @@ import top.ribs.scguns.item.AirCanisterItem;
 import top.ribs.scguns.item.EnergyGunItem;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.item.exosuit.ExoSuitCoreItem;
+import top.ribs.scguns.util.GunAmmo;
 
 public class ModCreativeModeTabs {
    public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, "scguns");
@@ -672,7 +673,7 @@ public class ModCreativeModeTabs {
       public static void addItemWithFullAmmo(Output output, Item item) {
          if (item instanceof GunItem gunItem) {
             ItemStack stack = new ItemStack(gunItem);
-            writeInt(stack, "AmmoCount", gunItem.getGun().getReloads().getMaxAmmo());
+            GunAmmo.setOrCreate(stack, gunItem.getGun().getReloads().getMaxAmmo());
             output.accept(stack);
          } else {
             output.accept(item);
@@ -682,7 +683,7 @@ public class ModCreativeModeTabs {
       public static void addGunOrEnergyWeaponWithFullResources(Output output, Item item) {
          ItemStack stack = new ItemStack(item);
          if (item instanceof GunItem gunItem) {
-            writeInt(stack, "AmmoCount", gunItem.getGun().getReloads().getMaxAmmo());
+            GunAmmo.setOrCreate(stack, gunItem.getGun().getReloads().getMaxAmmo());
          }
 
          if (item instanceof EnergyGunItem energyGunItem) {

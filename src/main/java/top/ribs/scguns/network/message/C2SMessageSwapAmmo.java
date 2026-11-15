@@ -16,6 +16,7 @@ import top.ribs.scguns.common.ReloadType;
 import top.ribs.scguns.init.ModSyncedDataKeys;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.network.PacketHandler;
+import top.ribs.scguns.util.GunAmmo;
 
 public class C2SMessageSwapAmmo {
    public C2SMessageSwapAmmo() {
@@ -43,8 +44,7 @@ public class C2SMessageSwapAmmo {
                   } else if (general.getAvailableAmmoTypes().isEmpty()) {
                      player.sendSystemMessage(Component.translatable("message.scguns.ammo_swap.no_types").withStyle(ChatFormatting.RED), true);
                   } else {
-                     CompoundTag tag = NbtHelper.getOrCreateTag(heldItem);
-                     int currentAmmo = tag.getInt("AmmoCount");
+                     int currentAmmo = GunAmmo.get(heldItem);
                      if (currentAmmo > 0 && !player.isCreative()) {
                         Item currentAmmoItem = modifiedGun.getProjectile(heldItem).getItem();
 
@@ -56,8 +56,11 @@ public class C2SMessageSwapAmmo {
                         }
                      }
 
-                     tag.putInt("AmmoCount", 0);
+                     GunAmmo.setOrCreate(heldItem, 0);
                      PacketHandler.getPlayChannel().sendToPlayer(() -> player, new S2CMessageUpdateAmmo(0));
+                     // Bound after the magazine write, which re-installed the component: the gun-state
+                     // writes below (the new ammo type, the reload flags) must go into the live tag.
+                     CompoundTag tag = NbtHelper.getOrCreateTag(heldItem);
                      int currentIndex = general.getCurrentAmmoTypeIndex();
                      int nextIndex = (currentIndex + 1) % general.getAvailableAmmoTypes().size();
                      CompoundTag gunTag = tag.getCompound("Gun");

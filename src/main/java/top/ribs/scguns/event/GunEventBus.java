@@ -88,6 +88,7 @@ import top.ribs.scguns.network.PacketHandler;
 import top.ribs.scguns.network.message.C2SMessageReload;
 import top.ribs.scguns.network.message.S2CMessageHotBarrelSync;
 import top.ribs.scguns.util.AirSourceHelper;
+import top.ribs.scguns.util.GunAmmo;
 import top.theillusivec4.curios.api.CuriosApi;
 
 @EventBusSubscriber(
@@ -259,7 +260,7 @@ public class GunEventBus {
                return;
             }
 
-            if (tag.getInt("AmmoCount") >= 1) {
+            if (GunAmmo.get(tag) >= 1) {
                broken(heldItem, level, player);
             }
          }
@@ -344,7 +345,7 @@ public class GunEventBus {
          if ((Boolean)Config.COMMON.gameplay.spawnCasings.get()
             && gunx.getProjectile().ejectsCasing()
             && !gunx.getProjectile().ejectDuringReload()
-            && (NbtHelper.getOrCreateTag(heldItem).getInt("AmmoCount") >= 1 || player.getAbilities().instabuild)) {
+            && (GunAmmo.get(heldItem) >= 1 || player.getAbilities().instabuild)) {
             ejectCasing(level, player, mirror);
          }
 

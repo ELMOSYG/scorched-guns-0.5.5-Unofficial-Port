@@ -20,6 +20,7 @@ import top.ribs.scguns.event.GunEventBus;
 import top.ribs.scguns.init.ModEffects;
 import top.ribs.scguns.init.ModSounds;
 import top.ribs.scguns.item.GunItem;
+import top.ribs.scguns.util.GunAmmo;
 
 public class GunAttackGoal<T extends PathfinderMob> extends Goal {
    protected final T shooter;
@@ -122,8 +123,7 @@ public class GunAttackGoal<T extends PathfinderMob> extends Goal {
     * instead makes the mob reload, which is the behaviour we want anyway.</p>
     */
    public static int getAmmoCount(ItemStack stack) {
-      CompoundTag tag = NbtHelper.getTag(stack);
-      return tag == null ? 0 : tag.getInt("AmmoCount");
+      return GunAmmo.get(stack);
    }
 
    public void start() {
@@ -218,7 +218,7 @@ public class GunAttackGoal<T extends PathfinderMob> extends Goal {
                      1.0F
                   );
             } else if (this.reloadTick == 0) {
-               NbtHelper.getOrCreateTag(heldItem).putInt("AmmoCount", gun.getReloads().getMaxAmmo());
+               GunAmmo.setOrCreate(heldItem, gun.getReloads().getMaxAmmo());
                this.shooter
                   .level()
                   .playSound(

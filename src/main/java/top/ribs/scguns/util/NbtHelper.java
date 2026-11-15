@@ -252,6 +252,26 @@ public final class NbtHelper {
         setTag(stack, copy);
     }
 
+    /** {@link #setInt(ItemStack, String, int)} for a boolean, with the same copy-then-write-back rule. */
+    public static void setBoolean(ItemStack stack, String key, boolean value) {
+        CompoundTag existing = getTag(stack);
+        CompoundTag copy = existing == null ? new CompoundTag() : existing.copy();
+        copy.putBoolean(key, value);
+        setTag(stack, copy);
+    }
+
+    /**
+     * Makes sure the stack carries custom data, creating an empty tag when it has none.
+     *
+     * <p>For the paths that are about to hand the stack to a writer which - by design, to keep 0.5.5's
+     * {@code tag != null} guards meaningful - only writes into a tag that already exists
+     * ({@link GunAmmo#set(ItemStack, int)}). Creating it here says so out loud instead of leaving a
+     * discarded {@code getOrCreateTag} call behind.</p>
+     */
+    public static void ensureTag(ItemStack stack) {
+        getOrCreateTag(stack);
+    }
+
     /**
      * Gives a gun a full magazine. Convenience for creative tabs and addons handing out guns.
      *
@@ -261,7 +281,7 @@ public final class NbtHelper {
         if (stack.getItem() instanceof top.ribs.scguns.item.GunItem gunItem) {
             int max = gunItem.getGun().getReloads().getMaxAmmo();
             if (max > 0) {
-                setInt(stack, "AmmoCount", max);
+                GunAmmo.setOrCreate(stack, max);
             }
         }
     }

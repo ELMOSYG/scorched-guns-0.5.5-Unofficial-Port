@@ -17,6 +17,7 @@ import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
 import top.ribs.scguns.util.NbtHelper;
 import top.ribs.scguns.util.ScEnchants;
+import top.ribs.scguns.util.GunAmmo;
 
 /**
  * One shot from a mob's gun, with everything the player's own firing path would do (HANDOFF section 82.8).
@@ -113,14 +114,14 @@ public final class MobGunFire {
 
    /** The player's ammo rule, verbatim from {@code ServerPlayHandler.consumeAmmo}. */
    private static void consumeAmmo(Mob shooter, ItemStack stack) {
-      var tag = NbtHelper.getOrCreateTag(stack);
-      if (tag.getBoolean("IgnoreAmmo")) {
+      var tag = NbtHelper.getTag(stack);
+      if (tag != null && tag.getBoolean("IgnoreAmmo")) {
          return;
       }
 
       int level = ScEnchants.level(stack, ModEnchantments.RECLAIMED);
       if (level == 0 || shooter.getRandom().nextInt(4 - Mth.clamp(level, 1, 2)) != 0) {
-         tag.putInt("AmmoCount", Math.max(0, tag.getInt("AmmoCount") - 1));
+         GunAmmo.setOrCreate(stack, Math.max(0, GunAmmo.get(stack) - 1));
       }
    }
 

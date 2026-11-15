@@ -63,6 +63,7 @@ import top.ribs.scguns.item.attachment.IAttachment;
 import top.ribs.scguns.item.attachment.impl.Scope;
 import top.ribs.scguns.util.GunJsonUtil;
 import top.ribs.scguns.util.SuperBuilder;
+import top.ribs.scguns.util.GunAmmo;
 import top.theillusivec4.curios.api.CuriosApi;
 
 public class Gun implements IEditorMenu {
@@ -101,7 +102,9 @@ public class Gun implements IEditorMenu {
    }
 
    public static int getAmmoCount(ItemStack stack) {
-      return NbtHelper.getOrCreateTag(stack).getInt("AmmoCount");
+      // Read-only on purpose: this runs in render loops, and getOrCreateTag used to copy the tag and
+      // re-install the component on every call (docs/reload-system.md, phase 1).
+      return GunAmmo.get(stack);
    }
 
    public static boolean hasAmmo(ItemStack heldItem) {

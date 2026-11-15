@@ -62,6 +62,7 @@ import top.ribs.scguns.config.RaidConfig;
 import top.ribs.scguns.entity.ai.GunAttackGoal;
 import top.ribs.scguns.entity.player.PlayerGunProgression;
 import top.ribs.scguns.item.GunItem;
+import top.ribs.scguns.util.GunAmmo;
 
 @EventBusSubscriber(
    modid = "scguns",
@@ -802,8 +803,7 @@ public class RaidManager {
       // same guard, so the bug is inherited, not introduced by the port.)
       if (gun instanceof GunItem gunItem) {
          Gun gunModified = gunItem.getModifiedGun(gunStack);
-         NbtHelper.getOrCreateTag(gunStack)
-            .putInt("AmmoCount", mob.getRandom().nextInt(gunModified.getReloads().getMaxAmmo()));
+         GunAmmo.setOrCreate(gunStack, mob.getRandom().nextInt(gunModified.getReloads().getMaxAmmo()));
       }
 
       return gunStack;

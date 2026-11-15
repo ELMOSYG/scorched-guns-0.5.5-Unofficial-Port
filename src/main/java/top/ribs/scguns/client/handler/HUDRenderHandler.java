@@ -62,6 +62,7 @@ import top.ribs.scguns.item.exosuit.JetpackModuleItem;
 import top.ribs.scguns.item.exosuit.NightVisionModuleItem;
 import top.ribs.scguns.item.exosuit.TargetTrackerModuleItem;
 import top.ribs.scguns.util.GunModifierHelper;
+import top.ribs.scguns.util.GunAmmo;
 import top.theillusivec4.curios.api.CuriosApi;
 
 @EventBusSubscriber(
@@ -332,7 +333,7 @@ public class HUDRenderHandler {
             }
          }
 
-         int currentAmmo = cachedTag.getInt("AmmoCount");
+         int currentAmmo = GunAmmo.get(cachedTag);
          int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(heldItem, cachedGun);
          boolean isCreative = player.isCreative();
          updateAmmoTextCache(currentAmmo, maxAmmo, isCreative);

@@ -26,6 +26,7 @@ import top.ribs.scguns.init.ModSounds;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.NbtHelper;
+import top.ribs.scguns.util.GunAmmo;
 import net.minecraft.sounds.SoundSource;
 
 /**
@@ -606,7 +607,7 @@ public class GuardGunAttackGoal<T extends PathfinderMob> extends Goal {
          return;
       }
 
-      NbtHelper.getOrCreateTag(this.guard.getMainHandItem()).putInt("AmmoCount", gun.getReloads().getMaxAmmo());
+      GunAmmo.setOrCreate(this.guard.getMainHandItem(), gun.getReloads().getMaxAmmo());
       this.shotsSinceReload = 0;
       CompoundTag done = this.guard.getPersistentData();
       done.putBoolean(TAG_RELOADING, false);

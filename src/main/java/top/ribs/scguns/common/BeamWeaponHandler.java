@@ -45,6 +45,7 @@ import top.ribs.scguns.network.message.S2CMessageStopBeam;
 import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
 import top.ribs.scguns.util.math.ExtendedEntityRayTraceResult;
+import top.ribs.scguns.util.GunAmmo;
 
 public class BeamWeaponHandler {
    private static final Map<UUID, BeamHandler.BeamInfo> activeBeams = new HashMap<>();
@@ -288,12 +289,14 @@ public class BeamWeaponHandler {
 
    private static void consumeBeamAmmo(ServerPlayer player, ItemStack heldItem) {
       if (!player.isCreative()) {
-         CompoundTag tag = NbtHelper.getOrCreateTag(heldItem);
-         if (!tag.getBoolean("IgnoreAmmo")) {
-            int currentAmmo = tag.getInt("AmmoCount");
-            if (currentAmmo > 0) {
-               tag.putInt("AmmoCount", currentAmmo - 1);
-            }
+         CompoundTag tag = NbtHelper.getTag(heldItem);
+         if (tag != null && tag.getBoolean("IgnoreAmmo")) {
+            return;
+         }
+
+         int currentAmmo = GunAmmo.get(heldItem);
+         if (currentAmmo > 0) {
+            GunAmmo.setOrCreate(heldItem, currentAmmo - 1);
          }
       }
    }

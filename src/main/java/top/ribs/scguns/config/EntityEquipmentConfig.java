@@ -30,6 +30,7 @@ import org.apache.logging.log4j.Logger;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.util.GunCurseUtil;
 import top.ribs.scguns.util.NbtHelper;
+import top.ribs.scguns.util.GunAmmo;
 
 @EventBusSubscriber(
    modid = "scguns"
@@ -238,8 +239,7 @@ public class EntityEquipmentConfig {
          // read. Only the creative tab used to initialise it, so every mob
          // equipped from this config held a gun with no custom data at all.
          if (this.item instanceof GunItem gunItem) {
-            NbtHelper.getOrCreateTag(stack)
-               .putInt("AmmoCount", gunItem.getModifiedGun(stack).getReloads().getMaxAmmo());
+            GunAmmo.setOrCreate(stack, gunItem.getModifiedGun(stack).getReloads().getMaxAmmo());
          }
 
          return stack;

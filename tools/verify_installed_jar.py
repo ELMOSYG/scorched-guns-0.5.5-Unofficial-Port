@@ -274,6 +274,19 @@ def _check_finalize_spawn(zf):
     return ("finalizeSpawn overrides are 4-argument (%d classes)" % checked, True)
 
 
+def _magazine_key_owners(zf):
+    """Every class that names the magazine key in its constant pool, sorted.
+
+    The needle is the constant-pool UTF-8 entry itself (`CONSTANT_Utf8` = 0x01, length 9, then the
+    bytes), not the bare text: `getAmmoCount` contains "AmmoCount" as a substring, so a plain search
+    would flag every class that merely calls the reader.
+    """
+    needle = b"\x01\x00\x09AmmoCount"
+    return sorted(
+        name for name in zf.namelist()
+        if name.endswith(".class") and needle in zf.read(name))
+
+
 def main():
     if not JAR.exists():
         print("MISSING: %s" % JAR)
@@ -351,8 +364,9 @@ def main():
             zf, "top/ribs/scguns/entity/ai/GunAttackGoal.class", b"getAmmoCount",
             "GunAttackGoal reads ammo through the null-safe helper"))
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/config/EntityEquipmentConfig$EquipmentEntry.class", b"AmmoCount",
-            "EquipmentEntry initialises AmmoCount for guns"))
+            zf, "top/ribs/scguns/config/EntityEquipmentConfig$EquipmentEntry.class",
+            b"top/ribs/scguns/util/GunAmmo",
+            "EquipmentEntry initialises the magazine through the helper"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/util/NbtHelper.class", b"getUnsafe",
             "NbtHelper re-reads the stored tag (CustomData.of copies)"))
@@ -1087,12 +1101,13 @@ def main():
             "a natural raid records the day it started"))
 
         # 36. the two halves of the gunner-reload fix (HANDOFF section 81).
-        # a) The gun a wild gunner is given must carry AmmoCount: the pre-fill sat behind a guard that
+        # a) The gun a wild gunner is given must carry a magazine: the pre-fill sat behind a guard that
         #    is always false for a freshly created stack, so pillagers and friends held a gun with no
-        #    data at all and reloaded before they ever fired. getTagForWrite must be gone from that call.
+        #    data at all and reloaded before they ever fired. getTagForWrite must stay gone from that
+        #    call, and the fill now goes through GunAmmo (docs/reload-system.md, phase 1).
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getOrCreateTag",
-            "a wild gunner's gun is given AmmoCount"))
+            zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"top/ribs/scguns/util/GunAmmo",
+            "a wild gunner's gun is given a magazine through the helper"))
         checks.append(_check_class_lacks(
             zf, "top/ribs/scguns/config/GunnerMobSpawner.class", b"getTagForWrite",
             "the always-false guard is gone from the gunner gun"))
@@ -1564,6 +1579,27 @@ def main():
         checks.append(_check_resource_absent(
             zf, "data/c/tags/item/gunpowder.json",
             "the private c:gunpowder tag is gone (a tag nothing else defines is silently empty)"))
+
+        # docs/reload-system.md, phase 1: the magazine key has exactly one owner. Before the helper it
+        # was spelled out at about forty call sites, four of which disagreed about clamping and two of
+        # which wrote through a tag that a reload had already orphaned (the loaded packet then reported
+        # the pre-reload magazine). This is the artefact-level version of tools/audit_ammo_writer.py.
+        owners = _magazine_key_owners(zf)
+        checks.append(("the magazine key is named by GunAmmo.class alone [%s]"
+                       % (", ".join(owners) or "nobody"),
+                       owners == ["top/ribs/scguns/util/GunAmmo.class"]))
+        for entry, label in (
+            ("top/ribs/scguns/common/Gun.class",
+             "Gun.getAmmoCount delegates to the ammo helper"),
+            ("top/ribs/scguns/common/ReloadTracker.class",
+             "the reload writes the magazine through the helper"),
+            ("top/ribs/scguns/common/network/ServerPlayHandler.class",
+             "firing, unloading and the overflow clamp use the helper"),
+            ("top/ribs/scguns/network/message/C2SMessageGunLoaded.class",
+             "the loaded packet reports the magazine it just wrote"),
+        ):
+            checks.append(_check_class_contains(
+                zf, entry, b"top/ribs/scguns/util/GunAmmo", label))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:

@@ -53,6 +53,7 @@ import top.ribs.scguns.init.ModTags;
 import top.ribs.scguns.item.attachment.IAttachment;
 import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
+import top.ribs.scguns.util.GunAmmo;
 
 public class GunItem extends Item implements IColored, IMeta {
    // Keyed by the Gun compound only, not the whole stack tag: the tag also carries AmmoCount, so keying on all of it
@@ -143,7 +144,7 @@ public class GunItem extends Item implements IColored, IMeta {
          if (tagCompound.getBoolean("IgnoreAmmo")) {
             tooltip.add(Component.translatable("info.scguns.ignore_ammo").withStyle(ChatFormatting.AQUA));
          } else {
-            int ammoCount = tagCompound.getInt("AmmoCount");
+            int ammoCount = GunAmmo.get(tagCompound);
             tooltip.add(
                Component.translatable("info.scguns.ammo")
                   .append(": ")
@@ -320,12 +321,12 @@ public class GunItem extends Item implements IColored, IMeta {
          // one reports a default magazine - so clamp it to what this gun's own definition allows. Only written
          // when it is actually out of range, so this stays idempotent.
          int maxAmmo = this.gun == null || this.gun.getReloads() == null ? 0 : this.gun.getReloads().getMaxAmmo();
-         if (maxAmmo > 0 && tagCompound.getInt("AmmoCount") > maxAmmo) {
-            // Write through a write accessor, bound and used in the same statement: tagCompound came from
-            // getTag() and is read-only (mutating it would not mark the stack dirty, so the change would never
-            // reach the client), and a tag bound from getOrCreateTag() goes stale the moment anything else
-            // re-detaches this stack's component.
-            NbtHelper.getOrCreateTag(stack).putInt("AmmoCount", maxAmmo);
+         if (maxAmmo > 0 && GunAmmo.get(tagCompound) > maxAmmo) {
+            // Written through the helper, which copies the tag and writes it back: tagCompound came
+            // from getTag() and is read-only (mutating it would not mark the stack dirty, so the
+            // change would never reach the client), and a tag bound from getOrCreateTag() goes stale
+            // the moment anything else re-detaches this stack's component.
+            GunAmmo.setOrCreate(stack, maxAmmo);
          }
 
          return this.gun;
@@ -474,14 +475,13 @@ public class GunItem extends Item implements IColored, IMeta {
          return;
       }
 
-      CompoundTag tag = NbtHelper.getTag(stack);
-      if (tag != null && tag.contains("AmmoCount", 3)) {
+      if (GunAmmo.has(stack)) {
          return;
       }
 
       int maxAmmo = this.getModifiedGun(stack).getReloads().getMaxAmmo();
       if (maxAmmo > 0) {
-         NbtHelper.getOrCreateTag(stack).putInt("AmmoCount", maxAmmo);
+         GunAmmo.setOrCreate(stack, maxAmmo);
       }
    }
 

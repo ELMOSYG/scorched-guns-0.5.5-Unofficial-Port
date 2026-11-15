@@ -21,6 +21,7 @@ import top.ribs.scguns.common.CustomGun;
 import top.ribs.scguns.common.CustomGunLoader;
 import top.ribs.scguns.init.ModItems;
 import top.ribs.scguns.network.message.S2CMessageUpdateGuns;
+import top.ribs.scguns.util.GunAmmo;
 
 @EventBusSubscriber(
    modid = "scguns",
@@ -52,7 +53,8 @@ public class CustomGunManager {
             tag.put("Model", top.ribs.scguns.util.NbtHelper.tagFromItem(gun.getModel()));
             tag.put("Gun", gun.getGun().serializeNBT());
             tag.putBoolean("Custom", true);
-            tag.putInt("AmmoCount", gun.getGun().getReloads().getMaxAmmo());
+            // Last, and through the helper: it copies the tag the writes above are already in.
+            GunAmmo.setOrCreate(stack, gun.getGun().getReloads().getMaxAmmo());
             output.accept(stack);
          });
       }

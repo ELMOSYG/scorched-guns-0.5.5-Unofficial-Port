@@ -67,6 +67,7 @@ import top.ribs.scguns.network.message.S2CMessageBulletTrail;
 import top.ribs.scguns.network.message.S2CMessageGunSound;
 import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
+import top.ribs.scguns.util.GunAmmo;
 import top.theillusivec4.curios.api.CuriosApi;
 
 public class ServerPlayHandler {
@@ -138,12 +139,11 @@ public class ServerPlayHandler {
 
    private static void consumeAmmo(ServerPlayer player, ItemStack heldItem) {
       if (!player.isCreative()) {
-         CompoundTag tag = NbtHelper.getOrCreateTag(heldItem);
-         if (!tag.getBoolean("IgnoreAmmo")) {
+         CompoundTag tag = NbtHelper.getTag(heldItem);
+         if (tag == null || !tag.getBoolean("IgnoreAmmo")) {
             int level = ScEnchants.level(heldItem, ModEnchantments.RECLAIMED);
             if (level == 0 || player.level().random.nextInt(4 - Mth.clamp(level, 1, 2)) != 0) {
-               int currentAmmo = tag.getInt("AmmoCount");
-               tag.putInt("AmmoCount", Math.max(0, currentAmmo - 1));
+               GunAmmo.setOrCreate(heldItem, Math.max(0, GunAmmo.get(heldItem) - 1));
             }
          }
       }
@@ -352,14 +352,16 @@ public class ServerPlayHandler {
       ItemStack stack = player.getMainHandItem();
       if (stack.getItem() instanceof GunItem gunItem) {
          Gun gun = gunItem.getModifiedGun(stack);
-         CompoundTag tag = NbtHelper.getTagForWrite(stack);
          if (player.getInventory().items.stream().anyMatch(i -> i.getItem() instanceof CreativeAmmoBoxItem) || hasCreativeAmmoBoxInCurios(player)) {
             return;
          }
 
-         if (gun.getReloads().getReloadType() != ReloadType.SINGLE_ITEM && tag != null && tag.contains("AmmoCount", 3)) {
-            int count = tag.getInt("AmmoCount");
-            tag.putInt("AmmoCount", 0);
+         if (gun.getReloads().getReloadType() != ReloadType.SINGLE_ITEM && GunAmmo.has(stack)) {
+            int count = GunAmmo.get(stack);
+            // Clear the magazine before the rounds are handed out: the other order hands out rounds
+            // that are still in the gun, and a tag write that lands later would empty it for free
+            // (docs/reload-system.md, phase 2).
+            GunAmmo.set(stack, 0);
             ResourceLocation id = BuiltInRegistries.ITEM.getKey(gun.getCurrentAmmoItem(stack));
             Item item = (Item)BuiltInRegistries.ITEM.get(id);
             if (item == null) {
@@ -402,12 +404,11 @@ public class ServerPlayHandler {
          boolean hasCreativeBox = player.getInventory().items.stream().anyMatch(i -> i.getItem() instanceof CreativeAmmoBoxItem)
             || hasCreativeAmmoBoxInCurios(player);
          Gun gun = gunItem.getModifiedGun(stack);
-         CompoundTag tag = NbtHelper.getTagForWrite(stack);
-         if (tag != null && tag.contains("AmmoCount", 3)) {
-            int currentAmmo = tag.getInt("AmmoCount");
+         if (GunAmmo.has(stack)) {
+            int currentAmmo = GunAmmo.get(stack);
             int modifiedCapacity = GunModifierHelper.getModifiedAmmoCapacity(stack, gun);
             if (currentAmmo > modifiedCapacity) {
-               tag.putInt("AmmoCount", modifiedCapacity);
+               GunAmmo.set(stack, modifiedCapacity);
                if (!hasCreativeBox) {
                   ResourceLocation id = BuiltInRegistries.ITEM.getKey(gun.getCurrentAmmoItem(stack));
                   Item item = (Item)BuiltInRegistries.ITEM.get(id);

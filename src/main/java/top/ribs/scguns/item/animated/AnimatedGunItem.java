@@ -53,6 +53,7 @@ import top.ribs.scguns.network.message.C2SMessageGunLoaded;
 import top.ribs.scguns.network.message.C2SMessageReload;
 import top.ribs.scguns.util.GunEnchantmentHelper;
 import top.ribs.scguns.util.GunModifierHelper;
+import top.ribs.scguns.util.GunAmmo;
 
 public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    private final AnimatableInstanceCache cache = new SingletonAnimatableInstanceCache(this);
@@ -807,8 +808,14 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
 
                int actualReloadTime = (int)Math.ceil((double)GunEnchantmentHelper.getRealReloadSpeed(stack) / reloadSpeedMultiplier);
                float speedMultiplier = (float)modifiedGun.getReloads().getReloadTimer() / (float)actualReloadTime;
+               // The fetch stays write-shaped on purpose: re-installing the component here detaches the
+               // tag the caller fetched, and that is currently what keeps this client-side MANUAL state
+               // machine from writing the same reload keys the server writes. Making it read-only would
+               // revive a second writer of scguns:ReloadState / IsPlayingReloadStop - exactly the
+               // "three state machines with no authority" problem in docs/reload-system.md, which is
+               // phase 3's decision to make, not a mechanical clean-up.
                CompoundTag tag = NbtHelper.getOrCreateTag(stack);
-               int currentAmmo = tag.getInt("AmmoCount");
+               int currentAmmo = GunAmmo.get(tag);
                int maxAmmo = GunModifierHelper.getModifiedAmmoCapacity(stack, modifiedGun);
                boolean ammoFull = currentAmmo >= maxAmmo;
                boolean hasNoAmmo = Gun.findAmmo(player, modifiedGun.getProjectile().getItem()).stack().isEmpty();

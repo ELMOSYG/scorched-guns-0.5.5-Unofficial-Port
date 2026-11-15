@@ -124,6 +124,7 @@ python tools\audit_mixins.py               # mixin 目标/签名体检
 python tools\audit_override_drift.py       # ★ 签名漂移 + 参数个数漂移（都必须是 0）
 python tools\audit_nbt_write_alias.py      # ★ 组件别名写（getTag 原地写 / 局部变量陈旧）必须是 0
 python tools\audit_item_stream_codec.py    # ★ ItemStack 流 codec 必须是 OPTIONAL_（普通版拒绝空栈）
+python tools\audit_ammo_writer.py          # ★ AmmoCount 只能在 util/GunAmmo 里读写（换弹系统阶段 1）
 python tools\analyze_advancements.py       # ★ 进度 JSON 体检（problems 必须是 0）
 python tools\rcon_tick_probe.py            # ★ 实体行为测试前先跑：没玩家时要 forceload 才会 tick 实体
 python tools\rcon_item_exists.py scguns:anthralite_knife   # 条件注册的物品是否存在（实机）
@@ -2012,3 +2013,36 @@ event.setMouseSensitivity(Math.max(0.0, (scaled - 0.2) / 0.6));
 
 门禁：build 通过；verify_installed_jar 289/289；已安装 scguns-0.5.5.3.jar。
 注意：包结构变更属于协议变更，客户端与服务端需同版本。
+
+## §83.11 换弹系统阶段 1：`AmmoCount` 收进 `util/GunAmmo`（HANDOFF 83.11 / docs/reload-system.md §8）
+
+**背景**：`docs/reload-system.md` 把换弹系统的问题归成"三个状态机 + 四个写入者 + 会脱钩的 NBT 层"，
+并给了强制修复顺序；阶段 1 是"把 `AmmoCount` 读写全收进一个 helper，纯机械、低风险"。本轮只做这一阶段。
+
+**改动**：
+- 新增 `util/GunAmmo`（`get` / `has` / `hasCustomData` / `set` / `setOrCreate`），键字面量只此一处；
+  **21 个文件**改为调用它（含 `Gun`、`ReloadTracker`、`ServerPlayHandler`、`BeamWeaponHandler`、
+  `MobGunFire`、`C2SMessage*`、`ClientMessageHandler`、创造页、生物装备、炮塔/袭击的枪生成）。
+- 读路径**不再 `getOrCreateTag`**：`Gun.getAmmoCount`（渲染每帧）、`ReloadTracker.isWeaponFull`
+  （每 tick）、`GunAttackGoal.getAmmoCount`。原来每次调用都复制 tag 并重装组件，还会让调用方的 tag 脱钩。
+- 写路径统一"复制 → 改 → 写回"，保留 0.5.5 的 `tag != null` 守卫（`set` 返回 false ⇒ 调用方不吞弹药）。
+
+**顺手修掉两处陈旧 tag**（reload-system.md 第 4 节缺陷 3 的实例）：
+- `C2SMessageGunLoaded`：发报用的是**换弹前**的弹数（tag 在装填前取的），三条清标记写进孤儿。
+  现在写完弹匣后重新取 tag。
+- `ReloadTracker.loaded`：`increaseAmmo` 之后的 `tag.remove("IsReloading")` 同样写进孤儿；改 `clearIsReloading`。
+
+**故意没动**（阶段 3）：`AnimatedGunItem.handleReloadingState` 的那个 `getOrCreateTag`（其脱钩副作用
+恰好阻止客户端 MANUAL 状态机与服务端争 `scguns:ReloadState`，源码有注释）；清除时机与
+`ReloadState`/`IsPlayingReloadStop` 语义。**顺带发现** `C2SMessageReload:73/77` 先删后读 ⇒
+`IsPlayingReloadStop`/`STOPPING` 分支恒不成立（死分支，留阶段 3）。
+
+**门禁**：`javac` 0（1037 文件）、`build` ✓、60 个审计（2 个失败与本轮无关：`audit_scguns_tags` 的
+`scguns:ghost` 未发货、`audit_menu_spectator_guard` 的 `GunBenchBlockEntity`）、10 个 `--selftest` 全过、
+`verify_installed_jar` **296/296**（新增 5 项字节码检查：键的常量池条目只在 `GunAmmo.class` +
+4 个调用方引用；**反向验证**：上一版 jar 289/296、7 项 FAIL）、已装入实例（备份 `.bak-125010`）。
+新审计 `tools/audit_ammo_writer.py`（含 `--selftest`，在 `backup-reloadstate-20261115` 上实测命中）。
+
+**未验**：runtime 探针没跑成 —— `gradlew runServer` 需要 `neoforge-21.1.249-moddev-config.json`，
+`maven.neoforged.net:443` 本机当前超时且 `--offline` 无缓存（环境问题，非本轮改动）。
+网络恢复后补跑：`[SCGUNS-AMMO]` 全 ok；进游戏开枪 −1 / R 装填 HUD 立即更新 / G 卸载弹匣清空且弹药回包。

@@ -8782,3 +8782,66 @@ BROKEN the stage is captured *after* lastStage is assigned, which is the exact b
 **另记一处与 0.5.5 的偏差（本轮不动）**：0.5.5 只给 `cr4k_mining_laser` 与 `shard_culler`
 设 `enableMining`，本移植与两个移植版**额外给 `flayed_god` 也设了**（其唯一区别是
 `miningSpeed` 1.0）。`flayed_god` 该不该能挖属于内容决策，**保持现状并记录**。
+
+---
+
+## 83.11 换弹系统阶段 1：`AmmoCount` 收进 `util/GunAmmo`
+
+> 完整分析在 [`docs/reload-system.md`](reload-system.md)（这份文档的 §8 是阶段 1 的记录）。HANDOFF 只记
+> 索引级的结论，因为换弹系统的细节（三套状态、四个写入者）比这一节能容纳的多。
+
+### 83.11.1 做了什么
+
+- 新增 `util/GunAmmo`：`get` / `has` / `hasCustomData` / `set` / `setOrCreate`。**`"AmmoCount"` 字面量
+  现在只出现在这个类里**（21 个文件改成调用它）。
+- 读路径不再 `getOrCreateTag`：`Gun.getAmmoCount`（渲染循环里每帧都调）、`GunAttackGoal.getAmmoCount`、
+  `ReloadTracker.isWeaponFull`（每 tick）。这类调用原来每次都会**复制 tag 并重装组件**，而且会让
+  调用方手里的 tag 脱钩。
+- 写路径统一为"复制 → 改 → 写回"，并保留 0.5.5 的 `tag != null` 守卫（`set` 返回 false 时调用方不
+  吞弹药）；创造页/生物装备那类"必须给弹匣"的路径用 `setOrCreate`。
+
+### 83.11.2 顺手修掉的两处陈旧 tag（reload-system.md 第 4 节缺陷 3 的实例）
+
+| 位置 | 原来的后果 |
+|---|---|
+| `C2SMessageGunLoaded` | `tag` 在 `increaseMagAmmo/reloadItem/increaseAmmo` **之前**取 ⇒ ① `S2CMessageUpdateAmmo` 发的是**换弹前**的弹数；② 三条 `remove("IsReloading"/"scguns:IsReloading"/"InCriticalReloadPhase")` 写进孤儿。现在写完弹匣后重新取 tag |
+| `ReloadTracker.loaded` | `increaseAmmo` 之后 `tag.remove("IsReloading")` 同样写进孤儿。抽出 `clearIsReloading(stack)`，每次重新取 tag + `setTag`。影响很小：`RELOADING` 已 false，下一 tick 本来也会清 |
+
+### 83.11.3 **故意没动**的（阶段 3 的议题）
+
+- `AnimatedGunItem.handleReloadingState`（约 810 行）的 `getOrCreateTag` 保留：它今天的副作用
+  （脱钩）恰好让客户端 MANUAL 状态机写不进物品，因此不与服务端争 `scguns:ReloadState`。注释已写在源码里。
+- 清除时机、`ReloadState`/`IsPlayingReloadStop` 语义：未改。
+- **顺带发现一个死分支**：`C2SMessageReload` 第 73 行 `remove("scguns:IsReloading")`、第 77 行又读它
+  ⇒ `IsPlayingReloadStop`/`STOPPING` 分支恒不成立。状态机顺序问题，留阶段 3。
+
+### 83.11.4 防复发
+
+| 工具 | 查什么 |
+|---|---|
+| `tools/audit_ammo_writer.py`（`--selftest`） | 键字面量只能在 `GunAmmo.java`；两个读访问器必须委托 `GunAmmo.get`；`set` 必须保留守卫并经 `NbtHelper.setInt` 写回 |
+| `verify_installed_jar`（5 项新/改） | **字节码层**：`AmmoCount` 的常量池条目只在 `GunAmmo.class`（用的是 `0x01`+长度`0x09` 的条目本身，因为 `getAmmoCount` 含 `AmmoCount` 子串，裸搜会把调用方全算上）；`Gun`/`ReloadTracker`/`ServerPlayHandler`/`C2SMessageGunLoaded`/`EquipmentEntry`/`GunnerMobSpawner` 都引用它 |
+
+**反向验证**：上一版 jar **289/296**（7 项 FAIL，全是这批新/改检查），新 jar **296/296**；
+`audit_ammo_writer.py --selftest` 在标签 `backup-reloadstate-20261115` 上报出 13 处字面量 + 2 处未委托。
+
+### 83.11.5 验收与**没验到的**
+
+- `javac` 0（1037 文件）、`gradlew build` ✓、60 个审计（2 个失败与本轮无关：`audit_scguns_tags` 的
+  `scguns:ghost`、`audit_menu_spectator_guard` 的 `GunBenchBlockEntity`）、10 个 `--selftest` 全过、
+  `verify_installed_jar` **296/296**、已装入实例（备份 `.bak-125010`）。
+- **运行时探针没跑成**：`gradlew runServer` 在本机当前网络下起不来 —— `:prepareServerRun` 需要
+  `neoforge-21.1.249-moddev-config.json`，`maven.neoforged.net:443` 超时、`--offline` 也没有缓存
+  （**这不是本轮改动的问题**，是环境；上一次成功起服是 10-01）。探针已删除、未执行。
+  **网络恢复后补跑**：① `[SCGUNS-AMMO]` 全 ok；② 进游戏：开枪数字 −1 / R 装填 HUD 立即变 /
+  G 卸载弹匣清空且弹药回背包。
+- 静态依据（无探针时）：`GunAmmo.set` → `NbtHelper.setInt`（`getTag → copy → put → setTag`）；
+  `setTag` 经 `CustomData.of`（**复制**）安装，`PatchedDataComponentMap.set` 拿**原型**（null）比较后
+  必然装入新实例 ⇒ 写必然脱钩、`ItemStack.matches` 必然看见（`audit_nbt_write_alias` 本轮 0）。
+  同一条 `setInt` 就是创造页填弹用的（§13 的空弹匣修复），已在游戏里跑过。
+
+### 83.11.6 下一步
+
+阶段 2（`handleUnload` 先扣弹匣再发物品）**已由原子写结构性满足**，不需要再动。
+下一步是阶段 3：谁有权清换弹状态（`C2SMessageReload` 死分支、客户端 MANUAL 状态机、两个 NBT 键收敛）。
+**先读 `reload-system.md` §8.3，别顺手"修好"那个 `getOrCreateTag`。**

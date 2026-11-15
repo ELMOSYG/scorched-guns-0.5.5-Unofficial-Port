@@ -36,6 +36,7 @@ import top.ribs.scguns.compat.guardvillagers.GuardVillagersCompat;
 import top.ribs.scguns.item.GunItem;
 import top.ribs.scguns.util.GunCurseUtil;
 import top.ribs.scguns.util.MobGunDurability;
+import top.ribs.scguns.util.GunAmmo;
 
 @EventBusSubscriber(
    modid = "scguns",
@@ -471,8 +472,7 @@ public class GunnerMobSpawner {
       // EntityEquipmentConfig - were fixed in section 13; this third one was missed.
       if (gun instanceof GunItem gunItem) {
          Gun gunModified = gunItem.getModifiedGun(gunStack);
-         NbtHelper.getOrCreateTag(gunStack)
-            .putInt("AmmoCount", mob.getRandom().nextInt(gunModified.getReloads().getMaxAmmo()));
+         GunAmmo.setOrCreate(gunStack, mob.getRandom().nextInt(gunModified.getReloads().getMaxAmmo()));
       }
 
       // A gunner's gun spawns worn, the way the mod's own equipment files already handle it (HANDOFF section
