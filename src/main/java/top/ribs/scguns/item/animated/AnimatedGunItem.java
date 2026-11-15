@@ -280,7 +280,9 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
          } else if (!serverReloading && currentReloading && !isInTransitionState) {
             nbtCompound.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.STOPPING.name());
             nbtCompound.putBoolean("scguns:IsPlayingReloadStop", true);
-         } else if (!serverReloading && isInTransitionState && !playerTryingToAim) {
+         } else if (!serverReloading && isInTransitionState && !playerTryingToAim
+            && !nbtCompound.getBoolean("scguns:ReloadStopAtCycleEnd")) {
+            // (a pending cycle-end stop holds the transition open until the loop reaches its boundary)
             long lastCleanup = nbtCompound.getLong("LastCleanupTime");
             if (currentTime - lastCleanup > 50L) {
                nbtCompound.putLong("LastCleanupTime", currentTime);
@@ -594,17 +596,29 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                      animationController.tryTriggerAnimation("idle");
                   }
                } else {
-                  // Nothing is reloading, yet a reload animation is still playing. Unloading mid-reload
-                  // leaves it there: the server's answer to the unload clears the reload state instead of
-                  // moving it to STOPPING, so the stop animation is never triggered and the loop keeps
-                  // running - refiring its eject/loaded keyframes every cycle, which the player saw as
-                  // "still reloading with a full magazine" (and as free casings). Hand the controller
-                  // back to idle and drop the stale tags; a real reload never reaches this branch
-                  // because it returns above with isReloading true.
-                  this.cleanupAllReloadTags(nbtCompound);
-                  animationController.stop();
-                  animationController.setAnimationSpeed(1.0);
-                  animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_idle" : "idle");
+                  // Nothing is reloading, yet a reload animation is still playing.
+                  boolean stopPending = nbtCompound.getBoolean("scguns:ReloadStopAtCycleEnd");
+                  if (stopPending) {
+                     // A stop was requested while the loop was mid-cycle: wait for its "loaded"
+                     // keyframe, which is the cycle boundary, and switch there. The timeout covers a
+                     // loop clip that has no such keyframe at all.
+                     long requested = nbtCompound.getLong("scguns:ReloadStopRequestedAt");
+                     if (System.currentTimeMillis() - requested > 1500L) {
+                        nbtCompound.remove("scguns:ReloadStopAtCycleEnd");
+                        nbtCompound.remove("scguns:ReloadStopRequestedAt");
+                        this.beginReloadStop(nbtCompound, animationController, stack);
+                     }
+                  } else {
+                     // Unloading mid-reload leaves the loop running: the server's answer to the unload
+                     // clears the state instead of moving it to STOPPING, so nothing else could ever
+                     // stop it, and every cycle refired its eject/loaded keyframes (the free-casing
+                     // report). Hand the controller back to idle and drop the stale tags; a real reload
+                     // never reaches this branch because it returns above with isReloading true.
+                     this.cleanupAllReloadTags(nbtCompound);
+                     animationController.stop();
+                     animationController.setAnimationSpeed(1.0);
+                     animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_idle" : "idle");
+                  }
                }
             }
          }
@@ -997,6 +1011,26 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
       nbt.remove("ReloadAnimationStarted");
       nbt.remove("ReloadAnimationRestarted");
       nbt.remove("ReloadCompleted");
+      // A pending stop belongs to the reload that requested it; leaving it behind would make the next
+      // reload switch to reload_stop at its very first cycle (HANDOFF 83.14).
+      nbt.remove("scguns:ReloadStopAtCycleEnd");
+      nbt.remove("scguns:ReloadStopRequestedAt");
+   }
+
+   /**
+    * Switches the controller from a reload animation to the gun's stop clip.
+    *
+    * <p>Called at a cycle boundary (the loop's "loaded" keyframe) or when no reload cycle is playing.
+    * Cutting a looping clip anywhere else is what made the transition into reload_stop look abrupt.</p>
+    */
+   @OnlyIn(Dist.CLIENT)
+   public void beginReloadStop(CompoundTag tag, AnimationController<GeoAnimatable> animationController, ItemStack stack) {
+      tag.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.STOPPING.name());
+      tag.putBoolean("scguns:IsPlayingReloadStop", true);
+      tag.remove("InReloadLoop");
+      animationController.stop();
+      animationController.setAnimationSpeed(1.0);
+      animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_reload_stop" : "reload_stop");
    }
 
    @OnlyIn(Dist.CLIENT)
@@ -1139,6 +1173,19 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                      ModSyncedDataKeys.RELOADING.getValue(player);
                      tag.putBoolean("loaded", true);
                      PacketHandler.getPlayChannel().sendToServer(new C2SMessageGunLoaded());
+                     if (tag.getBoolean("scguns:ReloadStopAtCycleEnd")) {
+                        // The magazine filled during this cycle, so this is its last one: switch to the
+                        // stop clip here, at the cycle boundary, instead of mid-loop (HANDOFF 83.14).
+                        tag.remove("scguns:ReloadStopAtCycleEnd");
+                        tag.remove("scguns:ReloadStopRequestedAt");
+                        AnimationController<GeoAnimatable> controller = (AnimationController<GeoAnimatable>)this.getAnimatableInstanceCache()
+                           .getManagerForId(GeoItem.getId(heldStack))
+                           .getAnimationControllers()
+                           .get("controller");
+                        if (controller != null) {
+                           this.beginReloadStop(tag, controller, heldStack);
+                        }
+                     }
                      break;
                   case "eject_casing":
                      if (gun.getProjectile().ejectsCasing() && gun.getProjectile().ejectDuringReload() && (Boolean)Config.COMMON.gameplay.spawnCasings.get()) {

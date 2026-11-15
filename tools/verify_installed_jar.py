@@ -1629,6 +1629,17 @@ def main():
             zf, "top/ribs/scguns/common/network/ServerPlayHandler.class", b"SpentRounds",
             "firing records the spent case it owes"))
 
+        # 83.14. A MANUAL gun's reload_loop is authored as a looping clip, so the server's stop request
+        # lands mid-cycle. Cutting it there is what the player described as "no smooth transition into
+        # reload_stop"; both the receiver and the animation state machine have to know about the
+        # cycle-boundary hand-over for it to happen at all.
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/item/animated/AnimatedGunItem.class", b"ReloadStopAtCycleEnd",
+            "the reload loop hands over to the stop clip at a cycle boundary"))
+        checks.append(_check_class_contains(
+            zf, "top/ribs/scguns/client/network/ClientPlayHandler.class", b"ReloadStopAtCycleEnd",
+            "the stop packet waits for the loop boundary instead of cutting it"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

@@ -2095,3 +2095,34 @@ event.setMouseSensitivity(Math.max(0.0, (scaled - 0.2) / 0.6));
 `javac` 0（1038 文件）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-132638`）。
 
 **未验**：客户端那一半（卸载后动画应立刻回 idle、不再循环）需要玩家实测；服务端两条已用探针验证。
+
+## §83.14 MANUAL 换弹结束后没有平滑衔接到 `reload_stop`（玩家报告，已修）
+
+**玩家**："单发装填枪械在换弹完成后没有平滑衔接到 reload_stop 动画。"
+澄清：指 **MANUAL**（callwell 那种逐发压弹），不是 `SINGLE_ITEM`（激光/喷火一次灌满）。
+
+**先排除服务端**（真处理器 + FakePlayer + 真实等待，因为手动收尾有 100 ms 宽限）：
+```
+shell 2 loaded:    ammo=2 reloading=true  state=-        playingStop=false shouldStop=true
+after full tick 2: ammo=2 reloading=false state=STOPPING playingStop=true
+```
+⇒ 满弹后服务端按时写 STOPPING / IsPlayingReloadStop 并发 `S2CMessageStopReload`。问题在客户端。
+
+**两个事实拼出根因**：① `callwell.reload_loop` 是 `"loop": true`（0.6667 s/循环）⇒ 没有"自然结束"
+可等，`handleStopReload` 直接 `controller.stop()` + 触发 `reload_stop` ⇒ **动作中途硬切**；
+② 客户端 MANUAL 状态机的状态写入**全是孤儿** —— `clientInventoryTick` 与 `handleReloadingState`
+各 `getOrCreateTag` 一次，探针实测 `first == second: false`、写入不落地 ⇒ 它自带的
+"等循环播完再转 STOPPING"（`PendingStopTransition`）**从来没生效**。
+
+**修法**：把切换点挪到循环周期的 `loaded` 关键帧。`handleStopReload` 在 `reload_loop` 播放时只写
+`scguns:ReloadStopAtCycleEnd` + 时间戳（并清掉刚同步来的 STOPPING，否则同步逻辑 50 ms 后提前收尾），
+关键帧里消费它并调新的 `beginReloadStop(...)`；`handleMainAnimationLogic` 兜底分支有标记时等待、
+1.5 s 超时才强制切；同步逻辑在标记存在时暂不收尾；`cleanupReloadState` 清标记。
+
+**门禁**：`verify_installed_jar` 新增 2 项（两个类都要带 `ReloadStopAtCycleEnd`）⇒ 上一版 jar
+**297/304**（2 项 FAIL），新 jar **304/304**；`javac` 0（1038）、61 审计（2 个既有无关失败）、
+已安装（备份 `.bak-140323`）。
+
+**未验**：视觉只能玩家看（逐发压满 → 当前这发压完接着播 `reload_stop` → 回 idle）。
+**客户端 MANUAL 状态机仍然是死的**；要修 `reload_start → reload_loop` 过渡需处理"两个写入者"，高风险，
+没人报之前不要动。

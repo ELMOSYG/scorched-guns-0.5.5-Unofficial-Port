@@ -260,3 +260,71 @@ if (!Boolean.TRUE.equals(ModSyncedDataKeys.RELOADING.getValue(player))) {
 - 卸载仍然**不会**服务端强制结束换弹：客户端按 G 时会先发 `C2SMessageReload(false)`（探针里
   `reloading=false` 就是这么来的）。若哪天有路径漏发那条包，换弹会继续跑，但因为 (b)，
   它**拿不到任何弹壳**，也不再是漏洞。
+
+---
+
+## 10. 阶段 3 之二：MANUAL 换弹结束后没有平滑衔接到 `reload_stop`（2026-11-15）
+
+> 玩家："单发装填枪械在换弹完成后没有平滑衔接到 reload_stop 动画。"
+> （澄清：这里指 **MANUAL**（callwell 那种逐发压弹）；`SINGLE_ITEM` 是激光/喷火那种一次灌满的。）
+
+### 10.1 先排除服务端：它是对的
+
+探针（真处理器 + FakePlayer + **真实等待**，因为手动收尾有 100 ms 宽限）实测：
+
+```
+shell 1 loaded:      ammo=1 reloading=true  state=-        playingStop=false
+shell 2 loaded:      ammo=2 reloading=true  state=-        playingStop=false shouldStop=true
+after full tick 1:   ammo=2 reloading=true  state=-        playingStop=false shouldStop=true
+after full tick 2:   ammo=2 reloading=false state=STOPPING playingStop=true  shouldStop=false
+```
+
+⇒ 服务端在满弹后**按时**写了 `STOPPING` + `IsPlayingReloadStop`，并发出 `S2CMessageStopReload`。
+问题在客户端这一段。
+
+### 10.2 两个事实合起来解释了它
+
+1. **动画数据**：`callwell.reload_loop` 的 `"loop": true`（0.6667 s 一循环）。所以服务端在中途发来
+   stop 时，循环**没有"自然结束"的时刻**可等；`handleStopReload` 原来直接
+   `controller.stop()` + `tryTriggerAnimation("reload_stop")` ⇒ 在动作中途硬切，看起来就是"跳"。
+2. **客户端状态机其实是死的**：`clientInventoryTick` 在开头取了一次 tag，而
+   `handleReloadingState` 里又 `getOrCreateTag(stack)` 取了一次 —— 探针实测证明这会**让前一个
+   tag 脱钩**（`first == second: false`，写入不落地）：
+
+   ```
+   write through the first tag reached the stack: false
+   write through getTagForWrite reached the stack without setTag: true
+   ```
+
+   于是那张状态机里所有 `nbt.putString("scguns:ReloadState", …)`（NONE/STARTING/LOADING/STOPPING）
+   **全部写进了孤儿**。它自带的"等当前循环播完再转 STOPPING"的平滑逻辑（`PendingStopTransition`）
+   因此从来不会生效 —— 这就是"没有平滑衔接"的根因。
+
+### 10.3 修法：把切换点挪到循环周期的边界
+
+不去复活那张状态机（它一旦有写权限就会与服务端争同一批键，见 §8.3 的取舍），而是在**已有的、
+每循环触发一次的关键帧**上做交接：
+
+| 位置 | 改动 |
+|---|---|
+| `ClientPlayHandler.handleStopReload` | 若 `reload_loop`/`carbine_reload_loop` 正在播 ⇒ **不切**，只写 `scguns:ReloadStopAtCycleEnd` + 时间戳，并清掉刚同步来的 STOPPING（否则 MANUAL 同步逻辑会在 50 ms 后提前收尾）；没有循环在播时维持原行为 |
+| `AnimatedGunItem.particleListener` 的 `"loaded"` 关键帧 | 若上面那个标记在 ⇒ 消费它并调用新的 `beginReloadStop(...)`：写 STOPPING / IsPlayingReloadStop 并 `tryTriggerAnimation("reload_stop")` |
+| `AnimatedGunItem.handleMainAnimationLogic` 的兜底分支 | 有标记时**等**（不再直接回 idle）；超过 **1.5 s** 仍没等到关键帧（循环里没有 `loaded`）就强制切。没有标记时保持原行为（卸载那种"无主循环"直接释放） |
+| `handleReloadStateSynchronization` | 有标记时**暂不收尾**，让过渡状态活到循环边界 |
+| `cleanupReloadState` | 顺手清掉这两个键（`ReloadStopAtCycleEnd` / `RequestedAt`），换枪/收枪不会把标记留给下一次换弹 |
+
+**为什么这样是"平滑"的**：`loaded` 关键帧就落在每个压弹循环的末尾，所以切换发生在**动作完成的那一刻**，
+而不是服务端说停就停的那一刻（最多晚一个循环 ≈ 0.667 s，而这 0.667 s 本来就该把手里那发压完）。
+
+### 10.4 未验 / 边界
+
+- **视觉效果只能玩家看**：本轮没有显示环境，客户端动画时序无法无头验证。请确认：
+  逐发压弹到满 → 当前这一发压完后**接着**播 `reload_stop`（不再半途跳过去）→ 回到 idle。
+- 1.5 s 兜底只在"循环动画里没有 `loaded` 关键帧"时触发；40 把 MANUAL 枪的 `reload_loop` 都有
+  `loaded`（压弹靠它发包），所以正常不会用到。
+- **客户端 MANUAL 状态机仍然是死的**（10.2 第 2 条）。本轮只是绕开它实现平滑收尾；若要修
+  它的 `reload_start → reload_loop` 过渡，就得把 `getOrCreateTag` 换成只读并处理"两个写入者"，
+  那是 §8.3 说的高风险项，**没有玩家报这个问题之前不要动**。
+- 门禁：`verify_installed_jar` 新增 2 项（两个类都必须带 `ReloadStopAtCycleEnd`）⇒ 上一版 jar
+  **297/304**（2 项 FAIL），新 jar **304/304**；`javac` 0（1038 文件）、61 审计（2 个既有无关失败）、
+  已安装（备份 `.bak-140323`）。

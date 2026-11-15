@@ -8942,3 +8942,53 @@ loop 10:          ammo=2（满）... casings=3  ← 满弹后每轮仍产出弹�
 - `MobGunFire.consumeAmmo` 没加计数：生物的枪不走客户端换弹关键帧，没有可消费的地方。
 - 卸载仍**不**在服务端强制结束换弹（客户端按 G 会先发 `C2SMessageReload(false)`）；即使哪天漏发，
   换弹会继续跑但**拿不到弹壳**，不再是漏洞。
+
+---
+
+## 83.14 MANUAL 换弹结束后没有平滑衔接到 `reload_stop`（玩家报告，已修）
+
+> 玩家："单发装填枪械在换弹完成后没有平滑衔接到 reload_stop 动画。"
+> 澄清后确认指 **MANUAL**（callwell 那种逐发压弹）；`SINGLE_ITEM` 是激光/喷火那种一次灌满的。
+> 细节在 [`docs/reload-system.md`](reload-system.md) §10。
+
+### 83.14.1 服务端是对的（探针实测）
+
+```
+shell 1 loaded:    ammo=1 reloading=true  state=-        playingStop=false
+shell 2 loaded:    ammo=2 reloading=true  state=-        playingStop=false shouldStop=true
+after full tick 1: ammo=2 reloading=true  state=-        playingStop=false shouldStop=true
+after full tick 2: ammo=2 reloading=false state=STOPPING playingStop=true
+```
+
+满弹后服务端按时写 `STOPPING`/`IsPlayingReloadStop` 并发 `S2CMessageStopReload`。问题在客户端。
+
+### 83.14.2 两个事实拼出根因
+
+1. `callwell.reload_loop` 是 **`"loop": true`**（0.6667 s/循环）⇒ 没有"自然结束"可等，原来
+   `handleStopReload` 直接 `controller.stop()` + 触发 `reload_stop` ⇒ **在动作中途硬切**。
+2. 客户端 MANUAL 状态机的状态写入**全是孤儿**：`clientInventoryTick` 取了一次 tag，
+   `handleReloadingState` 里又 `getOrCreateTag` 一次，探针实测证明会让前一个 tag 脱钩
+   （`first == second: false`、写入不落地）⇒ 它自带的"等循环播完再转 STOPPING"
+   （`PendingStopTransition`）**从来没生效过**。
+
+### 83.14.3 修法：在循环周期的 `loaded` 关键帧处交接
+
+- `handleStopReload`：`reload_loop` 正在播 ⇒ 不切，只写 `scguns:ReloadStopAtCycleEnd` + 时间戳，
+  并清掉刚同步来的 STOPPING（否则 MANUAL 同步会在 50 ms 后提前收尾）；无循环时才直接切。
+- `particleListener` 的 `"loaded"` 关键帧：有标记就消费，调新的
+  `AnimatedGunItem.beginReloadStop(...)`（写 STOPPING + 触发 `reload_stop`）。
+- `handleMainAnimationLogic` 兜底分支：有标记就**等**，1.5 s 没等到关键帧才强制切；无标记保持原行为。
+- `handleReloadStateSynchronization`：有标记时暂不收尾。
+- `cleanupReloadState`：清掉两个标记键，换枪不会污染下一次换弹。
+
+**为什么平滑**：`loaded` 落在每个压弹循环末尾 ⇒ 切换发生在"这一发压完"的那一刻，最多晚一个循环。
+
+### 83.14.4 验收与未验
+
+- `verify_installed_jar` 新增 2 项（两个类都要带 `ReloadStopAtCycleEnd`）：上一版 jar **297/304**
+  （2 项 FAIL），新 jar **304/304**；`javac` 0（1038）、61 审计（2 个既有无关失败）、
+  已安装（备份 `.bak-140323`）。
+- **视觉只能玩家看**：确认"逐发压满 → 当前这发压完接着播 `reload_stop` → 回 idle"。
+- **客户端 MANUAL 状态机仍然是死的**（83.14.2 第 2 条）。本轮绕开它做收尾；要修
+  `reload_start → reload_loop` 的过渡就得把那个 `getOrCreateTag` 改只读并处理"两个写入者"，
+  属高风险项，**没人报这个之前不要动**。

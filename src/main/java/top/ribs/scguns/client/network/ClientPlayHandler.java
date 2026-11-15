@@ -518,9 +518,6 @@ public class ClientPlayHandler {
          ItemStack heldItem = player.getMainHandItem();
          if (heldItem.getItem() instanceof AnimatedGunItem gunItem) {
             CompoundTag tag = NbtHelper.getOrCreateTag(heldItem);
-            tag.putString("scguns:ReloadState", "STOPPING");
-            tag.putBoolean("scguns:IsPlayingReloadStop", true);
-            tag.remove("InReloadLoop");
             tag.remove("scguns:IsReloading");
             ModSyncedDataKeys.RELOADING.setValue(player, false);
             long id = GeoItem.getId(heldItem);
@@ -529,9 +526,25 @@ public class ClientPlayHandler {
                .getAnimationControllers()
                .get("controller");
             if (animationController != null) {
-               animationController.stop();
-               animationController.setAnimationSpeed(1.0);
-               animationController.tryTriggerAnimation(gunItem.isInCarbineMode(heldItem) ? "carbine_reload_stop" : "reload_stop");
+               boolean cyclePlaying = gunItem.isAnimationPlaying(animationController, "reload_loop")
+                  || gunItem.isAnimationPlaying(animationController, "carbine_reload_loop");
+               if (cyclePlaying) {
+                  // reload_loop is authored as a looping clip, so it never reports the end of a cycle:
+                  // cutting it here switches animations in the middle of the motion, which is what the
+                  // player described as "no smooth transition into reload_stop". Ask for the stop at the
+                  // next "loaded" keyframe (the cycle boundary) instead; the state machine also has a
+                  // timeout in case the clip has no such keyframe.
+                  //
+                  // The state the server just wrote is dropped for the same reason: the MANUAL sync would
+                  // treat a STOPPING state as "already transitioning" and finish the transition in 50 ms,
+                  // long before the cycle ends.
+                  tag.putBoolean("scguns:ReloadStopAtCycleEnd", true);
+                  tag.putLong("scguns:ReloadStopRequestedAt", System.currentTimeMillis());
+                  tag.remove("scguns:ReloadState");
+                  tag.remove("scguns:IsPlayingReloadStop");
+               } else {
+                  gunItem.beginReloadStop(tag, animationController, heldItem);
+               }
             }
          }
       }
