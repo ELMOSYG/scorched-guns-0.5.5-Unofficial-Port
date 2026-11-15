@@ -73,7 +73,6 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
     * slot sync replaces it wholesale - the first version of this fix stored the request there, lost it
     * to a sync, and fell through to idle instead of reload_stop (HANDOFF 83.14).</p>
     */
-   private static ItemStack pendingReloadStopStack;
    private static long pendingReloadStopAt;
    /** Set by the "loaded" keyframe: the cycle boundary has passed, switch on the next tick. */
    private static boolean pendingReloadStopReady;
@@ -195,6 +194,9 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    @OnlyIn(Dist.CLIENT)
    private void clientInventoryTick(ItemStack stack, Entity entity, int slot, boolean selected, boolean inHands, boolean justLeftHands) {
       CompoundTag nbtCompound = NbtHelper.getOrCreateTag(stack);
+      if (this.finishDeferredReloadStop(stack, nbtCompound)) {
+         return;
+      }
       this.handleReloadStateSynchronization(stack, entity, nbtCompound, inHands);
       this.handleAnimationControllerUpdates(stack, entity, nbtCompound);
       if (entity instanceof Player player) {
@@ -559,7 +561,8 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
             }
          }
 
-         if ((hasNoAnimation || isStopped) && !nbtCompound.getBoolean("scguns:IsReloading") && nbtCompound.getInt("DrawnTick") >= 15) {
+         if ((hasNoAnimation || isStopped) && !nbtCompound.getBoolean("scguns:IsReloading")
+            && !isReloadStopPending() && nbtCompound.getInt("DrawnTick") >= 15) {
             animationController.setAnimationSpeed(1.0);
             this.updateCarbineState(stack, animationController);
             if (this.isInCarbineMode(stack)) {
@@ -607,22 +610,13 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                   }
                } else {
                   // Nothing is reloading, yet a reload animation is still playing.
-                  if (isReloadStopPending(stack)) {
-                     // A stop was requested while the loop was mid-cycle: wait for its "loaded"
-                     // keyframe, which is the cycle boundary, and switch on the tick after it. The
-                     // timeout covers a loop clip that has no such keyframe at all.
-                     if (pendingReloadStopReady || System.currentTimeMillis() - pendingReloadStopAt > 1500L) {
-                        consumeReloadStopPending(stack);
-                        this.beginReloadStop(nbtCompound, animationController, stack);
-                     }
-                  } else {
+                  if (!isReloadStopPending()) {
                      // Unloading mid-reload leaves the loop running: the server's answer to the unload
                      // clears the state instead of moving it to STOPPING, so nothing else could ever
                      // stop it, and every cycle refired its eject/loaded keyframes (the free-casing
                      // report). Hand the controller back to idle and drop the stale tags; a real reload
                      // never reaches this branch because it returns above with isReloading true.
                      this.cleanupAllReloadTags(nbtCompound);
-          clearReloadStopPending(stack);
                      animationController.stop();
                      animationController.setAnimationSpeed(1.0);
                      animationController.tryTriggerAnimation(this.isInCarbineMode(stack) ? "carbine_idle" : "idle");
@@ -1029,40 +1023,64 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
     */
    /** Asks for the stop clip at the end of the current reload cycle (client only). */
    @OnlyIn(Dist.CLIENT)
-   public static void requestReloadStopAtCycleEnd(ItemStack stack) {
-      pendingReloadStopStack = stack;
+   public static void requestReloadStopAtCycleEnd() {
       pendingReloadStopAt = System.currentTimeMillis();
       pendingReloadStopReady = false;
    }
 
    @OnlyIn(Dist.CLIENT)
-   private static boolean isReloadStopPending(ItemStack stack) {
-      return pendingReloadStopStack == stack && pendingReloadStopAt != 0L;
+   private static boolean isReloadStopPending() {
+      return pendingReloadStopAt != 0L;
    }
 
    @OnlyIn(Dist.CLIENT)
-   private static boolean consumeReloadStopPending(ItemStack stack) {
-      if (!isReloadStopPending(stack)) {
+   private static void clearReloadStopPending() {
+      pendingReloadStopAt = 0L;
+      pendingReloadStopReady = false;
+   }
+
+   /** Whether a reload clip is still on screen (a stop must wait for it to reach its boundary). */
+   @OnlyIn(Dist.CLIENT)
+   private boolean isReloadAnimationPlaying(AnimationController<GeoAnimatable> animationController) {
+      return this.isAnimationPlaying(animationController, "reload")
+         || this.isAnimationPlaying(animationController, "carbine_reload")
+         || this.isAnimationPlaying(animationController, "reload_start")
+         || this.isAnimationPlaying(animationController, "carbine_reload_start")
+         || this.isAnimationPlaying(animationController, "reload_loop")
+         || this.isAnimationPlaying(animationController, "carbine_reload_loop");
+   }
+
+   /**
+    * Performs a deferred stop once the reload clip has reached a cycle boundary (or is gone).
+    *
+    * @return true when the stop was started and the rest of the tick should be skipped
+    */
+   @OnlyIn(Dist.CLIENT)
+   private boolean finishDeferredReloadStop(ItemStack stack, CompoundTag tag) {
+      if (!isReloadStopPending()) {
          return false;
       }
 
-      pendingReloadStopStack = null;
-      pendingReloadStopAt = 0L;
-      pendingReloadStopReady = false;
+      AnimationController<GeoAnimatable> animationController = (AnimationController<GeoAnimatable>)this.getAnimatableInstanceCache()
+         .getManagerForId(GeoItem.getId(stack))
+         .getAnimationControllers()
+         .get("controller");
+      if (animationController == null) {
+         clearReloadStopPending();
+         return false;
+      }
+
+      boolean cyclePlaying = this.isReloadAnimationPlaying(animationController);
+      boolean timedOut = System.currentTimeMillis() - pendingReloadStopAt > 1500L;
+      if (cyclePlaying && !pendingReloadStopReady && !timedOut) {
+         return false; // still inside the cycle: wait for its "loaded" keyframe
+      }
+
+      clearReloadStopPending();
+      this.beginReloadStop(tag, animationController, stack);
       return true;
    }
 
-   /** Drops a request that can no longer be honoured (the gun left the hand). */
-   @OnlyIn(Dist.CLIENT)
-   private static void clearReloadStopPending(ItemStack stack) {
-      if (pendingReloadStopStack == stack) {
-         pendingReloadStopStack = null;
-         pendingReloadStopAt = 0L;
-         pendingReloadStopReady = false;
-      }
-   }
-
-   @OnlyIn(Dist.CLIENT)
    public void beginReloadStop(CompoundTag tag, AnimationController<GeoAnimatable> animationController, ItemStack stack) {
       tag.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.STOPPING.name());
       tag.putBoolean("scguns:IsPlayingReloadStop", true);
@@ -1212,7 +1230,7 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                      ModSyncedDataKeys.RELOADING.getValue(player);
                      tag.putBoolean("loaded", true);
                      PacketHandler.getPlayChannel().sendToServer(new C2SMessageGunLoaded());
-                     if (isReloadStopPending(heldStack)) {
+                     if (isReloadStopPending()) {
                         // The magazine filled during this cycle, so this is its last one. Only mark the
                         // boundary here: this runs inside the animation controller's own tick, and stopping or
                         // triggering clips from in there is re-entrant. The inventory tick performs the switch

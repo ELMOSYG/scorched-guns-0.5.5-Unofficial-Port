@@ -1634,11 +1634,11 @@ def main():
         # reload_stop"; both the receiver and the animation state machine have to know about the
         # cycle-boundary hand-over for it to happen at all.
         checks.append(_check_class_contains(
-            zf, "top/ribs/scguns/item/animated/AnimatedGunItem.class", b"pendingReloadStopStack",
-            "a pending reload stop is held in the client, not in the server-owned item tag"))
+            zf, "top/ribs/scguns/item/animated/AnimatedGunItem.class", b"finishDeferredReloadStop",
+            "the deferred stop is performed from the inventory tick, at a cycle boundary"))
         checks.append(_check_class_contains(
             zf, "top/ribs/scguns/client/network/ClientPlayHandler.class", b"requestReloadStopAtCycleEnd",
-            "the stop packet waits for the loop boundary instead of cutting it"))
+            "the stop packet defers instead of cutting the loop"))
 
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:

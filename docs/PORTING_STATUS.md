@@ -2114,16 +2114,19 @@ after full tick 2: ammo=2 reloading=false state=STOPPING playingStop=true
 各 `getOrCreateTag` 一次，探针实测 `first == second: false`、写入不落地 ⇒ 它自带的
 "等循环播完再转 STOPPING"（`PendingStopTransition`）**从来没生效**。
 
-**修法（第二版；第一版被玩家实测否掉）**：第一版把待处理标记写进**物品 NBT**，玩家实测变成"直接回
-idle" —— **服务端才是物品 tag 的权威方**，它随后的槽位同步会把客户端写的键整段覆盖。第二版把标记放在
-**客户端静态内存**（`pendingReloadStopStack`/`pendingReloadStopAt`）：`handleStopReload` 在
-`reload_loop` 播放时只登记请求（并清掉刚同步来的 STOPPING）；`loaded` 关键帧只置 `ready`
-（不在动画回调里切，避免重入）；下一个 inventory tick（或 1.5 s 超时）才调 `beginReloadStop(...)`
-播 `reload_stop`。`handleItemNotHeld` 丢掉请求。
+**修法（第三版；前两版都被玩家实测否掉）**：
+- v1（直接回 idle）：标记写进**物品 NBT** —— 服务端才是 tag 权威方，槽位同步整段覆盖，标记丢失。
+  **教训：客户端临时状态不要写进服务端拥有的物品 tag。**
+- v2（先卡 ~10 tick idle 再接 `reload_stop`）：标记改到客户端内存，但切动画挂在
+  `handleMainAnimationLogic` 兜底分支，而**排在它前面**的 `handleAnimationStateFixes`
+  只要"控制器无动画/已停止 + 不在换弹"就播 idle —— 等待窗口正好满足。
+- v3（本版）：`handleAnimationStateFixes` 有待处理停止时不播 idle；切换提到 `clientInventoryTick`
+  **最前面**（`finishDeferredReloadStop`）：`ready` / 换弹动画已不在播 / 1.5 s 超时任一成立就切并
+  `return`；动画还在播时兜底分支只等。`loaded` 关键帧只置 `ready`（不在动画回调里切，避免重入）。
 
-**门禁**：`verify_installed_jar` 2 项（`pendingReloadStopStack` 在客户端类里、`ClientPlayHandler` 调
-`requestReloadStopAtCycleEnd`）⇒ 上一版 **302/304**（2 项 FAIL），新 jar **304/304**；
-`javac` 0（1038）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-141526`）。
+**门禁**：`verify_installed_jar` 2 项（`finishDeferredReloadStop`、`requestReloadStopAtCycleEnd`）⇒
+上一版 **302/304**（2 项 FAIL），新 jar **304/304**；`javac` 0（1038）、61 审计（2 个既有无关失败）、
+已安装（备份 `.bak-142803`）。
 
 **未验**：视觉只能玩家看（逐发压满 → 当前这发压完接着播 `reload_stop` → 回 idle）。
 **客户端 MANUAL 状态机仍然是死的**；要修 `reload_start → reload_loop` 过渡需处理"两个写入者"，高风险，

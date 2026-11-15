@@ -539,7 +539,7 @@ public class ClientPlayHandler {
                   // of this fix lost the request and fell through to idle. The state the server just
                   // wrote is dropped for the same reason: the MANUAL sync would treat a STOPPING state as
                   // "already transitioning" and finish the transition in 50 ms, long before the cycle ends.
-                  AnimatedGunItem.requestReloadStopAtCycleEnd(heldItem);
+                  AnimatedGunItem.requestReloadStopAtCycleEnd();
                   tag.remove("scguns:ReloadState");
                   tag.remove("scguns:IsPlayingReloadStop");
                } else {

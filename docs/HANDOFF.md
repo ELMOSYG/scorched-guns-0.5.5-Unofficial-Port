@@ -8971,33 +8971,41 @@ after full tick 2: ammo=2 reloading=false state=STOPPING playingStop=true
    （`first == second: false`、写入不落地）⇒ 它自带的"等循环播完再转 STOPPING"
    （`PendingStopTransition`）**从来没生效过**。
 
-### 83.14.3 修法（**第二版**；第一版被玩家实测否掉了）
+### 83.14.3 修法（**第三版**；前两版都被玩家实测否掉了）
 
-> **第一版错在哪**：待处理标记写进了**物品 NBT**（`scguns:ReloadStopAtCycleEnd`），玩家实测结果是
-> "直接衔接到 idle"。因为**服务端才是物品 tag 的权威方**，它随后任何一次槽位同步都会把客户端写进去的
-> 键整段覆盖；标记一丢，兜底分支就把循环收成 idle。
-> **教训：客户端的临时状态不要写进服务端拥有的物品 tag。**
+> * **v1（直接回 idle）**：待处理标记写进**物品 NBT**。物品 tag 的权威方是服务端，它随后的槽位同步
+>   会把客户端写的键整段覆盖 ⇒ 标记丢失 ⇒ 兜底分支收成 idle。
+>   **教训：客户端临时状态不要写进服务端拥有的物品 tag。**
+> * **v2（先卡 ~10 tick idle，再接 `reload_stop`）**：标记改到客户端内存，但切动画挂在
+>   `handleMainAnimationLogic` 的兜底分支里，而**排在它前面**的 `handleAnimationStateFixes`
+>   只要"控制器没有动画/已停止 + 不在换弹"就播 idle —— 等待窗口正好满足 ⇒ 先看到 idle。
+> * **v3（本版）**：`handleAnimationStateFixes` 在有待处理停止时**不播 idle**；切换提到
+>   `clientInventoryTick` **最前面**（`finishDeferredReloadStop`）：`ready`（关键帧到了）、
+>   换弹动画已不在播、或 1.5 s 超时，任一成立就切并 `return`，不给后面的逻辑改回去的机会；
+>   动画还在播时兜底分支只"等"。
 
-第二版把待处理标记放在**客户端静态内存**（`pendingReloadStopStack` / `pendingReloadStopAt`），
-并把"关键帧"与"切动画"拆成两步：
+第二/三版把待处理标记放在**客户端静态内存**（服务端碰不到），并把"关键帧"与"切动画"拆两步：
 
 - `handleStopReload`：`reload_loop` 正在播 ⇒ 不切，调
-  `AnimatedGunItem.requestReloadStopAtCycleEnd(heldItem)`（纯客户端内存），并清掉刚同步来的 STOPPING；
+  `AnimatedGunItem.requestReloadStopAtCycleEnd()`（纯客户端内存），并清掉刚同步来的 STOPPING；
   无循环时才直接切。
 - `particleListener` 的 `"loaded"` 关键帧：**只置 `pendingReloadStopReady`**。不在关键帧回调里切动画 ——
   那是动画控制器的 tick 内部，`stop()`/`tryTriggerAnimation` 会重入。
-- `handleMainAnimationLogic` 兜底分支：下一个 inventory tick 看到 ready（或 1.5 s 超时）才调
-  `beginReloadStop(...)`（写 STOPPING + 触发 `reload_stop`）；无请求时保持原行为。
+- `clientInventoryTick` 开头：`finishDeferredReloadStop(...)` 判定并切；切的那一 tick 直接 `return`。
+- `handleAnimationStateFixes`：有待处理停止时不播 idle。
+- `handleMainAnimationLogic` 兜底分支：有待处理停止 ⇒ 只等；没有 ⇒ 保持原行为。
 - `handleItemNotHeld`：枪离手时丢掉待处理请求。
 
-**为什么平滑**：`loaded` 落在每个压弹循环末尾 ⇒ 切换发生在"这一发压完"的那一刻（最多晚一个 tick ≈ 50 ms）。
+**为什么平滑**：`loaded` 落在每个压弹循环末尾 ⇒ 切换发生在"这一发压完"的那一刻（最多晚到该循环的
+下一个 `loaded`，callwell ≈ 0.5 s），等待期间不会再有 idle 插进来。
 
 ### 83.14.4 验收与未验
 
-- `verify_installed_jar` 2 项（`pendingReloadStopStack` 在客户端类里、`ClientPlayHandler` 调
-  `requestReloadStopAtCycleEnd`）：上一版（tag 标记那版）**302/304**（2 项 FAIL），新 jar **304/304**；
-  `javac` 0（1038）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-141526`）。
-- **视觉只能玩家看**：确认"逐发压满 → 当前这发压完接着播 `reload_stop` → 回 idle"（不是直接回 idle）。
+- `verify_installed_jar` 2 项（`finishDeferredReloadStop` 在 `AnimatedGunItem`、`ClientPlayHandler` 调
+  `requestReloadStopAtCycleEnd`）：上一版（v2）**302/304**（2 项 FAIL），新 jar **304/304**；
+  `javac` 0（1038）、61 审计（2 个既有无关失败）、已安装（备份 `.bak-142803`）。
+- **视觉只能玩家看**：确认"逐发压满 → 当前这发压完接着播 `reload_stop` → 回 idle"，
+  中间**不应再出现 idle**。
 - **客户端 MANUAL 状态机仍然是死的**（83.14.2 第 2 条）。本轮绕开它做收尾；要修
   `reload_start → reload_loop` 的过渡就得把那个 `getOrCreateTag` 改只读并处理"两个写入者"，
   属高风险项，**没人报这个之前不要动**。
