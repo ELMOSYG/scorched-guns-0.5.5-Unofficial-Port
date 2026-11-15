@@ -42,7 +42,21 @@ public class C2SMessageGunLoaded {
 
                   Gun gun = ((GunItem)heldItem.getItem()).getModifiedGun(heldItem);
                   CompoundTag tag = NbtHelper.getOrCreateTag(heldItem);
-                  ReloadTracker tracker = new ReloadTracker(player);
+                  // A loaded packet can arrive twice inside one reload window (the client retries while its start tick has not
+         // elapsed). Each arrival used to build a fresh tracker, so the magazine was filled twice and the animation
+         // played twice. If the gun is already full there is nothing left to do.
+         ItemStack handStack = player.getMainHandItem();
+         if (handStack.getItem() instanceof top.ribs.scguns.item.GunItem handGunItem) {
+            int current = top.ribs.scguns.common.Gun.getAmmoCount(handStack);
+            int maxAmmo = top.ribs.scguns.util.GunModifierHelper.getModifiedAmmoCapacity(
+               handStack, handGunItem.getModifiedGun(handStack));
+            if (current >= maxAmmo && !Boolean.TRUE.equals(
+               top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.getValue(player))) {
+               return;
+            }
+         }
+
+         ReloadTracker tracker = new ReloadTracker(player);
                   if (gun.getReloads().getReloadType() == ReloadType.MAG_FED) {
                      tracker.increaseMagAmmo(player);
                      ModSyncedDataKeys.RELOADING.setValue(player, false);

@@ -357,6 +357,28 @@ public class ServerPlayHandler {
             return;
          }
 
+         // An unload has to end the reload before it empties the magazine. Leaving the reload running was the actual
+         // duplication: the loader saw a magazine that never filled, pulled a round out of the inventory every tick
+         // (draining the whole stack) and never finished. Cancelling it here keeps a single writer for the ammo count.
+         boolean reloading = Boolean.TRUE.equals(top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.getValue(player));
+         boolean taggedReload = tag != null
+            && (tag.getBoolean("IsReloading") || tag.getBoolean("scguns:IsReloading"));
+         if (reloading || taggedReload) {
+            top.ribs.scguns.ScorchedGuns.LOGGER.debug(
+               "scguns: unload cancels reload for {} (synced={}, tagged={})", player.getName().getString(), reloading, taggedReload);
+            top.ribs.scguns.init.ModSyncedDataKeys.RELOADING.setValue(player, false);
+            if (tag != null) {
+               tag.remove("IsReloading");
+               tag.remove("scguns:IsReloading");
+               tag.remove("InReloadLoop");
+               tag.remove("InCriticalReloadPhase");
+               tag.remove("scguns:ReloadState");
+               tag.remove("scguns:ShouldStopAfterLoop");
+               tag.remove("scguns:StopAfterLoopTime");
+               tag.remove("scguns:IsPlayingReloadStop");
+            }
+         }
+
          if (gun.getReloads().getReloadType() != ReloadType.SINGLE_ITEM && tag != null && tag.contains("AmmoCount", 3)) {
             int count = tag.getInt("AmmoCount");
             tag.putInt("AmmoCount", 0);
