@@ -485,6 +485,22 @@ public class GunItem extends Item implements IColored, IMeta {
       }
    }
 
+   /**
+    * A freshly crafted gun leaves the table empty.
+    *
+    * <p>Creative-tab guns are filled on purpose (see {@link #inventoryTick}), and several other paths - raid gear,
+    * mob equipment, the creative tabs - write a magazine count themselves. Crafting was not one of them, so a gun
+    * made at a bench came out reading as full even though no ammo had ever been loaded, which is what the crafting
+    * report describes. Writing zero here is explicit and idempotent: whatever filled it before, the crafted stack
+    * starts empty.</p>
+    */
+   @Override
+   public void onCraftedBy(ItemStack stack, net.minecraft.world.level.Level level,
+                          net.minecraft.world.entity.player.Player player) {
+      super.onCraftedBy(stack, level, player);
+      top.ribs.scguns.util.GunAmmo.setOrCreate(stack, 0);
+   }
+
    public boolean isEnchantable(ItemStack stack) {
       return this.getMaxStackSize(stack) == 1;
    }
