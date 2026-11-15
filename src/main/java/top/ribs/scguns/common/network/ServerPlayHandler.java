@@ -357,16 +357,6 @@ public class ServerPlayHandler {
             return;
          }
 
-         // An unload has to end the reload before it empties the magazine. Leaving the reload running was the actual
-         // duplication: the loader saw a magazine that never filled, pulled a round out of the inventory every tick
-         // (draining the whole stack) and never finished. Cancelling it here keeps a single writer for the ammo count.
-         // An unload has to end the reload before it empties the magazine. Leaving it running was the duplication:
-         // the loader saw a magazine that never filled, pulled a round from the inventory every tick and never
-         // finished. ReloadState is the only writer of that state now.
-         if (top.ribs.scguns.common.ReloadState.isReloading(player)) {
-            top.ribs.scguns.common.ReloadState.cancel(player, stack);
-         }
-
          if (gun.getReloads().getReloadType() != ReloadType.SINGLE_ITEM && tag != null && tag.contains("AmmoCount", 3)) {
             int count = tag.getInt("AmmoCount");
             tag.putInt("AmmoCount", 0);
