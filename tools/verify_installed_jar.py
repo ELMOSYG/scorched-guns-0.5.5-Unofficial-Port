@@ -1601,6 +1601,14 @@ def main():
             checks.append(_check_class_contains(
                 zf, entry, b"top/ribs/scguns/util/GunAmmo", label))
 
+        # 83.12. The Guard Villagers loot table adds this mod's guns to a guard's slots, so it lives in
+        # `data/guardvillagers/` and uses that mod's `guardvillagers:slot` loot function. Without the
+        # condition, a server that does not have Guard Villagers installs cannot parse the function type
+        # and logs one loot-table error per load - harmless, but it breaks a clean-boot log.
+        checks.append(_check_resource_contains(
+            zf, "data/guardvillagers/loot_table/entities/guard_armor.json", b"neoforge:mod_loaded",
+            "the guard loot table is gated on Guard Villagers being installed"))
+
     failures = [label for label, ok in checks if not ok]
     for label, ok in checks:
         print("  %-48s %s" % (label, "OK" if ok else "FAIL"))

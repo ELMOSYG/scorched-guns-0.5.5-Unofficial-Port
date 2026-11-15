@@ -135,7 +135,8 @@
 | `tools/audit_ammo_writer.py`（`--selftest`） | ① 键字面量只能在 `GunAmmo.java`；② 两个读访问器必须委托 `GunAmmo.get`；③ `set` 必须保留 `hasCustomData` 守卫、并经 `NbtHelper.setInt` 写回 |
 | `verify_installed_jar`（5 项新/改） | 字节码层：`AmmoCount` 的常量池条目**只在 `GunAmmo.class`**；`Gun` / `ReloadTracker` / `ServerPlayHandler` / `C2SMessageGunLoaded` / `EntityEquipmentConfig$EquipmentEntry` / `GunnerMobSpawner` 都引用它 |
 
-**反向验证**：上一版 jar 实测 **289/296**（7 项 FAIL，全是这批新/改的检查），新 jar **296/296**。
+**反向验证**：上一版 jar（未含 helper）在当时的 296 项里实测 **289/296**（7 项 FAIL，全是这批新/改的
+检查）；加完 §83.12 的战利品表条件检查后总数 297，新 jar **297/297**（另一版核对：296/297 → 297/297）。
 `audit_ammo_writer.py --selftest` 在标签 `backup-reloadstate-20261115` 上实测报出 13 处字面量 +
 2 个不委托的读访问器。
 
@@ -145,21 +146,26 @@
 ### 8.5 验收，以及**没验到的部分**
 
 - `javac` 0 错误（1037 文件）、`gradlew build` ✓、60 个审计（2 个失败与本轮无关，见下）、
-  10 个 `--selftest` 全过、`verify_installed_jar` **296/296**、已装入实例（备份 `.bak-125010`）。
+  10 个 `--selftest` 全过、`verify_installed_jar` **297/297**、已装入实例（备份 `.bak-130634`）。
 - 与本轮**无关**的 2 个失败：`audit_scguns_tags.py`（`scguns:ghost` 标签从未发货，上游 0.5.5 也没有）、
   `audit_menu_spectator_guard.py`（`GunBenchBlockEntity.createMenu` 缺旁观者守卫；本轮没改这个文件）。
-- **未做运行时验证**：本轮写了一个 `ServerStartedEvent` 探针，准备在 dev 服务器上跑真实 `ItemStack`
-  往返，但 `gradlew runServer` 在本机当前网络下起不来 —— `:prepareServerRun` 需要
-  `neoforge-21.1.249-moddev-config.json`，`maven.neoforged.net:443` 连接超时（`--offline` 也没有缓存）。
-  探针已删除、未执行。**网络恢复后请补跑**：
-  1. 同样的探针（`[SCGUNS-AMMO]` 前缀）应全 `ok`；
-  2. 进游戏做一次弹匣链路：满弹开枪（数字 −1）→ R 装填（HUD 立刻显示新弹数）→ G 卸载
-     （弹匣清空、弹药回背包）。
-- 没跑探针时也能站住的静态依据：`GunAmmo.set` 走 `NbtHelper.setInt`（`getTag → copy → put →
-  setTag`），`setTag` 用 `CustomData.of`（**复制**）安装，而 `PatchedDataComponentMap.set` 是拿
-  **原型**（此处为 null）比较后必然装入新实例 ⇒ 写必然脱钩、`ItemStack.matches` 必然看见
-  （`tools/audit_nbt_write_alias.py` 本轮为 0）。同一个 `setInt` 就是创造页填弹用的那条
-  （HANDOFF §13 的空弹匣修复），已在游戏里跑过。
+- **运行时验证已补做（2026-11-15，NeoForge 21.1.264 专用服务端）**。dev 服起不来
+  （`:prepareServerRun` 需要 `neoforge-21.1.249-moddev-config.json`，`maven.neoforged.net:443` 超时），
+  改用玩家给的 `neoforge-21.1.264-installer-fat.jar`（**内嵌 MC server.jar + 全部 libraries**，
+  可完全离线安装）：
+  1. `java -jar neoforge-21.1.264-installer-fat.jar --installServer build/server-21.1.264`
+  2. `mods/` = 本 mod + framework 0.13.11 + geckolib 4.9.3 + curios 9.5.1
+  3. 干净启动 ⇒ `Done (4.049s)!`、**ERROR/FATAL 0**、`Couldn't parse element` 0、配方 0、标签 0、
+     mixin 失败 0
+  4. 同一实例换成本轮探针版 jar ⇒ `[SCGUNS-AMMO]` **17/17 全 ok**，含最关键的
+     `ItemStack.matches sees the write`（副本看不到新值、原栈看到）⇒ 原子写的核心保证在真实物品上成立
+  5. 探针已删除、再构建后核对：产物里无探针类，`[SCGUNS-AMMO]` 不再出现
+- 静态依据（与实测一致）：`GunAmmo.set` 走 `NbtHelper.setInt`（`getTag → copy → put → setTag`），
+  `setTag` 用 `CustomData.of`（**复制**）安装，而 `PatchedDataComponentMap.set` 是拿**原型**
+  （此处为 null）比较后必然装入新实例 ⇒ 写必然脱钩、`ItemStack.matches` 必然看见
+  （`tools/audit_nbt_write_alias.py` 本轮为 0）。
+- **仍未做**：客户端手感验证（开枪数字 −1 / R 装填 HUD 立变 / G 卸载弹药回包）——需要真人进游戏；
+  以及装 Guard Villagers 时那张战利品表**仍然加载**（本机没有 GV，只验证了"没有 GV 时不报错"）。
 
 ### 8.6 下一步
 

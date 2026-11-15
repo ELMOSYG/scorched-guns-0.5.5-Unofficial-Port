@@ -2039,10 +2039,27 @@ event.setMouseSensitivity(Math.max(0.0, (scaled - 0.2) / 0.6));
 
 **门禁**：`javac` 0（1037 文件）、`build` ✓、60 个审计（2 个失败与本轮无关：`audit_scguns_tags` 的
 `scguns:ghost` 未发货、`audit_menu_spectator_guard` 的 `GunBenchBlockEntity`）、10 个 `--selftest` 全过、
-`verify_installed_jar` **296/296**（新增 5 项字节码检查：键的常量池条目只在 `GunAmmo.class` +
-4 个调用方引用；**反向验证**：上一版 jar 289/296、7 项 FAIL）、已装入实例（备份 `.bak-125010`）。
+`verify_installed_jar` **297/297**（新增 5 项字节码检查：键的常量池条目只在 `GunAmmo.class` +
+4 个调用方引用；**反向验证**：上一版 jar 289/296、7 项 FAIL）、已装入实例（备份 `.bak-130634`）。
 新审计 `tools/audit_ammo_writer.py`（含 `--selftest`，在 `backup-reloadstate-20261115` 上实测命中）。
 
-**未验**：runtime 探针没跑成 —— `gradlew runServer` 需要 `neoforge-21.1.249-moddev-config.json`，
-`maven.neoforged.net:443` 本机当前超时且 `--offline` 无缓存（环境问题，非本轮改动）。
-网络恢复后补跑：`[SCGUNS-AMMO]` 全 ok；进游戏开枪 −1 / R 装填 HUD 立即更新 / G 卸载弹匣清空且弹药回包。
+**运行时实测已通过**（NeoForge **21.1.264** 专用服务端）：玩家给的
+`neoforge-21.1.264-installer-fat.jar` 内嵌 MC server.jar + 全部 libraries ⇒ `--installServer` 完全离线；
+干净启动 `Done (4.049s)!`、**ERROR/FATAL 0**、`Couldn't parse element` 0、配方 0、标签 0、mixin 失败 0；
+探针版 jar 上 `[SCGUNS-AMMO]` **17/17 全 ok**（含 `ItemStack.matches sees the write`）。探针已删除，
+产物核对无该类。**仍未做**：客户端手感（开枪 −1 / R 装填 HUD 立变 / G 卸载回包）。
+
+## §83.12 干净服务端的一条战利品表错误：GV 表漏了条件（HANDOFF 83.12）
+
+**现象**：第一次用 21.1.264 干净服起服，`Couldn't parse element ... guardvillagers:entities/guard_armor
+- Unknown registry key ... guardvillagers:slot`（每次加载一条，是那一轮仅有的 mod 侧 ERROR）。
+
+**根因**：`data/guardvillagers/loot_table/entities/guard_armor.json` 是 §82 做 GV 联动时新增的
+（0.5.5 没有），它用 GV 自己的战利品函数 `guardvillagers:slot`；**没装 GV 时该函数类型不存在**
+⇒ 整张表解析失败。以前没发现是因为 dev 的 `libs/` 里一直有 guardvillagers。
+
+**修法**：文件头加 `"neoforge:conditions": [{"type": "neoforge:mod_loaded", "modid": "guardvillagers"}]`。
+支持性已核实（`LootTable.class` 引用 `ConditionalOps`），同一台服务器上实测该 ERROR 消失、
+其余干净项仍为 0。`verify_installed_jar` 新增 1 项（该文件必须含 `neoforge:mod_loaded`）：
+上一版 jar **296/297**（该项 FAIL），新 jar **297/297**。
+**未验**：装了 GV 时该表仍正常加载（本机没有 GV）。

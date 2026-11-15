@@ -8825,23 +8825,51 @@ BROKEN the stage is captured *after* lastStage is assigned, which is the exact b
 **反向验证**：上一版 jar **289/296**（7 项 FAIL，全是这批新/改检查），新 jar **296/296**；
 `audit_ammo_writer.py --selftest` 在标签 `backup-reloadstate-20261115` 上报出 13 处字面量 + 2 处未委托。
 
-### 83.11.5 验收与**没验到的**
+### 83.11.5 验收（含运行时）
 
 - `javac` 0（1037 文件）、`gradlew build` ✓、60 个审计（2 个失败与本轮无关：`audit_scguns_tags` 的
   `scguns:ghost`、`audit_menu_spectator_guard` 的 `GunBenchBlockEntity`）、10 个 `--selftest` 全过、
-  `verify_installed_jar` **296/296**、已装入实例（备份 `.bak-125010`）。
-- **运行时探针没跑成**：`gradlew runServer` 在本机当前网络下起不来 —— `:prepareServerRun` 需要
-  `neoforge-21.1.249-moddev-config.json`，`maven.neoforged.net:443` 超时、`--offline` 也没有缓存
-  （**这不是本轮改动的问题**，是环境；上一次成功起服是 10-01）。探针已删除、未执行。
-  **网络恢复后补跑**：① `[SCGUNS-AMMO]` 全 ok；② 进游戏：开枪数字 −1 / R 装填 HUD 立即变 /
-  G 卸载弹匣清空且弹药回背包。
-- 静态依据（无探针时）：`GunAmmo.set` → `NbtHelper.setInt`（`getTag → copy → put → setTag`）；
+  `verify_installed_jar` **297/297**、已装入实例（备份 `.bak-130634`）。
+- **运行时实测通过**（NeoForge **21.1.264** 专用服务端，离线安装：玩家给的
+  `neoforge-21.1.264-installer-fat.jar` 内嵌 MC server.jar + 全部 libraries ⇒
+  `--installServer` 不需要网络）：干净启动 `Done (4.049s)!`、**ERROR/FATAL 0**、
+  `Couldn't parse element` 0、配方 0、标签 0、mixin 失败 0；探针版 jar 上 `[SCGUNS-AMMO]`
+  **17/17 全 ok**，含 `ItemStack.matches sees the write`（副本看不到新值、原栈看到）。
+  探针随后删除，产物核对无该类。
+- 静态依据（与实测一致）：`GunAmmo.set` → `NbtHelper.setInt`（`getTag → copy → put → setTag`）；
   `setTag` 经 `CustomData.of`（**复制**）安装，`PatchedDataComponentMap.set` 拿**原型**（null）比较后
-  必然装入新实例 ⇒ 写必然脱钩、`ItemStack.matches` 必然看见（`audit_nbt_write_alias` 本轮 0）。
-  同一条 `setInt` 就是创造页填弹用的（§13 的空弹匣修复），已在游戏里跑过。
+  必然装入新实例 ⇒ 写必然脱钩、`ItemStack.matches` 必然看见。
+- **仍未做**：客户端手感（开枪数字 −1 / R 装填 HUD 立变 / G 卸载回包）；以及装 Guard Villagers 时
+  那张战利品表仍然加载（本机没有 GV）。
 
 ### 83.11.6 下一步
 
 阶段 2（`handleUnload` 先扣弹匣再发物品）**已由原子写结构性满足**，不需要再动。
 下一步是阶段 3：谁有权清换弹状态（`C2SMessageReload` 死分支、客户端 MANUAL 状态机、两个 NBT 键收敛）。
 **先读 `reload-system.md` §8.3，别顺手"修好"那个 `getOrCreateTag`。**
+
+---
+
+## 83.12 干净服务端冒出的一条战利品表错误：GV 表没加条件
+
+第一次用上面的 21.1.264 专用服务端起服时，日志里只有两条 ERROR，其中一条是 mod 的：
+
+```
+Couldn't parse element ResourceKey[minecraft:root / minecraft:loot_table]:guardvillagers:entities/guard_armor
+  - Unknown registry key ... guardvillagers:slot
+```
+
+`data/guardvillagers/loot_table/entities/guard_armor.json` 是 §82 做 GV 联动时**我们自己加的**文件
+（0.5.5 的 jar 里没有），它把本 mod 的枪塞进警卫的装备池，并用了 GV 自己的战利品函数
+`guardvillagers:slot`。**没装 GV 时那个函数类型不存在** ⇒ 整张表解析失败、每次加载一条 ERROR。
+
+- 不是移植回归（0.5.5 没这个文件），是移植新增内容漏了条件。
+- 修法：文件头加 `"neoforge:conditions": [{"type": "neoforge:mod_loaded", "modid": "guardvillagers"}]`。
+  **支持性已核实**：`javap`/常量池扫描显示 `net/minecraft/world/level/storage/loot/LootTable.class`
+  引用了 `ConditionalOps` ⇒ 战利品表确实走条件解码。实测同一台服务器上该 ERROR **消失**，
+  且干净启动的其余项仍为 0。
+- 防复发：`verify_installed_jar` 新增一项（该文件必须含 `neoforge:mod_loaded`）。
+  **反向验证**：上一版 jar 在这一项 FAIL（296/297），新 jar **297/297**。
+- 为什么以前没发现：dev 的 `libs/` 里 **有** guardvillagers（compileOnly+localRuntime），
+  所以那张表总是能解析；只有"没装 GV 的干净服"才会暴露。
+- **未验**：装了 GV 时这张表仍然正常加载（本机没有 GV；条件为真时行为与加条件前等价）。
