@@ -54,9 +54,7 @@ public class C2SMessageReload {
                         ModSyncedDataKeys.AIMING.setValue(player, false);
                      }
 
-                     ModSyncedDataKeys.RELOADING.setValue(player, true);
-                     tag.putBoolean("IsReloading", true);
-                     tag.putBoolean("scguns:IsReloading", true);
+                     top.ribs.scguns.common.ReloadState.start(player, player.getMainHandItem());
                      if (gun.getReloads().getReloadType() != ReloadType.MANUAL) {
                         tag.putBoolean("InCriticalReloadPhase", true);
                      }
@@ -68,9 +66,7 @@ public class C2SMessageReload {
                      return;
                   }
 
-                  ModSyncedDataKeys.RELOADING.setValue(player, false);
-                  tag.remove("IsReloading");
-                  tag.remove("scguns:IsReloading");
+                  top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
                   tag.remove("InCriticalReloadPhase");
                   tag.remove("scguns:ReloadState");
                   if (gun.getReloads().getReloadType() == ReloadType.MANUAL

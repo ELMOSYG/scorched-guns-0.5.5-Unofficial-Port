@@ -59,9 +59,7 @@ public class C2SMessageGunLoaded {
          ReloadTracker tracker = new ReloadTracker(player);
                   if (gun.getReloads().getReloadType() == ReloadType.MAG_FED) {
                      tracker.increaseMagAmmo(player);
-                     ModSyncedDataKeys.RELOADING.setValue(player, false);
-                     tag.remove("IsReloading");
-                     tag.remove("scguns:IsReloading");
+                     top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
                      tag.remove("InCriticalReloadPhase");
                      PacketHandler.getPlayChannel()
                         .sendToNearbyPlayers(
@@ -75,9 +73,7 @@ public class C2SMessageGunLoaded {
                         );
                   } else if (gun.getReloads().getReloadType() == ReloadType.SINGLE_ITEM) {
                      tracker.reloadItem(player);
-                     ModSyncedDataKeys.RELOADING.setValue(player, false);
-                     tag.remove("IsReloading");
-                     tag.remove("scguns:IsReloading");
+                     top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
                      tag.remove("InCriticalReloadPhase");
                      PacketHandler.getPlayChannel()
                         .sendToNearbyPlayers(
@@ -102,9 +98,7 @@ public class C2SMessageGunLoaded {
                         if (player.getMainHandItem().getItem() instanceof AnimatedGunItem) {
                            tag.putBoolean("scguns:ShouldStopAfterLoop", true);
                         } else {
-                           ModSyncedDataKeys.RELOADING.setValue(player, false);
-                           tag.remove("IsReloading");
-                           tag.remove("scguns:IsReloading");
+                           top.ribs.scguns.common.ReloadState.finish(player, player.getMainHandItem());
                            PacketHandler.getPlayChannel()
                               .sendToNearbyPlayers(
                                  () -> LevelLocation.create((ServerLevel) player.level(), player.getX(), player.getY(), player.getZ(), 64.0),
