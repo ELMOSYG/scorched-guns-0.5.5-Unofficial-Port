@@ -66,6 +66,8 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    private int drawTick = 0;
    private static final String RELOAD_START_TIME = "reloadStartTime";
    public static final String RELOAD_STATE = "scguns:ReloadState";
+   /** Temporary: last reload state written to the log, so each transition is logged once (HANDOFF 83.18). */
+   private static String lastTracedReloadState = "";
    private final GunRotationHandler rotationHandler = new GunRotationHandler();
 
    /** The model name this gun was registered with (its path, e.g. {@code laser_rifle}). */
@@ -787,6 +789,10 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
    private void handleReloadingState(CompoundTag nbt, AnimationController<GeoAnimatable> animationController, ItemStack stack) {
       Gun modifiedGun = ((GunItem)stack.getItem()).getModifiedGun(stack);
       String currentState = nbt.getString("scguns:ReloadState");
+      if (!currentState.equals(lastTracedReloadState)) {
+         lastTracedReloadState = currentState;
+         top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-RS] state={}", currentState);
+      }
       Player player = Minecraft.getInstance().player;
       if (player != null) {
          if ((Boolean)ModSyncedDataKeys.AIMING.getValue(player)) {
@@ -845,6 +851,7 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
 
                switch (state) {
                   case NONE:
+                     top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-RS] {} -> STARTING (reload_start), ammo={}", currentState, currentAmmo);
                      nbt.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.STARTING.name());
                      nbt.putLong("LastReloadStateChange", currentTime);
                      nbt.putBoolean("ManualReloadInitialized", true);
@@ -858,6 +865,7 @@ public class AnimatedGunItem extends GunItem implements GeoAnimatable, GeoItem {
                         || this.isAnimationPlaying(animationController, "carbine_reload_start");
                      if (!isStartAnimPlaying && animationController.getAnimationState() == State.STOPPED) {
                         if (!ammoFull && !hasNoAmmo && (Boolean)ModSyncedDataKeys.RELOADING.getValue(player)) {
+                           top.ribs.scguns.ScorchedGuns.LOGGER.info("[SCGUNS-RS] STARTING -> LOADING (reload_loop), ammo={}", currentAmmo);
                            nbt.putString("scguns:ReloadState", AnimatedGunItem.ReloadState.LOADING.name());
                            nbt.putLong("LastReloadStateChange", currentTime);
                            nbt.putBoolean("InReloadLoop", true);
