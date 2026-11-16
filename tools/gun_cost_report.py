@@ -80,9 +80,9 @@ TIER_NAMES = {
     "scorched": "蓝图 - 赤焦（毕业档）",
 }
 
-COLUMNS = ("iron", "anthralite", "diamond_steel", "treated_brass", "treated_iron", "copper", "planks", "stone")
+COLUMNS = ("iron", "anthralite", "diamond_steel", "treated_brass", "treated_iron", "copper", "scorched", "planks", "stone")
 LABELS = {"iron": "铁", "anthralite": "晶碳", "diamond_steel": "钻石钢", "treated_brass": "黄铜",
-          "treated_iron": "硬化铁", "copper": "铜", "planks": "木板", "stone": "石料"}
+          "treated_iron": "硬化铁", "copper": "铜", "scorched": "赤焦锭", "planks": "木板", "stone": "石料"}
 
 
 def slot_target(value):
