@@ -43,6 +43,11 @@ public final class GunFilter {
    private static final Set<String> ENABLED_BLUEPRINTS = new LinkedHashSet<>();
    private static final Set<String> DISABLED_GUNS = new LinkedHashSet<>();
 
+   /** Structures this mod ships, listed in the generated config. */
+   private static final List<String> STRUCTURE_IDS = List.of(
+      "asgharian_citadel", "asgharian_tower", "osgood_lab", "osgood_lab_outpost", "trench", "cog_chambers");
+   private static final Set<String> ENABLED_STRUCTURES = new LinkedHashSet<>();
+
    /** Lite mode: guns and ammo only. Individual switches below can override the umbrella flag. */
    private static boolean liteMode;
    private static boolean liteDisableStructures;
@@ -57,6 +62,7 @@ public final class GunFilter {
       ALLOWED_TIERS.clear();
       ENABLED_BLUEPRINTS.clear();
       DISABLED_GUNS.clear();
+      ENABLED_STRUCTURES.clear();
 
       Path path = Path.of("config", FILE_NAME);
       try {
@@ -81,6 +87,12 @@ public final class GunFilter {
          }
 
          liteMode = Boolean.parseBoolean(properties.getProperty("lite_mode", "false"));
+         for (String structure : STRUCTURE_IDS) {
+            if (Boolean.parseBoolean(properties.getProperty("structure." + structure, "true"))) {
+               ENABLED_STRUCTURES.add(structure);
+            }
+         }
+
          liteDisableStructures = liteMode || Boolean.parseBoolean(properties.getProperty("lite.disable_structures", "false"));
          liteDisableGunnerMobs = liteMode || Boolean.parseBoolean(properties.getProperty("lite.disable_gunner_mobs", "false"));
          liteDisableMobGunEquipment = liteMode || Boolean.parseBoolean(properties.getProperty("lite.disable_mob_gun_equipment", "false"));
@@ -117,6 +129,9 @@ public final class GunFilter {
       text.append("lite_mode=false").append("\n");
       text.append("# Fine grained overrides (each is implied by lite_mode=true).").append("\n");
       text.append("lite.disable_structures=false").append("\n");
+      for (String structure : STRUCTURE_IDS) {
+         text.append("structure.").append(structure).append("=true").append("\n");
+      }
       text.append("lite.disable_gunner_mobs=false").append("\n");
       text.append("lite.disable_mob_gun_equipment=false").append("\n");
       text.append("lite.disable_progression_messages=false").append("\n");
@@ -155,6 +170,17 @@ public final class GunFilter {
          return ALLOWED_TIERS;
       }
       return ENABLED_BLUEPRINTS.size() == BLUEPRINT_TIERS.size() ? Collections.emptySet() : ENABLED_BLUEPRINTS;
+   }
+
+   /** Whether a structure of this mod may generate. Unknown names are allowed so other mods are untouched. */
+   public static boolean isStructureEnabled(net.minecraft.resources.ResourceLocation id) {
+      if (liteDisableStructures) {
+         return false;
+      }
+      if (id == null || !"scguns".equals(id.getNamespace())) {
+         return true;
+      }
+      return ENABLED_STRUCTURES.contains(id.getPath());
    }
 
    public static boolean liteMode() {
