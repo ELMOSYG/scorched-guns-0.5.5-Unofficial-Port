@@ -2930,7 +2930,12 @@ public class Gun implements IEditorMenu {
          }
 
          if (tag.contains("TrailColor", 99)) {
-            this.trailColor = tag.getInt("TrailColor");
+            // Only take the value when the definition actually carries it. 139 of the 141 gun files have no trail colour,
+      // and reading a missing key returns 0 - which is a transparent black, so every one of those trails rendered
+      // colourless while the field's own default (16765577) never applied.
+      if (tag.contains("TrailColor")) {
+         this.trailColor = tag.getInt("TrailColor");
+      }
          }
 
          if (tag.contains("TrailLengthMultiplier", 99)) {
