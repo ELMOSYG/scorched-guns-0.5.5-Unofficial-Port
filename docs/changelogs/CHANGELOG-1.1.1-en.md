@@ -43,6 +43,15 @@ upstream behaviour** and documents the issue here instead of shipping another un
 - Structures are no longer flooded by 1.21's default `APPLY_WATERLOGGING` (six structure definitions plus
   `CogChambers`). Ship and submarine interiors in ocean biomes stay dry.
 
+### Projectile accumulation
+- Projectiles now have a 128 block flight limit. When the simulation distance is lower than the render distance,
+  entities in the band between them are never ticked, so the lifetime check never advanced and plasma and sculk
+  rounds sat there, kept visible by entity radars. Nothing can be hit past 128 blocks anyway.
+- A projectile is discarded the moment it enters a region that will not tick, instead of stopping at the edge.
+- The server sweeps this mod's projectiles beyond the simulation distance every ten seconds, clearing ones that
+  are already parked.
+- Projectiles are no longer written to chunk saves, so unloading a chunk cannot leave orphans behind.
+
 ### Performance
 - The shock coil's lightning arc is emitted in world space, so clients no longer load far-away chunks because of
   internal coordinates.
