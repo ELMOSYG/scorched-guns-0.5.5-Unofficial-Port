@@ -177,12 +177,6 @@ public class GunProgressionEventHandler {
     * through {@code Config.clientOr}.</p>
     */
    public static void sendTierUnlockedMessage(Player player, GunTier tier) {
-      // Lite mode: no progression chatter. The tier still unlocks, the player simply is not told about mobs and raids
-      // that this pack does not use.
-      if (top.ribs.scguns.config.GunFilter.liteDisablesProgressionMessages()) {
-         return;
-      }
-
       if ((Boolean)Config.clientOr(Config.CLIENT.display.showProgressionMessages)) {
          if (tier != null && tier.getLevel() != 0) {
             Component tierName = Component.translatable("gun_tier.scguns." + tier.getId())

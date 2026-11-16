@@ -51,19 +51,6 @@ public class GunnerMobSpawner {
 
    @SubscribeEvent
    public static void onSpecialSpawn(FinalizeSpawnEvent event) {
-      // Lite mode: no gunner mobs at all. Cancelling the finalize step stops the mob from being spawned naturally,
-      // from spawn eggs and from structure spawners at once, which is what "just the guns" packs ask for.
-      if (top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
-         event.setCanceled(true);
-         return;
-      }
-
-      // Lite mode also covers mobs this pack still spawns for other reasons (vanilla pillagers, piglins): they keep
-      // their normal equipment instead of receiving a gun.
-      if (top.ribs.scguns.config.GunFilter.liteDisablesMobGunEquipment()) {
-         return;
-      }
-
       if (GunMobValues.enabled) {
          LivingEntity entity = event.getEntity();
          if (entity instanceof PathfinderMob mob) {

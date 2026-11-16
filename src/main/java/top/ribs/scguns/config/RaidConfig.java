@@ -155,6 +155,16 @@ public class RaidConfig {
             raidLevel = json.get("raid_level").getAsInt();
          }
 
+         // A raid file from another datapack or addon can use a different shape (an array where this format wants an
+         // object, for instance). getAsJsonObject then threw a ClassCastException and the whole file was dropped with a
+         // stack trace - once per file, on every resource reload. Check the shape first and skip quietly instead.
+         if (!json.has("boss") || !json.get("boss").isJsonObject()
+            || !json.has("henchmen") || !json.get("henchmen").isJsonObject()
+            || !json.has("spawn_conditions") || !json.get("spawn_conditions").isJsonObject()) {
+            LOGGER.debug("Skipping raid data {}: boss/henchmen/spawn_conditions must be objects", raidId);
+            return null;
+         }
+
          RaidConfig.BossData boss = parseBossData(json.getAsJsonObject("boss"));
          RaidConfig.HenchmenData henchmen = parseHenchmenData(json.getAsJsonObject("henchmen"));
          RaidConfig.SpawnConditions conditions = parseSpawnConditions(json.getAsJsonObject("spawn_conditions"));
