@@ -142,6 +142,9 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
    protected double attributeDamageMultiplier = 0.0;
    protected EntityDimensions entitySize;
    protected double modifiedGravity;
+   /** Absolute cap for {@link #life}. See the constructor for why this exists. */
+   private static final int MAX_LIFETIME_TICKS = 600;
+
    protected int life;
    private int soundTime = 0;
    private float chargeProgress;
@@ -190,7 +193,10 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       this.entitySize = EntityDimensions.scalable(hitboxSize, hitboxSize);
       this.refreshDimensions();
       this.modifiedGravity = modifiedGun.getProjectile().isGravity() ? GunModifierHelper.getModifiedProjectileGravity(weapon, -0.04) : 0.0;
-      this.life = GunModifierHelper.getModifiedProjectileLife(weapon, this.projectile.getLife());
+      // Hard ceiling on projectile lifetime. The value comes straight from a gun JSON, and a corrupted definition
+      // (this tree already had size values of 1e-05 and 100.0) can hand out a lifetime of tens of thousands of ticks;
+      // those rounds then sit in the world forever and pile up. Thirty seconds is far beyond any real range.
+      this.life = Math.min(GunModifierHelper.getModifiedProjectileLife(weapon, this.projectile.getLife()), MAX_LIFETIME_TICKS);
       Vec3 dir = this.getDirection(shooter, weapon, item, modifiedGun);
       double speedModifier = GunEnchantmentHelper.getProjectileSpeedModifier(weapon);
       double speed = GunModifierHelper.getModifiedProjectileSpeed(weapon, this.projectile.getSpeed() * speedModifier);
@@ -406,6 +412,18 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
 
    public double getModifiedGravity() {
       return this.modifiedGravity;
+   }
+
+   /**
+    * Projectiles are never written to chunk saves.
+    *
+    * <p>Rounds that end up outside loaded chunks stopped ticking (so their lifetime never expired) and were then
+    * saved with the chunk, which is how hundreds of them accumulated across a world. They carry no state worth
+    * keeping: a reloaded world simply loses in-flight bullets instead of hoarding them.</p>
+    */
+   @Override
+   public boolean shouldBeSaved() {
+      return false;
    }
 
    public void tick() {
@@ -1009,7 +1027,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       this.general = new Gun.General();
       this.general.deserializeNBT(compound.getCompound("General"));
       this.modifiedGravity = compound.getDouble("ModifiedGravity");
-      this.life = compound.getInt("MaxLife");
+      this.life = Math.min(compound.getInt("MaxLife"), MAX_LIFETIME_TICKS);
       this.distanceTraveled = compound.getDouble("DistanceTraveled");
    }
 
@@ -1204,6 +1222,27 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       }
    }
 
+
+   /**
+    * Keeps one explosion from destroying an unbounded number of blocks.
+    *
+    * <p>Each destroyed block costs a block update, a light update and a chunk resend, and a radius-7 rocket can reach
+    * well over a thousand blocks - which is what made rockets freeze the server for a moment once block removal
+    * actually started working. The cap trims the list; 0 disables it.</p>
+    */
+   private static void capExplosionBlocks(Explosion explosion) {
+      int cap = (Integer)Config.COMMON.gameplay.griefing.maxBlocksPerExplosion.get();
+      if (cap <= 0 || explosion.getToBlow().size() <= cap) {
+         return;
+      }
+
+      List<BlockPos> positions = new java.util.ArrayList<>(explosion.getToBlow());
+      explosion.clearToBlow();
+      for (int i = 0; i < cap; i++) {
+         explosion.getToBlow().add(positions.get(i));
+      }
+   }
+
    public static void createExplosion(Entity entity, float radius, boolean forceNone) {
       Level world = entity.level();
       if (!world.isClientSide()) {
@@ -1291,6 +1330,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
          );
          if (!EventHooks.onExplosionStart(world, explosion)) {
             explosion.explode();
+            capExplosionBlocks(explosion);
             explosion.finalizeExplosion(true);
             explosion.getToBlow().forEach(pos -> {
                if (world.getBlockState(pos).getBlock() instanceof IExplosionDamageable) {
@@ -1319,6 +1359,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
          };
          if (!EventHooks.onExplosionStart(world, explosion)) {
             explosion.explode();
+            capExplosionBlocks(explosion);
             explosion.finalizeExplosion(true);
             BlockPos centerPos = entity.blockPosition();
             AABB effectArea = new AABB(centerPos).inflate((double)radius);
@@ -1350,6 +1391,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
          };
          if (!EventHooks.onExplosionStart(world, explosion)) {
             explosion.explode();
+            capExplosionBlocks(explosion);
             explosion.finalizeExplosion(true);
             BlockPos centerPos = entity.blockPosition();
             AABB effectArea = new AABB(centerPos).inflate((double)radius);
