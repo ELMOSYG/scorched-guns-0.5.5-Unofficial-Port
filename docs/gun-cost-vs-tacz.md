@@ -707,3 +707,63 @@ fortune > 0:  bonus = max(0, random(0 .. fortune+1) - 1);  count = base * (bonus
 
 > 说明：以上全部按「时运 III、无 Create」计算，两边同一假设；若开 Create，scguns 的晶碳再省约 43%，
 > 而 TaCZ 的铁/铜也能用粉碎增产，比值基本保持不变，绝对值同时下降。
+
+## 15. 本质问题：scguns 的枪不只能造 —— 敌人和结构都会白送
+
+前面所有造价表都在算「**合成**一把枪要多少材料」。但 scguns 有两条**完全免费**的获取渠道，
+而 TaCZ 没有 —— 这从根本上让「比合成价」这个方法站不住。
+
+### ① 结构战利品里有成枪
+
+扫过 `data/**/loot_table`：**19 把不同的枪**直接出现在箱子里（另有 4 个炮塔方块掉落自身），
+并附带零件与材料（`gun_barrel`、`gun_parts`、`diamond_steel_blend`、弹壳、火药、`blueprint_scrap`）。
+
+| 箱子 | 直接给的枪（示例） |
+|---|---|
+| `asgharian_supply` / `asgharian_treasure` | `rusty_gnat`(权重 3)、`bruiser` |
+| `osgood_lab_supply` / `osgood_lab_treasure` | `boomstick`、`scrapper`、`defender_pistol` |
+| `scguns_dungeon` / `scguns_mineshaft` | `flintlock_pistol`、`longarm`、`musket` |
+| `scguns_ancient_city` | `greaser_smg` |
+| `scguns_stronghold_corridor` | `m3_carabine` |
+| `trench_supply` | `llr_director`、`makeshift_rifle` |
+| `hero_of_the_village/gunsmith_gift` | `boomstick`、`flintlock_pistol`、`musket`、`scrapper` |
+| `guardvillagers/guard_armor` | `longarm`、`musket`、`pax`、`saketini`、`winnie` |
+
+箱子里的枪通常带 **10–70% 随机耐久损耗** 和随机枪械附魔，所以是「能用但不完美」的白嫖。
+
+### ② 敌人身上带枪，死了按几率掉
+
+三条装备注入路径都会 `setDropChance`：
+
+- `EntityEquipmentConfig`：普通怪按配置表随机装备枪，`mob.setDropChance(slot, entry.dropChance)`；
+- `GunnerMobSpawner`：枪手类怪生成时带枪；
+- `RaidManager`：袭击 boss 的武器带独立 `drop_chance`。
+
+11 个袭击档位的 boss 武器与掉落率：
+
+| 袭击 | 等级 | boss 武器 | 掉落率 |
+|---|---|---|---|
+| antique | 1 | `fencer_carabine` | 25% |
+| copper | 2 | `birdfeeder` | 25% |
+| iron | 3 | `iron_spear` | 25% |
+| frontier | 1 | `saketini_ironport` | 25% |
+| wrecker | 3 | `stigg` | 25% |
+| ocean | 3 | `spirulida` | 30% |
+| treated_brass | 4 | `howler_conversion` | **35%** |
+| **diamond_steel** | 4 | **`plasgun`**（附魔 puncturing） | **25%** |
+| piglin | 4 | `vulcanic_repeater` | 25% |
+| sculk | 4 | `sculk_resonator` | 25% |
+| blood_moon | — | **`astella`（赤焦档）** | **25%** |
+
+⇒ 连**钻石钢档**和**赤焦档**都能靠打对应袭击的 boss 白嫖（1/4 概率），
+而合成价是「4 次袭击的期望」之外的另一条路 —— 两者取更划算的那个。
+
+### 这对「造价对比」意味着什么
+
+1. **合成价只是上限**：表里那些 8–42 个矿石方块是「不想打架、想直接做」的价钱；
+   愿意打怪开箱的话，实际材料投入可以接近 0（只用子弹和时间）。
+2. **TaCZ 没有这条渠道**：它没有 mob 持枪、没有结构枪械战利品（附属包也没有），
+   所以 TaCZ 的成本表就是**真实成本**，而 scguns 的成本表是**最贵的那条路**。
+3. **传闻的方法本身错了**：拿「scguns 的最贵路径」去比「TaCZ 的唯一路径」，
+   得出「scguns 更贵」几乎是必然的；正确的问法是「**获得一把能用的枪需要多少投入**」，
+   而在这个问题下 scguns 因为白嫖渠道反而更便宜。
