@@ -142,6 +142,12 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
    protected double attributeDamageMultiplier = 0.0;
    protected EntityDimensions entitySize;
    protected double modifiedGravity;
+   /** Where this round was fired from. Used to end it by distance, which does not depend on chunk state. */
+   private net.minecraft.world.phys.Vec3 originPos;
+
+   /** Hard range cap in blocks. Comfortably past any gun's reach and inside the default simulation distance. */
+   private static final double MAX_RANGE_BLOCKS = 128.0;
+
    /** Absolute cap for {@link #life}. See the constructor for why this exists. */
    private static final int MAX_LIFETIME_TICKS = 600;
 
@@ -433,6 +439,17 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       // position lands outside the ticked area, the round is gone.
       if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
          && !serverLevel.isPositionEntityTicking(this.blockPosition())) {
+         this.discard();
+         return;
+      }
+
+      // Distance cap. Unlike the lifetime cap this does not depend on the entity being ticked, does not depend on
+      // chunk states, and cannot leave a round parked in the band between the simulation and render distances: the
+      // flight itself is bounded. 128 blocks is beyond any gun's configured reach.
+      if (this.originPos == null) {
+         this.originPos = this.position();
+      } else if (this.position().distanceToSqr(this.originPos) > MAX_RANGE_BLOCKS * MAX_RANGE_BLOCKS
+         && !this.level().isClientSide) {
          this.discard();
          return;
       }
