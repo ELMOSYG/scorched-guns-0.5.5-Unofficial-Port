@@ -26,7 +26,9 @@ TACZ_JARS = [
 
 BOSS = ("netherite", "nether_star", "dragon_breath", "dragon_egg", "heavy_core", "wither",
         "echo_shard", "shulker_shell", "heart_of_the_sea")
-RARE = ("diamond", "emerald", "blaze", "lapis", "amethyst", "quartz")
+# 青金石/金子/原木/铜/铁都是原版矿物，玩家本来就会挖，不算进阶门槛；
+# 真正的门槛是宝石（钻石/绿宝石/紫水晶）、烈焰棒与 boss 掉落。
+RARE = ("diamond", "emerald", "amethyst", "blaze")
 TIER_NAME = {"A": "A 普通", "B": "B 高耗普通", "C": "C 稀有", "D": "D boss"}
 
 
