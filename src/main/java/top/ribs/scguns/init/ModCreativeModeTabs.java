@@ -469,27 +469,69 @@ public class ModCreativeModeTabs {
                pOutput.accept((ItemLike)ModItems.COG_LOCATOR.get());
                pOutput.accept((ItemLike)ModItems.THE_PACT.get());
                pOutput.accept((ItemLike)ModItems.VICIOUS_ACID_BUCKET.get());
-               pOutput.accept((ItemLike)ModItems.COG_KNIGHT_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.TRAUMA_UNIT_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.COG_MINION_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.SKY_CARRIER_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.SUPPLY_SCAMP_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.DISSIDENT_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.PRAETOR_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.SULFURHEAD_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.ADJUDICATOR_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.SUBJUGATOR_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.VIVENTRUM_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.BLUNDERER_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.HORNLIN_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.ZOMBIFIED_HORNLIN_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.MOTHER_GHAST_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.FINFORCER_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.HIVE_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.SWARM_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.SIGNAL_BEACON_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.SCAMP_TANK_SPAWN_EGG.get());
-               pOutput.accept((ItemLike)ModItems.SCAMPLER_SPAWN_EGG.get());
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.COG_KNIGHT_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.TRAUMA_UNIT_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.COG_MINION_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.SKY_CARRIER_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.SUPPLY_SCAMP_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.DISSIDENT_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.PRAETOR_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.SULFURHEAD_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.ADJUDICATOR_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.SUBJUGATOR_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.VIVENTRUM_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.BLUNDERER_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.HORNLIN_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.ZOMBIFIED_HORNLIN_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.MOTHER_GHAST_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.FINFORCER_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.HIVE_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.SWARM_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.SIGNAL_BEACON_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.SCAMP_TANK_SPAWN_EGG.get());
+               }
+               if (!top.ribs.scguns.config.GunFilter.liteDisablesGunnerMobs()) {
+                  pOutput.accept((ItemLike)ModItems.SCAMPLER_SPAWN_EGG.get());
+               }
             })
             .build()
    );
