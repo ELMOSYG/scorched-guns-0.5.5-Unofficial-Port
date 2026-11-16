@@ -289,6 +289,7 @@ public class ScorchedGuns {
       event.enqueueWork(
          () -> {
             GunTiers.init();
+      top.ribs.scguns.config.GunFilter.load();
             GunTierRegistry.lock();
             PacketHandler.init();
             GunMobValues.init();

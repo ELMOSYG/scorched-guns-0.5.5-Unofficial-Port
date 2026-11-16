@@ -97,20 +97,21 @@ public class TieredWeaponConfig {
       if (tier == null) {
          return null;
       } else {
-         List<Item> weapons = TIER_WEAPONS.get(tier.getId());
+         List<Item> weapons = GunFilter.filter(TIER_WEAPONS.getOrDefault(tier.getId(), Collections.emptyList()));
          return weapons != null && !weapons.isEmpty() ? weapons.get(random.nextInt(weapons.size())) : null;
       }
    }
 
    public static List<Item> getWeaponsForTier(GunTier tier) {
-      return tier == null ? Collections.emptyList() : TIER_WEAPONS.getOrDefault(tier.getId(), Collections.emptyList());
+      return tier == null ? Collections.emptyList()
+         : GunFilter.filter(TIER_WEAPONS.getOrDefault(tier.getId(), Collections.emptyList()));
    }
 
    public static boolean hasTierWeapons(GunTier tier) {
       if (tier == null) {
          return false;
       } else {
-         List<Item> weapons = TIER_WEAPONS.get(tier.getId());
+         List<Item> weapons = GunFilter.filter(TIER_WEAPONS.getOrDefault(tier.getId(), Collections.emptyList()));
          return weapons != null && !weapons.isEmpty();
       }
    }
