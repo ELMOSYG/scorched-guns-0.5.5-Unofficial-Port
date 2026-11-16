@@ -35,8 +35,6 @@ public final class ProjectileReaper {
       }
 
       int removed = 0;
-      int seen = 0;
-      int outside = 0;
 
       for (ServerLevel level : event.getServer().getAllLevels()) {
          // The band between the simulation distance and the render distance is the problem: entities there are still
@@ -53,11 +51,9 @@ public final class ProjectileReaper {
                continue;
             }
 
-            seen++;
             boolean nearPlayer = level.players().stream()
                .anyMatch(player -> player.distanceToSqr(projectile) <= limitSqr);
             if (!nearPlayer) {
-               outside++;
                doomed.add(projectile);
             }
          }
@@ -70,7 +66,9 @@ public final class ProjectileReaper {
          }
       }
 
-      top.ribs.scguns.ScorchedGuns.LOGGER.info(
-         "scguns: projectile sweep - projectiles={}, farther than simulation distance={}, removed={}", seen, outside, removed);
+      // Quiet by default: only report when something was actually reaped, and only at debug level.
+      if (removed > 0) {
+         top.ribs.scguns.ScorchedGuns.LOGGER.debug("scguns: reaped {} parked projectiles", removed);
+      }
    }
 }
