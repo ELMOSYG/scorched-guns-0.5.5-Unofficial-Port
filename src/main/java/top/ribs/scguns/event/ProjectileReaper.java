@@ -36,15 +36,20 @@ public final class ProjectileReaper {
 
       int removed = 0;
       for (ServerLevel level : event.getServer().getAllLevels()) {
+         // Collect first, discard afterwards: getAllEntities() is a live view, and removing an entity while walking
+         // it threw ArrayIndexOutOfBoundsException inside fastutil's map iterator (crash report 2026-11-16 12:31).
+         java.util.List<ProjectileEntity> parked = new java.util.ArrayList<>();
          for (Entity entity : level.getAllEntities()) {
-            if (!(entity instanceof ProjectileEntity projectile) || projectile.isRemoved()) {
-               continue;
+            if (entity instanceof ProjectileEntity projectile
+               && !projectile.isRemoved()
+               && !level.isPositionEntityTicking(projectile.blockPosition())) {
+               parked.add(projectile);
             }
+         }
 
-            if (!level.isPositionEntityTicking(projectile.blockPosition())) {
-               projectile.discard();
-               removed++;
-            }
+         for (ProjectileEntity projectile : parked) {
+            projectile.discard();
+            removed++;
          }
       }
 

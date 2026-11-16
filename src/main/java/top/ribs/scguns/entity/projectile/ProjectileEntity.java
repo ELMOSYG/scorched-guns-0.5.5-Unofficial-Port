@@ -427,6 +427,16 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
    }
 
    public void tick() {
+      // A round that leaves the entity-ticking part of the world stops ticking there, so its lifetime never expires and
+      // it stays parked at the edge of the simulation distance forever (plasma and sculk rounds were the visible case).
+      // The crossing itself still happens while tick() runs, so this is the cheapest place to end it: the frame the
+      // position lands outside the ticked area, the round is gone.
+      if (this.level() instanceof net.minecraft.server.level.ServerLevel serverLevel
+         && !serverLevel.isPositionEntityTicking(this.blockPosition())) {
+         this.discard();
+         return;
+      }
+
       super.tick();
       this.updateHeading();
       this.onProjectileTick();
