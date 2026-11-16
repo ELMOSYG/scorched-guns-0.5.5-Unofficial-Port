@@ -43,6 +43,14 @@ public final class GunFilter {
    private static final Set<String> ENABLED_BLUEPRINTS = new LinkedHashSet<>();
    private static final Set<String> DISABLED_GUNS = new LinkedHashSet<>();
 
+   /** Lite mode: guns and ammo only. Individual switches below can override the umbrella flag. */
+   private static boolean liteMode;
+   private static boolean liteDisableRaids;
+   private static boolean liteDisableStructures;
+   private static boolean liteDisableGunnerMobs;
+   private static boolean liteDisableMobGunEquipment;
+   private static boolean liteDisableProgressionMessages;
+
    private GunFilter() {
    }
 
@@ -73,6 +81,14 @@ public final class GunFilter {
             ALLOWED_TIERS.add(tier.toLowerCase(Locale.ROOT));
          }
 
+         liteMode = Boolean.parseBoolean(properties.getProperty("lite_mode", "false"));
+         liteDisableRaids = liteMode || Boolean.parseBoolean(properties.getProperty("lite.disable_raids", "false"));
+         liteDisableStructures = liteMode || Boolean.parseBoolean(properties.getProperty("lite.disable_structures", "false"));
+         liteDisableGunnerMobs = liteMode || Boolean.parseBoolean(properties.getProperty("lite.disable_gunner_mobs", "false"));
+         liteDisableMobGunEquipment = liteMode || Boolean.parseBoolean(properties.getProperty("lite.disable_mob_gun_equipment", "false"));
+         liteDisableProgressionMessages = liteMode
+            || Boolean.parseBoolean(properties.getProperty("lite.disable_progression_messages", "false"));
+
          for (String gun : split(properties.getProperty("disabled_guns", ""))) {
             DISABLED_GUNS.add(gun.toLowerCase(Locale.ROOT));
          }
@@ -81,6 +97,10 @@ public final class GunFilter {
             ENABLED_BLUEPRINTS.size() == BLUEPRINT_TIERS.size() ? "(all on)" : ENABLED_BLUEPRINTS,
             ALLOWED_TIERS.isEmpty() ? "(from blueprints)" : ALLOWED_TIERS,
             DISABLED_GUNS.isEmpty() ? "(none)" : DISABLED_GUNS);
+         ScorchedGuns.LOGGER.info(
+            "scguns: lite mode {} (raids {}, structures {}, gunner mobs {}, mob guns {}, progression chat {})",
+            liteMode, liteDisableRaids, liteDisableStructures, liteDisableGunnerMobs, liteDisableMobGunEquipment,
+            liteDisableProgressionMessages);
       } catch (IOException failure) {
          ScorchedGuns.LOGGER.warn("scguns: could not read {}, no tier filtering is applied", FILE_NAME, failure);
       }
@@ -92,6 +112,16 @@ public final class GunFilter {
       text.append("# false stops that blueprint's guns from being obtained (existing guns keep working).").append("\n");
       text.append("# Napoleonic pack: keep antique true, set the rest false.").append("\n");
       text.append("# Western pack:    keep frontier true, set the rest false.").append("\n");
+      text.append("\n");
+      text.append("# Lite mode: guns and ammo only. Turns off raids, structures, gunner mobs, mob gun equipment").append("\n");
+      text.append("# and the progression chat lines. Set it back to false to get the full mod.").append("\n");
+      text.append("lite_mode=false").append("\n");
+      text.append("# Fine grained overrides (each is implied by lite_mode=true).").append("\n");
+      text.append("lite.disable_raids=false").append("\n");
+      text.append("lite.disable_structures=false").append("\n");
+      text.append("lite.disable_gunner_mobs=false").append("\n");
+      text.append("lite.disable_mob_gun_equipment=false").append("\n");
+      text.append("lite.disable_progression_messages=false").append("\n");
       text.append("\n");
       text.append("# Optional override: name tiers here to ignore the blueprint switches, e.g. allowed_tiers=antique").append("\n");
       text.append("allowed_tiers=").append("\n");
@@ -127,6 +157,30 @@ public final class GunFilter {
          return ALLOWED_TIERS;
       }
       return ENABLED_BLUEPRINTS.size() == BLUEPRINT_TIERS.size() ? Collections.emptySet() : ENABLED_BLUEPRINTS;
+   }
+
+   public static boolean liteMode() {
+      return liteMode;
+   }
+
+   public static boolean liteDisablesRaids() {
+      return liteDisableRaids;
+   }
+
+   public static boolean liteDisablesStructures() {
+      return liteDisableStructures;
+   }
+
+   public static boolean liteDisablesGunnerMobs() {
+      return liteDisableGunnerMobs;
+   }
+
+   public static boolean liteDisablesMobGunEquipment() {
+      return liteDisableMobGunEquipment;
+   }
+
+   public static boolean liteDisablesProgressionMessages() {
+      return liteDisableProgressionMessages;
    }
 
    public static boolean hasRestriction() {
