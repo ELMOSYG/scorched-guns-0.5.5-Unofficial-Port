@@ -58,6 +58,12 @@ public class GunnerMobSpawner {
          return;
       }
 
+      // Lite mode also covers mobs this pack still spawns for other reasons (vanilla pillagers, piglins): they keep
+      // their normal equipment instead of receiving a gun.
+      if (top.ribs.scguns.config.GunFilter.liteDisablesMobGunEquipment()) {
+         return;
+      }
+
       if (GunMobValues.enabled) {
          LivingEntity entity = event.getEntity();
          if (entity instanceof PathfinderMob mob) {
