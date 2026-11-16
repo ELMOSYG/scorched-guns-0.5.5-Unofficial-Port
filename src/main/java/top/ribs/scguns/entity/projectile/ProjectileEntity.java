@@ -145,8 +145,14 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
    /** Where this round was fired from. Used to end it by distance, which does not depend on chunk state. */
    private net.minecraft.world.phys.Vec3 originPos;
 
-   /** Hard range cap in blocks. Comfortably past any gun's reach and inside the default simulation distance. */
-   private static final double MAX_RANGE_BLOCKS = 128.0;
+   /**
+    * Hard range cap in blocks.
+    *
+    * <p>Deliberately a few blocks short of 128: eight chunks of simulation distance is exactly 128 blocks, so a round
+    * that died at exactly 128 would still be inside the ticked area and could sit there. 125 leaves a margin, and
+    * nothing can be hit that far out anyway.</p>
+    */
+   private static final double MAX_RANGE_BLOCKS = 125.0;
 
    /** Absolute cap for {@link #life}. See the constructor for why this exists. */
    private static final int MAX_LIFETIME_TICKS = 600;

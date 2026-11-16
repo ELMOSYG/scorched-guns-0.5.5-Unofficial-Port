@@ -42,7 +42,9 @@ public final class ProjectileReaper {
          // The band between the simulation distance and the render distance is the problem: entities there are still
          // sent to clients (so an entity radar shows them) but are not ticked, which means a projectile's lifetime
          // never advances. Compare against the simulation distance directly instead of asking the chunk system.
-         int simulationBlocks = level.getServer().getPlayerList().getSimulationDistance() * 16;
+         // Three blocks of margin: the boundary itself belongs to the ticking area, and a round parked exactly on it
+         // would be kept forever (eight chunks is exactly 128 blocks).
+         int simulationBlocks = Math.max(16, level.getServer().getPlayerList().getSimulationDistance() * 16 - 3);
          double limitSqr = (double) simulationBlocks * (double) simulationBlocks;
 
          java.util.List<Entity> doomed = new java.util.ArrayList<>();
