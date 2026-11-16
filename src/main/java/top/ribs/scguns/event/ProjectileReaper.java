@@ -35,39 +35,40 @@ public final class ProjectileReaper {
       }
 
       int removed = 0;
+      int seen = 0;
+      int outside = 0;
+
       for (ServerLevel level : event.getServer().getAllLevels()) {
-         // Collect first, discard afterwards: getAllEntities() is a live view, and removing an entity while walking
-         // it threw ArrayIndexOutOfBoundsException inside fastutil's map iterator (crash report 2026-11-16 12:31).
-         java.util.List<ProjectileEntity> parked = new java.util.ArrayList<>();
+         // The band between the simulation distance and the render distance is the problem: entities there are still
+         // sent to clients (so an entity radar shows them) but are not ticked, which means a projectile's lifetime
+         // never advances. Compare against the simulation distance directly instead of asking the chunk system.
+         int simulationBlocks = level.getServer().getPlayerList().getSimulationDistance() * 16;
+         double limitSqr = (double) simulationBlocks * (double) simulationBlocks;
+
+         java.util.List<Entity> doomed = new java.util.ArrayList<>();
          for (Entity entity : level.getAllEntities()) {
-            if (entity instanceof ProjectileEntity projectile
-               && !projectile.isRemoved()
-               && !level.isPositionEntityTicking(projectile.blockPosition())) {
-               parked.add(projectile);
+            if (!(entity instanceof ProjectileEntity projectile) || projectile.isRemoved()) {
+               continue;
+            }
+
+            seen++;
+            boolean nearPlayer = level.players().stream()
+               .anyMatch(player -> player.distanceToSqr(projectile) <= limitSqr);
+            if (!nearPlayer) {
+               outside++;
+               doomed.add(projectile);
             }
          }
 
-         for (ProjectileEntity projectile : parked) {
+         // Collected first: getAllEntities() is a live view and removing while walking it crashed the server
+         // (crash report 2026-11-16 12:31).
+         for (Entity projectile : doomed) {
             projectile.discard();
             removed++;
          }
       }
 
-      // DIAGNOSTIC: temporary, info level so a report shows whether the sweep runs at all and what it sees.
-      int seen = 0;
-      int parkedTotal = 0;
-      for (ServerLevel level : event.getServer().getAllLevels()) {
-         for (Entity entity : level.getAllEntities()) {
-            if (entity instanceof ProjectileEntity) {
-               seen++;
-               if (!level.isPositionEntityTicking(entity.blockPosition())) {
-                  parkedTotal++;
-               }
-            }
-         }
-      }
-
       top.ribs.scguns.ScorchedGuns.LOGGER.info(
-         "scguns: projectile sweep - projectiles={}, outside ticking area={}, removed={}", seen, parkedTotal, removed);
+         "scguns: projectile sweep - projectiles={}, farther than simulation distance={}, removed={}", seen, outside, removed);
    }
 }
