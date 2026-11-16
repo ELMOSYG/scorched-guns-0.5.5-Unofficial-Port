@@ -336,6 +336,18 @@ public class ClientHandler {
     * than break the client.</p>
     */
    private static void pinFrameworkClientService() {
+      // ServiceLoader reads the *context* class loader, not the caller's. On launches where that loader cannot see the
+      // Framework jar the lookup comes back empty and the client hangs on the loading screen - the 2026-11-16 log
+      // shows exactly that ("Could not resolve Framework's client service early"). Point the context loader at this
+      // mod's own loader for the duration of the touch, then restore whatever was there.
+      Thread thread = Thread.currentThread();
+      ClassLoader previous = thread.getContextClassLoader();
+      try {
+         thread.setContextClassLoader(ClientHandler.class.getClassLoader());
+      } catch (Throwable ignored) {
+         // Nothing to do; the touch below still runs with whatever loader is in place.
+      }
+
       try {
          Object clientService = com.mrcrayfish.framework.platform.ClientServices.CLIENT;
          if (clientService == null) {
@@ -343,13 +355,16 @@ public class ClientHandler {
             return;
          }
 
-         // One line per launch on purpose: Framework is a required dependency of this mod, so when a
-         // launch still hangs on model loading this tells us from the player's own log whether the
-         // early resolution ran at all.
-         ScorchedGuns.LOGGER.info("[scguns] Framework client service resolved on the main thread ({}); a later lookup by a resource-reload worker would have come back empty on Framework 0.13.11",
+         ScorchedGuns.LOGGER.info("[scguns] Framework client service resolved on the main thread ({}); a later lookup by a resource reload worker reuses it",
             clientService.getClass().getSimpleName());
       } catch (Throwable failure) {
-         ScorchedGuns.LOGGER.warn("Could not resolve Framework's client service early; resource reload workers may fail to find it", failure);
+         ScorchedGuns.LOGGER.warn("Could not resolve Framework's client service early; resource reload workers may fail to find it");
+      } finally {
+         try {
+            thread.setContextClassLoader(previous);
+         } catch (Throwable ignored) {
+            // Nothing to restore.
+         }
       }
    }
 
