@@ -555,7 +555,17 @@ public class ShootingHandler {
          if (player != null) {
             boolean syncedReloading = (Boolean)ModSyncedDataKeys.RELOADING.getValue(player);
             if (syncedReloading) {
-               return false;
+               // The synced flag alone is not enough to block shooting: addons that drive a reload themselves can
+               // leave it set after their reload finished, and the gun then refuses to fire until it is dropped and
+               // picked up again (reported with a Flan remaster addon). Only block while the gun's own state agrees
+               // that a reload is still in progress.
+               String state = tag.getString("scguns:ReloadState");
+               boolean gunSaysReloading = tag.getBoolean("scguns:IsReloading") || tag.getBoolean("IsReloading");
+               boolean transitional = state.equals("LOADING") || state.equals("STOPPING")
+                  || tag.getBoolean("scguns:IsPlayingReloadStop");
+               if (gunSaysReloading || transitional) {
+                  return false;
+               }
             }
          }
 
