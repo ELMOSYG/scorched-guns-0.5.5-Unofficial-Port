@@ -53,8 +53,21 @@ public final class ProjectileReaper {
          }
       }
 
-      if (removed > 0) {
-         top.ribs.scguns.ScorchedGuns.LOGGER.debug("scguns: reaped {} parked projectiles", removed);
+      // DIAGNOSTIC: temporary, info level so a report shows whether the sweep runs at all and what it sees.
+      int seen = 0;
+      int parkedTotal = 0;
+      for (ServerLevel level : event.getServer().getAllLevels()) {
+         for (Entity entity : level.getAllEntities()) {
+            if (entity instanceof ProjectileEntity) {
+               seen++;
+               if (!level.isPositionEntityTicking(entity.blockPosition())) {
+                  parkedTotal++;
+               }
+            }
+         }
       }
+
+      top.ribs.scguns.ScorchedGuns.LOGGER.info(
+         "scguns: projectile sweep - projectiles={}, outside ticking area={}, removed={}", seen, parkedTotal, removed);
    }
 }
