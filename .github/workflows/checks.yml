@@ -48,7 +48,11 @@ jobs:
             audit_lang_keys \
             audit_lang_values ; do
             echo "::group::$tool"
-            python "tools/$tool.py"
+            if ! python "tools/$tool.py"; then
+              echo "::error title=Audit failed::tools/$tool.py"
+              echo "::endgroup::"
+              exit 1
+            fi
             echo "::endgroup::"
           done
 
