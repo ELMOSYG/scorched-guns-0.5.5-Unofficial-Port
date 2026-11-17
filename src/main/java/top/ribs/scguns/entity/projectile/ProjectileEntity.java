@@ -265,27 +265,15 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
 
    protected float calculateArmorBypassDamage(LivingEntity target, float damage) {
       int armorValue = target.getArmorValue();
-      if (armorValue <= 0) {
-         return damage;
+      float baseReduction = Math.min(0.75F, (float)armorValue * 0.004F);
+      if (this.armorBypassAmount <= 0.0F) {
+         return damage * (1.0F - baseReduction);
+      } else {
+         float bypassPercent = this.armorBypassAmount / 10.0F;
+         float effectiveArmor = (float)armorValue * (1.0F - bypassPercent);
+         float finalReduction = Math.min(0.75F, effectiveArmor * 0.004F);
+         return damage * (1.0F - finalReduction);
       }
-
-      // Armour penetration is expressed in armour points, not as a percentage of the target's armour. "15 bypass"
-      // means fifteen points of armour simply do not count - readable on a tooltip, and it scales the way players
-      // expect (heavy armour loses a lot, light armour loses everything). The old model divided by ten and multiplied
-      // the remainder, which made a level of puncturing worth a couple of percent against real armour.
-      float effectiveArmor = Math.max(0.0F, (float) armorValue - this.armorBypassAmount);
-      if (effectiveArmor <= 0.0F) {
-         return damage;
-      }
-
-      // The mod's own armour model: 0.4% damage reduction per armour point, capped at 75%.
-      float reduction = Math.min(0.75F, effectiveArmor * 0.004F);
-      return damage * (1.0F - reduction);
-   }
-
-   /** Armour points this round ignores. Used by ArmorPiercingHandler. */
-   public float getArmorBypassAmount() {
-      return this.armorBypassAmount;
    }
 
    public float getDamage() {
@@ -946,8 +934,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       if (entity instanceof LivingEntity livingTarget) {
          damage = GunEnchantmentHelper.getPuncturingDamageReduction(this.weapon, livingTarget, damage);
          damage = this.applyProjectileProtection(livingTarget, damage);
-         // Armour is handled once, globally, in ArmorPiercingHandler: this projectile's own reduction stacked on top of
-      // vanilla armour, so a shot was reduced twice and the enchantment only ever touched the weaker of the two.
+         damage = this.calculateArmorBypassDamage(livingTarget, damage);
       }
 
       DamageSource source = ModDamageTypes.Sources.projectile(this.level().registryAccess(), this, this.shooter);
