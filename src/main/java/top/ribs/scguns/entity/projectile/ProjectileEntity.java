@@ -209,6 +209,12 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       // (this tree already had size values of 1e-05 and 100.0) can hand out a lifetime of tens of thousands of ticks;
       // those rounds then sit in the world forever and pile up. Thirty seconds is far beyond any real range.
       this.life = Math.min(GunModifierHelper.getModifiedProjectileLife(weapon, this.projectile.getLife()), MAX_LIFETIME_TICKS);
+
+      // The puncturing enchantment advertises armour penetration, and the helper for it exists, but nothing ever asked
+      // for the value: the shot kept the flat 2.0 bypass the field starts with, which is 20% of the target's armour and
+      // in practice barely noticeable. Adding the enchantment's contribution here is what makes the enchantment do what
+      // its name says.
+      this.armorBypassAmount += GunEnchantmentHelper.getPuncturingArmorBypass(weapon);
       Vec3 dir = this.getDirection(shooter, weapon, item, modifiedGun);
       double speedModifier = GunEnchantmentHelper.getProjectileSpeedModifier(weapon);
       double speed = GunModifierHelper.getModifiedProjectileSpeed(weapon, this.projectile.getSpeed() * speedModifier);
