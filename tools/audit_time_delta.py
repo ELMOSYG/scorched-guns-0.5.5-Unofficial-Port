@@ -48,6 +48,11 @@ def code_only(text):
 
 
 def main():
+    # REFERENCE_MISSING guard: the 1.20.1 reference tree only exists on the author's machine.
+    if True:
+        if not pathlib.Path(r"E:\mod\SG2-1.21\.sg055_deobf\top\ribs\scguns").exists():
+            print("skipped: reference tree not available here")
+            return 0
     # 1. Which 0.5.5 files used the delta, and how often.
     delta_files = defaultdict(list)
     partial_files = defaultdict(list)
