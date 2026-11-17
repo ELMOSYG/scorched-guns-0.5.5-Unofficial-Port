@@ -52,10 +52,21 @@ public final class ArmorPiercingHandler {
          return;
       }
 
+      // The projectile can be either the direct entity or the causing entity depending on how the source was built,
+      // so look at both. A zero here means "no information", and the vanilla maths is left alone.
       float bypass = 0.0F;
-      if (event.getSource().getDirectEntity() instanceof ProjectileEntity projectile) {
-         bypass = projectile.getArmorBypassAmount();
+      if (event.getSource().getDirectEntity() instanceof ProjectileEntity direct) {
+         bypass = direct.getArmorBypassAmount();
+      } else if (event.getSource().getEntity() instanceof ProjectileEntity causing) {
+         bypass = causing.getArmorBypassAmount();
       }
+
+      top.ribs.scguns.ScorchedGuns.LOGGER.info(
+         "scguns: piercing check - source={}, direct={}, entity={}, bypass={}, amount={}, armor={}",
+         event.getSource().typeHolder().unwrapKey().map(key -> key.location().toString()).orElse("?"),
+         event.getSource().getDirectEntity(), event.getSource().getEntity(), bypass, event.getAmount(),
+         target.getArmorValue());
+
       if (bypass <= 0.0F) {
          return;
       }
@@ -96,6 +107,10 @@ public final class ArmorPiercingHandler {
             break;
          }
       }
+
+      top.ribs.scguns.ScorchedGuns.LOGGER.info(
+         "scguns: piercing applied - bypass={}, penetration={}, armor={} -> {}, damage {} -> {}",
+         bypass, penetration, armor, reducedArmor, damage, scaled);
 
       if (scaled > damage) {
          event.setAmount(scaled);
