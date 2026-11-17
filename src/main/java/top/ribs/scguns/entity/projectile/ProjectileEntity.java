@@ -630,8 +630,18 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       }
 
       boundingBox = boundingBox.expandTowards(0.0, expandHeight, 0.0);
-      Vec3 hitPos = (Vec3)boundingBox.clip(startVec, endVec).orElse(null);
-      Vec3 grownHitPos = (Vec3)boundingBox.inflate(
+
+      // The round has a size of its own. Hit detection used to test the entity's box against the line the round's
+      // centre travels along, so a large round sailed through anything it merely grazed even though its visible
+      // hitbox clearly overlapped the target. Growing the target box by the round's radius is what makes a size 2
+      // round behave like a size 2 round.
+      float roundRadius = this.getBbWidth() * 0.5F;
+      AABB collisionBox = roundRadius > 0.0F
+         ? boundingBox.inflate(roundRadius, 0.0, roundRadius)
+         : boundingBox;
+
+      Vec3 hitPos = (Vec3)collisionBox.clip(startVec, endVec).orElse(null);
+      Vec3 grownHitPos = (Vec3)collisionBox.inflate(
             (Double)Config.COMMON.gameplay.growBoundingBoxAmount.get(), 0.0, (Double)Config.COMMON.gameplay.growBoundingBoxAmount.get()
          )
          .clip(startVec, endVec)
