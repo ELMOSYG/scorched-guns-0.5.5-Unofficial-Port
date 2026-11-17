@@ -283,6 +283,11 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       return damage * (1.0F - reduction);
    }
 
+   /** Armour points this round ignores. Used by ArmorPiercingHandler. */
+   public float getArmorBypassAmount() {
+      return this.armorBypassAmount;
+   }
+
    public float getDamage() {
       float damage = this.getaFloat();
       damage = GunModifierHelper.getModifiedDamage(this.weapon, this.modifiedGun, damage);
@@ -941,7 +946,8 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       if (entity instanceof LivingEntity livingTarget) {
          damage = GunEnchantmentHelper.getPuncturingDamageReduction(this.weapon, livingTarget, damage);
          damage = this.applyProjectileProtection(livingTarget, damage);
-         damage = this.calculateArmorBypassDamage(livingTarget, damage);
+         // Armour is handled once, globally, in ArmorPiercingHandler: this projectile's own reduction stacked on top of
+      // vanilla armour, so a shot was reduced twice and the enchantment only ever touched the weaker of the two.
       }
 
       DamageSource source = ModDamageTypes.Sources.projectile(this.level().registryAccess(), this, this.shooter);
