@@ -21,6 +21,9 @@ import top.ribs.scguns.entity.projectile.ProjectileEntity;
 @EventBusSubscriber(modid = "scguns", bus = EventBusSubscriber.Bus.GAME)
 public final class ArmorPiercingHandler {
 
+   /** Vanilla's maximum armour value; bypass is expressed as a fraction of it (15 means 75% penetration). */
+   private static final float MAX_ARMOR_POINTS = 20.0F;
+
    /**
     * The vanilla armour reduction, exactly as {@code LivingEntity#getDamageAfterArmorAbsorb} computes it.
     *
@@ -64,17 +67,38 @@ public final class ArmorPiercingHandler {
 
       float toughness = (float) target.getAttributeValue(net.minecraft.world.entity.ai.attributes.Attributes.ARMOR_TOUGHNESS);
       float damage = event.getAmount();
+      // Bypass is expressed against the vanilla maximum of twenty armour points: 15 bypass means 75% penetration,
+      // the same idea as the vanilla breach enchantment, just written as armour points because that is what the gun
+      // tooltips already show.
+      float penetration = Math.min(1.0F, bypass / MAX_ARMOR_POINTS);
+      float reducedArmor = armor * (1.0F - penetration);
+
       float withArmor = vanillaReduction(armor, toughness, damage);
-      float afterBypass = vanillaReduction(Math.max(0.0F, armor - bypass), toughness, damage);
+      float afterBypass = vanillaReduction(reducedArmor, toughness, damage);
       if (withArmor <= 0.0F || withArmor >= 1.0F) {
          return;
       }
 
-      // Raw damage is scaled so that the post-armour result equals the damage a target with the reduced armour would
-      // have taken. Vanilla still applies its own reduction to the scaled amount, hence the division.
-      float compensation = (1.0F - afterBypass) / (1.0F - withArmor);
-      if (compensation > 1.0F) {
-         event.setAmount(damage * compensation);
+      // Vanilla armour reduction depends on the damage being reduced, so scaling the raw amount changes the
+      // reduction that is applied to it: one division by (1 - reduction) overshoots (5 damage with 15 bypass landed
+      // at 6 on iron armour). Solve for the raw amount that ends up as the intended post-armour value instead, with a
+      // short fixed-point iteration - four passes are well below the noise of a whole health point.
+      float intended = damage * (1.0F - withArmor);
+      float scaled = damage;
+      for (int pass = 0; pass < 4; pass++) {
+         float reduction = vanillaReduction(reducedArmor, toughness, scaled);
+         if (reduction >= 1.0F) {
+            break;
+         }
+         scaled = intended / (1.0F - reduction);
+         if (Float.isNaN(scaled) || Float.isInfinite(scaled)) {
+            scaled = damage;
+            break;
+         }
+      }
+
+      if (scaled > damage) {
+         event.setAmount(scaled);
       }
    }
 }
