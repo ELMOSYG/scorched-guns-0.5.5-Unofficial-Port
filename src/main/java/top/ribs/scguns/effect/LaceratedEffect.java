@@ -32,7 +32,9 @@ public class LaceratedEffect extends MobEffect {
                double y = entity.getY() + (double)entity.getBbHeight() * 0.5;
                double z = entity.getZ();
                S2CMessageBlood message = new S2CMessageBlood(x, y, z, entity.getType());
-               PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, message);
+               if (top.ribs.scguns.event.BloodCompat.allowed()) {
+                  PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, message);
+               }
             }
          }
 

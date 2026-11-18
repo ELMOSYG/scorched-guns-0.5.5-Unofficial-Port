@@ -68,7 +68,8 @@ public final class BloodParticleHandler {
 
       double maxDistanceSq = MAX_DISTANCE * MAX_DISTANCE;
       for (ServerPlayer player : ((ServerLevel)victim.level()).players()) {
-         if (player.distanceToSqr(victim) <= maxDistanceSq) {
+         if (player.distanceToSqr(victim) <= maxDistanceSq
+            && top.ribs.scguns.event.BloodCompat.allowed()) {
             PacketHandler.getPlayChannel().sendToPlayer(() -> player, packet);
          }
       }

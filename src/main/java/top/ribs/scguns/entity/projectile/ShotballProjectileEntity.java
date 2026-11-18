@@ -355,7 +355,9 @@ public class ShotballProjectileEntity extends ProjectileEntity {
             );
       }
 
-      PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, new S2CMessageBlood(hitVec.x, hitVec.y, hitVec.z, entity.getType()));
+      if (top.ribs.scguns.event.BloodCompat.allowed()) {
+         PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, new S2CMessageBlood(hitVec.x, hitVec.y, hitVec.z, entity.getType()));
+      }
       if (this.bouncesLeft > 0 && this.canBounce()) {
          this.bounceOffEntity(entity, hitVec);
          this.bouncesLeft--;

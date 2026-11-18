@@ -84,11 +84,11 @@ public class NetworkGunManager extends SimplePreparableReloadListener<Map<GunIte
       gsonSelfChecked = true;
       try {
          Gun probe = new Gun();
-         GSON_INSTANCE.toJson(probe);
+         GSON_INSTANCE.fromJson(new com.google.gson.JsonObject(), Gun.class);
 
       } catch (Throwable selfCheckFailure) {
-         ScorchedGuns.LOGGER.error("Gun Gson self-check failed - this names the culprit field:", selfCheckFailure);
-         selfCheckFailure.printStackTrace();
+         ScorchedGuns.LOGGER.error("Gun Gson self-check failed - the frames below name the culprit field:");
+         logThrowable("gson", selfCheckFailure);
       }
    }
 
@@ -167,9 +167,9 @@ public class NetworkGunManager extends SimplePreparableReloadListener<Map<GunIte
                         }
                   
    } catch (Throwable gunJsonLoadFailed) {
-      ScorchedGuns.LOGGER.error("Skipping gun definition {} - it could not be read: {}",
-            resourceLocation, gunJsonLoadFailed.toString());
-      gunJsonLoadFailed.printStackTrace();
+      // Pass the throwable itself: slf4j then appends the stack trace to this log entry, which names the class and
+      // field that Gson could not reflect. Only logging toString() hid exactly the information needed to fix this.
+      ScorchedGuns.LOGGER.error("Skipping gun definition {} - it could not be read", resourceLocation, gunJsonLoadFailed);
    }
 });
                }
@@ -292,6 +292,15 @@ public class NetworkGunManager extends SimplePreparableReloadListener<Map<GunIte
 
       public Gun getGun() {
          return this.gun;
+      }
+   }
+
+   /** Writes a throwable's frames through the logger; printStackTrace goes to stderr and never reaches latest.log. */
+   private static void logThrowable(String tag, Throwable failure) {
+      java.io.StringWriter buffer = new java.io.StringWriter();
+      failure.printStackTrace(new java.io.PrintWriter(buffer));
+      for (String line : buffer.toString().split("\\R")) {
+         ScorchedGuns.LOGGER.error("  [{}] {}", tag, line);
       }
    }
 }

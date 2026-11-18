@@ -112,7 +112,9 @@ public class SculkCellEntity extends ProjectileEntity {
             );
       }
 
-      PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, new S2CMessageBlood(hitVec.x, hitVec.y, hitVec.z, entity.getType()));
+      if (top.ribs.scguns.event.BloodCompat.allowed()) {
+         PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, new S2CMessageBlood(hitVec.x, hitVec.y, hitVec.z, entity.getType()));
+      }
    }
 
    private void applyEffect(LivingEntity target, float powerMultiplier, boolean headshot, boolean critical) {
