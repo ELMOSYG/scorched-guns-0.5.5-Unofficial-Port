@@ -166,20 +166,16 @@ public class BeamHandler {
    }
 
    private static void setupRenderContext(PoseStack poseStack, float partialTicks, LocalPlayer player) {
-      // The beam is anchored to a steady camera, so the walk bob is zeroed while its origin is computed. Those four
-      // fields belong to the player, and this method never restored them: holding a beam weapon wiped the player's
-      // walking state on every frame, which is why the semi automatic beam guns had no view bobbing at all.
-      float savedBob = player.bob;
-      float savedOBob = player.oBob;
-      float savedWalkDist = player.walkDist;
-      float savedWalkDistO = player.walkDistO;
-      boolean zeroedBob = false;
-
+      // The continuing beam is drawn from a steady camera, so the walk bob is cleared for it - this is what 0.5.5 did.
+      //
+      // Two things were wrong in the port. It used FireMode.isBeam(), which also matched SEMI_BEAM, so the semi
+      // automatic beam guns (laser musket, minksy, waltz conversion) had their walk state cleared every frame and
+      // never accumulated walk distance: view bobbing was dead while holding them. The condition is now restricted
+      // to the plain BEAM mode the upstream code tested, which leaves every other gun untouched.
       ItemStack heldItem = player.getMainHandItem();
       if (heldItem.getItem() instanceof GunItem gunItem) {
          Gun modifiedGun = gunItem.getModifiedGun(heldItem);
-         if (modifiedGun != null && FireMode.isBeam(modifiedGun.getGeneral().getFireMode())) {
-            zeroedBob = true;
+         if (modifiedGun != null && modifiedGun.getGeneral().getFireMode() == FireMode.BEAM) {
             player.bob = 0.0F;
             player.oBob = 0.0F;
             player.walkDist = 0.0F;
@@ -188,14 +184,6 @@ public class BeamHandler {
       }
 
       Vec3 renderPos = calculateBasePosition(player, partialTicks);
-
-      if (zeroedBob) {
-         player.bob = savedBob;
-         player.oBob = savedOBob;
-         player.walkDist = savedWalkDist;
-         player.walkDistO = savedWalkDistO;
-      }
-
       poseStack.pushPose();
       poseStack.translate(-renderPos.x, -renderPos.y, -renderPos.z);
    }
