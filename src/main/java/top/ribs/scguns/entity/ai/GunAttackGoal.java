@@ -151,6 +151,13 @@ public class GunAttackGoal<T extends PathfinderMob> extends Goal {
 
    public void tick() {
       LivingEntity target = this.shooter.getTarget();
+      // A dead target must end the fight immediately. The goal already refuses to *start* for a dead target,
+      // but an already running goal kept aiming and firing at the corpse until the target entity was removed.
+      if (target == null || !target.isAlive() || target.isDeadOrDying()) {
+         this.shooter.setTarget(null);
+         return;
+      }
+
       ItemStack heldItem = this.shooter.getMainHandItem();
       if (this.shooter.hasEffect(ModEffects.BLINDED) || this.shooter.hasEffect(ModEffects.DEAFENED)) {
          this.isPanicked = true;
