@@ -635,6 +635,11 @@ public class ClientPlayHandler {
    }
 
    public static void handleMessageBlood(S2CMessageBlood message) {
+      // Maids never bleed in this mod's effects, whatever hit them.
+      if (top.ribs.scguns.event.BloodCompat.isMaid(message.getEntityType())) {
+         return;
+      }
+
       if ((Boolean)Config.CLIENT.particle.enableBlood.get()) {
          Level world = Minecraft.getInstance().level;
          if (world != null) {

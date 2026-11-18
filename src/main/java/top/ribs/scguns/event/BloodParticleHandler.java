@@ -39,6 +39,11 @@ public final class BloodParticleHandler {
 
    @SubscribeEvent
    public static void onLivingDamage(LivingDamageEvent.Post event) {
+      // Companion entities are excluded from blood effects entirely.
+      if (BloodCompat.isMaid(event.getEntity().getType())) {
+         return;
+      }
+
       if (!Config.SERVER.bloodFromAnyDamage.get()) {
          return;
       }
