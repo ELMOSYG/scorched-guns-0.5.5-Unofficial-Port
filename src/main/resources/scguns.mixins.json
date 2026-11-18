@@ -13,10 +13,11 @@
     "common.compat.guardvillagers.GuardMeleeGoalMixin",
     "common.compat.guardvillagers.GuardRangedAttackMixin",
     "common.compat.guardvillagers.GuardKickGoalMixin",
-    "common.compat.guardvillagers.GuardEquipmentMixin"
-    ],
+    "common.compat.guardvillagers.GuardEquipmentMixin",
+    "common.ServerLevelHurtParticlesMixin"
+  ],
   "client": [
-      "client.MobGunSwingMixin",
+    "client.MobGunSwingMixin",
     "client.EntityRenderDispatcherMixin",
     "client.ItemInHandLayerMixin",
     "client.LevelRendererMixin",
