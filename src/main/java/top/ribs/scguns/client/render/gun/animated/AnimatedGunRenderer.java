@@ -764,15 +764,6 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    }
 
    private void applyBobbingTransforms(PoseStack poseStack, float partialTicks) {
-      // TEMPORARY diagnostic for the semi automatic beam guns reporting no view bobbing.
-      if (net.minecraft.client.Minecraft.getInstance().player != null) {
-         top.ribs.scguns.ScorchedGuns.LOGGER.info("scguns: bobbing trace [AnimatedGunRenderer] gun={} bobView={} bob={}",
-            net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(
-               net.minecraft.client.Minecraft.getInstance().player.getMainHandItem().getItem()),
-            net.minecraft.client.Minecraft.getInstance().options.bobView().get(),
-            net.minecraft.client.Minecraft.getInstance().player.bob);
-      }
-
       Minecraft mc = Minecraft.getInstance();
       if ((Boolean)mc.options.bobView().get()) {
          if (mc.getCameraEntity() instanceof Player player) {
