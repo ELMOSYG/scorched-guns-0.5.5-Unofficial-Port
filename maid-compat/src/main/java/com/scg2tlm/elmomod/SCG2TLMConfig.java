@@ -58,6 +58,8 @@ public class SCG2TLMConfig {
     public static final ModConfigSpec.BooleanValue PREVENT_FACTION_FRIENDLY_FIRE;
 
     public static final ModConfigSpec.BooleanValue BULLET_RAISES_SHIELD;
+    /** When a maid is shot by one of this mod's guns, skip the red damage particles. */
+    public static final ModConfigSpec.BooleanValue HIDE_GUN_HIT_PARTICLES;
 
     public static final ModConfigSpec.BooleanValue NATIVE_SCGUNS_AI;
     public static final ModConfigSpec.ConfigValue<String> NATIVE_SCGUNS_AI_TYPE;
@@ -219,6 +221,7 @@ public class SCG2TLMConfig {
                 "just like an arrow would.",
                 "Note: two-handed guns (rifle / minigun / rpg) never use the shield at all - see canUseShield.");
         BULLET_RAISES_SHIELD = BUILDER.define("bullet_raises_shield", true);
+        HIDE_GUN_HIT_PARTICLES = BUILDER.define("hide_gun_hit_particles", true);
 
         BUILDER.pop();
 

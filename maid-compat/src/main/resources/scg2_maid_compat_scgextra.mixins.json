@@ -5,6 +5,7 @@
   "compatibilityLevel": "JAVA_21",
   "plugin": "com.scg2tlm.elmomod.MaidMixinPlugin",
   "mixins": [
-    "FactionPlayerToggleMixin"
+    "FactionPlayerToggleMixin",
+    "ServerLevelDamageParticlesMixin"
   ]
 }
