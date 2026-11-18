@@ -764,6 +764,15 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
    }
 
    private void applyBobbingTransforms(PoseStack poseStack, float partialTicks) {
+      // TEMPORARY diagnostic for the semi automatic beam guns reporting no view bobbing.
+      if (net.minecraft.client.Minecraft.getInstance().player != null) {
+         top.ribs.scguns.ScorchedGuns.LOGGER.info("scguns: bobbing trace [AnimatedGunRenderer] gun={} bobView={} bob={}",
+            net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(
+               net.minecraft.client.Minecraft.getInstance().player.getMainHandItem().getItem()),
+            net.minecraft.client.Minecraft.getInstance().options.bobView().get(),
+            net.minecraft.client.Minecraft.getInstance().player.bob);
+      }
+
       Minecraft mc = Minecraft.getInstance();
       if ((Boolean)mc.options.bobView().get()) {
          if (mc.getCameraEntity() instanceof Player player) {
@@ -780,7 +789,10 @@ public class AnimatedGunRenderer extends GeoItemRenderer<AnimatedGunItem> implem
             bobbing *= (float)(player.isSprinting() ? 8.0 : 4.0);
             bobbing *= ((Double)Config.CLIENT.display.bobbingIntensity.get()).floatValue();
             double invertZoomProgress = 1.0 - AimingHandler.get().getNormalisedAdsProgress() * (double)this.sprintIntensity;
-            if (!AimingHandler.get().isAiming()) {
+            // flangFixesBobbing: only skip the bobbing rotation when the sight is actually being used. A lingering
+      // aim state (the semi automatic beam guns hold one while charging) used to turn view bobbing into a pure
+      // translation, which read as "bobbing is off" for those weapons.
+      if (AimingHandler.get().getNormalisedAdsProgress() < 0.9) {
                poseStack.mulPose(
                   Axis.XP.rotationDegrees(Math.abs(Mth.cos(distanceWalked * (float) Math.PI - 0.2F) * bobbing) * -2.0F * (float)invertZoomProgress)
                );

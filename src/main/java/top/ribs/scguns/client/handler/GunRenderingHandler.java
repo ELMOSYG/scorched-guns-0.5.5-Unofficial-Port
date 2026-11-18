@@ -710,6 +710,15 @@ public class GunRenderingHandler {
    }
 
    private void applyBobbingTransforms(PoseStack poseStack, float partialTicks) {
+      // TEMPORARY diagnostic for the semi automatic beam guns reporting no view bobbing.
+      if (net.minecraft.client.Minecraft.getInstance().player != null) {
+         top.ribs.scguns.ScorchedGuns.LOGGER.info("scguns: bobbing trace [GunRenderingHandler] gun={} bobView={} bob={}",
+            net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(
+               net.minecraft.client.Minecraft.getInstance().player.getMainHandItem().getItem()),
+            net.minecraft.client.Minecraft.getInstance().options.bobView().get(),
+            net.minecraft.client.Minecraft.getInstance().player.bob);
+      }
+
       Minecraft mc = Minecraft.getInstance();
       if ((Boolean)mc.options.bobView().get() && mc.getCameraEntity() instanceof Player player) {
          float deltaDistanceWalked = player.walkDist - player.walkDistO;
