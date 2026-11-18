@@ -25,6 +25,14 @@ public abstract class MobMeleeGuardMixin {
    private void scguns$guardMelee(Entity target, CallbackInfoReturnable<Boolean> callbackInfo) {
       Mob self = (Mob) (Object) this;
 
+      // Only this mod's own mobs: other mods may rely on their own reach or on hitting through a wall, and silently
+      // changing their combat would be a compat break nobody asked for.
+      net.minecraft.resources.ResourceLocation id =
+         net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(self.getType());
+      if (id == null || !"scguns".equals(id.getNamespace())) {
+         return;
+      }
+
       if (self.isDeadOrDying()) {
          callbackInfo.setReturnValue(false);
          return;
