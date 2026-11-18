@@ -948,6 +948,16 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       }
 
       DamageSource source = ModDamageTypes.Sources.projectile(this.level().registryAccess(), this, this.shooter);
+      // Do not let a round fired by a mob hurt its own kind or its allies: friendly fire between gun mobs used to
+      // start retaliation chains (HurtByTargetGoal.alertOthers), so raids and patrols fought themselves.
+      if (this.shooter instanceof net.minecraft.world.entity.LivingEntity shooterLiving
+         && entity instanceof net.minecraft.world.entity.LivingEntity targetLiving
+         && shooterLiving != targetLiving
+         && this.shooter instanceof net.minecraft.world.entity.monster.Monster
+         && (shooterLiving.isAlliedTo(targetLiving) || shooterLiving.getType() == targetLiving.getType())) {
+         return;
+      }
+
       boolean blocked = ProjectileEntity.ProjectileHelper.handleShieldHit(entity, this, damage);
       if (!blocked && (!entity.getType().is(ModTags.Entities.GHOST) || this.getProjectile().getAdvantage().equals(ModTags.Entities.UNDEAD.location()))) {
          if (damage > 0.0F) {

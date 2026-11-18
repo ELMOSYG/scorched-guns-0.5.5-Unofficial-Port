@@ -212,6 +212,12 @@ public class GunEffectsHandler {
    }
 
    private static void handleAggroBehavior(LivingEntity entity, ServerPlayer player) {
+      // Creative and spectator players are not valid targets. The gunshot aggro path used to hand them straight to
+      // setTarget, which is why mobs would chase someone in creative mode.
+      if (player.isCreative() || player.isSpectator()) {
+         return;
+      }
+
       if (entity instanceof Monster monster) {
          float aggroChance = ((Double)Config.COMMON.aggroMobs.aggroChance.get()).floatValue();
          if (player.level().random.nextFloat() < aggroChance) {
