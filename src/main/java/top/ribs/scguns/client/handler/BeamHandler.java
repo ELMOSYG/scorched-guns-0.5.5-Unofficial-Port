@@ -166,10 +166,20 @@ public class BeamHandler {
    }
 
    private static void setupRenderContext(PoseStack poseStack, float partialTicks, LocalPlayer player) {
+      // The beam is anchored to a steady camera, so the walk bob is zeroed while its origin is computed. Those four
+      // fields belong to the player, and this method never restored them: holding a beam weapon wiped the player's
+      // walking state on every frame, which is why the semi automatic beam guns had no view bobbing at all.
+      float savedBob = player.bob;
+      float savedOBob = player.oBob;
+      float savedWalkDist = player.walkDist;
+      float savedWalkDistO = player.walkDistO;
+      boolean zeroedBob = false;
+
       ItemStack heldItem = player.getMainHandItem();
       if (heldItem.getItem() instanceof GunItem gunItem) {
          Gun modifiedGun = gunItem.getModifiedGun(heldItem);
          if (modifiedGun != null && FireMode.isBeam(modifiedGun.getGeneral().getFireMode())) {
+            zeroedBob = true;
             player.bob = 0.0F;
             player.oBob = 0.0F;
             player.walkDist = 0.0F;
@@ -178,6 +188,14 @@ public class BeamHandler {
       }
 
       Vec3 renderPos = calculateBasePosition(player, partialTicks);
+
+      if (zeroedBob) {
+         player.bob = savedBob;
+         player.oBob = savedOBob;
+         player.walkDist = savedWalkDist;
+         player.walkDistO = savedWalkDistO;
+      }
+
       poseStack.pushPose();
       poseStack.translate(-renderPos.x, -renderPos.y, -renderPos.z);
    }

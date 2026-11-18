@@ -710,6 +710,7 @@ public class GunRenderingHandler {
    }
 
    private void applyBobbingTransforms(PoseStack poseStack, float partialTicks) {
+
       Minecraft mc = Minecraft.getInstance();
       if ((Boolean)mc.options.bobView().get() && mc.getCameraEntity() instanceof Player player) {
          float deltaDistanceWalked = player.walkDist - player.walkDistO;
