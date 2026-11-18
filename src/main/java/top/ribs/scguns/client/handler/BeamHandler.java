@@ -131,7 +131,10 @@ public class BeamHandler {
             if (heldItem.getItem() instanceof GunItem gunItem) {
                Gun modifiedGun = gunItem.getModifiedGun(heldItem);
                if (modifiedGun != null) {
-                  isBeamFireMode = FireMode.isBeam(modifiedGun.getGeneral().getFireMode());
+                  // Only the true BEAM mode is a continuing beam. Widening this to every beam mode made the
+                  // semi automatic beam guns render like the mining laser - a beam that hangs around instead of the
+                  // short flash the upstream code drew.
+                  isBeamFireMode = modifiedGun.getGeneral().getFireMode() == FireMode.BEAM;
                }
             }
          }
