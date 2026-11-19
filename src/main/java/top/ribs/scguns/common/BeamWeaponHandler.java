@@ -215,6 +215,7 @@ public class BeamWeaponHandler {
       }
 
       if (hitResult.getEntity() instanceof LivingEntity livingEntity) {
+         damage *= (float) livingEntity.getAttributeValue(top.ribs.scguns.attributes.SCAttributes.BULLET_RESISTANCE);
          damage += ScEnchants.getDamageBonus(weapon, top.ribs.scguns.util.MobType.of(livingEntity));
          damage = GunEnchantmentHelper.getPuncturingDamageReduction(weapon, livingEntity, damage);
          damage = applyProjectileProtection(livingEntity, damage);

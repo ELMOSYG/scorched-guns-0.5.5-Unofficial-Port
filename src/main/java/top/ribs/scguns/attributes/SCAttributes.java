@@ -24,6 +24,11 @@ public class SCAttributes {
    public static final DeferredHolder<Attribute, Attribute> SPREAD_MULTIPLIER = ATTRIBUTES.register(
       "spread_multiplier", () -> new RangedAttribute("attribute.scguns.spread_multiplier", 1.0, 0.0, 1000.0).setSyncable(true)
    );
+   /** Multiplier applied to bullet and beam damage taken by this entity. Every living entity has it, so a
+    * data pack, KubeJS or /attribute can tune it per entity type without any config of ours. */
+   public static final DeferredHolder<Attribute, Attribute> BULLET_RESISTANCE = ATTRIBUTES.register(
+      "bullet_resistance",
+      () -> new RangedAttribute("attribute.scguns.bullet_resistance", 1.0, 0.0, 10.0).setSyncable(true));
 
    public SCAttributes() {
       super();

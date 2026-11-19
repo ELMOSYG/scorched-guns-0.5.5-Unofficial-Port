@@ -23,5 +23,16 @@ public class SCEntityAttributes {
       event.add(EntityType.PLAYER, SCAttributes.ADDITIONAL_BULLET_DAMAGE);
       event.add(EntityType.PLAYER, SCAttributes.BULLET_DAMAGE_MULTIPLIER);
       event.add(EntityType.PLAYER, SCAttributes.SPREAD_MULTIPLIER);
+      event.add(EntityType.PLAYER, SCAttributes.BULLET_RESISTANCE);
+
+      // Every living entity that already carries attributes gets the new one too, with 1.0 as the
+      // default. Nothing changes for mobs that were never configured, and a data pack or KubeJS can
+      // still give individual types a different value.
+      for (EntityType<?> type : event.getTypes()) {
+         @SuppressWarnings("unchecked")
+         EntityType<? extends net.minecraft.world.entity.LivingEntity> livingType =
+            (EntityType<? extends net.minecraft.world.entity.LivingEntity>) type;
+         event.add(livingType, SCAttributes.BULLET_RESISTANCE);
+      }
    }
 }

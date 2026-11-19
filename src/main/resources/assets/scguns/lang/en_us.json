@@ -11,7 +11,7 @@
   "attribute.scguns.additional_ammo": "Additional Ammunition Capacity",
   "attribute.scguns.additional_bullet_damage": "Additional Firearm Projectile Damage",
   "attribute.scguns.bullet_damage_multiplier": "Firearm Projectile Damage Multiplier",
-  "attribute.scguns.bullet_resistance": "Player Firearm Projectile Resistance",
+  "attribute.scguns.bullet_resistance": "Bullet Resistance",
   "attribute.scguns.fire_rate_multiplier": "Firearm Firing Rate Multiplier",
   "attribute.scguns.projectile_speed": "Firearm Projectile Speed",
   "attribute.scguns.reload_speed": "Firearm Reload Speed",
@@ -910,6 +910,8 @@
   "item.scguns.signal_beacon_spawn_egg": "Signal Beacon Spawn Egg",
   "item.scguns.silencer": "Silencer",
   "item.scguns.sky_carrier_spawn_egg": "Sky Carrier Spawn Egg",
+  "item.scguns.slug_splitter": "Slug Splitter",
+  "item.scguns.slug_splitter.desc": "Splits a slug into several pellets on impact.",
   "item.scguns.small_brass_casing": "Small Brass Casing",
   "item.scguns.small_casing_mold": "Small Casing Mold",
   "item.scguns.small_copper_casing": "Small Copper Casing",
@@ -1828,7 +1830,5 @@
   "upgrade.scguns.exosuit.power_core": "Power Core",
   "upgrade.scguns.exosuit.rebreather": "Rebreather",
   "upgrade.scguns.exosuit.target_tracker": "Target Tracker",
-  "upgrade.scguns.exosuit.utility_module": "Utility Module",
-  "item.scguns.slug_splitter": "Slug Splitter",
-  "item.scguns.slug_splitter.desc": "Splits a slug into several pellets on impact."
+  "upgrade.scguns.exosuit.utility_module": "Utility Module"
 }

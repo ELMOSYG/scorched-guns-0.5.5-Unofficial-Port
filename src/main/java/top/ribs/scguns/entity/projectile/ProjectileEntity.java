@@ -942,6 +942,8 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
       }
 
       if (entity instanceof LivingEntity livingTarget) {
+         // Per entity resistance, stored as an attribute so data packs, KubeJS or /attribute can set it.
+         damage *= (float) livingTarget.getAttributeValue(top.ribs.scguns.attributes.SCAttributes.BULLET_RESISTANCE);
          damage = GunEnchantmentHelper.getPuncturingDamageReduction(this.weapon, livingTarget, damage);
          damage = this.applyProjectileProtection(livingTarget, damage);
          damage = this.calculateArmorBypassDamage(livingTarget, damage);

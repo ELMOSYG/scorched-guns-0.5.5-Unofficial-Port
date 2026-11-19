@@ -11,7 +11,7 @@
   "attribute.scguns.additional_ammo": "额外弹药容量",
   "attribute.scguns.additional_bullet_damage": "额外子弹伤害",
   "attribute.scguns.bullet_damage_multiplier": "子弹伤害倍率",
-  "attribute.scguns.bullet_resistance": "玩家子弹抗性",
+  "attribute.scguns.bullet_resistance": "子弹抗性",
   "attribute.scguns.fire_rate_multiplier": "射速倍率",
   "attribute.scguns.projectile_speed": "子弹速度",
   "attribute.scguns.reload_speed": "装填速度",
