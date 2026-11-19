@@ -54,7 +54,18 @@ public final class DispenserThrowBehavior implements DispenseItemBehavior {
 
       int before = stack.getCount();
       try {
-         stack.use(level, thrower, InteractionHand.MAIN_HAND);
+         // These items start a use session and only throw on release, so a plain use() call would do nothing in a
+         // dispenser: there is no player holding the button. Releasing the item as if it had been held for a short
+         // while is what actually spawns and launches the entity.
+         int useDuration = Math.max(1, stack.getUseDuration(thrower));
+         int heldTicks = Math.min(20, useDuration - 1);
+         this.item.releaseUsing(stack, level, thrower, useDuration - heldTicks);
+
+         if (stack.getCount() == before) {
+            // Some items only implement use(); fall back to it so they still leave the dispenser.
+            stack.use(level, thrower, InteractionHand.MAIN_HAND);
+         }
+
          top.ribs.scguns.ScorchedGuns.LOGGER.info(
             "scguns: dispenser throw {} -> before={}, after={}", this.item, before, stack.getCount());
       } catch (Throwable failure) {
