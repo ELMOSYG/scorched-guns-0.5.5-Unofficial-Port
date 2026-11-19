@@ -14,7 +14,6 @@
     "common.compat.guardvillagers.GuardRangedAttackMixin",
     "common.compat.guardvillagers.GuardKickGoalMixin",
     "common.compat.guardvillagers.GuardEquipmentMixin",
-    "common.ServerLevelHurtParticlesMixin",
     "common.MobMeleeGuardMixin",
     "common.CopycatParticleMixin",
     "common.CopycatLevelEventMixin"

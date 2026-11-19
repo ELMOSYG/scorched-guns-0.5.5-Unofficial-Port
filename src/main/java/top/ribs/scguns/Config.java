@@ -1107,10 +1107,6 @@ public class Config {
       public final IntValue cooldownThreshold;
       public final Config.Server.Experimental experimental;
       public final BooleanValue bloodFromAnyDamage;
-      /** Server side switch: stop this mod's own blood particles for every player. */
-      public final BooleanValue disableBloodParticles;
-      /** Suppress the vanilla red damage particles for every entity. */
-      public final BooleanValue disableHurtParticles;
 
       public Server(Builder builder) {
          super();
@@ -1120,14 +1116,6 @@ public class Config {
             "and a player's pets. Only hits of at least 0.5 damage, and only players within 32 blocks, are",
             "told about it.")
             .define("bloodFromAnyDamage", false);
-         this.disableHurtParticles = builder.comment(
-            "Suppress the vanilla red damage particles (entity event 2) for every entity on the server.",
-            "Purely visual: no damage numbers change. Useful on servers whose players prefer combat without blood.")
-            .define("disableHurtParticles", false);
-         this.disableBloodParticles = builder.comment(
-            "Stop sending this mod's blood particles to clients. Use this on a server whose players should not see",
-            "them at all - the client option enableBlood can only do that per player.")
-            .define("disableBloodParticles", false);
          builder.comment("Stun Grenade related properties").push("grenade");
          builder.pop();
          builder.comment("Audio properties").push("audio");

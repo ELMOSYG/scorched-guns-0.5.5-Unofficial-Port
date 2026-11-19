@@ -995,9 +995,7 @@ public class ProjectileEntity extends Entity implements IEntityWithComplexSpawn 
          this.checkForDiamondSteelBonus(livingEntityx, hitVec);
       }
 
-      if (top.ribs.scguns.event.BloodCompat.allowed()) {
-         PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, new S2CMessageBlood(hitVec.x, hitVec.y, hitVec.z, entity.getType()));
-      }
+   PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, new S2CMessageBlood(hitVec.x, hitVec.y, hitVec.z, entity.getType()));
    }
 
    void checkForDiamondSteelBonus(LivingEntity killedEntity, Vec3 position) {

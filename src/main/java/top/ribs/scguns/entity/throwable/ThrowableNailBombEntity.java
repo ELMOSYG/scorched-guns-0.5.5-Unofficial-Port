@@ -201,9 +201,7 @@ public class ThrowableNailBombEntity extends ThrowableGrenadeEntity {
             livingEntity.addEffect(laceration);
          }
 
-         if (top.ribs.scguns.event.BloodCompat.allowed()) {
-            PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, new S2CMessageBlood(hitPos.x, hitPos.y, hitPos.z, entity.getType()));
-         }
+   PacketHandler.getPlayChannel().sendToTrackingEntity(() -> entity, new S2CMessageBlood(hitPos.x, hitPos.y, hitPos.z, entity.getType()));
       }
 
       entity.invulnerableTime = Math.min(entity.invulnerableTime, 3);
