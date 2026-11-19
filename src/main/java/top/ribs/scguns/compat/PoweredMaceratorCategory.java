@@ -23,10 +23,10 @@ import net.minecraft.world.level.ItemLike;
 import top.ribs.scguns.client.screen.PoweredMaceratorRecipe;
 import top.ribs.scguns.init.ModBlocks;
 
-public class PoweredMaceratorCategory implements IRecipeCategory<PoweredMaceratorRecipe> {
+public class PoweredMaceratorCategory implements IRecipeCategory<net.minecraft.world.item.crafting.RecipeHolder<PoweredMaceratorRecipe>> {
    public static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath("scguns", "powered_macerating");
    public static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("scguns", "textures/gui/powered_macerator_gui.png");
-   public static final RecipeType<PoweredMaceratorRecipe> POWERED_MACERATING_TYPE = new RecipeType(UID, PoweredMaceratorRecipe.class);
+   public static final RecipeType<net.minecraft.world.item.crafting.RecipeHolder<PoweredMaceratorRecipe>> POWERED_MACERATING_TYPE = new RecipeType(UID, net.minecraft.world.item.crafting.RecipeHolder.class);
    private final IDrawable background;
    private final IDrawable icon;
    private final int offsetX = 11;
@@ -38,7 +38,7 @@ public class PoweredMaceratorCategory implements IRecipeCategory<PoweredMacerato
       this.icon = helper.createDrawableIngredient(VanillaTypes.ITEM_STACK, new ItemStack((ItemLike)ModBlocks.POWERED_MACERATOR.get()));
    }
 
-   public RecipeType<PoweredMaceratorRecipe> getRecipeType() {
+   public RecipeType<net.minecraft.world.item.crafting.RecipeHolder<PoweredMaceratorRecipe>> getRecipeType() {
       return POWERED_MACERATING_TYPE;
    }
 
@@ -54,7 +54,8 @@ public class PoweredMaceratorCategory implements IRecipeCategory<PoweredMacerato
       return this.icon;
    }
 
-   public void setRecipe(IRecipeLayoutBuilder builder, PoweredMaceratorRecipe recipe, IFocusGroup focuses) {
+   public void setRecipe(IRecipeLayoutBuilder builder, net.minecraft.world.item.crafting.RecipeHolder<PoweredMaceratorRecipe> holder, IFocusGroup focuses) {
+      PoweredMaceratorRecipe recipe = holder.value();
       int inputBaseX = 33;
       int inputBaseY = 11;
       int inputSpacing = 18;
@@ -72,8 +73,9 @@ public class PoweredMaceratorCategory implements IRecipeCategory<PoweredMacerato
       builder.addSlot(RecipeIngredientRole.OUTPUT, 103, inputBaseY).addItemStack(recipe.getResultItem(null));
    }
 
-   public void draw(PoweredMaceratorRecipe recipe, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
-      IRecipeCategory.super.draw(recipe, recipeSlotsView, guiGraphics, mouseX, mouseY);
+   public void draw(net.minecraft.world.item.crafting.RecipeHolder<PoweredMaceratorRecipe> holder, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
+      PoweredMaceratorRecipe recipe = holder.value();
+      IRecipeCategory.super.draw(holder, recipeSlotsView, guiGraphics, mouseX, mouseY);
       int processingTime = recipe.getProcessingTime();
       if (processingTime > 0) {
          int seconds = processingTime / 20;

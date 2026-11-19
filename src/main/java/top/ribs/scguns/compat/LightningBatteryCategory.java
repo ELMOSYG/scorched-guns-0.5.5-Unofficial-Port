@@ -22,10 +22,10 @@ import net.minecraft.world.level.ItemLike;
 import top.ribs.scguns.client.screen.LightningBatteryRecipe;
 import top.ribs.scguns.init.ModBlocks;
 
-public class LightningBatteryCategory implements IRecipeCategory<LightningBatteryRecipe> {
+public class LightningBatteryCategory implements IRecipeCategory<net.minecraft.world.item.crafting.RecipeHolder<LightningBatteryRecipe>> {
    public static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath("scguns", "lightning_battery");
    public static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("scguns", "textures/gui/lightning_battery_gui.png");
-   public static final RecipeType<LightningBatteryRecipe> LIGHTNING_BATTERY_TYPE = new RecipeType(UID, LightningBatteryRecipe.class);
+   public static final RecipeType<net.minecraft.world.item.crafting.RecipeHolder<LightningBatteryRecipe>> LIGHTNING_BATTERY_TYPE = new RecipeType(UID, net.minecraft.world.item.crafting.RecipeHolder.class);
    private final IDrawable background;
    private final IDrawable icon;
    private final int offsetX = 41;
@@ -37,7 +37,7 @@ public class LightningBatteryCategory implements IRecipeCategory<LightningBatter
       this.icon = helper.createDrawableIngredient(VanillaTypes.ITEM_STACK, new ItemStack((ItemLike)ModBlocks.LIGHTNING_BATTERY.get()));
    }
 
-   public RecipeType<LightningBatteryRecipe> getRecipeType() {
+   public RecipeType<net.minecraft.world.item.crafting.RecipeHolder<LightningBatteryRecipe>> getRecipeType() {
       return LIGHTNING_BATTERY_TYPE;
    }
 
@@ -53,15 +53,17 @@ public class LightningBatteryCategory implements IRecipeCategory<LightningBatter
       return this.icon;
    }
 
-   public void setRecipe(IRecipeLayoutBuilder builder, LightningBatteryRecipe recipe, IFocusGroup focuses) {
+   public void setRecipe(IRecipeLayoutBuilder builder, net.minecraft.world.item.crafting.RecipeHolder<LightningBatteryRecipe> holder, IFocusGroup focuses) {
+      LightningBatteryRecipe recipe = holder.value();
       int inputX = 15;
       int inputY = 19;
       builder.addSlot(RecipeIngredientRole.INPUT, inputX, inputY).addIngredients(recipe.getInput());
       builder.addSlot(RecipeIngredientRole.OUTPUT, 75, 19).addItemStack(recipe.getResultItem(null));
    }
 
-   public void draw(LightningBatteryRecipe recipe, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
-      IRecipeCategory.super.draw(recipe, recipeSlotsView, guiGraphics, mouseX, mouseY);
+   public void draw(net.minecraft.world.item.crafting.RecipeHolder<LightningBatteryRecipe> holder, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
+      LightningBatteryRecipe recipe = holder.value();
+      IRecipeCategory.super.draw(holder, recipeSlotsView, guiGraphics, mouseX, mouseY);
       int processingTime = recipe.getProcessingTime();
       if (processingTime > 0) {
          int seconds = processingTime / 20;

@@ -310,16 +310,17 @@ public class JEIScorchedPlugin implements IModPlugin {
       );
       List<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> gunBenchRecipes =
          recipeManager.getAllRecipesFor(GunBenchRecipe.Type.INSTANCE);
-      List<MaceratorRecipe> maceratorRecipes = recipeManager.getAllRecipesFor(MaceratorRecipe.Type.INSTANCE).stream().map(RecipeHolder::value).toList();
-      List<PoweredMaceratorRecipe> poweredMaceratorRecipes = recipeManager.getAllRecipesFor(PoweredMaceratorRecipe.Type.INSTANCE).stream().map(RecipeHolder::value).toList();
-      List<MechanicalPressRecipe> mechanicalPressRecipes = recipeManager.getAllRecipesFor(MechanicalPressRecipe.Type.INSTANCE).stream().map(RecipeHolder::value).toList();
-      List<PoweredMechanicalPressRecipe> poweredMechanicalPressRecipes = recipeManager.getAllRecipesFor(PoweredMechanicalPressRecipe.Type.INSTANCE).stream().map(RecipeHolder::value).toList();
+      List<net.minecraft.world.item.crafting.RecipeHolder<MaceratorRecipe>> maceratorRecipes = recipeManager.getAllRecipesFor(MaceratorRecipe.Type.INSTANCE);
+      List<net.minecraft.world.item.crafting.RecipeHolder<PoweredMaceratorRecipe>> poweredMaceratorRecipes = recipeManager.getAllRecipesFor(PoweredMaceratorRecipe.Type.INSTANCE);
+      List<net.minecraft.world.item.crafting.RecipeHolder<MechanicalPressRecipe>> mechanicalPressRecipes = recipeManager.getAllRecipesFor(MechanicalPressRecipe.Type.INSTANCE);
+      List<net.minecraft.world.item.crafting.RecipeHolder<PoweredMechanicalPressRecipe>> poweredMechanicalPressRecipes = recipeManager.getAllRecipesFor(PoweredMechanicalPressRecipe.Type.INSTANCE);
       registration.addRecipes(GunBenchCategory.GUN_BENCH_TYPE, gunBenchRecipes);
       registration.addRecipes(MaceratorCategory.MACERATING_TYPE, maceratorRecipes);
       registration.addRecipes(PoweredMaceratorCategory.POWERED_MACERATING_TYPE, poweredMaceratorRecipes);
       registration.addRecipes(MechanicalPressCategory.MECHANICAL_PRESS_TYPE, mechanicalPressRecipes);
       registration.addRecipes(PoweredMechanicalPressCategory.POWERED_MECHANICAL_PRESS_TYPE, poweredMechanicalPressRecipes);
-      registration.addRecipes(LightningBatteryCategory.LIGHTNING_BATTERY_TYPE, recipeManager.getAllRecipesFor(LightningBatteryRecipe.Type.INSTANCE).stream().map(RecipeHolder::value).toList());
+      registration.addRecipes(LightningBatteryCategory.LIGHTNING_BATTERY_TYPE,
+         recipeManager.getAllRecipesFor(LightningBatteryRecipe.Type.INSTANCE));
    }
 
    public void registerGuiHandlers(IGuiHandlerRegistration registration) {

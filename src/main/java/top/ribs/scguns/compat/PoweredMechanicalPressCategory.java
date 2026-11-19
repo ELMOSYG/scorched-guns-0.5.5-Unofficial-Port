@@ -23,10 +23,10 @@ import net.minecraft.world.level.ItemLike;
 import top.ribs.scguns.client.screen.PoweredMechanicalPressRecipe;
 import top.ribs.scguns.init.ModBlocks;
 
-public class PoweredMechanicalPressCategory implements IRecipeCategory<PoweredMechanicalPressRecipe> {
+public class PoweredMechanicalPressCategory implements IRecipeCategory<net.minecraft.world.item.crafting.RecipeHolder<PoweredMechanicalPressRecipe>> {
    public static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath("scguns", "powered_mechanical_pressing");
    public static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("scguns", "textures/gui/powered_mechanical_press_gui.png");
-   public static final RecipeType<PoweredMechanicalPressRecipe> POWERED_MECHANICAL_PRESS_TYPE = new RecipeType(UID, PoweredMechanicalPressRecipe.class);
+   public static final RecipeType<net.minecraft.world.item.crafting.RecipeHolder<PoweredMechanicalPressRecipe>> POWERED_MECHANICAL_PRESS_TYPE = new RecipeType(UID, net.minecraft.world.item.crafting.RecipeHolder.class);
    private final IDrawable background;
    private final IDrawable icon;
    private final int offsetX = 11;
@@ -38,7 +38,7 @@ public class PoweredMechanicalPressCategory implements IRecipeCategory<PoweredMe
       this.icon = helper.createDrawableIngredient(VanillaTypes.ITEM_STACK, new ItemStack((ItemLike)ModBlocks.POWERED_MECHANICAL_PRESS.get()));
    }
 
-   public RecipeType<PoweredMechanicalPressRecipe> getRecipeType() {
+   public RecipeType<net.minecraft.world.item.crafting.RecipeHolder<PoweredMechanicalPressRecipe>> getRecipeType() {
       return POWERED_MECHANICAL_PRESS_TYPE;
    }
 
@@ -54,7 +54,8 @@ public class PoweredMechanicalPressCategory implements IRecipeCategory<PoweredMe
       return this.icon;
    }
 
-   public void setRecipe(IRecipeLayoutBuilder builder, PoweredMechanicalPressRecipe recipe, IFocusGroup focuses) {
+   public void setRecipe(IRecipeLayoutBuilder builder, net.minecraft.world.item.crafting.RecipeHolder<PoweredMechanicalPressRecipe> holder, IFocusGroup focuses) {
+      PoweredMechanicalPressRecipe recipe = holder.value();
       int inputBaseX = 33;
       int inputBaseY = 11;
       int inputSpacing = 18;
@@ -74,8 +75,9 @@ public class PoweredMechanicalPressCategory implements IRecipeCategory<PoweredMe
       builder.addSlot(RecipeIngredientRole.OUTPUT, 103, inputBaseY).addItemStack(recipe.getResultItem(null));
    }
 
-   public void draw(PoweredMechanicalPressRecipe recipe, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
-      IRecipeCategory.super.draw(recipe, recipeSlotsView, guiGraphics, mouseX, mouseY);
+   public void draw(net.minecraft.world.item.crafting.RecipeHolder<PoweredMechanicalPressRecipe> holder, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
+      PoweredMechanicalPressRecipe recipe = holder.value();
+      IRecipeCategory.super.draw(holder, recipeSlotsView, guiGraphics, mouseX, mouseY);
       int processingTime = recipe.getProcessingTime();
       if (processingTime > 0) {
          int seconds = processingTime / 20;
