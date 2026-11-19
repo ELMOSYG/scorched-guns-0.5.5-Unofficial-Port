@@ -39,8 +39,10 @@ public final class DispenserThrowBehavior implements DispenseItemBehavior {
       var center = source.center();
 
       FakePlayer thrower = FakePlayerFactory.getMinecraft(serverLevel);
+      // The thrown entity leaves from the thrower's eyes, not from their feet, so the fake player has to stand
+      // roughly one eye height below the dispenser: otherwise the grenade appears floating above the block.
       double x = center.x - (double) facing.getStepX() * 0.3;
-      double y = center.y - 0.2 + (double) facing.getStepY() * 0.3;
+      double y = center.y - 1.62 + (double) facing.getStepY() * 0.3;
       double z = center.z - (double) facing.getStepZ() * 0.3;
       thrower.setPos(x, y, z);
 
