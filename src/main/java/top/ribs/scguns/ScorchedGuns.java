@@ -323,6 +323,8 @@ public class ScorchedGuns {
       }
       event.enqueueWork(
          () -> {
+            registerDispenserBullets();
+            registerDispenserThrows();
             GunTiers.init();
             GunTierRegistry.lock();
             PacketHandler.init();
