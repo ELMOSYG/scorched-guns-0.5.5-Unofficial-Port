@@ -16,7 +16,8 @@
     "common.compat.guardvillagers.GuardEquipmentMixin",
     "common.ServerLevelHurtParticlesMixin",
     "common.MobMeleeGuardMixin",
-    "common.CopycatParticleMixin"
+    "common.CopycatParticleMixin",
+    "common.CopycatLevelEventMixin"
   ],
   "client": [
     "client.MobGunSwingMixin",
