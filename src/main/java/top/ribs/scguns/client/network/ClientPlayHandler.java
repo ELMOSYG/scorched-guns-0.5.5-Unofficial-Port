@@ -793,7 +793,7 @@ public class ClientPlayHandler {
                Vec3 motion = new Vec3((double)normal.getX(), (double)normal.getY(), (double)normal.getZ());
                motion.add(getRandomDir(world.random), getRandomDir(world.random), getRandomDir(world.random));
                world.addParticle(
-                  new BlockParticleOption(ParticleTypes.BLOCK, state),
+                  new BlockParticleOption(ParticleTypes.BLOCK, top.ribs.scguns.compat.BlockParticleSafety.safeState(state)),
                   false,
                   message.getX(),
                   message.getY(),

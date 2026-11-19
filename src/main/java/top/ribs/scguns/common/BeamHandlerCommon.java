@@ -245,7 +245,7 @@ public class BeamHandlerCommon {
             }
 
             world.removeBlock(pos, false);
-            world.levelEvent(2001, pos, net.minecraft.world.level.block.Block.getId(blockState));
+            world.levelEvent(2001, pos, top.ribs.scguns.compat.BlockParticleSafety.safeId(blockState));
          }
       }
 
