@@ -4,13 +4,10 @@ import net.minecraft.core.Direction;
 import net.minecraft.core.dispenser.BlockSource;
 import net.minecraft.core.dispenser.DispenseItemBehavior;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.DispenserBlock;
-import net.neoforged.neoforge.common.util.FakePlayer;
-import net.neoforged.neoforge.common.util.FakePlayerFactory;
 import top.ribs.scguns.ScorchedGuns;
 
 /**
@@ -38,25 +35,28 @@ public final class DispenserThrowBehavior implements DispenseItemBehavior {
       Direction facing = source.state().getValue(DispenserBlock.FACING);
       var center = source.center();
 
-      FakePlayer thrower = FakePlayerFactory.getMinecraft(serverLevel);
-      // The thrown entity leaves from the thrower's eyes, and it must already be outside the dispenser block:
-      // standing it inside made the grenade collide with the dispenser and get squeezed out of the back. Eye height is
-      // 1.62 blocks, so the feet go that far below the dispenser centre and the whole offset is pushed past the face.
+      // The thrown entity leaves from the thrower's eyes and must already be outside the dispenser block: standing it
+      // inside made the grenade collide with the dispenser and get squeezed out of the back.
       double forward = 0.6;
       double x = center.x + (double) facing.getStepX() * forward;
       double y = center.y - 1.62 + (double) facing.getStepY() * forward;
       double z = center.z + (double) facing.getStepZ() * forward;
-      thrower.setPos(x, y, z);
-
       float yaw = (float) (Math.atan2((double) facing.getStepZ(), (double) facing.getStepX()) * (180.0 / Math.PI) - 90.0);
       float pitch = -((float) facing.getStepY() * 90.0F);
+
+      // A fake player left mob AI trying to attack it, because it is a player as far as targeting is concerned. A
+      // throwaway armour stand is a plain living entity: it can throw the item, it carries no player identity, and it
+      // is removed again before anything can notice it.
+      net.minecraft.world.entity.decoration.ArmorStand thrower =
+         new net.minecraft.world.entity.decoration.ArmorStand(level, x, y, z);
+      thrower.setInvisible(true);
+      thrower.setNoGravity(true);
+      thrower.setSilent(true);
+      thrower.setInvulnerable(true);
       thrower.setYRot(yaw);
       thrower.setXRot(pitch);
-      thrower.setYHeadRot(yaw);
+      level.addFreshEntity(thrower);
 
-      thrower.setItemInHand(InteractionHand.MAIN_HAND, stack.copy());
-
-      int before = stack.getCount();
       try {
          // These items start a use session and only throw on release, so a plain use() call would do nothing in a
          // dispenser: there is no player holding the button. Releasing the item as if it had been held for a short
@@ -64,17 +64,10 @@ public final class DispenserThrowBehavior implements DispenseItemBehavior {
          int useDuration = Math.max(1, stack.getUseDuration(thrower));
          int heldTicks = Math.min(20, useDuration - 1);
          this.item.releaseUsing(stack, level, thrower, useDuration - heldTicks);
-
-         if (stack.getCount() == before) {
-            // Some items only implement use(); fall back to it so they still leave the dispenser.
-            stack.use(level, thrower, InteractionHand.MAIN_HAND);
-         }
-
-         top.ribs.scguns.ScorchedGuns.LOGGER.info(
-            "scguns: dispenser throw {} -> before={}, after={}", this.item, before, stack.getCount());
       } catch (Throwable failure) {
          ScorchedGuns.LOGGER.warn("Could not launch {} from a dispenser", this.item, failure);
-         return stack;
+      } finally {
+         thrower.discard();
       }
 
       return stack;
