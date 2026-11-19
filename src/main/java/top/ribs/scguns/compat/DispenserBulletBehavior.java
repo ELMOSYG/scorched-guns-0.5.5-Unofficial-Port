@@ -32,6 +32,14 @@ public final class DispenserBulletBehavior implements DispenseItemBehavior {
       Level level = source.level();
       Turret.Ammunition.AmmoType ammo = findAmmo(stack.getItem());
       if (ammo == null) {
+         // Data packs may load after the first setup pass, so retry once with a fresh read before giving up.
+         loaded = false;
+         ammo = findAmmo(stack.getItem());
+      }
+
+      if (ammo == null) {
+         top.ribs.scguns.ScorchedGuns.LOGGER.debug(
+            "scguns: no turret ammo definition for {}, dispensing it as an item", stack.getItem());
          return stack;
       }
 
@@ -83,9 +91,15 @@ public final class DispenserBulletBehavior implements DispenseItemBehavior {
                   }
                }
             }
+            top.ribs.scguns.ScorchedGuns.LOGGER.info(
+               "scguns: dispenser bullets can fire {} ammo items known to turrets", AMMO_BY_ITEM.size());
          } catch (Throwable failure) {
             top.ribs.scguns.ScorchedGuns.LOGGER.warn("Could not read turret ammo for dispenser shots", failure);
          }
+      }
+
+      if (AMMO_BY_ITEM.size() > 0 && !AMMO_BY_ITEM.containsKey(item)) {
+         // Nothing to do here; kept for the debug branch above.
       }
 
       return AMMO_BY_ITEM.get(item);
