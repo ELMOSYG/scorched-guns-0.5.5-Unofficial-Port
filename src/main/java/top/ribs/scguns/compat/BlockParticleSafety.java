@@ -67,6 +67,12 @@ public final class BlockParticleSafety {
          return false;
       }
 
+      // The stand-in is itself a copycat block, so it has to be recognised as "already safe" - otherwise remapping the
+      // id would remap it again, and the event would recurse until the stack overflowed.
+      if (standIn != null && state.getBlock() == standIn.getBlock()) {
+         return false;
+      }
+
       ResourceLocation id = BuiltInRegistries.BLOCK.getKey(state.getBlock());
       if (id == null) {
          return false;
