@@ -52,8 +52,11 @@ public final class DispenserThrowBehavior implements DispenseItemBehavior {
 
       thrower.setItemInHand(InteractionHand.MAIN_HAND, stack.copy());
 
+      int before = stack.getCount();
       try {
          stack.use(level, thrower, InteractionHand.MAIN_HAND);
+         top.ribs.scguns.ScorchedGuns.LOGGER.info(
+            "scguns: dispenser throw {} -> before={}, after={}", this.item, before, stack.getCount());
       } catch (Throwable failure) {
          ScorchedGuns.LOGGER.warn("Could not launch {} from a dispenser", this.item, failure);
          return stack;
