@@ -13,7 +13,8 @@ import top.ribs.scguns.client.screen.GunBenchMenu;
 import top.ribs.scguns.client.screen.GunBenchRecipe;
 import top.ribs.scguns.client.screen.ModMenuTypes;
 
-public class GunBenchTransferInfo implements IRecipeTransferInfo<GunBenchMenu, GunBenchRecipe> {
+public class GunBenchTransferInfo
+   implements IRecipeTransferInfo<GunBenchMenu, net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> {
    public GunBenchTransferInfo() {
       super();
    }
@@ -26,15 +27,18 @@ public class GunBenchTransferInfo implements IRecipeTransferInfo<GunBenchMenu, G
       return Optional.of((MenuType<GunBenchMenu>)ModMenuTypes.GUN_BENCH.get());
    }
 
-   public RecipeType<GunBenchRecipe> getRecipeType() {
+   public RecipeType<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> getRecipeType() {
       return GunBenchCategory.GUN_BENCH_TYPE;
    }
 
-   public boolean canHandle(GunBenchMenu container, GunBenchRecipe recipe) {
+   public boolean canHandle(GunBenchMenu container,
+      net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe> holder) {
       return true;
    }
 
-   public List<Slot> getRecipeSlots(GunBenchMenu container, GunBenchRecipe recipe) {
+   public List<Slot> getRecipeSlots(GunBenchMenu container,
+      net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe> holder) {
+      GunBenchRecipe recipe = holder.value();
       List<Slot> slots = new ArrayList<>();
       // Attachment slot i is menu slot MENU_SLOT_GRID_START + i, not slot i: menu slot 0 is the
       // output. Indexing with the ingredient number moved the output slot and missed the last
@@ -56,7 +60,9 @@ public class GunBenchTransferInfo implements IRecipeTransferInfo<GunBenchMenu, G
       return slots;
    }
 
-   public List<Slot> getInventorySlots(GunBenchMenu container, GunBenchRecipe recipe) {
+   public List<Slot> getInventorySlots(GunBenchMenu container,
+      net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe> holder) {
+      GunBenchRecipe recipe = holder.value();
       List<Slot> slots = new ArrayList<>();
 
       for (int i = 12; i < container.slots.size(); i++) {

@@ -17,10 +17,13 @@ import net.minecraft.world.level.ItemLike;
 import top.ribs.scguns.client.screen.GunBenchRecipe;
 import top.ribs.scguns.init.ModBlocks;
 
-public class GunBenchCategory implements IRecipeCategory<GunBenchRecipe> {
+public class GunBenchCategory implements IRecipeCategory<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> {
    public static final ResourceLocation UID = ResourceLocation.fromNamespaceAndPath("scguns", "gun_bench");
    public static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath("scguns", "textures/gui/gun_bench_gui.png");
-   public static final RecipeType<GunBenchRecipe> GUN_BENCH_TYPE = new RecipeType(UID, GunBenchRecipe.class);
+   /** Holders, not bare recipes: JEI needs the recipe id to be able to bookmark a page. */
+   @SuppressWarnings({"unchecked", "rawtypes"})
+   public static final RecipeType<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> GUN_BENCH_TYPE =
+      new RecipeType(UID, net.minecraft.world.item.crafting.RecipeHolder.class);
    private final IDrawable background;
    private final IDrawable icon;
    private final int offsetX = 22;
@@ -34,7 +37,7 @@ public class GunBenchCategory implements IRecipeCategory<GunBenchRecipe> {
       this.icon = helper.createDrawableIngredient(VanillaTypes.ITEM_STACK, new ItemStack((ItemLike)ModBlocks.GUN_BENCH.get()));
    }
 
-   public RecipeType<GunBenchRecipe> getRecipeType() {
+   public RecipeType<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> getRecipeType() {
       return GUN_BENCH_TYPE;
    }
 
@@ -50,7 +53,8 @@ public class GunBenchCategory implements IRecipeCategory<GunBenchRecipe> {
       return this.icon;
    }
 
-   public void setRecipe(IRecipeLayoutBuilder builder, GunBenchRecipe recipe, IFocusGroup focuses) {
+   public void setRecipe(IRecipeLayoutBuilder builder, net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe> holder, IFocusGroup focuses) {
+      GunBenchRecipe recipe = holder.value();
       int[] slotX = new int[]{26, 44, 62, 80, 26, 44, 62, 80, 26, 62, 116};
       int[] slotY = new int[]{17, 17, 17, 17, 35, 35, 35, 35, 53, 53, 17};
       NonNullList<Ingredient> ingredients = recipe.getModuleIngredients();

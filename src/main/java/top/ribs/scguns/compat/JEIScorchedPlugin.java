@@ -136,7 +136,7 @@ public class JEIScorchedPlugin implements IModPlugin {
    @Override
    public void registerAdvanced(IAdvancedRegistration registration) {
       registration.addTypedRecipeManagerPlugin(GunBenchCategory.GUN_BENCH_TYPE,
-         new ISimpleRecipeManagerPlugin<GunBenchRecipe>() {
+         new ISimpleRecipeManagerPlugin<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>>() {
             @Override
             public boolean isHandledInput(ITypedIngredient<?> ingredient) {
                return false;
@@ -148,24 +148,24 @@ public class JEIScorchedPlugin implements IModPlugin {
             }
 
             @Override
-            public List<GunBenchRecipe> getRecipesForInput(ITypedIngredient<?> ingredient) {
+            public List<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> getRecipesForInput(ITypedIngredient<?> ingredient) {
                return List.of();
             }
 
             @Override
-            public List<GunBenchRecipe> getRecipesForOutput(ITypedIngredient<?> ingredient) {
+            public List<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> getRecipesForOutput(ITypedIngredient<?> ingredient) {
                Item target = itemOf(ingredient);
                if (target == null) {
                   return List.of();
                }
 
                return allGunBenchRecipes().stream()
-                  .filter(recipe -> recipe.getRawOutput().getItem() == target)
+                  .filter(recipe -> recipe.value().getRawOutput().getItem() == target)
                   .toList();
             }
 
             @Override
-            public List<GunBenchRecipe> getAllRecipes() {
+            public List<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> getAllRecipes() {
                return allGunBenchRecipes();
             }
          });
@@ -177,17 +177,13 @@ public class JEIScorchedPlugin implements IModPlugin {
          : null;
    }
 
-   private static List<GunBenchRecipe> allGunBenchRecipes() {
+   private static List<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> allGunBenchRecipes() {
       var level = net.minecraft.client.Minecraft.getInstance().level;
       if (level == null) {
          return List.of();
       }
 
-      return level.getRecipeManager()
-         .getAllRecipesFor(GunBenchRecipe.Type.INSTANCE)
-         .stream()
-         .map(net.minecraft.world.item.crafting.RecipeHolder::value)
-         .toList();
+      return level.getRecipeManager().getAllRecipesFor(GunBenchRecipe.Type.INSTANCE);
    }
 
    public void registerRecipes(IRecipeRegistration registration) {
@@ -312,7 +308,8 @@ public class JEIScorchedPlugin implements IModPlugin {
       registration.addIngredientInfo(
          new ItemStack((ItemLike)ModBlocks.ADVANCED_COMPOSTER.get()), VanillaTypes.ITEM_STACK, new Component[]{getTranslation("jei.info.advanced_composter")}
       );
-      List<GunBenchRecipe> gunBenchRecipes = recipeManager.getAllRecipesFor(GunBenchRecipe.Type.INSTANCE).stream().map(RecipeHolder::value).toList();
+      List<net.minecraft.world.item.crafting.RecipeHolder<GunBenchRecipe>> gunBenchRecipes =
+         recipeManager.getAllRecipesFor(GunBenchRecipe.Type.INSTANCE);
       List<MaceratorRecipe> maceratorRecipes = recipeManager.getAllRecipesFor(MaceratorRecipe.Type.INSTANCE).stream().map(RecipeHolder::value).toList();
       List<PoweredMaceratorRecipe> poweredMaceratorRecipes = recipeManager.getAllRecipesFor(PoweredMaceratorRecipe.Type.INSTANCE).stream().map(RecipeHolder::value).toList();
       List<MechanicalPressRecipe> mechanicalPressRecipes = recipeManager.getAllRecipesFor(MechanicalPressRecipe.Type.INSTANCE).stream().map(RecipeHolder::value).toList();
