@@ -88,7 +88,7 @@ public class SulfurDustItem extends Item {
                }
             } else {
                world.destroyBlock(pos, true);
-               world.levelEvent(2001, pos, Block.getId(blockstate));
+               world.levelEvent(2001, pos, top.ribs.scguns.compat.BlockParticleSafety.safeId(blockstate));
             }
 
             stack.shrink(1);

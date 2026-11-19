@@ -140,7 +140,7 @@ public class KrahgRoundProjectileEntity extends ProjectileEntity {
       if (!this.level().isClientSide) {
          if (canBreak) {
             this.level().destroyBlock(pos, true);
-            ((ServerLevel)this.level()).sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, state), x, y, z, 20, 0.0, 0.0, 0.0, 0.15);
+            ((ServerLevel)this.level()).sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, top.ribs.scguns.compat.BlockParticleSafety.safeState(state)), x, y, z, 20, 0.0, 0.0, 0.0, 0.15);
             this.level().playSound(null, pos, state.getSoundType().getBreakSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
          } else {
             ((ServerLevel)this.level()).sendParticles(ParticleTypes.CRIT, x, y, z, 10, 0.0, 0.0, 0.0, 0.1);

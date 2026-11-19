@@ -15,7 +15,8 @@
     "common.compat.guardvillagers.GuardKickGoalMixin",
     "common.compat.guardvillagers.GuardEquipmentMixin",
     "common.ServerLevelHurtParticlesMixin",
-    "common.MobMeleeGuardMixin"
+    "common.MobMeleeGuardMixin",
+    "common.CopycatParticleMixin"
   ],
   "client": [
     "client.MobGunSwingMixin",

@@ -149,7 +149,7 @@ public class OsborneSlugProjectileEntity extends ProjectileEntity {
       if (!this.level().isClientSide) {
          if (canBreak) {
             this.level().destroyBlock(pos, true);
-            ((ServerLevel)this.level()).sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, state), x, y, z, 30, 0.0, 0.0, 0.0, 0.15);
+            ((ServerLevel)this.level()).sendParticles(new BlockParticleOption(ParticleTypes.BLOCK, top.ribs.scguns.compat.BlockParticleSafety.safeState(state)), x, y, z, 30, 0.0, 0.0, 0.0, 0.15);
             this.level().playSound(null, pos, state.getSoundType().getBreakSound(), SoundSource.BLOCKS, 1.0F, 1.0F);
             this.setDeltaMovement(this.getDeltaMovement().multiply(0.8, 0.8, 0.8));
          } else {

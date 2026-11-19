@@ -100,7 +100,7 @@ public class PenetratorBlockEntity extends BlockEntity {
                      allDrops.addAll(drops);
                      level.setBlock(mutablePos, Blocks.AIR.defaultBlockState(), 3);
                      if (level instanceof ServerLevel serverLevel) {
-                        serverLevel.levelEvent(2001, mutablePos, Block.getId(targetBlockState));
+                        serverLevel.levelEvent(2001, mutablePos, top.ribs.scguns.compat.BlockParticleSafety.safeId(targetBlockState));
                      }
                   }
 

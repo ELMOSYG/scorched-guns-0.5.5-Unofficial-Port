@@ -307,7 +307,7 @@ public class MeleeAttackHandler {
    @NotNull
    private static ClientboundLevelParticlesPacket getClientboundLevelParticlesPacket(BlockHitResult blockHitResult, BlockState blockState) {
       Vec3 hitVec = blockHitResult.getLocation();
-      BlockParticleOption particleData = new BlockParticleOption(ParticleTypes.BLOCK, blockState);
+      BlockParticleOption particleData = new BlockParticleOption(ParticleTypes.BLOCK, top.ribs.scguns.compat.BlockParticleSafety.safeState(blockState));
       return new ClientboundLevelParticlesPacket(particleData, true, hitVec.x, hitVec.y, hitVec.z, 0.0F, 0.0F, 0.0F, 0.1F, 10);
    }
 

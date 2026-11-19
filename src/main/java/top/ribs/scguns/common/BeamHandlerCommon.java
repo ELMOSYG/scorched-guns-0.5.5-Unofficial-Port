@@ -221,7 +221,7 @@ public class BeamHandlerCommon {
          if (silkTouchLevel > 0) {
             net.minecraft.world.level.block.Block.dropResources(blockState, world, pos, blockEntity, player, weapon);
             world.removeBlock(pos, false);
-            world.levelEvent(2001, pos, net.minecraft.world.level.block.Block.getId(blockState));
+            world.levelEvent(2001, pos, top.ribs.scguns.compat.BlockParticleSafety.safeId(blockState));
          } else {
             int fortuneLevel = ScEnchants.level(weapon, Enchantments.FORTUNE);
             if (fortuneLevel > 0 && world instanceof ServerLevel serverLevel) {

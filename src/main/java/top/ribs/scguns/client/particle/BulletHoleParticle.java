@@ -74,10 +74,24 @@ public class BulletHoleParticle extends TextureSheetParticle {
       Level world = minecraft.level;
       if (world != null) {
          BlockState state = world.getBlockState(pos);
-         return Minecraft.getInstance().getBlockRenderer().getBlockModelShaper().getParticleIcon(state);
+         TextureAtlasSprite sprite = Minecraft.getInstance().getBlockRenderer().getBlockModelShaper().getParticleIcon(state);
+         // Copycat style blocks do not answer with a real particle icon, and the decal then drew the magenta/black
+         // missing texture across the wall. Falling back to a neutral stone sprite keeps the hole looking like a hole
+         // instead of a texture error, without needing anything from the block that failed to provide one.
+         return isMissing(sprite) ? fallbackSprite() : sprite;
       } else {
          return (TextureAtlasSprite)Minecraft.getInstance().getTextureAtlas(InventoryMenu.BLOCK_ATLAS).apply(MissingTextureAtlasSprite.getLocation());
       }
+   }
+
+   private static boolean isMissing(TextureAtlasSprite sprite) {
+      return sprite == null || sprite.contents().name().equals(MissingTextureAtlasSprite.getLocation());
+   }
+
+   private static TextureAtlasSprite fallbackSprite() {
+      return Minecraft.getInstance()
+         .getTextureAtlas(InventoryMenu.BLOCK_ATLAS)
+         .apply(net.minecraft.resources.ResourceLocation.withDefaultNamespace("block/stone"));
    }
 
    protected float getU0() {
