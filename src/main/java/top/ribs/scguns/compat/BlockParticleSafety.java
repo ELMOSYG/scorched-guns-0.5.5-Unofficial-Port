@@ -19,14 +19,46 @@ public final class BlockParticleSafety {
    private BlockParticleSafety() {
    }
 
-   /** A stand-in state used when a block cannot provide a usable particle texture. */
+   /**
+    * A stand-in state used when a block cannot provide a usable particle texture.
+    *
+    * <p>The first choice is a copycat block itself, in its undecorated form: that is what Create shows for its own
+    * copycats, so the debris keeps the same material feel as the wall that was hit. Only when no copycat block is
+    * present does this fall back to plain andesite.</p>
+    */
    public static BlockState safeState(BlockState state) {
-      return isCopycat(state) ? Blocks.ANDESITE.defaultBlockState() : state;
+      return isCopycat(state) ? standIn() : state;
    }
 
    /** The same stand-in, as the integer id that level event 2001 carries. */
    public static int safeId(BlockState state) {
       return Block.getId(safeState(state));
+   }
+
+   private static BlockState standIn;
+
+   private static BlockState standIn() {
+      if (standIn == null) {
+         standIn = resolveStandIn();
+      }
+      return standIn;
+   }
+
+   private static BlockState resolveStandIn() {
+      // Preferred: an undecorated copycat panel, which is exactly what Create's own copycats fall back to.
+      for (String candidate : new String[]{
+         "create:copycat_panel", "copycats:copycat_panel", "copycatsplus:copycat_panel"}) {
+         ResourceLocation id = ResourceLocation.tryParse(candidate);
+         if (id == null) {
+            continue;
+         }
+         Block block = BuiltInRegistries.BLOCK.get(id);
+         if (block != null && block != Blocks.AIR) {
+            return block.defaultBlockState();
+         }
+      }
+
+      return Blocks.ANDESITE.defaultBlockState();
    }
 
    /** Whether this block is a copycat that renders through a block entity instead of a real model. */
