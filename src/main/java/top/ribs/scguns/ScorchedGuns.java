@@ -267,6 +267,27 @@ public class ScorchedGuns {
       }
    }
 
+   /** Lets dispensers throw this mod's grenades and bombs, like they shoot arrows. */
+   private static void registerDispenserThrows() {
+      net.minecraft.world.item.Item[] throwables = new net.minecraft.world.item.Item[]{
+         top.ribs.scguns.init.ModItems.GRENADE.get(),
+         top.ribs.scguns.init.ModItems.STUN_GRENADE.get(),
+         top.ribs.scguns.init.ModItems.GAS_GRENADE.get(),
+         top.ribs.scguns.init.ModItems.CHOKE_BOMB.get(),
+         top.ribs.scguns.init.ModItems.SWARM_BOMB.get(),
+         top.ribs.scguns.init.ModItems.NAIL_BOMB.get(),
+         top.ribs.scguns.init.ModItems.HELLFIRE_BOMB.get(),
+         top.ribs.scguns.init.ModItems.MOLOTOV_COCKTAIL.get(),
+         top.ribs.scguns.init.ModItems.BEACON_GRENADE.get(),
+         top.ribs.scguns.init.ModItems.SHOTBALL.get()
+      };
+
+      for (net.minecraft.world.item.Item item : throwables) {
+         net.minecraft.world.level.block.DispenserBlock.registerBehavior(
+            item, new top.ribs.scguns.compat.DispenserThrowBehavior(item));
+      }
+   }
+
    @SubscribeEvent
    public void onAddReloadListeners(AddReloadListenerEvent event) {
       event.addListener(new ExoSuitUpgradeManager());
