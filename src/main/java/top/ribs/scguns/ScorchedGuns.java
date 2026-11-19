@@ -267,19 +267,6 @@ public class ScorchedGuns {
       }
    }
 
-   /** Lets dispensers fire ammo items, using the turret's own ammo definitions. */
-   private static void registerDispenserBullets() {
-      top.ribs.scguns.compat.DispenserBulletBehavior behavior = new top.ribs.scguns.compat.DispenserBulletBehavior();
-      int registered = 0;
-      for (net.minecraft.world.item.Item item : net.minecraft.core.registries.BuiltInRegistries.ITEM) {
-         if (item instanceof top.ribs.scguns.item.IAmmo) {
-            net.minecraft.world.level.block.DispenserBlock.registerBehavior(item, behavior);
-            registered++;
-         }
-      }
-
-      LOGGER.info("scguns: dispenser bullet behaviour registered for {} ammo items", registered);
-   }
 
    /** Lets dispensers throw this mod's grenades and bombs, like they shoot arrows. */
    private static void registerDispenserThrows() {
@@ -323,7 +310,6 @@ public class ScorchedGuns {
       }
       event.enqueueWork(
          () -> {
-            registerDispenserBullets();
             registerDispenserThrows();
             GunTiers.init();
             GunTierRegistry.lock();
