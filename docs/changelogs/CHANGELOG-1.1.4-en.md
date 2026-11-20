@@ -12,8 +12,17 @@ The 1.1.3 crash was an unintended side effect of how that was implemented, not o
 referenced the maid mod's entity class directly and was registered unconditionally, so without Touhou Little Maid
 installed the first bullet hit crashed the game.
 
+New
+
+- New entity attribute "bullet resistance" (scguns:bullet_resistance): every living entity carries it, defaults to
+  1.0, and both projectile and beam damage are multiplied by it. Tune it per entity type with /attribute, a data pack
+  or KubeJS - useful for pack balance, such as bullet resistant elites or immune summons.
+
 Fixed
 
+- Restored JEI recipe bookmarks: the gun bench and every machine page (macerator, powered macerator, mechanical
+  press, powered mechanical press, lightning battery) only showed the transfer button before; they now offer the
+  bookmark button too, and bookmarked items can look these recipes back up.
 - With Touhou Little Maid not installed, any living entity taking a bullet from this mod crashed the game: the maid
   particle handler referenced the maid entity class directly. It now matches on the entity namespace instead, and is
   registered only when the maid mod is present.
