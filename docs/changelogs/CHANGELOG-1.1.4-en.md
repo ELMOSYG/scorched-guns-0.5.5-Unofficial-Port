@@ -2,6 +2,16 @@ Changes in 1.1.4
 
 Hotfix for a crash introduced in 1.1.3.
 
+About the maid blood particles
+
+That change was not a random addition. It came from concerns raised in the Touhou Little Maid community: many players
+do not want to see companions bleeding when they are hit. The intent was narrow - keep this mod's blood effects off
+maids, and change nothing else.
+
+The 1.1.3 crash was an unintended side effect of how that was implemented, not of the intent itself: the handler
+referenced the maid mod's entity class directly and was registered unconditionally, so without Touhou Little Maid
+installed the first bullet hit crashed the game.
+
 Fixed
 
 - With Touhou Little Maid not installed, any living entity taking a bullet from this mod crashed the game: the maid
