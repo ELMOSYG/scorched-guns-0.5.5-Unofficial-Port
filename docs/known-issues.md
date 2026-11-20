@@ -115,3 +115,12 @@ Five steps, in this order, building after each one:
 The reason this was not done in the 1.0.8 cycle: the four edits touch a network message, a particle codec and a
 constructor ordering (`super()` must be the first statement, so the normal has to be assigned after it). Getting it
 wrong does not fail loudly at runtime - it silently draws holes on the wrong plane - so it needs a client to look at.
+
+## Maid compat: the particle option is in the TOML but not on the in-game screen
+
+`hide_gun_hit_particles` (section `[shield]` of `config/scg2_maid_compat-common.toml`) exists and works, but it is
+not offered by the in-game Cloth Config screens, so a player can only change it by editing the file.
+
+To fix: add it next to the other entries in the maid compat's config screen (the one registered through
+`IConfigScreenFactory`, and, if it belongs there, the block `SCG2TLMClothConfigListener` writes into TLM's own screen).
+Reported 2026-11-20; not yet scheduled.
