@@ -46,6 +46,16 @@ public class ShatterRoundProjectileEntity extends ProjectileEntity {
    private static final float SHRAPNEL_DAMAGE_MULTIPLIER = 0.3F;
    private boolean hasDetonated = false;
 
+   /**
+    * The entity this round itself hit. Shrapnel deliberately never targets it again.
+    *
+    * <p>Without this the round dealt its own damage and then let most of the twenty shrapnel rays land on the same
+    * body: in 1.21.1 the invulnerability window no longer absorbs them the way it did in 1.20.1, so a leg hit came
+    * out at roughly fifty damage and mobs armed with shatter rounds one-shot players. Excluding the directly hit
+    * target restores the 1.20.1 result without touching the shrapnel spread.</p>
+    */
+   private net.minecraft.world.entity.Entity primaryTarget;
+
    public ShatterRoundProjectileEntity(EntityType<? extends Entity> entityType, Level worldIn) {
       super(entityType, worldIn);
    }
@@ -59,6 +69,7 @@ public class ShatterRoundProjectileEntity extends ProjectileEntity {
    @Override
    protected void onHitEntity(Entity entity, Vec3 hitVec, Vec3 startVec, Vec3 endVec, boolean headshot) {
       if (!this.hasDetonated) {
+         this.primaryTarget = entity;
          super.onHitEntity(entity, hitVec, startVec, endVec, headshot);
          this.explode(hitVec);
       }
@@ -204,7 +215,9 @@ public class ShatterRoundProjectileEntity extends ProjectileEntity {
    }
 
    private boolean isValidShrapnelTarget(Entity entity) {
-      if (entity == this.shooter || entity.getId() == this.shooterId) {
+      if (entity == this.primaryTarget) {
+         return false;
+      } else if (entity == this.shooter || entity.getId() == this.shooterId) {
          return false;
       } else if (this.shooter instanceof Player && entity instanceof Player && this.shooter.getUUID().equals(entity.getUUID())) {
          return false;
