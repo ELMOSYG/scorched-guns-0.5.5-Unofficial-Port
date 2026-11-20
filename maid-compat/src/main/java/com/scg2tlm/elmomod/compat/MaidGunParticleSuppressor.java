@@ -2,11 +2,10 @@ package com.scg2tlm.elmomod.compat;
 
 import java.util.Map;
 import java.util.WeakHashMap;
-import com.github.tartaricacid.touhoulittlemaid.entity.passive.EntityMaid;
+import com.scg2tlm.elmomod.ExampleMod;
 import com.scg2tlm.elmomod.SCG2TLMConfig;
 import net.minecraft.world.entity.Entity;
 import net.neoforged.bus.api.SubscribeEvent;
-import net.neoforged.fml.common.EventBusSubscriber;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import top.ribs.scguns.entity.projectile.ProjectileEntity;
 
@@ -17,7 +16,6 @@ import top.ribs.scguns.entity.projectile.ProjectileEntity;
  * this only keeps the hit from reading as a splash of blood, which is the part some players find uncomfortable. Only
  * gun hits are affected - melee, falls and everything else keep their normal feedback.</p>
  */
-@EventBusSubscriber(modid = "scg2_maid_compat", bus = EventBusSubscriber.Bus.GAME)
 public final class MaidGunParticleSuppressor {
 
     /** Entity id -> the tick it was shot on. Weak entries so nothing is retained. */
@@ -32,7 +30,11 @@ public final class MaidGunParticleSuppressor {
             return;
         }
 
-        if (!(event.getEntity() instanceof EntityMaid)) {
+        // Namespace check instead of an EntityMaid instanceof: this class is registered explicitly (see
+        // ExampleMod) and must not resolve any Touhou Little Maid type, so it stays harmless without the mod.
+        net.minecraft.resources.ResourceLocation typeId =
+            net.minecraft.core.registries.BuiltInRegistries.ENTITY_TYPE.getKey(event.getEntity().getType());
+        if (typeId == null || !ExampleMod.TLM_MODID.equals(typeId.getNamespace())) {
             return;
         }
 

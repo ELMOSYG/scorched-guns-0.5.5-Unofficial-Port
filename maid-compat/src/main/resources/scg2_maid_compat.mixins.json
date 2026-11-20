@@ -24,6 +24,7 @@
     "PolarGeneratorBlockEntityMixin",
     "ProjectileEntityMixin",
     "ProjectileFactionFriendlyFireMixin",
-    "LightningProjectileEntityMixin"
+    "LightningProjectileEntityMixin",
+    "ServerLevelDamageParticlesMixin"
   ]
 }

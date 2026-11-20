@@ -21,6 +21,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
+import com.scg2tlm.elmomod.compat.MaidGunParticleSuppressor;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.neoforge.client.gui.IConfigScreenFactory;
 import net.neoforged.fml.config.ModConfig;
@@ -78,6 +79,7 @@ public class ExampleMod {
         NeoForge.EVENT_BUS.addListener(MaidProjectileHandler::onLivingHurt);
         NeoForge.EVENT_BUS.addListener(MaidProjectileHandler::onLivingDeath);
         NeoForge.EVENT_BUS.addListener(MedkitInteractHandler::onEntityInteract);
+        NeoForge.EVENT_BUS.addListener(MaidGunParticleSuppressor::onIncomingDamage);
 
         if (FMLEnvironment.dist.isClient()) {
             registerClientOnlyHandlers(modContainer);
