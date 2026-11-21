@@ -21,6 +21,12 @@ Fixed
   surplus is now clamped silently.
 - Capacity changes caused by attachments (removing an extended magazine, for example) still refund the rounds
   that were genuinely loaded.
+- The creative mode automatic magazine fill now waits until the gun definition has actually resolved. Before that,
+  a moment without a synced definition fell back to the empty default, whose magazine is 30 rounds, so guns that
+  hold one were written with thirty.
+- Reading a gun's definition now clamps an oversized magazine count down to that gun's legal maximum, silently and
+  without turning the surplus into ammo items. However the count was corrupted and however the stack changes hands,
+  the HUD, the reload tracker and the leftover-ammo handler all see the same legal value.
 
 Notes
 
