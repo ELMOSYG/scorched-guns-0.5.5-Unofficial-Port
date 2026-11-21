@@ -479,7 +479,20 @@ public class GunItem extends Item implements IColored, IMeta {
          return;
       }
 
-      int maxAmmo = this.getModifiedGun(stack).getReloads().getMaxAmmo();
+      // Only fill when this stack really resolved to a gun definition. Before the definitions are synced the item can
+      // still answer with the empty default, whose magazine size is 30 - filling from that wrote "30 rounds" into guns
+      // that hold one, which is what later turned into phantom ammo when the stack changed hands.
+      Gun modified = this.getModifiedGun(stack);
+      if (modified == null || modified.getReloads() == null || modified.getProjectile() == null) {
+         return;
+      }
+
+      Item ammoItem = modified.getProjectile().getItem();
+      if (ammoItem == null || ammoItem == Items.AIR) {
+         return;
+      }
+
+      int maxAmmo = modified.getReloads().getMaxAmmo();
       if (maxAmmo > 0) {
          GunAmmo.setOrCreate(stack, maxAmmo);
       }
