@@ -4,28 +4,33 @@ A follow up fix on top of 1.1.5. Please read the note first.
 
 Important note
 
-This issue is not guaranteed to be fully fixed. What we did: closed the write paths that could store an oversized
-magazine while a gun definition had not resolved yet, while keeping the existing behaviour of refunding rounds when
-an attachment makes the magazine smaller. If ammo still appears when you pick up a gun, please include:
+This is not confirmed to be fully fixed, because the problem normally only shows up on a dedicated server: in
+single player the gun definitions are always resolved and item handovers have no sync delay, so it is very hard to
+reproduce locally. What we did is close the write paths that could store an oversized magazine while a definition
+had not resolved yet, and make the "air magazine" kind of stale data recognisable.
+
+If ammo still appears when you pick up a gun, please include:
 
 - port version, modpack name and mod list
-- whether the player was in creative
+- whether any of these happened first: dropping and re-picking the gun, changing hands, reconnecting, changing dimension
 - which gun, how many rounds, and which ammo item
-- latest.log from the reproduction
+- latest.log from both server and client at the moment of the reproduction
 
 Fixed
 
 - The creative mode automatic magazine fill now waits until the gun definition has actually resolved. Without a
   synced definition the item falls back to the empty default, whose magazine is 30 rounds, so guns that hold one
   were written with thirty.
-- The reload paths do the same check: they refuse to write a magazine count while the definition has not resolved,
-  which is what let the default 30 reach guns with a smaller magazine.
-- Capacity changes caused by attachments (removing an extended magazine, for example) still refund the surplus,
-  because those rounds were genuinely loaded.
+- The reload paths do the same check and refuse to write a magazine count while the definition has not resolved.
+- The surplus correction now tells two cases apart precisely. When the gun's definition answers with an air
+  projectile (the "air magazine" state), the surplus is corrected silently and never converted into ammo items. When
+  the definition is real - an extended magazine just removed, for example - the surplus is refunded as real ammo.
+- Reading a gun's definition no longer clamps the magazine count, so rounds that are genuinely still loaded are not
+  swallowed.
 
 Notes
 
-- The change is limited to the definition check before magazine data is written; ammo economy, recipes and loot are
-  untouched.
-- Magazine data already corrupted by an older build is still corrected when the stack changes hands; the surplus in
-  that case is refunded as real ammo.
+- The change is limited to the definition check before magazine data is written and to the surplus handling; ammo
+  economy, recipes and loot are untouched.
+- Stale magazine data left by an older build is still refunded as real ammo when its definition is otherwise valid;
+  only a stack whose definition really is the air default is corrected silently.
