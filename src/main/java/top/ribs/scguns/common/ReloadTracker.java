@@ -287,6 +287,13 @@ public class ReloadTracker {
    }
 
    public void increaseMagAmmo(Player player) {
+      // A gun whose definition has not resolved yet answers with the empty default, whose magazine is 30 rounds. Writing
+      // that into a gun that holds one is what produced the "30 round air magazine" stacks in the first place, so the
+      // reload paths refuse to touch a magazine until the definition is real.
+      if (!this.hasResolvedDefinition()) {
+         return;
+      }
+
       ItemStack[] ammoStack = Gun.findAmmoStack(player, this.gun.getProjectile().getItem());
       if (ammoStack.length > 0) {
          CompoundTag tag = NbtHelper.getTagForWrite(this.stack);
@@ -320,6 +327,13 @@ public class ReloadTracker {
    }
 
    public void reloadItem(Player player) {
+      // A gun whose definition has not resolved yet answers with the empty default, whose magazine is 30 rounds. Writing
+      // that into a gun that holds one is what produced the "30 round air magazine" stacks in the first place, so the
+      // reload paths refuse to touch a magazine until the definition is real.
+      if (!this.hasResolvedDefinition()) {
+         return;
+      }
+
       Item reloadItem = this.gun.getReloads().getReloadItem();
       ItemStack[] ammoStacks = Gun.findAmmoStack(player, reloadItem);
       if (ammoStacks.length > 0) {
@@ -661,5 +675,15 @@ public class ReloadTracker {
             }
          }
       }
+   }
+
+   /** True when this gun has a real definition: a projectile and an ammo item, not the empty default. */
+   private boolean hasResolvedDefinition() {
+      if (this.gun == null || this.gun.getReloads() == null || this.gun.getProjectile() == null) {
+         return false;
+      }
+
+      Item ammo = this.gun.getProjectile().getItem();
+      return ammo != null && ammo != net.minecraft.world.item.Items.AIR;
    }
 }
