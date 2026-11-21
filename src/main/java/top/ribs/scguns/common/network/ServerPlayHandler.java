@@ -406,12 +406,17 @@ public class ServerPlayHandler {
          if (tag != null && tag.contains("AmmoCount", 3)) {
             int currentAmmo = tag.getInt("AmmoCount");
             int modifiedCapacity = GunModifierHelper.getModifiedAmmoCapacity(stack, gun);
+            // An "air magazine" is not a guess: the empty default definition answers with an air projectile. Such a
+            // stack's ammo count was never loaded from real rounds, so correcting it must not mint items.
+            Item storedAmmo = gun == null || gun.getProjectile() == null ? null : gun.getProjectile().getItem();
+            boolean staleDefinition = storedAmmo == null || storedAmmo == net.minecraft.world.item.Items.AIR;
+
             if (currentAmmo > modifiedCapacity) {
                // Any surplus is handed back: it is real ammo whenever an attachment made the magazine smaller (pulling
                // an extended magazine off leaves rounds that were genuinely loaded). The stale-30 case is prevented on
                // the write side instead - a definition that has not resolved is not allowed to fill or top up a magazine.
                tag.putInt("AmmoCount", modifiedCapacity);
-               if (!hasCreativeBox) {
+               if (!hasCreativeBox && !staleDefinition) {
                   ResourceLocation id = BuiltInRegistries.ITEM.getKey(gun.getCurrentAmmoItem(stack));
                   Item item = (Item)BuiltInRegistries.ITEM.get(id);
                   if (item != null) {
