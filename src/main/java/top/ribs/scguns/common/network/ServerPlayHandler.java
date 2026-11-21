@@ -407,8 +407,13 @@ public class ServerPlayHandler {
             int currentAmmo = tag.getInt("AmmoCount");
             int modifiedCapacity = GunModifierHelper.getModifiedAmmoCapacity(stack, gun);
             if (currentAmmo > modifiedCapacity) {
+               // Only hand the surplus over when it could have been loaded into this gun in the first place. A
+               // count above the gun's own magazine is stale data - an older build wrote the default 30 into every
+               // gun, so a flintlock carried 30 rounds it could never hold, and refunding that turned stale data into
+               // free ammo (29 rounds plus the one left in the magazine). Such a surplus is clamped silently instead.
+               int baseCapacity = gun.getReloads().getMaxAmmo();
                tag.putInt("AmmoCount", modifiedCapacity);
-               if (!hasCreativeBox) {
+               if (!hasCreativeBox && currentAmmo <= baseCapacity) {
                   ResourceLocation id = BuiltInRegistries.ITEM.getKey(gun.getCurrentAmmoItem(stack));
                   Item item = (Item)BuiltInRegistries.ITEM.get(id);
                   if (item != null) {
