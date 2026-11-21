@@ -332,6 +332,14 @@ public class GunItem extends Item implements IColored, IMeta {
          return this.gun;
       }
 
+      // A magazine count above what this definition can hold is stale data (an older build wrote the default 30 into
+      // every gun). Clamp it on read, silently and without turning the surplus into items, so the HUD, the reload
+      // tracker and the leftover-ammo handler all agree on a legal value no matter how the stack changed hands.
+      int capacity = stored.getReloads() == null ? 0 : stored.getReloads().getMaxAmmo();
+      if (capacity > 0 && GunAmmo.get(tagCompound) > capacity) {
+         GunAmmo.setOrCreate(stack, capacity);
+      }
+
       return stored;
    }
 
