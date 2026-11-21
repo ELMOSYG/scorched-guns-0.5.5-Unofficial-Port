@@ -4,8 +4,9 @@ A follow up fix on top of 1.1.5. Please read the note first.
 
 Important note
 
-This issue is not guaranteed to be fully fixed. We can confirm that one path - stale magazine data being
-refunded as ammo items - is closed, but whether that path alone explains every report still needs testing. If
+This issue is not guaranteed to be fully fixed. What is confirmed: the two paths that could write an oversized
+magazine into a gun, and the one path that turned such a surplus into ammo items, are all closed (see the list
+below). Whether those paths alone explain every report still needs testing. If
 ammo still appears when you pick up a gun, please include:
 
 - port version, modpack name and mod list
@@ -30,4 +31,5 @@ Fixed
 
 Notes
 
-- Only the magazine-repair path changed; ammo economy and loot are untouched.
+- Only magazine data changed - the write path, the read-time clamp and the overflow handler. Ammo economy,
+  recipes and loot are untouched.
