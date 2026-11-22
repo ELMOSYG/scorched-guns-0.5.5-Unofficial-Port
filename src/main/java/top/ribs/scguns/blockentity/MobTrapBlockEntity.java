@@ -19,6 +19,8 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.sounds.SoundEvents;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
@@ -216,6 +218,11 @@ public class MobTrapBlockEntity extends BlockEntity {
       this.spawnedMobs.clear();
       this.totalToSpawn = this.storedMobs.size();
       this.setChanged();
+
+      if (this.level instanceof ServerLevel serverLevel) {
+         serverLevel.playSound(null, this.worldPosition, SoundEvents.TRIAL_SPAWNER_DETECT_PLAYER, SoundSource.BLOCKS,
+            1.0F, 1.0F);
+      }
    }
 
    private List<Player> playersNearby(ServerLevel level, BlockPos pos) {
@@ -274,6 +281,9 @@ public class MobTrapBlockEntity extends BlockEntity {
       this.spawnedCount++;
       this.setChanged();
 
+      level.playSound(null, pos, SoundEvents.TRIAL_SPAWNER_SPAWN_MOB, SoundSource.BLOCKS, 1.0F,
+         (level.random.nextFloat() - level.random.nextFloat()) * 0.2F + 1.0F);
+
       for (int i = 0; i < 12; i++) {
          level.sendParticles(ParticleTypes.SMALL_FLAME,
             entity.getX(), entity.getY() + 0.5, entity.getZ(), 1, 0.12, 0.18, 0.12, 0.0);
@@ -288,6 +298,8 @@ public class MobTrapBlockEntity extends BlockEntity {
       this.spawnedCount = 0;
       this.totalToSpawn = 0;
       this.setChanged();
+      level.playSound(null, pos, SoundEvents.TRIAL_SPAWNER_CLOSE_SHUTTER, SoundSource.BLOCKS, 1.0F, 1.0F);
+      level.playSound(null, pos, SoundEvents.TRIAL_SPAWNER_BREAK, SoundSource.BLOCKS, 0.8F, 0.9F);
       level.destroyBlock(pos, false);
    }
 
