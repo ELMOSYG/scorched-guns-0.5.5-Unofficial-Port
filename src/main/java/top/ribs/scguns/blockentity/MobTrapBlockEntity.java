@@ -107,7 +107,8 @@ public class MobTrapBlockEntity extends BlockEntity {
          this.idleTimer--;
       }
 
-      List<Player> players = this.playersNearby(serverLevel, pos);
+      boolean requireSight = top.ribs.scguns.Config.COMMON.gameplay.mobTrapSpawnsInWaves.get();
+      List<Player> players = this.playersNearby(serverLevel, pos, requireSight);
 
       if (!this.active) {
          if (this.storedMobs.isEmpty() || players.isEmpty()) {
@@ -171,7 +172,7 @@ public class MobTrapBlockEntity extends BlockEntity {
          return;
       }
 
-      if (!this.playersNearby(level, pos).isEmpty()) {
+      if (!this.playersNearby(level, pos, false).isEmpty()) {
          this.releaseAll(level, pos);
       }
    }
@@ -237,7 +238,7 @@ public class MobTrapBlockEntity extends BlockEntity {
       }
    }
 
-   private List<Player> playersNearby(ServerLevel level, BlockPos pos) {
+   private List<Player> playersNearby(ServerLevel level, BlockPos pos, boolean requireSight) {
       AABB detectionBox = new AABB(
          (double) pos.getX() - DETECTION_RADIUS,
          (double) pos.getY() - DETECTION_HEIGHT,
@@ -248,7 +249,26 @@ public class MobTrapBlockEntity extends BlockEntity {
       );
 
       return level.getEntitiesOfClass(Player.class, detectionBox,
-         player -> !player.isCreative() && !player.isSpectator() && player.isAlive());
+         player -> !player.isCreative() && !player.isSpectator() && player.isAlive()
+            && (!requireSight || this.canSee(level, player)));
+   }
+
+   /**
+    * Whether the trap can actually see this player.
+    *
+    * <p>Plain proximity let a trap on the other side of a wall wake up and start spawning, which is how players got
+    * jumped by mobs that seemed to appear out of a solid block. A single block ray is enough to stop that.</p>
+    */
+   private boolean canSee(ServerLevel level, Player player) {
+      net.minecraft.world.phys.Vec3 from = net.minecraft.world.phys.Vec3.atCenterOf(this.worldPosition)
+         .add(0.0, 0.5, 0.0);
+      net.minecraft.world.phys.Vec3 to = player.getEyePosition();
+      net.minecraft.world.phys.BlockHitResult hit = level.clip(new net.minecraft.world.level.ClipContext(
+         from, to,
+         net.minecraft.world.level.ClipContext.Block.COLLIDER,
+         net.minecraft.world.level.ClipContext.Fluid.NONE,
+         player));
+      return hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS;
    }
 
    private int simultaneousLimit(int playerCount) {
@@ -277,9 +297,10 @@ public class MobTrapBlockEntity extends BlockEntity {
          return;
       }
 
-      double x = (double) pos.getX() + 0.5 + Mth.nextDouble(level.random, -2.0, 2.0);
-      double y = (double) pos.getY();
-      double z = (double) pos.getZ() + 0.5 + Mth.nextDouble(level.random, -2.0, 2.0);
+      BlockPos spawnPos = this.findSafeSpawn(level, pos, entity);
+      double x = (double) spawnPos.getX() + 0.5;
+      double y = (double) spawnPos.getY();
+      double z = (double) spawnPos.getZ() + 0.5;
       entity.moveTo(x, y, z, level.random.nextFloat() * 360.0F, 0.0F);
 
       if (entity instanceof Mob mobEntity) {
@@ -317,6 +338,42 @@ public class MobTrapBlockEntity extends BlockEntity {
          double z = (double) pos.getZ() + 0.5 + Mth.nextDouble(level.random, -0.35, 0.35);
          level.sendParticles(ParticleTypes.SMALL_FLAME, x, y, z, 1, 0.0, 0.01, 0.0, 0.0);
       }
+   }
+
+   /**
+    * Finds a spot around the trap where the mob fits: air for its full hitbox, and a solid floor underneath.
+    *
+    * <p>Spawning on a fixed offset used to push mobs into walls, where they stayed stuck and the trap could never
+    * clear. Sixteen attempts cover the surrounding ring; the trap's own position is the fallback.</p>
+    */
+   private BlockPos findSafeSpawn(ServerLevel level, BlockPos pos, Entity entity) {
+      for (int attempt = 0; attempt < 16; attempt++) {
+         int dx = Mth.nextInt(level.random, -3, 3);
+         int dz = Mth.nextInt(level.random, -3, 3);
+         if (dx == 0 && dz == 0) {
+            continue;
+         }
+
+         BlockPos candidate = pos.offset(dx, 0, dz);
+         if (!level.isEmptyBlock(candidate) || !level.isEmptyBlock(candidate.above())) {
+            continue;
+         }
+
+         net.minecraft.world.level.block.state.BlockState floor = level.getBlockState(candidate.below());
+         if (floor.isAir() || floor.liquid()) {
+            continue;
+         }
+
+         entity.moveTo((double) candidate.getX() + 0.5, (double) candidate.getY(), (double) candidate.getZ() + 0.5,
+            entity.getYRot(), entity.getXRot());
+         if (!level.noCollision(entity)) {
+            continue;
+         }
+
+         return candidate;
+      }
+
+      return pos;
    }
 
    /** Every mob is dead: the trap has done its job, so the block goes away. */
