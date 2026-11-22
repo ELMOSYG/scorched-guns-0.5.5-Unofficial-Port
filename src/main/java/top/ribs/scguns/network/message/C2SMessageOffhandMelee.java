@@ -156,6 +156,11 @@ public class C2SMessageOffhandMelee {
             weapon.getItem().postHurtEnemy(weapon, hurtTarget, player);
          }
 
+         // Data-driven on-hit enchantments (Soul Fire'd's soul fire aspect, for one) only run from the vanilla
+         // post-attack helper, which Player#attack is the only vanilla caller of. An off-hand swing never reached it.
+         net.minecraft.world.item.enchantment.EnchantmentHelper.doPostAttackEffectsWithItemSource(
+            player.serverLevel(), target, damageSource, weapon);
+
          // Durability, exactly as a main-hand swing spends it.
          if (!player.isCreative()) {
             weapon.hurtAndBreak(1, player, LivingEntity.getSlotForHand(InteractionHand.OFF_HAND));
