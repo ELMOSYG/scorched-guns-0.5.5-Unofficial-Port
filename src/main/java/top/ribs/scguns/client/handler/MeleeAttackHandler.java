@@ -533,6 +533,15 @@ public class MeleeAttackHandler {
                   applyCorrodedEffects(player, target, level);
                }
             }
+
+            // Enchantments added by other mods (Soul Fire'd's soul fire aspect, for example) are data-driven
+            // `post_attack` effects: the game runs them for whatever item the player actually attacked with. A bayonet
+            // is an attachment rather than the held item, so that never happened for a stab. Handing the bayonet to the
+            // same helper makes every installed enchantment behave as it would on a real weapon.
+            if (player.level() instanceof ServerLevel serverLevel) {
+               EnchantmentHelper.doPostAttackEffectsWithItemSource(serverLevel, target,
+                  serverLevel.damageSources().playerAttack(player), attachmentStack);
+            }
          }
       }
    }
