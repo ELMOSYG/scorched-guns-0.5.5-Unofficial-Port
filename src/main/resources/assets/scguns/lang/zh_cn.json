@@ -281,7 +281,7 @@
   "enchantment.scguns.heavy_shot": "重型弹",
   "enchantment.scguns.heavy_shot.desc": "增加伤害，但降低射速和弹速",
   "enchantment.scguns.hot_barrel": "炽热枪管",
-  "enchantment.scguns.hot_barrel.desc": "开火将填充一个进度条，并增加伤害和射速，大幅增加后坐力和子弹扩散",
+  "enchantment.scguns.hot_barrel.desc": "开火会填充一条逐渐消退的热度条。热度越高，伤害越高，同时后坐力与散布显著增加。",
   "enchantment.scguns.lightweight": "轻装上阵",
   "enchantment.scguns.lightweight.desc": "持枪时增加移动速度，装填时减速程度更小，重型武器不再减速",
   "enchantment.scguns.puncturing": "神枪手",

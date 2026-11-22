@@ -9,6 +9,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDamageEvent;
 import net.neoforged.neoforge.event.entity.living.LivingIncomingDamageEvent;
 import top.ribs.scguns.init.ModEnchantments;
 import top.ribs.scguns.init.ModTags;
@@ -63,6 +64,35 @@ public final class CorrodedEnchantment {
 
     public static float getBotDamageBonus(int level) {
         return (float) level * 2.0F;
+    }
+
+    /**
+     * Runs the enchantment's post-attack behaviour for melee hits.
+     *
+     * <p>In 1.20.1 this was {@code Enchantment#doPostAttack}, called by the game itself. 1.21 enchantments are data
+     * entries and cannot override that method, so the port kept the logic as a static helper - which nothing called.
+     * The poison and the bot particles therefore never happened on a sword or axe hit. Hooking the damage that has
+     * actually landed restores the original behaviour without reintroducing a custom enchantment class.</p>
+     */
+    @SubscribeEvent
+    public static void onDamageApplied(LivingDamageEvent.Post event) {
+        if (!(event.getSource().getEntity() instanceof LivingEntity attacker)) {
+            return;
+        }
+
+        if (!(event.getEntity() instanceof LivingEntity target)) {
+            return;
+        }
+
+        ItemStack weapon = attacker.getMainHandItem();
+        if (weapon.isEmpty()) {
+            return;
+        }
+
+        int level = ScEnchants.level(weapon, ModEnchantments.CORRODED);
+        if (level > 0) {
+            doPostAttack(attacker, target, level);
+        }
     }
 
     @SubscribeEvent

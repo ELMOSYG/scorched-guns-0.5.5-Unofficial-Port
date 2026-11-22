@@ -3,7 +3,7 @@
     "translate": "enchantment.scguns.corroded"
   },
   "supported_items": "#minecraft:enchantable/sharp_weapon",
-  "primary_items": "#minecraft:enchantable/sharp_weapon",
+  "primary_items": "#minecraft:enchantable/sword",
   "weight": 5,
   "max_level": 4,
   "min_cost": {

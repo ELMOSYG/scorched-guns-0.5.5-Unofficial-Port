@@ -282,7 +282,7 @@
   "enchantment.scguns.heavy_shot": "Heavy Shot",
   "enchantment.scguns.heavy_shot.desc": "Increases damage, But lowers fire rate and shot speed.",
   "enchantment.scguns.hot_barrel": "Hot Barrel",
-  "enchantment.scguns.hot_barrel.desc": "Firing fills a draining bar, the bars level increases damage and fire rate, and heavily increases recoil and weapon spread.",
+  "enchantment.scguns.hot_barrel.desc": "Firing fills a draining bar. Higher heat increases damage, and heavily increases recoil and weapon spread.",
   "enchantment.scguns.lightweight": "Light Frame",
   "enchantment.scguns.lightweight.desc": "Increases movement speed while holding a gun, and during reload speed loss is reduced. Heavy Weapons no longer slow you down",
   "enchantment.scguns.puncturing": "Sharpshooter",
