@@ -99,7 +99,7 @@ public class MobTrapBlock extends BaseEntityBlock {
    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
       if (!level.isClientSide && entity instanceof Player player && !player.isCreative() && !player.isSpectator()
          && level.getBlockEntity(pos) instanceof MobTrapBlockEntity mobTrap) {
-         mobTrap.wake();
+         mobTrap.wake((ServerLevel) level, pos);
       }
    }
 

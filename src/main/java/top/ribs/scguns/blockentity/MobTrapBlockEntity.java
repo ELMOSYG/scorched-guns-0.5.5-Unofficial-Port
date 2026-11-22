@@ -95,6 +95,11 @@ public class MobTrapBlockEntity extends BlockEntity {
          return;
       }
 
+      if (!top.ribs.scguns.Config.COMMON.gameplay.mobTrapSpawnsInWaves.get()) {
+         this.legacyTick(serverLevel, pos);
+         return;
+      }
+
       if (this.idleTimer > 0) {
          this.idleTimer--;
       }
@@ -140,10 +145,60 @@ public class MobTrapBlockEntity extends BlockEntity {
    }
 
    /** Wakes the trap early, for the player who walks straight onto it. */
-   public void wake() {
+   public void wake(ServerLevel level, BlockPos pos) {
+      if (!top.ribs.scguns.Config.COMMON.gameplay.mobTrapSpawnsInWaves.get()) {
+         this.releaseAll(level, pos);
+         return;
+      }
+
       if (!this.active && !this.storedMobs.isEmpty()) {
          this.begin();
       }
+   }
+
+   /** Original behaviour: wait for a player, then dump the whole list and vanish. */
+   private void legacyTick(ServerLevel level, BlockPos pos) {
+      if (this.storedMobs.isEmpty()) {
+         return;
+      }
+
+      this.idleTimer = (this.idleTimer + 1) % 20;
+      if (this.idleTimer != 0) {
+         return;
+      }
+
+      if (!this.playersNearby(level, pos).isEmpty()) {
+         this.releaseAll(level, pos);
+      }
+   }
+
+   /** Spawns every stored mob at once and removes the block, the way 0.5.5 did. */
+   private void releaseAll(ServerLevel level, BlockPos pos) {
+      if (this.storedMobs.isEmpty()) {
+         return;
+      }
+
+      for (EntityType<?> mob : this.storedMobs) {
+         Entity entity = mob.create(level);
+         if (entity != null) {
+            entity.moveTo(
+               (double) pos.getX() + level.random.nextDouble(),
+               (double) pos.getY(),
+               (double) pos.getZ() + level.random.nextDouble(),
+               level.random.nextFloat() * 360.0F,
+               0.0F
+            );
+            if (entity instanceof Mob mobEntity) {
+               mobEntity.finalizeSpawn(level, level.getCurrentDifficultyAt(pos), MobSpawnType.SPAWNER, null);
+            }
+
+            level.addFreshEntity(entity);
+         }
+      }
+
+      this.storedMobs.clear();
+      this.setChanged();
+      level.destroyBlock(pos, true);
    }
 
    /**

@@ -609,6 +609,8 @@ public class Config {
       public final BooleanValue enableFirePlacement;
       public final BooleanValue enableGunDamage;
       public final BooleanValue enableAttachmentDamage;
+      /** When false the mob trap dumps its whole contents at once, the way 0.5.5 did. */
+      public final BooleanValue mobTrapSpawnsInWaves;
       public final BooleanValue spawnCasings;
       public final DoubleValue growBoundingBoxAmount;
       public final BooleanValue enableHeadShots;
@@ -646,6 +648,10 @@ public class Config {
          this.enableGunDamage = builder.comment("If true, guns will be damageable and can break, coward if you toggle this").define("enableGunDamage", true);
          this.enableAttachmentDamage = builder.comment("If true, gun attachments will be damageable and can break, also a coward")
             .define("enableAttachmentDamage", true);
+         this.mobTrapSpawnsInWaves = builder.comment(
+               "If true, the mob trap releases its stored mobs one at a time and only disappears once they are all dead.",
+               "Set to false to restore the original behaviour: the whole list spawns at once and the block vanishes immediately.")
+            .define("mobTrapSpawnsInWaves", true);
          this.spawnCasings = builder.comment("Set to false to disable the spawning of casing items when firing guns.").define("gameplay.spawnCasings", true);
          this.physicsStructureImpulse = builder.comment(
                "How hard a Scorched Guns projectile shoves a physics structure (Sable sub-level) it hits.",
