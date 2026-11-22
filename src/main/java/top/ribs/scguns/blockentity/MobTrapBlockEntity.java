@@ -54,6 +54,10 @@ public class MobTrapBlockEntity extends BlockEntity {
    private static final int BASE_SIMULTANEOUS = 2;
    private static final int SIMULTANEOUS_PER_EXTRA_PLAYER = 1;
    private static final int MAX_STORED_MOBS = 20;
+   /** Ticks between spotting a player and the first spawn. */
+   private static final int WAKE_DELAY = 40;
+   /** Ticks between the last mob dying and the block disappearing. */
+   private static final int FINISH_DELAY = 40;
 
    private final List<EntityType<?>> storedMobs = new ArrayList<>();
    /** Mobs this trap has already released, used to tell whether the trap is cleared. */
@@ -66,6 +70,8 @@ public class MobTrapBlockEntity extends BlockEntity {
    private int spawnTimer = 0;
    private int idleTimer = 0;
    private int ambientTimer = 0;
+   private int wakeTimer = 0;
+   private int finishTimer = 0;
 
    public MobTrapBlockEntity(BlockPos pPos, BlockState pBlockState) {
       super((BlockEntityType)ModBlockEntities.MOB_TRAP.get(), pPos, pBlockState);
@@ -103,32 +109,41 @@ public class MobTrapBlockEntity extends BlockEntity {
          return;
       }
 
-      if (this.idleTimer > 0) {
-         this.idleTimer--;
-      }
-
-      boolean requireSight = top.ribs.scguns.Config.COMMON.gameplay.mobTrapSpawnsInWaves.get();
-      List<Player> players = this.playersNearby(serverLevel, pos, requireSight);
-
+      // Detection phase: the trap waits a moment after spotting a player, so walking past does not immediately
+      // start a fight behind the player's back.
       if (!this.active) {
-         if (this.storedMobs.isEmpty() || players.isEmpty()) {
+         if (this.storedMobs.isEmpty()) {
             return;
          }
 
-         this.begin();
+         if (this.wakeTimer > 0) {
+            this.wakeTimer--;
+            if (this.wakeTimer == 0) {
+               this.begin();
+            }
+
+            return;
+         }
+
+         if (this.playersNearby(serverLevel, pos, true).isEmpty()) {
+            return;
+         }
+
+         this.wakeTimer = WAKE_DELAY;
+         this.setChanged();
          return;
       }
 
-      if (players.isEmpty()) {
-         // Nobody is fighting any more: hold the wave where it is instead of spending the trap.
-         return;
-      }
-
+      // Spawning phase: no more player checks. Once a trap has started it finishes what it was loaded with.
       this.cleanupDeadMobs(serverLevel);
       this.emitAmbientParticles(serverLevel, pos);
 
       if (this.spawnedCount >= this.totalToSpawn && this.spawnedMobs.isEmpty()) {
-         this.finish(serverLevel, pos);
+         this.finishTimer--;
+         if (this.finishTimer <= 0) {
+            this.finish(serverLevel, pos);
+         }
+
          return;
       }
 
@@ -136,7 +151,7 @@ public class MobTrapBlockEntity extends BlockEntity {
          return;
       }
 
-      if (this.spawnedMobs.size() >= this.simultaneousLimit(players.size())) {
+      if (this.spawnedMobs.size() >= this.simultaneousLimit(this.playersNearby(serverLevel, pos, false).size())) {
          return;
       }
 
@@ -156,8 +171,9 @@ public class MobTrapBlockEntity extends BlockEntity {
          return;
       }
 
-      if (!this.active && !this.storedMobs.isEmpty()) {
-         this.begin();
+      if (!this.active && !this.storedMobs.isEmpty() && this.wakeTimer <= 0) {
+         this.wakeTimer = WAKE_DELAY;
+         this.setChanged();
       }
    }
 
@@ -220,6 +236,8 @@ public class MobTrapBlockEntity extends BlockEntity {
       this.spawnTimer = 0;
       this.spawnedMobs.clear();
       this.totalToSpawn = this.storedMobs.size();
+      this.wakeTimer = 0;
+      this.finishTimer = FINISH_DELAY;
       this.setChanged();
 
       if (this.level instanceof ServerLevel serverLevel) {
@@ -425,6 +443,8 @@ public class MobTrapBlockEntity extends BlockEntity {
       this.spawnedCount = tag.getInt("SpawnedCount");
       this.spawnedTypesCursor = tag.getInt("SpawnedTypesCursor");
       this.spawnTimer = tag.getInt("SpawnTimer");
+      this.wakeTimer = tag.getInt("WakeTimer");
+      this.finishTimer = tag.getInt("FinishTimer");
    }
 
    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
@@ -446,6 +466,8 @@ public class MobTrapBlockEntity extends BlockEntity {
       tag.putInt("SpawnedCount", this.spawnedCount);
       tag.putInt("SpawnedTypesCursor", this.spawnedTypesCursor);
       tag.putInt("SpawnTimer", this.spawnTimer);
+      tag.putInt("WakeTimer", this.wakeTimer);
+      tag.putInt("FinishTimer", this.finishTimer);
    }
 
    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
