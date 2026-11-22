@@ -257,11 +257,6 @@ public class MobTrapBlockEntity extends BlockEntity {
       this.spawnTimer = 0;
       this.spawnedMobs.clear();
       this.totalToSpawn = this.storedMobs.size();
-      if (this.level instanceof ServerLevel serverLevel) {
-         serverLevel.playSound(null, this.worldPosition, SoundEvents.TRIAL_SPAWNER_OPEN_SHUTTER, SoundSource.BLOCKS,
-            1.0F, 1.0F);
-      }
-
       this.wakeTimer = 0;
       this.finishTimer = FINISH_DELAY;
       this.setChanged();
