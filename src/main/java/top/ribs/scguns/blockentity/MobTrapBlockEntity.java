@@ -48,9 +48,6 @@ public class MobTrapBlockEntity extends BlockEntity {
    private static final int DETECTION_HEIGHT = 5;
    /** Ticks between two spawns. Twenty ticks is one second; forty matches a trial spawner. */
    private static final int TICKS_BETWEEN_SPAWNS = 40;
-   /** Mobs that spawn for the first player, plus this many per extra player. */
-   private static final int BASE_MOBS = 4;
-   private static final int MOBS_PER_EXTRA_PLAYER = 1;
    /** How many spawned mobs may be alive at the same time. */
    private static final int BASE_SIMULTANEOUS = 2;
    private static final int SIMULTANEOUS_PER_EXTRA_PLAYER = 1;
@@ -109,7 +106,7 @@ public class MobTrapBlockEntity extends BlockEntity {
             return;
          }
 
-         this.begin(players.size());
+         this.begin();
          return;
       }
 
@@ -145,18 +142,24 @@ public class MobTrapBlockEntity extends BlockEntity {
    /** Wakes the trap early, for the player who walks straight onto it. */
    public void wake() {
       if (!this.active && !this.storedMobs.isEmpty()) {
-         this.begin(1);
+         this.begin();
       }
    }
 
-   /** Wakes the trap and works out how much it is going to spawn for the players present. */
-   private void begin(int playerCount) {
+   /**
+    * Wakes the trap.
+    *
+    * <p>The number of mobs is whatever was loaded into the trap - addons and datapacks put a deliberate list in there,
+    * so the trap must not invent a different total. Only the pacing is new: one mob at a time instead of the whole
+    * list at once.</p>
+    */
+   private void begin() {
       this.active = true;
       this.spawnedCount = 0;
       this.spawnedTypesCursor = 0;
       this.spawnTimer = 0;
       this.spawnedMobs.clear();
-      this.totalToSpawn = BASE_MOBS + Math.max(0, playerCount - 1) * MOBS_PER_EXTRA_PLAYER;
+      this.totalToSpawn = this.storedMobs.size();
       this.setChanged();
    }
 
@@ -191,7 +194,7 @@ public class MobTrapBlockEntity extends BlockEntity {
          return;
       }
 
-      EntityType<?> type = this.storedMobs.get(this.spawnedTypesCursor % this.storedMobs.size());
+      EntityType<?> type = this.storedMobs.get(Math.min(this.spawnedTypesCursor, this.storedMobs.size() - 1));
       this.spawnedTypesCursor++;
       Entity entity = type.create(level);
       if (entity == null) {
