@@ -129,8 +129,7 @@ public class MobTrapBlockEntity extends BlockEntity {
             return;
          }
 
-         this.wakeTimer = WAKE_DELAY;
-         this.setChanged();
+         this.onDetected(serverLevel);
          return;
       }
 
@@ -164,6 +163,29 @@ public class MobTrapBlockEntity extends BlockEntity {
       this.spawnOne(serverLevel, pos);
    }
 
+   /**
+    * The trap has spotted a player and starts charging.
+    *
+    * <p>The detect sound and the rising detection particles belong here, at the moment the trap notices someone,
+    * not at the moment mobs start appearing - that is what makes the two-second delay readable as a warning.</p>
+    */
+   private void onDetected(ServerLevel level) {
+      level.playSound(null, this.worldPosition, SoundEvents.TRIAL_SPAWNER_DETECT_PLAYER, SoundSource.BLOCKS, 1.0F, 1.0F);
+
+      for (int i = 0; i < 16; i++) {
+         double angle = level.random.nextDouble() * Math.PI * 2.0;
+         double radius = 0.5 + level.random.nextDouble() * 0.6;
+         level.sendParticles(ParticleTypes.TRIAL_SPAWNER_DETECTED_PLAYER,
+            (double) this.worldPosition.getX() + 0.5 + Math.cos(angle) * radius,
+            (double) this.worldPosition.getY() + 0.2 + level.random.nextDouble() * 0.9,
+            (double) this.worldPosition.getZ() + 0.5 + Math.sin(angle) * radius,
+            1, 0.0, 0.02, 0.0, 0.0);
+      }
+
+      this.wakeTimer = WAKE_DELAY;
+      this.setChanged();
+   }
+
    /** Wakes the trap early, for the player who walks straight onto it. */
    public void wake(ServerLevel level, BlockPos pos) {
       if (!top.ribs.scguns.Config.COMMON.gameplay.mobTrapSpawnsInWaves.get()) {
@@ -172,8 +194,7 @@ public class MobTrapBlockEntity extends BlockEntity {
       }
 
       if (!this.active && !this.storedMobs.isEmpty() && this.wakeTimer <= 0) {
-         this.wakeTimer = WAKE_DELAY;
-         this.setChanged();
+         this.onDetected(level);
       }
    }
 
@@ -236,24 +257,16 @@ public class MobTrapBlockEntity extends BlockEntity {
       this.spawnTimer = 0;
       this.spawnedMobs.clear();
       this.totalToSpawn = this.storedMobs.size();
+      if (this.level instanceof ServerLevel serverLevel) {
+         serverLevel.playSound(null, this.worldPosition, SoundEvents.TRIAL_SPAWNER_OPEN_SHUTTER, SoundSource.BLOCKS,
+            1.0F, 1.0F);
+      }
+
       this.wakeTimer = 0;
       this.finishTimer = FINISH_DELAY;
       this.setChanged();
 
-      if (this.level instanceof ServerLevel serverLevel) {
-         serverLevel.playSound(null, this.worldPosition, SoundEvents.TRIAL_SPAWNER_DETECT_PLAYER, SoundSource.BLOCKS,
-            1.0F, 1.0F);
 
-         for (int i = 0; i < 16; i++) {
-            double angle = serverLevel.random.nextDouble() * Math.PI * 2.0;
-            double radius = 0.5 + serverLevel.random.nextDouble() * 0.6;
-            serverLevel.sendParticles(ParticleTypes.TRIAL_SPAWNER_DETECTED_PLAYER,
-               (double) this.worldPosition.getX() + 0.5 + Math.cos(angle) * radius,
-               (double) this.worldPosition.getY() + 0.2 + serverLevel.random.nextDouble() * 0.9,
-               (double) this.worldPosition.getZ() + 0.5 + Math.sin(angle) * radius,
-               1, 0.0, 0.02, 0.0, 0.0);
-         }
-      }
    }
 
    private List<Player> playersNearby(ServerLevel level, BlockPos pos, boolean requireSight) {
