@@ -92,9 +92,14 @@ public class MobTrapBlock extends BaseEntityBlock {
       }
    }
 
+   /**
+    * Stepping on the trap used to dump every stored mob at once. Now it only wakes the trap up early: the wave logic in
+    * the block entity decides how many mobs come and when.
+    */
    public void entityInside(BlockState state, Level level, BlockPos pos, Entity entity) {
-      if (!level.isClientSide && entity instanceof Player && level.getBlockEntity(pos) instanceof MobTrapBlockEntity mobTrap) {
-         mobTrap.releaseMobs((ServerLevel)level, pos);
+      if (!level.isClientSide && entity instanceof Player player && !player.isCreative() && !player.isSpectator()
+         && level.getBlockEntity(pos) instanceof MobTrapBlockEntity mobTrap) {
+         mobTrap.wake();
       }
    }
 
