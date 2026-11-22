@@ -65,6 +65,7 @@ public class MobTrapBlockEntity extends BlockEntity {
    private int spawnedTypesCursor = 0;
    private int spawnTimer = 0;
    private int idleTimer = 0;
+   private int ambientTimer = 0;
 
    public MobTrapBlockEntity(BlockPos pPos, BlockState pBlockState) {
       super((BlockEntityType)ModBlockEntities.MOB_TRAP.get(), pPos, pBlockState);
@@ -123,6 +124,7 @@ public class MobTrapBlockEntity extends BlockEntity {
       }
 
       this.cleanupDeadMobs(serverLevel);
+      this.emitAmbientParticles(serverLevel, pos);
 
       if (this.spawnedCount >= this.totalToSpawn && this.spawnedMobs.isEmpty()) {
          this.finish(serverLevel, pos);
@@ -222,6 +224,16 @@ public class MobTrapBlockEntity extends BlockEntity {
       if (this.level instanceof ServerLevel serverLevel) {
          serverLevel.playSound(null, this.worldPosition, SoundEvents.TRIAL_SPAWNER_DETECT_PLAYER, SoundSource.BLOCKS,
             1.0F, 1.0F);
+
+         for (int i = 0; i < 16; i++) {
+            double angle = serverLevel.random.nextDouble() * Math.PI * 2.0;
+            double radius = 0.5 + serverLevel.random.nextDouble() * 0.6;
+            serverLevel.sendParticles(ParticleTypes.TRIAL_SPAWNER_DETECTED_PLAYER,
+               (double) this.worldPosition.getX() + 0.5 + Math.cos(angle) * radius,
+               (double) this.worldPosition.getY() + 0.2 + serverLevel.random.nextDouble() * 0.9,
+               (double) this.worldPosition.getZ() + 0.5 + Math.sin(angle) * radius,
+               1, 0.0, 0.02, 0.0, 0.0);
+         }
       }
    }
 
@@ -290,6 +302,23 @@ public class MobTrapBlockEntity extends BlockEntity {
       }
    }
 
+   /** Rising flame particles while the trap is working, the visual cue a trial spawner gives. */
+   private void emitAmbientParticles(ServerLevel level, BlockPos pos) {
+      this.ambientTimer++;
+      if (this.ambientTimer < 10) {
+         return;
+      }
+
+      this.ambientTimer = 0;
+
+      for (int i = 0; i < 3; i++) {
+         double x = (double) pos.getX() + 0.5 + Mth.nextDouble(level.random, -0.35, 0.35);
+         double y = (double) pos.getY() + 0.1 + level.random.nextDouble() * 1.1;
+         double z = (double) pos.getZ() + 0.5 + Mth.nextDouble(level.random, -0.35, 0.35);
+         level.sendParticles(ParticleTypes.SMALL_FLAME, x, y, z, 1, 0.0, 0.01, 0.0, 0.0);
+      }
+   }
+
    /** Every mob is dead: the trap has done its job, so the block goes away. */
    private void finish(ServerLevel level, BlockPos pos) {
       this.active = false;
@@ -299,6 +328,15 @@ public class MobTrapBlockEntity extends BlockEntity {
       this.totalToSpawn = 0;
       this.setChanged();
       level.playSound(null, pos, SoundEvents.TRIAL_SPAWNER_CLOSE_SHUTTER, SoundSource.BLOCKS, 1.0F, 1.0F);
+
+      for (int i = 0; i < 20; i++) {
+         level.sendParticles(ParticleTypes.LARGE_SMOKE,
+            (double) pos.getX() + 0.5 + Mth.nextDouble(level.random, -0.5, 0.5),
+            (double) pos.getY() + 0.4 + Mth.nextDouble(level.random, 0.0, 0.8),
+            (double) pos.getZ() + 0.5 + Mth.nextDouble(level.random, -0.5, 0.5),
+            1, 0.02, 0.03, 0.02, 0.0);
+      }
+
       level.playSound(null, pos, SoundEvents.TRIAL_SPAWNER_BREAK, SoundSource.BLOCKS, 0.8F, 0.9F);
       level.destroyBlock(pos, false);
    }
