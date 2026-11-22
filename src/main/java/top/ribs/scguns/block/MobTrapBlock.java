@@ -77,7 +77,13 @@ public class MobTrapBlock extends BaseEntityBlock {
                   return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
                }
 
-               EntityType<?> entityType = eggItem.getType(null);
+               // 1.21 reads the type from the egg's stack, not from a tag: passing null here made every right click
+               // fail before anything was stored, which is why a spawn egg did nothing at all.
+               EntityType<?> entityType = eggItem.getType(heldItem);
+               if (entityType == null) {
+                  return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+               }
+
                if (mobTrap.addMob(entityType)) {
                   if (!player.isCreative()) {
                      heldItem.shrink(1);
